@@ -25,6 +25,12 @@ Without a run ID, status calls authenticated `POST /catalog`; with an ID it call
 `POST /observe`. SpatialForge has no run-status `GET /status` endpoint.
 Missing config or credentials fails with an actionable error.
 
+## Multi-agent collaboration
+
+The combined preset exposes `benchforge_collaboration` and the SpatialForge plugin exposes `spatialforge_collaboration` for lightweight, shared-workspace handoffs. Agents can publish a role, status, inputs, findings, artifact paths, blockers, decisions and next actions, relate or reply to earlier handoffs, then list or read the record when another agent resumes the task. This is an artifact protocol rather than a fixed orchestration graph: agents can work sequentially or in parallel, and the parent agent decides how to merge their findings.
+
+Useful roles include planning, asset/layout construction, visual review, interaction/physics review, dataset/export review and delivery editing. Handoffs can reply to or relate earlier work and can carry a decision and confidence when a parent agent needs to reconcile parallel findings. Keep them short and concrete. Independent work may run in parallel; the single configured Isaac queue remains the shared execution boundary.
+
 ## Test the code without production jobs
 
 ```bash

@@ -33,21 +33,22 @@ export async function apply(ctx, config) {
     catalog:'Discover callable production tools and exact request examples. Start with requests and compiler_templates. section=migration separates implementation from validation.',
     status:'Read persisted operation results and artifact paths. Does not retry operations.',
     plan:'Save a benchmark brief. Planning and capability choices belong to you; no fixed stage sequence.',
-    sam3:'Segment an image through the configured SAM3 service. Returns predictions and mask paths, never authoritative GT.',
+    sam3:'Segment an image through the configured SAM3 service. Returns candidate masks, scores and paths for inspection; source labels remain the authority for ground truth.',
     yoloe:'Detect requested objects through YOLOE; supports text and visual prompts. Inspect its output.',
     depthanything3:'Request Depth Anything 3 inference or query task/health. Inferred depth needs calibration before metric claims.',
-    llm_local:'Call an explicitly configured local VLM for semantic annotation suggestions. Responses remain predictions; never use this as a question reviewer or GT writer.',
+    llm_local:'Call an explicitly configured local VLM for semantic annotation suggestions. Responses are predictions that can guide annotation or repair; source labels remain authoritative.',
     habitat:'Capture real Habitat RGB, depth and agent state with the bundled collector in its configured environment.',
     libero:'Collect LIBERO observations and simulator state using demo or zero actions in its configured environment.',
     carla:'Capture CARLA views and actor metadata from a configured running server.',
     isaac:'Capture a native cuboid scene with the independent Isaac collector in a configured Isaac environment. Supports cameras, depth, labels and recorded poses.',
     evidence:'Import evidence JSONL. provenance.path references one JSON source document; selectors are JSON pointers into it. All relative paths resolve against the input JSONL directory. media contains public images only; assets retains private raw depth, labels and oracle code. Derive JSON oracle outputs from binary simulation inputs in task code.',
-    build:'Build model-visible items/media plus separate authority sources and private assets, deriving answers from source JSON and reporting coverage. Never put raw depth or label files into media.',
-    evaluate:'Score saved predictions with exact match; report missing answers. Does not call model APIs.'
+    build:'Build model-visible items/media plus separate authority sources and private assets, deriving answers from source JSON and reporting coverage. Keep raw depth and authority labels in the evidence side of the bundle.',
+    evaluate:'Score saved predictions with exact match; report missing answers. Does not call model APIs.',
+    collaboration:'Share lightweight, structured handoffs in the task workspace. Agents can publish observations, artifacts, decisions, blockers and next actions, relate a handoff to earlier work, and reply to another agent. List or read the record when joining, resuming or reconciling parallel work; the protocol does not prescribe an orchestration graph.'
   };
   const object={type:'object',properties:{},additionalProperties:true};
-  definitions.backend='Inspect or explicitly start an optional configured backend in its own environment. Does not restart or stop existing services.';
-  definitions.adapt_capture='Convert native Habitat/LIBERO/CARLA capture to compiler evidence. Habitat samples continuous visible surface regions and computes calibrated camera range from raw depth; no object-label guesses.';
+  definitions.backend='Inspect or explicitly start an optional configured backend in its own environment. Existing services keep their lifecycle outside this operation.';
+  definitions.adapt_capture='Convert native Habitat/LIBERO/CARLA capture to compiler evidence. Habitat samples continuous visible surface regions and computes calibrated camera range from raw depth; semantic labels come from the selected source records.';
   const schemas={
     backend:{name:{type:'string',required:true},action:{type:'string',enum:['status','start']}},
     adapt_capture:{input:{type:'string',required:true},simulator:{type:'string',enum:['habitat','libero','carla']},camera:{type:'object',additionalProperties:true},regions:{type:'integer'},radius:{type:'integer'}},
@@ -57,6 +58,7 @@ export async function apply(ctx, config) {
     evidence:{input:{type:'string',required:true,description:'Source records JSONL with provenance and JSON-pointer selectors.'}},
     build:{evidence:{type:'string',required:true},items:{type:'string',required:true}},
     evaluate:{authority:{type:'string',required:true},predictions:{type:'string',required:true}},
+    collaboration:{action:{type:'string',enum:['publish','list','read'],required:true},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},
     isaac:{scene_program:{type:'string',required:true},timeout_seconds:{type:'integer'}}
   };
   const production = {
@@ -432,10 +434,48 @@ export async function apply(ctx, config) {
     payload:{...object,description:'Native backend inference arguments. Catalog includes exact examples.'},task_id:{type:'string'},timeout_seconds:{type:'integer'}};
   for(const tool of ['habitat','libero','carla']) schemas[tool]={argv:{type:'array',items:{type:'string'},description:'Collector arguments; catalog has examples. Use --help for installed SDK collector options.'},timeout_seconds:{type:'integer'}};
   for (const [tool, description] of Object.entries(definitions)) {
+    if (tool === 'collaboration') continue;
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output, execute:(args,exec)=>{const {workspace,...request}=args; return invoke(config.python || 'python',workspace,config.configPath,tool,request,exec.signal);}}));
   }
+  ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
+    parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...schemas.collaboration}, output,
+    execute:async (args,exec)=>{
+      const {workspace,...request}=args;
+      const directory=path.join(path.resolve(workspace),'.benchforge','collaboration');
+      const file=path.join(directory,'handoffs.jsonl');
+      await fs.mkdir(directory,{recursive:true});
+      if(request.action==='publish'){
+        if(!request.role || !request.summary) throw new Error('collaboration publish needs role and summary');
+        const handoff={handoff_id:request.handoff_id || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+          created_at:new Date().toISOString(),agent:request.agent || exec.agent?.session?.id || 'current-agent',
+          role:request.role,status:request.status || 'working',summary:request.summary,
+          inputs:request.inputs || [],artifacts:request.artifacts || [],findings:request.findings || [],
+          blockers:request.blockers || [],next_actions:request.next_actions || [],parent_handoff_id:request.parent_handoff_id || null,
+          reply_to:request.reply_to || null,related_handoff_ids:request.related_handoff_ids || [],
+          requested_from:request.requested_from || [],decision:request.decision || null,
+          confidence:request.confidence ?? null,supersedes_handoff_id:request.supersedes_handoff_id || null};
+        await fs.appendFile(file,JSON.stringify(handoff)+'\n','utf8');
+        return handoff;
+      }
+      let rows=[];
+      try{rows=(await fs.readFile(file,'utf8')).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}
+      catch(error){if(error.code!=='ENOENT') throw error;}
+      if(request.action==='list') {
+        const filter=request.filter || {};
+        return {handoffs:rows.filter(item =>
+          (!filter.status || item.status===filter.status) &&
+          (!filter.role || item.role===filter.role) &&
+          (!filter.agent || item.agent===filter.agent))};
+      }
+      if(request.action==='read'){
+        const row=rows.findLast(item=>item.handoff_id===request.handoff_id);
+        if(!row) throw new Error(`Unknown collaboration handoff: ${request.handoff_id}`);
+        return row;
+      }
+      throw new Error(`Unknown collaboration action: ${request.action}`);
+    }}));
   ctx.tools.register(defineTool({name:'benchforge_view_image', description:'Show a real local capture or annotation image to the model and user.',
     parameters:{path:{type:'string',required:true}},
     output:{...output,render:(_args,value)=>[{type:'image',attachment:value.image}]},
