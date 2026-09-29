@@ -58,7 +58,7 @@ export async function apply(ctx, config) {
     evidence:{input:{type:'string',required:true,description:'Source records JSONL with provenance and JSON-pointer selectors.'}},
     build:{evidence:{type:'string',required:true},items:{type:'string',required:true}},
     evaluate:{authority:{type:'string',required:true},predictions:{type:'string',required:true}},
-    collaboration:{action:{type:'string',enum:['publish','list','read'],required:true},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},
+    collaboration:{action:{type:'string',enum:['publish','list','read'],required:true},history:{type:'boolean',description:'For list: include earlier versions. Default returns only the latest record per handoff, then applies filters.'},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},
     isaac:{scene_program:{type:'string',required:true},timeout_seconds:{type:'integer'}}
   };
   const production = {
@@ -463,6 +463,7 @@ export async function apply(ctx, config) {
       try{rows=(await fs.readFile(file,'utf8')).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}
       catch(error){if(error.code!=='ENOENT') throw error;}
       if(request.action==='list') {
+        if(!request.history) rows=[...new Map(rows.map(item=>[item.handoff_id,item])).values()];
         const filter=request.filter || {};
         return {handoffs:rows.filter(item =>
           (!filter.status || item.status===filter.status) &&

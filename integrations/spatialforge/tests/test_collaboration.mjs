@@ -31,4 +31,12 @@ test('SpatialForge plugin exposes shared handoffs without service calls', async 
   await tool.execute({workspace: root, action: 'publish', handoff_id: 'review', role: 'visual', reply_to: first.handoff_id, status: 'blocked', summary: 'camera needs review'}, exec);
   assert.equal((await tool.execute({workspace: root, action: 'list', filter: {role: 'visual'}}, exec)).handoffs.length, 1);
   assert.equal((await tool.execute({workspace: root, action: 'read', handoff_id: 'review'}, exec)).reply_to, first.handoff_id);
+  const completed = await tool.execute({workspace: root, action: 'publish', handoff_id: 'review', role: 'delivery', status: 'done', summary: 'Camera fixed and inspected', agent: 'agent-b', artifacts: ['render.png']}, exec);
+  assert.deepEqual((await tool.execute({workspace: root, action: 'list', filter: {status: 'blocked'}}, exec)).handoffs, []);
+  assert.deepEqual((await tool.execute({workspace: root, action: 'list', filter: {role: 'visual'}}, exec)).handoffs, []);
+  assert.deepEqual((await tool.execute({workspace: root, action: 'list', filter: {agent: 'agent-b'}}, exec)).handoffs, [completed]);
+  assert.deepEqual((await tool.execute({workspace: root, action: 'list'}, exec)).handoffs, [first, completed]);
+  assert.deepEqual(await tool.execute({workspace: root, action: 'read', handoff_id: 'review'}, exec), completed);
+  assert.equal((await tool.execute({workspace: root, action: 'list', history: true, filter: {status: 'blocked'}}, exec)).handoffs.length, 1);
+  assert.equal((await fs.readFile(path.join(root, '.benchforge/collaboration/handoffs.jsonl'), 'utf8')).trim().split('\n').length, 3);
 });

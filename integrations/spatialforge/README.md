@@ -31,6 +31,8 @@ The combined preset exposes `benchforge_collaboration` and the SpatialForge plug
 
 Useful roles include planning, asset/layout construction, visual review, interaction/physics review, dataset/export review and delivery editing. Handoffs can reply to or relate earlier work and can carry a decision and confidence when a parent agent needs to reconcile parallel findings. Keep them short and concrete. Independent work may run in parallel; the single configured Isaac queue remains the shared execution boundary.
 
+Publish a complete new snapshot with the same `handoff_id` to update it. `list` returns one current record per handoff and filters that current state by status, role or agent; a resolved blocker will not reappear from an earlier version. `read` returns the same latest snapshot. Use `list` with `history: true` for earlier versions, including old blockers and agent assignments. The append-only file keeps all versions for inspection.
+
 ## Test the code without production jobs
 
 ```bash
