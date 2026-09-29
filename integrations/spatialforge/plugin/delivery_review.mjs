@@ -1,23 +1,40 @@
 // A capture receipt closes a rendering job, not the user's scene request.
-// Use the existing stopping boundary for one review of each new capture.
+// Review a new capture, or the latest one explicitly resumed in a later turn.
 export const sourceKind = 'spatialforge-delivery-review';
 
 export function pendingCapture(events, turn) {
   const start = events.findLastIndex(e => e.type === 'turn/start' && e.data.turn === turn);
-  const calls = new Set();
+  const submissions = new Set(['spatialforge_capture', 'spatialforge_refine']);
+  const observations = new Set(['spatialforge_status', 'spatialforge_wait', 'spatialforge_evidence']);
+  const calls = new Map();
   const reviewed = new Set();
+  const revisited = new Set();
   let latest;
-  for (const event of events.slice(start + 1)) {
+  let submittedHere = false;
+  if (start < 0) return;
+  for (const [index, event] of events.entries()) {
     const data = event.data;
-    if (event.type === 'tool/call' && ['spatialforge_capture','spatialforge_refine'].includes(data.name)) calls.add(data.callId);
+    if (event.type === 'tool/call' && (submissions.has(data.name) || observations.has(data.name))) {
+      calls.set(data.callId, { ...data, index });
+    }
     if (event.type === 'user/message' && data.source?.kind === sourceKind) {
       reviewed.add(data.source.capture_call_id);
     }
     if (event.type !== 'tool/result' || data.message.isError || !calls.has(data.message.toolCallId)) continue;
-    const value = JSON.parse(data.message.content.find(block => block.type === 'text').text);
-    latest = { callId: data.message.toolCallId, runId: value.run_id, taskId: value.task_id ?? value.run_id + '.scene0' };
+    const call = calls.get(data.message.toolCallId);
+    if (submissions.has(call.name)) {
+      const value = JSON.parse(data.message.content.find(block => block.type === 'text').text);
+      latest = { callId: data.message.toolCallId, runId: value.run_id, taskId: value.task_id ?? value.run_id + '.scene0' };
+      submittedHere = call.index > start;
+    } else if (call.index > start) {
+      const args = JSON.parse(call.arguments);
+      revisited.add(args.run_id ?? args.task_id);
+    }
   }
-  return latest && !reviewed.has(latest.callId) ? latest : undefined;
+  // An unrelated follow-up does not reopen old work; reminders deduplicate
+  // across the whole session, including after replay or reconnection.
+  return latest && !reviewed.has(latest.callId)
+    && (submittedHere || revisited.has(latest.runId) || revisited.has(latest.taskId)) ? latest : undefined;
 }
 
 export function createDeliveryReview({ api, createMessage, visuals = async () => [] }) {

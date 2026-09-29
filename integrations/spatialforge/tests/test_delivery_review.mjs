@@ -17,8 +17,13 @@ function replay(events, response = receipt) {
     messages.push(message); events.push({type:'user/message',data:message});
   } };
   const review = createDeliveryReview({ api: async (path, args) => { requests.push({path,args}); return response; }, createMessage: x => x });
-  return {requests,messages,run: signal => review({agent,turn:1,signal:signal ?? new AbortController().signal})};
+  return {requests,messages,run: (signal, turn = 1) => review({agent,turn,signal:signal ?? new AbortController().signal})};
 }
+
+const observationEvents = (name, args, isError = false) => [
+  {type:'tool/call',data:{name,callId:'observe-'+name,arguments:JSON.stringify(args)}},
+  {type:'tool/result',data:{message:{toolCallId:'observe-'+name,isError,content:[{type:'text',text:'{}'}]}}},
+];
 
 test('a completed capture prompts delivery review, preserving failed action evidence', async () => {
   const r = replay(captureEvents()); await r.run();
@@ -65,6 +70,44 @@ test('review deduplication survives replay and previous turns do not force new w
   assert.equal(pendingCapture(structuredClone(events),1),undefined);
   events.push({type:'turn/start',data:{turn:2}});
   assert.equal(pendingCapture(events,2),undefined);
+});
+
+test('a capture that finishes in a later turn receives its review when work resumes', async () => {
+  const events = captureEvents(), response = structuredClone(receipt);
+  response.tasks[0].state = 'RUNNING';
+  const r = replay(events, response); await r.run();
+  assert.equal(r.messages.length, 0);
+  events.push({type:'turn/start',data:{turn:2}}, ...observationEvents('spatialforge_wait', {run_id:'sf_example'}));
+  response.tasks[0].state = 'SUCCEEDED';
+  await r.run(undefined, 2);
+  assert.equal(r.messages.length, 1);
+  assert.equal(r.messages[0].source.capture_call_id, 'c1');
+  assert.match(r.messages[0].content[0].text, /"success":false/);
+  events.push({type:'turn/start',data:{turn:3}}, ...observationEvents('spatialforge_status', {run_id:'sf_example'}));
+  await r.run(undefined, 3);
+  assert.equal(r.messages.length, 1);
+  assert.equal(r.requests.length, 2);
+});
+
+test('status and task evidence can resume review without a duplicate capture', () => {
+  for (const [name, args] of [
+    ['spatialforge_status', {run_id:'sf_example', detail:true}],
+    ['spatialforge_evidence', {task_id:'sf_example.scene0', file:'report.json'}],
+  ]) {
+    const events = [...captureEvents(), {type:'turn/start',data:{turn:2}}, ...observationEvents(name,args)];
+    assert.equal(pendingCapture(events,2).callId,'c1');
+  }
+});
+
+test('unrelated, failed or superseded observations do not resurrect an old capture', () => {
+  const next = [...captureEvents(), {type:'turn/start',data:{turn:2}}];
+  assert.equal(pendingCapture(next,2),undefined);
+  assert.equal(pendingCapture([...next, ...observationEvents('spatialforge_status',{run_id:'sf_other'})],2),undefined);
+  assert.equal(pendingCapture([...next, ...observationEvents('spatialforge_evidence',{task_id:'sf_example.scene1'})],2),undefined);
+  assert.equal(pendingCapture([...next, ...observationEvents('spatialforge_wait',{run_id:'sf_example'},true)],2),undefined);
+  const superseded = [...captureEvents(), ...captureEvents('c2','sf_new').slice(1),
+    {type:'turn/start',data:{turn:2}}, ...observationEvents('spatialforge_status',{run_id:'sf_example'})];
+  assert.equal(pendingCapture(superseded,2),undefined);
 });
 
 test('refine supersedes its parent capture, including older receipts without task_id', async () => {

@@ -35,6 +35,11 @@ Publish a complete new snapshot with the same `handoff_id` to update it. `list` 
 
 ## Test the code without production jobs
 
+Delivery review follows the latest capture across turns when the agent resumes
+that run through status, wait or task evidence. An unrelated follow-up leaves old
+captures alone. Once the review has been issued, later status reads do not repeat
+it. This tracks delivery feedback; it does not certify that the user's task is complete.
+
 ```bash
 python integrations/spatialforge/smoke.py
 ```
