@@ -49,6 +49,23 @@ the actual review functions, including failed physics, missing image visibility,
 reference/render attachments and broken delivery links. The former fixture that
 simply asserted `success=true` and `loadable=true` has been removed.
 
+With a built DSH checkout, test real subagent creation and resumption:
+
+```bash
+node integrations/spatialforge/tests/replay_subagents.mjs \
+  --dsh-root /path/to/deepseek-harness --output /tmp/spatialforge-subagent-replay
+```
+
+This starts two overlapping child agents through DSH's `subagent` tool, exercises
+their inherited collaboration tool, lets them settle, and resumes one through
+`send_message` using its persisted session. It checks that the parent can read
+the resolved handoff while the earlier blocker remains in history. JSON session
+events and the report are saved under `--output`; each run uses a fresh workspace.
+The adapter uses scripted responses and labeled fixture artifacts, with no model
+API, service request or Isaac process. It tests orchestration and persistence,
+not autonomous model decisions or scene quality. `--plugin` can select another
+deployed SpatialForge `tools.mjs` for the same replay.
+
 ## Install the bundled service
 
 The service, PostgreSQL/BenchClaw engine, SAM worker adapters and desktop executor
