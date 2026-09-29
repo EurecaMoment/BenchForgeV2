@@ -27,6 +27,7 @@ Discover exact tool contracts from the session catalog when needed, then use the
 Inspect relevant images and returned evidence, and let observations guide the next code or tool call. Preserve source labels, simulator state and provenance. Model masks, inferred depth and review findings are predictions or guidance; they do not replace GT from official records, task programs or simulation.
 For simulation distance questions, use the declared depth semantics and camera intrinsics so the oracle matches the wording. Keep authority data and raw arrays separate from public media, and resolve relative evidence paths from their source document.
 Package public questions/media separately from authority data. Scale synthesis when the requested coverage and scorer controls are met; use configured model evaluation only on public inputs and label proxy baselines as such. Report concrete artifacts, evidence and remaining gaps.
+Keep the objective open while a requested deliverable is missing or a repairable gap remains; a successful tool call, capture, or checked TODO is not completion. At the end of a turn, give a formal user-facing delivery note with the outcome, evidence and artifacts, plus any unresolved blocker or next action. Do not expose scratch reasoning or present a TODO list as the final result.
 Prefer task code and inputs for task-specific changes. Keep verification proportional to the deliverable and avoid checksum manifests or broad filesystem audits unless they answer a concrete question.
 '''
 
