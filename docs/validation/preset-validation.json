@@ -1,0 +1,11 @@
+{
+  "official_inputs_unchanged": true,
+  "standard_plugins_preserved": true,
+  "ptc_both": true,
+  "persistent_shell": true,
+  "runtime_inspection": true,
+  "no_duplicate_plugins": true,
+  "installer_preserves_unrelated_fixture_rows": true,
+  "installer_idempotent": true,
+  "test_scope": "real installed preset snapshots; isolated fixture profile, no live profile changes"
+}

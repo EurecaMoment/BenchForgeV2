@@ -1,0 +1,460 @@
+{
+  "mode": "BenchForge",
+  "interaction": "Compose callable production capabilities in DSH. Read methods only when needed; use catalog request examples directly. No compulsory stages or child agents.",
+  "workflow": [
+    {
+      "area": "research/design",
+      "tools": "literature, research_review, design, method"
+    },
+    {
+      "area": "data",
+      "tools": "acquire, normalize, habitat, libero, carla, isaac, adapt_capture"
+    },
+    {
+      "area": "annotation/cleaning",
+      "tools": "annotate, sam3, yoloe, depthanything3, llm_local, clean"
+    },
+    {
+      "area": "compilation",
+      "tools": "compile, kinship, images, synthesize, screen"
+    },
+    {
+      "area": "evaluation/release",
+      "tools": "model_eval, score, baselines, diagnose, report, package, usage"
+    }
+  ],
+  "requests": {
+    "plan": {
+      "objective": "user goal",
+      "sources": [],
+      "target_items": 100
+    },
+    "sam3": {
+      "action": "infer",
+      "payload": {
+        "image_path": "/service-visible/image.png",
+        "text_prompt": "chair",
+        "save_masks_dir": "/service-visible/masks",
+        "confidence_threshold": 0.2,
+        "box_prompts": []
+      }
+    },
+    "yoloe": {
+      "action": "infer",
+      "payload": {
+        "image_path": "/service-visible/image.png",
+        "names": [
+          "chair",
+          "table"
+        ],
+        "conf": 0.25,
+        "imgsz": 640,
+        "device": "cuda:0",
+        "iou": 0.7
+      }
+    },
+    "depthanything3": {
+      "action": "infer",
+      "payload": {
+        "image_paths": [
+          "/service-visible/image.png"
+        ],
+        "export_dir": "/service-visible/depth",
+        "export_format": "glb",
+        "process_res": 1024,
+        "process_res_method": "upper_bound_resize",
+        "require_metric_depth": false
+      }
+    },
+    "depthanything3_task": {
+      "action": "task",
+      "task_id": "backend-task-id"
+    },
+    "habitat": {
+      "argv": [
+        "--scenes",
+        "/data/scene.glb",
+        "--frames-per-scene",
+        "4"
+      ]
+    },
+    "libero": {
+      "argv": [
+        "--suite",
+        "libero_10",
+        "--max-tasks",
+        "1",
+        "--steps-per-task",
+        "8"
+      ]
+    },
+    "carla": {
+      "argv": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5000",
+        "--frames-per-map",
+        "4"
+      ]
+    },
+    "isaac": {
+      "scene_program": "/shared/task/scene.json",
+      "timeout_seconds": 3600
+    },
+    "evidence": {
+      "input": "/task/source-records.jsonl"
+    },
+    "build": {
+      "evidence": "/task/compiled/evidence.jsonl",
+      "items": "/task/items.jsonl"
+    },
+    "evaluate": {
+      "authority": "/task/build/authority",
+      "predictions": "/task/predictions.jsonl"
+    },
+    "llm_local": {
+      "action": "infer",
+      "payload": {
+        "model": "YOUR_MODEL",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Describe visible object categories."
+          }
+        ],
+        "stream": false
+      }
+    },
+    "catalog_templates": {
+      "section": "templates",
+      "query": "T001",
+      "limit": 10
+    },
+    "adapt_capture": {
+      "input": "/path/to/capture/collection_manifest.json",
+      "simulator": "habitat"
+    },
+    "normalize": {
+      "input": "/path/to/data.parquet",
+      "format": "parquet",
+      "provenance": "official",
+      "limit": 10
+    },
+    "clean": {
+      "input": "/path/to/normalized.jsonl",
+      "backend": "native"
+    },
+    "annotate": {
+      "input": "/path/to/unlabeled.jsonl",
+      "max_terms": 10
+    },
+    "compile": {
+      "input": "/path/to/evidence.jsonl",
+      "templates": [
+        "BC_D3_001_LEFT_OF_YN",
+        "BC_D3_002_ABOVE_YN",
+        "BC_D5_001_CLOSER_TO_CAMERA_YN"
+      ]
+    },
+    "synthesize": {
+      "bundle": "/path/to/compile/bundle",
+      "mode": "pilot",
+      "limit": 24
+    },
+    "model_eval": {
+      "public_items": "/path/to/package/public/items.jsonl",
+      "items": "/path/to/package/authority/items.jsonl",
+      "models": [
+        "qwen"
+      ]
+    },
+    "score": {
+      "items": "/path/to/items.jsonl",
+      "predictions": "/path/to/predictions.jsonl"
+    },
+    "baselines": {
+      "items": "/path/to/items.jsonl"
+    },
+    "diagnose": {
+      "items": "/path/to/items.jsonl",
+      "scores": [
+        "/path/to/model/score_items.jsonl"
+      ]
+    },
+    "report": {
+      "scores": [
+        "/path/to/model/score_items.jsonl"
+      ]
+    },
+    "package": {
+      "items": "/path/to/items.jsonl",
+      "bundle": "/path/to/bundle"
+    },
+    "usage": {
+      "events": "/path/to/exported-dsh-events.json"
+    },
+    "design": {
+      "spec": {
+        "objective": "A reproducible visual benchmark",
+        "capabilities": [
+          {
+            "id": "spatial",
+            "description": "Relative position"
+          }
+        ],
+        "sources": [
+          {
+            "id": "native"
+          }
+        ],
+        "metrics": [
+          {
+            "id": "accuracy"
+          }
+        ],
+        "templates": [
+          {
+            "id": "BC_D3_001_LEFT_OF_YN",
+            "capabilities": [
+              "spatial"
+            ],
+            "sources": [
+              "native"
+            ],
+            "metric": "accuracy",
+            "answer_rule": "Compare centers of visible A/B regions",
+            "visible_anchor": "A/B marker image"
+          }
+        ]
+      }
+    }
+  },
+  "execution": "Annotation HTTP tools attach to configured services. Service paths must be visible to the backend. Habitat/LIBERO invoke bundled collectors in separate configured SDK environments; their old HTTP health services do not collect data. CARLA connects to its configured simulator. Isaac uses the bundled native cuboid/camera collector with a configured Isaac Python launcher; an external script can replace it explicitly.",
+  "evidence_record": {
+    "id": "image-1",
+    "media": [
+      "image.png"
+    ],
+    "provenance": {
+      "kind": "official",
+      "path": "raw-labels.json"
+    },
+    "selectors": {
+      "answer": "/annotations/0/answer"
+    },
+    "assets": [
+      "raw_depth.npy",
+      "oracle.py"
+    ]
+  },
+  "item_record": {
+    "id": "q1",
+    "question": "Task-specific question",
+    "evidence_id": "image-1",
+    "answer_field": "answer",
+    "template": "task-template",
+    "split": "dev"
+  },
+  "limitations": "JSON pointer replay verifies derivation from supplied source files, not their external authenticity or question semantics. Core does not provide an adversarial sandbox. Model predictions cannot be promoted into GT by the build tool. Isaac requires an installed SDK and supports the documented primitive scene schema. No simulator or model weights are bundled.",
+  "evidence_contract": {
+    "provenance_path": "JSON document; use a computed JSON oracle for binary simulator inputs",
+    "relative_paths": "Resolve against the input JSONL parent directory",
+    "media": "Public pictures/audio/video only; never raw depth or labels",
+    "assets": "Private source arrays, calibration and oracle code copied to authority/assets",
+    "depth": "Habitat returns camera-forward Z. Use camera intrinsics to obtain Euclidean camera range for distance questions."
+  },
+  "migration": {
+    "full_parity": false,
+    "inventory": {
+      "section": "migration",
+      "limit": 10
+    },
+    "note": "Professional algorithms are now exposed as production tools; consult current validation evidence before claiming a backend or task family accepted."
+  },
+  "production": {
+    "method": {
+      "description": "Read original professional methods adapted to the harness; search by skill name or topic.",
+      "arguments": [
+        "query",
+        "limit"
+      ]
+    },
+    "acquire": {
+      "description": "Import local records or download an explicitly selected dataset file, preserving original labels and source fields.",
+      "arguments": [
+        "input",
+        "url",
+        "format",
+        "fields",
+        "media_root",
+        "provenance",
+        "source_id",
+        "limit"
+      ]
+    },
+    "normalize": {
+      "description": "Normalize JSONL/JSON/CSV/Parquet/images into reusable evidence records; preserve original source fields.",
+      "arguments": [
+        "input",
+        "format",
+        "fields",
+        "media_root",
+        "provenance",
+        "source_id",
+        "limit"
+      ]
+    },
+    "clean": {
+      "description": "Clean selected records and readable media; optional Data-Juicer cleans derived text without overwriting labels.",
+      "arguments": [
+        "input",
+        "backend",
+        "text_field",
+        "require_media",
+        "operators"
+      ]
+    },
+    "annotate": {
+      "description": "Run the original VLM→YOLOE→SAM3→DA3 chain per image; retain candidate annotations and a review queue. Predictions never become GT.",
+      "arguments": [
+        "input",
+        "hint",
+        "max_terms",
+        "annotate_simulation"
+      ]
+    },
+    "literature": {
+      "description": "Retrieve primary papers from explicit URLs or an arXiv query and extract full text. Downloaded papers remain unread until inspected.",
+      "arguments": [
+        "query",
+        "sources",
+        "limit"
+      ]
+    },
+    "research_review": {
+      "description": "Bind literature claims to exact passages in downloaded text; reject fabricated or absent quotations.",
+      "arguments": [
+        "index",
+        "claims"
+      ]
+    },
+    "design": {
+      "description": "Validate benchmark intent, capability definitions, source/template/metric bindings and emit Q-matrix plus specification.",
+      "arguments": [
+        "spec"
+      ]
+    },
+    "kinship": {
+      "description": "Analyze GT field nodes, relationships, reasoning chains and difficulty support using the original implementation.",
+      "arguments": [
+        "input",
+        "bundle",
+        "max_records",
+        "max_pairs"
+      ]
+    },
+    "images": {
+      "description": "Create reusable neutral overlays, crops and panels from supplied annotations/recipes; bind the image manifest into the compiler bundle.",
+      "arguments": [
+        "bundle",
+        "input",
+        "requests"
+      ]
+    },
+    "compile": {
+      "description": "Compile authoritative evidence into reusable GT/asset/template/metric/generator bundle using migrated BenchClaw algorithms. Run a pilot before scale-up.",
+      "arguments": [
+        "input",
+        "templates",
+        "adapter",
+        "generator",
+        "image_requests",
+        "difficulty"
+      ]
+    },
+    "synthesize": {
+      "description": "Generate pilot or full benchmark with deterministic oracle, screen invalid items, check scorer controls and package portable artifacts.",
+      "arguments": [
+        "bundle",
+        "input",
+        "limit",
+        "seed",
+        "template_id",
+        "mode",
+        "package"
+      ]
+    },
+    "screen": {
+      "description": "Run deterministic malformed-option, media, anchor and provenance screening; output accepted/rejected items with findings.",
+      "arguments": [
+        "items",
+        "bundle"
+      ]
+    },
+    "score": {
+      "description": "Score saved predictions with declared deterministic metrics and stratified reports; missing score zero, duplicate/unknown IDs fail.",
+      "arguments": [
+        "items",
+        "predictions",
+        "model"
+      ]
+    },
+    "model_eval": {
+      "description": "Run explicitly configured models on public questions and images only; save responses, usage, failures and scores. No model question review.",
+      "arguments": [
+        "public_items",
+        "items",
+        "models"
+      ]
+    },
+    "baselines": {
+      "description": "Run first-choice and seeded random-choice controls without reading gold in the responder. Results are proxy diagnostics.",
+      "arguments": [
+        "items",
+        "seed"
+      ]
+    },
+    "diagnose": {
+      "description": "Run original CDM/IRT response-matrix diagnostics; report small-sample limits and Rasch-style proxy interpretation.",
+      "arguments": [
+        "scores",
+        "items"
+      ]
+    },
+    "package": {
+      "description": "Package model-visible media/questions separately from authority and reproducible compiler code with copied input files.",
+      "arguments": [
+        "items",
+        "bundle"
+      ]
+    },
+    "report": {
+      "description": "Merge real/proxy score files into a model-item matrix and evaluation report, rejecting duplicate responses.",
+      "arguments": [
+        "scores"
+      ]
+    },
+    "usage": {
+      "description": "Summarize exact provider usage counters from an explicit DSH event export; disclose absent counters and subtree coverage.",
+      "arguments": [
+        "events"
+      ]
+    }
+  },
+  "compiler_templates": {
+    "built_in": [
+      "BC_D1_001_CATEGORY_VISIBLE_YN",
+      "BC_D2_001_CATEGORY_COUNT_INTERVAL",
+      "BC_D3_001_LEFT_OF_YN",
+      "BC_D3_002_ABOVE_YN",
+      "BC_D3_005_LEFT_TO_RIGHT_ORDER",
+      "BC_D4_001_LARGEST_VISIBLE_AREA",
+      "BC_D5_001_CLOSER_TO_CAMERA_YN",
+      "BC_SIM_001_SCENE_TYPE",
+      "BC_SIM_002_DEPTH_BAND",
+      "BC_SIM_003_POSE_ORIENTATION"
+    ],
+    "extension": "compile.recipes accepts deterministic declarative answer programs; see examples/production_demo.py and docs/PRODUCTION.md. Missing visible evidence must disable the item."
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "date": "2026-09-27",
+  "dsh": "dsh-v0.1.7-rc.1",
+  "model": "Qwen/Qwen3.8-Flash-Next",
+  "initial_session": "session-ac332b0f-284f-4eb2-8478-3621c9581f40",
+  "final_session": "session-8262f815-7959-4e00-bdf8-24f8b6ad5722",
+  "mode": "guided engineering acceptance; final run used published dataset adapter",
+  "final_items": 24,
+  "templates": 3,
+  "sources": 3,
+  "distinct_native_frames": 6,
+  "marked_pairs": 8,
+  "qwen": {
+    "completed": 24,
+    "api_failures": 0,
+    "score": 1,
+    "missing": 0
+  },
+  "baselines": {
+    "first_choice": 0.5833333333333334,
+    "seeded_random": 0.375
+  },
+  "cross_machine_replay": {
+    "cross_machine": "Linux to Windows",
+    "no_symlink_or_source_tree_required": true,
+    "items": 24,
+    "native_measurements": 16,
+    "native_errors": [],
+    "input_pool_retained": 30,
+    "recurated_pairs": 8,
+    "real_qwen_saved_predictions": {
+      "items": 24,
+      "score": 1.0,
+      "missing": 0
+    }
+  },
+  "annotation": {
+    "operation": "9192495909134848",
+    "status": "completed_candidates",
+    "instances": 29,
+    "depth_shape": [
+      480,
+      640
+    ],
+    "gt_written": false,
+    "da3_model": "depth-anything/DA3NESTED-GIANT-LARGE-1.1",
+    "yolo_device": "cpu",
+    "sam3_device": "cuda",
+    "da3_device": "cuda"
+  },
+  "libero": {
+    "operation": "a9479ad14eb14e60",
+    "tasks": 1,
+    "steps": 4,
+    "cameras": 2,
+    "action_source": "zeros",
+    "manipulation_success": "not tested"
+  },
+  "carla": {
+    "operation": "b0f140e74f0649fc",
+    "map": "Town01",
+    "frames": 2,
+    "cameras": 2,
+    "instance_encoding": "png",
+    "adapter_records": 4
+  },
+  "erqa": {
+    "operation": "3809072f6cd348f2",
+    "records": 3,
+    "original_labels_retained": true
+  },
+  "data_juicer": {
+    "operation": "53d4cacffa114914",
+    "accepted": 1,
+    "filtered": 1,
+    "original_answers_unchanged": true
+  },
+  "literature": {
+    "source": "https://arxiv.org/pdf/1904.01201",
+    "downloaded_bytes": 6108339,
+    "verified_passages": 1
+  },
+  "limits": [
+    "Isaac runtime not installed on test server",
+    "Not all CARLA T1-T12 families accepted",
+    "One real respondent plus two proxy baselines is not full IRT",
+    "Fresh DSH build and clean GPU installation not tested",
+    "DSH may still over-inspect despite short task guidance; final test made an unnecessary small media hash call"
+  ]
+}

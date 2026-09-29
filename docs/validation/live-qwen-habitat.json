@@ -1,0 +1,32 @@
+{
+  "date": "2026-09-27",
+  "independent_session": "session-4fc77fca-259b-4127-aeb9-bdab0d19c4af",
+  "guided_revision_session": "session-9ce420b5-2550-4c87-bcfa-5065267f7f42",
+  "model": "Qwen/Qwen3.8-Flash-Next",
+  "dsh": "dsh-v0.1.7-rc.1",
+  "windows_replay": {
+    "command": "python -X utf8 scripts/verify_answers.py",
+    "exit_code": 0,
+    "items": 8,
+    "problems": 0,
+    "references": 38,
+    "missing_references": 0,
+    "raw_depth": "packaged Habitat forward-Z arrays converted to Euclidean camera range",
+    "numpy": "2.3.1",
+    "pillow": "12.3.0"
+  },
+  "example_score": {
+    "correct": 5,
+    "total": 8,
+    "accuracy": 0.625,
+    "type": "heuristic scoring smoke, not Qwen benchmark performance"
+  },
+  "limitations": [
+    "one Habitat task family only",
+    "guided geometry/portability revision",
+    "generated scorer missing/duplicate handling incomplete",
+    "report-only oracle writes intermediate source JSON",
+    "other GPU services and simulators not accepted",
+    "original skills not fully migrated"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "services": {
+    "sam3": {
+      "url": "http://127.0.0.1:8765"
+    },
+    "yoloe": {
+      "url": "http://127.0.0.1:8766"
+    },
+    "depthanything3": {
+      "url": "http://127.0.0.1:8008"
+    },
+    "llm_local": {
+      "url": "http://127.0.0.1:9001",
+      "token_env": "BENCHFORGE_MODEL_TOKEN",
+      "model": "YOUR_DEPLOYED_QWEN_VL_MODEL"
+    }
+  },
+  "collectors": {
+    "habitat": {
+      "command": [
+        "conda",
+        "run",
+        "--no-capture-output",
+        "-n",
+        "habitat",
+        "python"
+      ]
+    },
+    "libero": {
+      "command": [
+        "conda",
+        "run",
+        "--no-capture-output",
+        "-n",
+        "libero",
+        "python"
+      ],
+      "env": {}
+    },
+    "carla": {
+      "command": [
+        "conda",
+        "run",
+        "--no-capture-output",
+        "-n",
+        "carla",
+        "python"
+      ]
+    },
+    "isaac": {
+      "command": [
+        "YOUR_ISAAC_PYTHON_LAUNCHER"
+      ]
+    }
+  },
+  "models": {
+    "qwen": {
+      "url": "http://127.0.0.1:9001/v1",
+      "model": "YOUR_DEPLOYED_QWEN_VL_MODEL",
+      "token_env": "BENCHFORGE_MODEL_TOKEN",
+      "max_tokens": 4096,
+      "timeout_seconds": 180,
+      "retries": 1
+    }
+  },
+  "cleaning": {
+    "command": [
+      "dj-process"
+    ]
+  },
+  "backends": {}
+}

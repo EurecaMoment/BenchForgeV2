@@ -1,137 +1,75 @@
-# BenchForge
+# BenchForgeV2
 
-An independent, composable benchmark-production mode for agent harnesses.
+BenchForge 的 DSH 应用、基准构建算法与 SpatialForge 场景生产工具集成。
+本仓库包含可安装的 Python 核心、DSH 启动器、预设生成器、离线示例及
+SpatialForge 的工具注册和交付复审实现。
 
-Repository: https://github.com/EurecaMoment/BenchForge
+## 启动应用
 
-## Start the DSH-based application
-
-Install Python 3.10+, Git and Node.js 22.19+ (or 24+), then:
+安装 Python 3.10+、Git 和 Node.js 22.19+ 或 24+：
 
 ```bash
-git clone https://github.com/EurecaMoment/BenchForge.git
-cd BenchForge
+git clone https://github.com/EurecaMoment/BenchForgeV2.git
+cd BenchForgeV2
 python benchforge.py setup
 python benchforge.py start
 ```
 
-Setup retrieves the pinned MIT-licensed DSH source into `third_party/`, installs/builds it once, prepares BenchForge's Python environment and generates the independent mode. First setup downloads and builds DSH; subsequent launches reuse it. To reuse an existing built checkout, use `python benchforge.py setup --dsh-root /path/to/deepseek-harness`.
+setup 下载固定版本的 DSH，安装依赖、构建前端与运行时；需要网络。
+启动后在 DSH 页面配置自己的模型供应商，新建会话选择 **BenchForge**。
+已构建的 DSH 可通过 `setup --dsh-root /path/to/deepseek-harness` 复用。
+配置位于本仓库，官方 DSH 预设与其他安装不会被改写。
+Debian/Ubuntu 需安装与所选 Python 对应的 `python3-venv` 包。
 
-The launcher uses a project-local DSH home and an overlay. Configure your model provider in DSH's UI, then select **BenchForge** in a new conversation. Model credentials are not bundled. GPU annotation and simulator environments are optional and configured separately. This is not a claim that every GPU dependency installs in a few seconds.
-
-For an immediate offline core demonstration, run `python benchforge.py demo`. See the validation document for the distinction between verified core behavior and unverified fresh DSH builds / GPU integrations.
-
-[中文快速开始](docs/QUICKSTART.zh-CN.md)
-
-```bash
-python quickstart.py
-```
-
-Run from the downloaded repository with Python 3.10+. The default demo needs no pip install, network, API key, GPU or DSH. To add the mode to an existing DSH installation:
+## 无模型运行示例
 
 ```bash
-python quickstart.py --dsh-root /path/to/deepseek-harness --profile /path/to/profile/cordis.patch.yml
+python benchforge.py demo
+python -m pip install -e ".[production,research]"
+python examples/production_demo.py --workspace runs/production
 ```
 
-This creates a project-local environment, generates the preset and installs only its own row with a backup. Omit `--profile` to generate without installing. Real annotation and simulation require their separately configured backends.
+Windows 请使用较短的工作目录（例如 `C:\\bfv2`）；深层目录可能触发系统路径长度限制。
 
-BenchClaw's planning, acquisition, annotation, construction and evaluation capabilities become individual tools. The host agent can inspect results, write task code, run independent work in parallel and correct a task without walking a mandatory five-stage DAG.
+第一个命令不需要安装、网络、API 密钥或 GPU，生成公开题包、独立答案包和
+真实程序评分。第二个示例画出四张测试图，并实际执行设计、编译、生成、筛选、
+评分控制及打包。这些是程序示例，不是 Isaac 场景或照片还原验收。
 
-This repository does not import, modify, install into or require SpatialForge. It does not modify official DSH presets. It generates a separate **BenchForge** preset.
+## 接入 SpatialForge
 
-## SpatialForge scene integration
+已有 SpatialForge 后端和桌面 worker 时，复制
+`integrations/spatialforge/config.example.json` 为 `spatialforge.local.json`，
+填写服务 URL，设置 `SPATIALFORGE_OPERATOR_TOKEN` 环境变量，然后执行：
 
-The optional `integrations/spatialforge/` adapter connects this repository to an
-already deployed SpatialForge FIT service and desktop worker. It does not ship
-private paths, tokens, model weights, or Isaac Sim. Verify the integration
-without any external service first:
+```bash
+python integrations/spatialforge/cli.py status --config spatialforge.local.json
+python benchforge.py setup --spatialforge-config spatialforge.local.json
+python benchforge.py start
+```
 
-```powershell
+选择 **BenchForgeV2**，即可在同一会话调用扩散参考、SAM3/SAM3D、资产导入、
+SceneProgram、Isaac 采集、证据查看与复审工具。DSH 和 SpatialForge 应部署在
+同一服务机，证据图片使用服务机文件路径；Windows 桌面 worker 负责唯一 Isaac 实例。
+
+**当前版本尚未包含独立部署 SpatialForge 后端与 worker 所需的全部代码和安装流程。**
+因此“从零部署完整 SpatialForge 应用”仍未完成，不能把本仓库离线测试通过
+当作整个场景生产应用已验收。接入说明见 [SpatialForge](integrations/spatialforge/README.md)。
+
+## 验证与文档
+
+```bash
+python -m unittest discover -s tests -v
 python integrations/spatialforge/smoke.py
 ```
 
-For a real deployment, copy `integrations/spatialforge/config.example.json` to
-a private config file, set `SPATIALFORGE_CONFIG`, and run
-`python integrations/spatialforge/cli.py status`. Configure the FIT service,
-Windows worker, Isaac Sim, and model providers separately. The offline smoke
-test is the repository-only runnable path; a successful service status does not
-claim that a GPU capture or visual acceptance has run.
+SpatialForge smoke 执行真实 HTTP 客户端及交付复审代码的回归，覆盖实际 POST
+路由、认证、失败交互、不可见演示、图片反馈和损坏引用；不依靠手写的成功布尔值。
+不调用目标模型 API，也不启动 Isaac。
 
-## What is implemented
+- [本次发布修复](docs/PUBLICATION_REPAIR.md)
+- [生产工具](docs/PRODUCTION.md) · [后端配置](docs/BACKENDS.md)
+- [BenchForge 上游历史验收](docs/VALIDATION.md)（不代表 V2 的新 GPU 验收）
+- [原始能力映射](docs/SKILL_PARITY.md)
 
-- DSH Standard interaction, direct tools and PTC, inherited subagents, separate persistent shells and read-only runtime inspection.
-- Individual SAM3, YOLOE, Depth Anything 3 and local VLM service clients. No automatic service restarts.
-- Bundled Habitat, LIBERO and CARLA collectors adapted from BenchClaw; independent native Isaac cuboid/camera collector.
-- Source evidence import with JSON-pointer replay, public question/media packaging, separate authority data and collection statistics.
-- Offline exact-match scoring, including missing predictions; no automatic model API evaluation.
-- SQLite operation history with requests, results and failure logs. The agent chooses which operation to rerun; prior artifacts remain.
-- Original template registry as searchable reference knowledge.
-
-The benchmark-specific question generator, data cleaning and custom oracle/metric remain editable task code. This is intentional: the host agent supplies task reasoning rather than a second hidden planning model or a fixed roster of stage agents.
-
-## Install and run
-
-Python 3.10+; the core has no third-party dependency.
-
-```bash
-python -m pip install -e .
-benchforge catalog --workspace ./runs/example
-python examples/offline_demo.py --workspace ./runs/offline-demo
-python -m unittest discover -s tests -v
-```
-
-The demo is a two-item arithmetic fixture. It exercises real local evidence replay, packaging and scoring, not GPU inference or simulator acceptance.
-
-Copy `config.example.json` to `config.local.json`, then configure only the services and simulator runtimes you use. Paths in an annotation request must be visible to its backend. No model weights, service installers or private host paths are included.
-
-```bash
-benchforge sam3 --workspace ./runs/example --config config.local.json --input request.json
-benchforge evidence --workspace ./runs/example --input import-request.json
-benchforge status --workspace ./runs/example
-```
-
-`catalog` returns request examples. The DSH tools expose each operation separately with named arguments. `benchforge_view_image` returns actual image attachments; ordinary host image tools remain available.
-
-## DSH mode
-
-```bash
-python -m pip install -e '.[dsh]'
-python integrations/dsh/build_preset.py \
-  --dsh-root /path/to/deepseek-harness \
-  --python /path/to/python \
-  --config /path/to/BenchForge/config.local.json \
-  --output benchforge.local.yml
-```
-
-Add the generated patch as a separate preset using your DSH profile's configuration mechanism. The generator never installs it, edits official presets, switches existing sessions or touches another custom mode. Generate again after upgrading DSH. Installed DSH internals are version-sensitive; see `docs/VALIDATION.md` for tested coverage.
-
-## Evidence format
-
-Create source records from original labels or simulator outputs:
-
-```json
-{"id":"e1","media":["image.png"],"provenance":{"kind":"official","path":"labels.json"},"selectors":{"answer":"/annotations/0/answer"}}
-```
-
-`evidence` resolves paths and derives selected facts from the source. `build` replays the source selector rather than trusting a caller's proposed answer. A task item binds the question to that field:
-
-```json
-{"id":"q1","question":"Your task-specific question","evidence_id":"e1","answer_field":"answer","template":"your-template","split":"dev"}
-```
-
-For a program oracle, save the program, inputs and computed JSON output as task artifacts; point selectors at that output. Pointer replay proves derivation from a supplied file, not authenticity of that file or semantic correctness of a question. The core is a trusted local workflow, not a hostile-agent sandbox.
-
-Predictions from segmentation, detection and inferred depth are marked `prediction`; they cannot directly become benchmark GT. Preserve original labels, human annotations and simulator state. Source authenticity, calibration, task-specific oracle tests and dataset quality remain explicit acceptance work.
-
-`benchmark-public.zip` contains only selected question fields and media. Authority answers and source records stay outside it. Collection statistics show counts, answer distribution, template distribution and a majority baseline; they do not certify benchmark quality.
-
-## Simulators
-
-- **Habitat**: configure its Python/Conda environment; supply `--scenes`. Captures RGB, depth and agent state.
-- **LIBERO**: configure its environment and SDK dataset paths, optionally `LIBERO_BDDL_ROOT` / `LIBERO_DATASET_ROOT`. Captures observations and replayed action/state records.
-- **CARLA**: connect to an already available server with `--host` / `--port`. The imported collector retains its explicit optional server-restart argument; normal requests do not enable it.
-- **Isaac**: run on the machine with Isaac installed; set its Python launcher in config. The bundled collector handles native cuboids, cameras, depth, instance labels and a pose trajectory. `examples/isaac-scene.json` is the scene schema example. Complex asset reconstruction is not implemented here. A separate remote dispatcher may be configured through `script`; this repository does not silently reuse SpatialForge's desktop worker.
-
-Use the host's background-job tools for long CLI runs. Operation history records running/completed/failed calls but is not an autonomous queue or process supervisor; a forcibly terminated worker can leave a running record. Review artifacts before rerunning. Do not launch overlapping Isaac instances.
-
-See `docs/MIGRATION.md` for the old-to-new capability map, `docs/VALIDATION.md` for verification limits and `NOTICE` for upstream attribution. Licensed under Apache-2.0.
+GT 来自官方标注、程序或仿真；模型预测不会成为 GT。公开问题与权威答案分开。
+模型权重、Isaac 软件/资产和密钥需要按其授权与安装要求另行提供。

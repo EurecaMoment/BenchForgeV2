@@ -1,0 +1,63 @@
+{
+  "core_tests": 0,
+  "production_demo": 0,
+  "adapter_tests": 0,
+  "installed_dsh_plugin": {
+    "tools": [
+      "spatialforge_diffusion",
+      "spatialforge_sam3",
+      "spatialforge_sam3d",
+      "spatialforge_depth",
+      "spatialforge_mesh_import",
+      "spatialforge_capture",
+      "spatialforge_preview",
+      "spatialforge_layout",
+      "spatialforge_evidence",
+      "spatialforge_catalog",
+      "spatialforge_run",
+      "spatialforge_asset",
+      "spatialforge_extend",
+      "spatialforge_dataset",
+      "spatialforge_retry",
+      "spatialforge_status",
+      "spatialforge_wait",
+      "spatialforge_task_code",
+      "spatialforge_refine",
+      "spatialforge_cancel"
+    ],
+    "hooks": [
+      "agent/turn-stopping",
+      "agent/turn-stopping"
+    ],
+    "inject": [
+      "tools",
+      "llm",
+      "attachments"
+    ],
+    "catalogName": "SpatialForge",
+    "catalogKeys": [
+      "name",
+      "catalog_schema",
+      "simulator",
+      "model",
+      "sections",
+      "query",
+      "workflow",
+      "task_workspace",
+      "model_can_edit_harness_code",
+      "model_can_write_task_code",
+      "target_model_evaluation",
+      "quality",
+      "copy_example"
+    ]
+  },
+  "isolated_web": {
+    "http": 200,
+    "html": true,
+    "port": 56575
+  },
+  "model_api_calls": 0,
+  "isaac_starts": 0,
+  "production_submissions": 0,
+  "shared_services_restarted": 0
+}

@@ -1,6 +1,0 @@
-{
-  "capture": {"status": "captured", "views": 2},
-  "visual_review": {"status": "reviewed", "passed": true},
-  "interaction": {"success": true, "kind": "external_force_response", "displacement_m": 0.12},
-  "scene_file": {"path": "scene.usda", "loadable": true}
-}

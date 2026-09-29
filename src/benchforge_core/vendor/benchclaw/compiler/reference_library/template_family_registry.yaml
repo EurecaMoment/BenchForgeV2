@@ -1,0 +1,102 @@
+# BenchClaw image/video retained template-family registry.
+# Used as an external reference filter by template-metric-code-generation.
+version: benchclaw-image-video-template-metric-reference-v1
+input_boundary:
+  allowed_media_types:
+    - image
+    - multi_image
+    - video
+    - image_pair
+    - video_clip
+  gt_requirement: simulator_or_semi_supervised_gt
+  answer_requirement: closed_form_or_structured
+  evaluator_requirement: deterministic
+template_families:
+  - id: T1
+    family: single_image_spatial_relation
+    name: 单图空间关系判断
+    media_types: [image]
+    answer_types: [choice, bool]
+    primary_metrics: [accuracy, chance_adjusted_accuracy]
+    gt_sources: [simulator_state, simulator_depth, simulator_segmentation, semi_supervised_bbox, semi_supervised_mask, semi_supervised_depth]
+    required_evidence_examples: [center_px, bbox2d, mask, depth_mean, visibility]
+  - id: T2
+    family: multi_view_spatial_reasoning
+    name: 多图/多视角空间推理
+    media_types: [multi_image]
+    answer_types: [choice, ordered_list]
+    primary_metrics: [accuracy, order_exact_accuracy]
+    gt_sources: [simulator_camera_pose, simulator_state, tracking_annotation]
+    required_evidence_examples: [camera_pose, object_pose, object_correspondence]
+  - id: T3
+    family: video_spatiotemporal_reasoning
+    name: 视频时空关系推理
+    media_types: [video, video_clip]
+    answer_types: [choice, ordered_list, action_sequence]
+    primary_metrics: [accuracy, order_exact_accuracy, sequence_exact_match]
+    gt_sources: [simulator_action_log, simulator_visibility_log, tracking_annotation]
+    required_evidence_examples: [frame_ids, visibility_log, trajectory, action_log]
+  - id: T4
+    family: 2d_referring_grounding
+    name: 2D 指代定位/区域定位
+    media_types: [image, video_clip]
+    answer_types: [point2d, bbox2d, mask]
+    primary_metrics: [point_in_mask, acc_iou_2d, mask_iou]
+    gt_sources: [simulator_segmentation, semi_supervised_bbox, semi_supervised_mask]
+    required_evidence_examples: [target_mask, bbox2d, visible_target]
+  - id: T5
+    family: object_counting_visibility
+    name: 目标计数与可见性
+    media_types: [image, video, video_clip]
+    answer_types: [number, choice]
+    primary_metrics: [exact_numeric_accuracy, mae, accuracy]
+    gt_sources: [simulator_visibility_log, simulator_segmentation, semi_supervised_mask, tracking_annotation]
+    required_evidence_examples: [instance_ids, category, visibility_ratio]
+  - id: T6
+    family: quantitative_metric_estimation
+    name: 定量空间度量估计
+    media_types: [image, video, video_clip]
+    answer_types: [number]
+    primary_metrics: [delta_success, mra, mae, abs_rel_error]
+    gt_sources: [simulator_state, simulator_depth, simulator_camera_pose, calibrated_measurement, semi_supervised_depth]
+    required_evidence_examples: [metric_coordinates, depth, scale, unit]
+  - id: T7
+    family: depth_distance_size_ordering
+    name: 深度/距离/面积/大小排序
+    media_types: [image, video, video_clip]
+    answer_types: [choice, ordered_list]
+    primary_metrics: [accuracy, order_exact_accuracy, kendall_tau]
+    gt_sources: [simulator_depth, simulator_state, semi_supervised_depth, semi_supervised_mask]
+    required_evidence_examples: [depth_order, distance_values, mask_area, bbox_area]
+  - id: T8
+    family: egocentric_perspective_reasoning
+    name: 视角变换与自我中心推理
+    media_types: [image, multi_image, video, video_clip]
+    answer_types: [choice, action_sequence]
+    primary_metrics: [accuracy, sequence_exact_match, step_accuracy]
+    gt_sources: [simulator_camera_pose, simulator_state, tracking_annotation]
+    required_evidence_examples: [camera_pose, ego_pose, object_pose]
+  - id: T9
+    family: spatial_affordance_reasoning
+    name: 交互/可供性空间题
+    media_types: [image, video, video_clip]
+    answer_types: [choice, bool]
+    primary_metrics: [accuracy]
+    gt_sources: [simulator_physics_and_affordance_state, simulator_state]
+    required_evidence_examples: [reachable, graspable, openable, supportable, containable, collision_free]
+  - id: T10
+    family: robustness_pair
+    name: 对称增强与鲁棒性题
+    media_types: [image_pair, video_clip, multi_image]
+    answer_types: [choice, bool]
+    primary_metrics: [flip_eval, circular_eval, accuracy]
+    gt_sources: [deterministic_image_transform, simulator_counterfactual, simulator_state]
+    required_evidence_examples: [paired_item_id, transform_type, transformed_answer]
+selection_policy:
+  enabled_template_must_match_one_family: true
+  no_hidden_gt_in_prompt: true
+  no_llm_judge_as_primary_metric: true
+  no_subjective_rating_as_primary_metric: true
+  no_free_text_as_primary_answer: true
+  require_provenance_gt_source: true
+  require_provenance_gt_evidence: true

@@ -1,0 +1,2480 @@
+[
+  {
+    "template_id": "T001",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中是否可见 `{object_category}`？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中是否可见 `{object_category}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T002",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT2_MULTI_SELECT",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "从候选项中选择当前图像中可见的所有物体类别。",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Precision / Recall / F1",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "从候选项中选择当前图像中可见的物体类别。",
+    "original_format": "F2 多选题"
+  },
+  {
+    "template_id": "T003",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "按可见 mask 面积合计，当前图像中主要可见的物体类别是哪一个？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中主要可见的物体是哪一个？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T004",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "按可见 mask 面积合计，当前图像中面积最大的可见物体类别是哪一个？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中面积最大的可见物体类别是什么？",
+    "original_format": "F7 填空题"
+  },
+  {
+    "template_id": "T005",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "在标注图中，选择与给定 `{object_category}` 实例对应的标注区域。",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "给定 `{object_category}`，选择其对应的分割区域。",
+    "original_format": "F16 Mask 选择题"
+  },
+  {
+    "template_id": "T006",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中是否同时可见 `{category_A}` 和 `{category_B}`？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中是否同时可见 `{category_A}` 和 `{category_B}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T007",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "下列哪一项描述与当前图像中可见的物体类别证据一致？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "下列描述中，哪一项与当前图像中的可见物体列表一致？",
+    "original_format": "F12 图文匹配题"
+  },
+  {
+    "template_id": "T008",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中可见物体类别数量属于哪个区间？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中可见物体类别数量属于哪个区间？",
+    "original_format": "F9 区间选择题"
+  },
+  {
+    "template_id": "T009",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在给定多帧图像中，`{object_category}` 是否至少可见过一次？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在多帧图像中，`{object_category}` 是否至少出现过一次？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T010",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选帧中，哪一帧是 `{object_category}` 首次可见的帧？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪一帧中首次出现 `{object_category}`？",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T011",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中可见的 `{object_category}` 数量属于哪个区间？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中可见的 `{object_category}` 有几个？",
+    "original_format": "F8 数值题"
+  },
+  {
+    "template_id": "T012",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中 `{category_A}` 的可见实例数量是否多于 `{category_B}`？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中 `{category_A}` 是否多于 `{category_B}`？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T013",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中哪类物体的可见实例数量最多？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中哪类物体数量最多？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T014",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "将候选物体类别按当前图像中的可见实例数量从多到少排序。",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体类别按可见数量从多到少排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T015",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中可见物体实例总数属于哪个区间？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中可见物体总数属于哪个区间？",
+    "original_format": "F9 区间选择题"
+  },
+  {
+    "template_id": "T016",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选帧中，哪一帧的可见物体实例总数最多？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "多帧中，哪一帧可见物体总数最多？",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T017",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在给定多帧图像中，`{object_category}` 的可见实例数量是否发生变化？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "多帧中，`{object_category}` 的数量是否发生变化？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T018",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择 `{object_category}` 可见实例数量最多的图像。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择 `{object_category}` 数量最多的图像。",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T019",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "判断描述“第 `{i}` 帧中的 `{object_category}` 可见实例数量多于第 `{j}` 帧”是否正确。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "判断描述“第 `{i}` 帧中的 `{object_category}` 数量多于第 `{j}` 帧”是否正确。",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T020",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：不再输出每类裸数字计数；使用 T011/T015 区间题或 T002/T012 代替。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Schema Check + Field Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T011/T015",
+    "original_question": "输出每个候选类别在当前图像中的可见数量。",
+    "original_format": "F24 JSON 结构化输出题"
+  },
+  {
+    "template_id": "T021",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的左侧？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在图像中，`{object_A}` 是否位于 `{object_B}` 的左侧？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T022",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的右侧？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在图像中，`{object_A}` 是否位于 `{object_B}` 的右侧？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T023",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的上方？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在图像中，`{object_A}` 是否位于 `{object_B}` 的上方？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T024",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的下方？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在图像中，`{object_A}` 是否位于 `{object_B}` 的下方？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T025",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点最靠近图像中心？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体最靠近图像中心？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T026",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最左侧？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体位于图像最左侧？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T027",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最右侧？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体位于图像最右侧？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T028",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最上方？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体位于图像最上方？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T029",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最下方？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体位于图像最下方？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T030",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "标注图中的物体 A 位于图像九宫格的哪个区域？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 位于图像九宫格的哪个区域？",
+    "original_format": "F13 区域选择题"
+  },
+  {
+    "template_id": "T031",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "从候选区域中选择包含标注物体 A 中心点的区域。",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "从候选区域中选择包含 `{object_A}` 中心点的区域。",
+    "original_format": "F13 区域选择题"
+  },
+  {
+    "template_id": "T032",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图中，物体 A 与物体 B 的可见外接框是否重叠？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 与 `{object_B}` 的可见区域是否重叠？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T033",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图中，物体 A 与物体 B 的可见外接框是否相邻或接近？",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 与 `{object_B}` 是否在图像中相邻或接触？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T034",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "将候选标注物体按图像中从左到右排序。",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体按图像中从左到右排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T035",
+    "status": "STATIC_OPTIONAL_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "将候选标注物体按图像中从上到下排序。",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体按图像中从上到下排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T036",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，物体 A 是否比物体 B 更靠近相机？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中，`{object_A}` 是否比 `{object_B}` 更靠近相机？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T037",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，哪个物体离相机最近？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体离相机最近？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T038",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，哪个物体离相机最远？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体离相机最远？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T039",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "将候选标注物体按从近到远排序。",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体按从近到远排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T040",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，标注物体 A 到相机的距离属于哪个区间？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 到相机的深度属于哪个区间？",
+    "original_format": "F9 区间选择题"
+  },
+  {
+    "template_id": "T041",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "当前图像中是否存在距离相机小于 `{threshold}` 的 `{object_category}`？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中是否存在距离相机小于 `{threshold}` 的 `{object_category}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T042",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：多实例类别的“整体更靠近”口径不稳定；用 T036/T037/T040 替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T036/T037/T040",
+    "original_question": "哪类可见物体整体更靠近相机：`{category_A}` 还是 `{category_B}`？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T043",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：“前方”措辞歧义；用 T036 或 T091 的“更靠近相机”替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T036/T091",
+    "original_question": "判断“`{object_A}` 位于 `{object_B}` 前方”是否成立。",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T044",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注区域中，选择与“距离相机最近的 `{object_category}` 实例”对应的区域。",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择与描述“距离相机最近的 `{object_category}`”匹配的 mask。",
+    "original_format": "F16 Mask 选择题"
+  },
+  {
+    "template_id": "T045",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A8_COMPLEX_CONSTRAINT_CONSISTENCY",
+    "fixed_question_template": "当前图像中，距离相机最近的标注物体是否属于 `{object_category}`？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "当前图像中，最近物体是否属于 `{object_category}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T046",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选帧中，哪一帧中相机/机器人/自车距离指定 `{object_category}` 实例最近？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在多帧中，哪一帧相机/机器人/自车距离 `{object_category}` 最近？",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T047",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "从第 `{i}` 帧到第 `{j}` 帧，机器人/自车是否在接近指定 `{object_category}` 实例？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "从第 `{i}` 帧到第 `{j}` 帧，机器人/自车是否在接近 `{object_category}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T048",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "从第 `{i}` 帧到第 `{j}` 帧，指定 `{object_category}` 与相机的距离变化趋势是什么？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "多帧中 `{object_category}` 与相机距离变化趋势是什么？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T049",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "判断第 `{i}` 帧中，指定物体 A 是否比指定物体 B 更接近机器人/自车。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "判断第 `{i}` 帧中 `{object_A}` 是否比 `{object_B}` 更接近机器人/自车。",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T050",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "将候选帧按机器人/自车到指定目标物体的距离从近到远排序。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选帧按机器人/自车到目标物体的距离从近到远排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T051",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在第 `{frame_id}` 帧，指定物体 A 位于机器人/自车身体坐标系的哪个相对方位？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在第 `{frame_id}` 帧，`{object_A}` 位于机器人/自车的哪个相对方位？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T052",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在第 `{frame_id}` 帧，指定物体 A 是否位于机器人/自车身体坐标系前方？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 是否位于机器人/自车前方？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T053",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在第 `{frame_id}` 帧，指定物体 A 是否位于机器人/自车身体坐标系左侧？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 是否位于机器人/自车左侧？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T054",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在候选物体中，哪个物体在机器人/自车身体坐标系中最靠前？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在候选物体中，哪个位于机器人/自车最前方？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T055",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在候选物体中，哪个物体在机器人/自车身体坐标系中最靠左？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在候选物体中，哪个最靠近机器人/自车左侧？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T056",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在相机坐标系下，标注物体 A 与标注物体 B 的三维质心距离属于哪个区间？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 与 `{object_B}` 的三维距离属于哪个区间？",
+    "original_format": "F9 区间选择题"
+  },
+  {
+    "template_id": "T057",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在相机坐标系下，标注物体 A 是否比标注物体 B 更靠近标注物体 C？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 是否比 `{object_B}` 更靠近 `{object_C}`？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T058",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：指定目标点来源容易虚构；用目标物体实例作为参照。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T057",
+    "original_question": "哪个候选物体距离指定目标点最近？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T059",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在三维坐标中，标注物体 A 的垂直位置是否高于标注物体 B？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 是否高于 `{object_B}`？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T060",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A5_VISIBLE_SCALE_3D_SIZE",
+    "fixed_question_template": "在候选标注物体中，哪个物体的可见三维包围盒体积最大？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体的 3D 包围盒体积最大？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T061",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：3D bbox y 方向尺寸不是自然评测语义；用 T060/T063 替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T060/T063",
+    "original_question": "哪个候选物体的 3D 包围盒高度最大？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T062",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A5_VISIBLE_SCALE_3D_SIZE",
+    "fixed_question_template": "标注物体 A 的可见三维包围盒体积是否大于标注物体 B？",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_A}` 的 3D 尺寸是否大于 `{object_B}`？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T063",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A5_VISIBLE_SCALE_3D_SIZE",
+    "fixed_question_template": "将候选标注物体按可见三维包围盒体积从大到小排序。",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体按 3D 体积从大到小排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T064",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：世界坐标左侧不适合普通图文评测；用图像平面左右或身体坐标左右模板替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T021/T022/T053",
+    "original_question": "`{object_A}` 是否位于 `{object_B}` 的世界坐标左侧？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T065",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT6_STRUCTURED_MATCH",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "选择标注物体 A 相对机器人/自车的方位类别，并选择其距离区间。",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Schema Check + Field Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "给出 `{object_A}` 相对机器人/自车的粗略方位与距离区间。",
+    "original_format": "F24 JSON 结构化输出题"
+  },
+  {
+    "template_id": "T066",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "机器人/自车从第一帧到最后一帧整体向哪个坐标方向移动？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "机器人/自车从第 1 帧到最后一帧整体向哪个方向移动？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T067",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "机器人/自车在序列中是否发生超过阈值的位移？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "机器人/自车在序列中是否发生明显位移？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T068",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选相邻帧段中，哪一段机器人/自车位移最大？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪一段帧间位移最大？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T069",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：按帧序号排序容易泄漏时间元数据，不能作为视觉评测模板。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match / Edit Distance",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T075/T076/T080",
+    "original_question": "将候选帧按机器人/自车经过的时间顺序排序。",
+    "original_format": "F19 步骤排序题"
+  },
+  {
+    "template_id": "T070",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在序列中，`{category_A}` 首次可见是否早于 `{category_B}`？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_category}` 在序列中是先出现还是后出现于 `{category_B}`？",
+    "original_format": "F10 对比选择题"
+  },
+  {
+    "template_id": "T071",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选物体类别中，哪个类别在序列中最早首次可见？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个物体类别在序列中最早出现？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T072",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选物体类别中，哪个类别在序列中最晚首次可见？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个物体类别在序列中最晚出现？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T073",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "`{object_category}` 是否在整个序列的每一帧中都可见？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_category}` 是否在整个序列中持续出现？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T074",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "`{object_category}` 是否在序列中出现过由可见到不可见的变化？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "`{object_category}` 是否从序列中消失过？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T075",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择 `{object_category}` 首次可见的图像。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择 `{object_category}` 首次出现的图像。",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T076",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择 `{object_category}` 最后一次可见的图像。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择 `{object_category}` 最后出现的图像。",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T077",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "从第 `{i}` 帧到第 `{j}` 帧，目标物体与机器人/自车的距离是变近、变远还是基本不变？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "从第 `{i}` 帧到第 `{j}` 帧，目标物体与机器人/自车的距离是变近、变远还是基本不变？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T078",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在候选物体中，哪个物体在序列中与机器人/自车的距离变化最大？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "哪个候选物体在序列中与机器人/自车的距离变化最大？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T079",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "判断描述“机器人/自车先接近物体 A，再接近物体 B”是否成立。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "判断描述“机器人/自车先接近 `{object_A}`，再接近 `{object_B}`”是否成立。",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T080",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择与机器人/自车运动轨迹最匹配的文字描述。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择与机器人/自车运动轨迹最匹配的文字描述。",
+    "original_format": "F12 图文匹配题"
+  },
+  {
+    "template_id": "T081",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：不可答/能否判断类三选题，不进入模板库。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T001",
+    "original_question": "当前图像是否足以判断 `{object_category}` 是否可见？",
+    "original_format": "F4 三选判断题"
+  },
+  {
+    "template_id": "T082",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：无法由图像支持类模板会引入不可答判断；用 T085 证据冲突单选替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T085",
+    "original_question": "下列哪一项描述无法由当前单张图像直接支持？",
+    "original_format": "F20 错误检测题"
+  },
+  {
+    "template_id": "T083",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：能否仅凭图像判断类三选题，不进入模板库。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T036/T040",
+    "original_question": "当前图像中，`{object_A}` 和 `{object_B}` 的三维远近关系能否仅凭图像判断？",
+    "original_format": "F4 三选判断题"
+  },
+  {
+    "template_id": "T084",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：元问题，不作为图文 benchmark 题干；用 T001 负例替代。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T001",
+    "original_question": "某个不在可见物体列表中的 `{object_category}` 是否应该作为当前图像答案？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T085",
+    "status": "CORE_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "下列哪一项与当前图像中的可见物体类别或空间证据冲突？",
+    "required_fields": [
+      "image",
+      "objects.category"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "给定候选描述，选择其中与当前图像证据冲突的一项。",
+    "original_format": "F20 错误检测题"
+  },
+  {
+    "template_id": "T086",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在多帧序列中，`{object_category}` 是否从不可见变为可见？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在多帧序列中，`{object_category}` 是否从不可见变为可见？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T087",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "在多帧序列中，`{object_category}` 是否从可见变为不可见？",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在多帧序列中，`{object_category}` 是否从可见变为不可见？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T088",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择 `{object_category}` 从不可见变为可见的第一帧。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择 `{object_category}` 从不可见变为可见的第一帧。",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T089",
+    "status": "TEMPORAL_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A6_TEMPORAL_TRAJECTORY",
+    "fixed_question_template": "选择 `{object_category}` 从可见变为不可见之前的最后一帧。",
+    "required_fields": [
+      "image_sequence",
+      "frame_index",
+      "objects.category_by_frame"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择 `{object_category}` 从可见变为不可见之前的最后一帧。",
+    "original_format": "F11 图片选择题"
+  },
+  {
+    "template_id": "T090",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：不可见目标距离是否可回答是不可答三选题，不进入模板库。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T001/T040",
+    "original_question": "判断问题“当前图像中不可见的 `{object_category}` 距离相机多远？”是否可回答。",
+    "original_format": "F4 三选判断题"
+  },
+  {
+    "template_id": "T091",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，物体 A 是否比物体 B 更靠近相机？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在当前图像中，`{object_A}` 是否比 `{object_B}` 更靠前？",
+    "original_format": "F3 判断题"
+  },
+  {
+    "template_id": "T092",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "当两个候选物体的可见区域邻近或重叠时，哪个物体更靠近相机？",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "如果两个物体 mask 有重叠，哪个物体更靠近相机？",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T093",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：“可能遮挡”是弱因果推断，自动评测不稳定。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T092/T094",
+    "original_question": "`{object_A}` 是否可能遮挡 `{object_B}` 的一部分？",
+    "original_format": "F4 三选判断题"
+  },
+  {
+    "template_id": "T094",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注区域中，选择最靠近相机的前景物体。",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择与“前景物体”对应的 mask。",
+    "original_format": "F16 Mask 选择题"
+  },
+  {
+    "template_id": "T095",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "将候选标注物体按深度层次由近到远排序。",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Kendall Tau / Pairwise Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "将候选物体按图像深度层次由前到后排序。",
+    "original_format": "F5 排序题"
+  },
+  {
+    "template_id": "T096",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，选择“位于图像左半区且距离相机最近的 `{object_category}` 实例”。",
+    "required_fields": [
+      "image",
+      "objects.bbox_2d",
+      "objects.depth_median"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择“图像左侧且距离相机最近的 `{object_category}`”。",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T097",
+    "status": "DEPTH_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，选择“位于图像右半区且可见面积最大的物体”。",
+    "required_fields": [
+      "image",
+      "objects.category",
+      "objects.bbox_2d",
+      "objects.mask.area_px"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "选择“图像右侧且可见面积最大的物体”。",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T098",
+    "status": "POSE_3D_EXTENDED_SELECTABLE",
+    "agent_selectable": true,
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在候选物体中，选择“位于机器人/自车身体坐标系前方且距离最近”的物体。",
+    "required_fields": [
+      "image_or_sequence",
+      "objects.centroid_3d_or_pose",
+      "agent_or_camera_pose_if_egocentric"
+    ],
+    "scoring": "Exact Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "",
+    "original_question": "在候选物体中，选择“距离机器人/自车最近且位于前方”的物体。",
+    "original_format": "F1 单选题"
+  },
+  {
+    "template_id": "T099",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：多属性 JSON 匹配容易一物多属性和隐藏评分噪声；拆成 T021/T022/T036/T095。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Pair Accuracy / Full Match",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T021/T022/T036/T095",
+    "original_question": "将候选物体与其空间属性进行匹配：左侧/右侧/更近/更远。",
+    "original_format": "F6 匹配题"
+  },
+  {
+    "template_id": "T100",
+    "status": "DEPRECATED_LOCKED",
+    "agent_selectable": false,
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：输出 object_id/depth_median 属于隐藏元数据，不作为图文评测。",
+    "required_fields": [
+      "not_selectable"
+    ],
+    "scoring": "Schema Check + Field Accuracy",
+    "validity_filters": [
+      "answer_unique",
+      "no_unanswerable_option",
+      "no_raw_numeric_answer",
+      "no_gt_leakage_in_question",
+      "candidate_labels_unique",
+      "margin_from_decision_boundary"
+    ],
+    "replacement_template_id": "T096/T097",
+    "original_question": "输出满足条件的物体列表：可见、属于 `{object_category}`、深度小于 `{threshold}`。",
+    "original_format": "F24 JSON 结构化输出题"
+  }
+]

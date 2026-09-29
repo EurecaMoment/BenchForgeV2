@@ -1,3 +1,17 @@
+__pycache__/
+*.egg-info/
+.venv/
+build/
+dist/
+config.local.json
+*.local.json
+*.local.yml
+runs/
+.env
+.benchforge/
+third_party/deepseek-harness/
+
+# Initial GitHub repository exclusions
 ### AL ###
 #Template for AL projects for Dynamics 365 Business Central
 #launch.json folder

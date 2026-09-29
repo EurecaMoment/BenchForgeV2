@@ -1,42 +1,36 @@
-"""Small, dependency-free entry point for the SpatialForge integration."""
-
+"""Read real SpatialForge status through its authenticated POST API."""
 from __future__ import annotations
-
 import argparse
 import json
 import os
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-
-def load_config() -> dict:
-    path = os.environ.get("SPATIALFORGE_CONFIG")
+def load_config(path=None):
+    path = path or os.environ.get('SPATIALFORGE_CONFIG')
     if not path:
-        return {"mode": "offline"}
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+        raise ValueError('Set SPATIALFORGE_CONFIG or pass --config PATH')
+    return json.loads(Path(path).read_text(encoding='utf-8'))
 
-
-def status(config: dict) -> int:
-    if config.get("mode", "offline") == "offline":
-        print(json.dumps({"mode": "offline", "service": "not contacted"}))
-        return 0
-    url = config["service_url"].rstrip("/") + "/status"
-    token_name = config.get("operator_token_env", "SPATIALFORGE_OPERATOR_TOKEN")
+def status(config, run_id=None):
+    token_name = config.get('operator_token_env', 'SPATIALFORGE_OPERATOR_TOKEN')
     token = os.environ.get(token_name)
     if not token:
-        raise SystemExit(f"missing {token_name}; credentials are not stored in the repository")
-    request = Request(url, headers={"Authorization": "Bearer " + token})
-    with urlopen(request, timeout=10) as response:
-        print(response.read().decode("utf-8"))
-    return 0
+        raise ValueError(f'Set {token_name} to the service operator token')
+    route, payload = ('/observe', {'run_id': run_id}) if run_id else ('/catalog', {})
+    request = Request(config['service_url'].rstrip('/') + route,
+                      data=json.dumps(payload).encode(),
+                      headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    with urlopen(request, timeout=30) as response:
+        return json.load(response)
 
-
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["status"])
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('command', choices=['status'])
+    parser.add_argument('--config', type=Path)
+    parser.add_argument('--run-id', help='Existing run ID, excluding .sceneN')
     args = parser.parse_args()
-    return status(load_config())
+    print(json.dumps(status(load_config(args.config), args.run_id), ensure_ascii=False))
 
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == '__main__':
+    main()

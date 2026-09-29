@@ -1,0 +1,26 @@
+BenchForge
+
+This project includes adapted simulator collectors, professional methods,
+annotation clients/services, compiler algorithms and a reference template registry
+from EurecaMoment/BenchClaw, https://github.com/EurecaMoment/BenchClaw,
+licensed under the Apache License, Version 2.0.
+
+Imported collectors: CARLA/quick_capture.py, HABITAT/collect_dataset.py,
+LIBERO/collect_env_dataset.py. Machine-specific paths have been replaced with
+explicit arguments, environment variables or the SDK's configured paths.
+Template registry: BenchClaw/templates/template_library/benchforge_fixed_template_registry.json.
+It is a knowledge reference, not an assertion that every template has an executable oracle here.
+
+Bundled compiler and annotation code originates from revision 7299654 under the
+upstream BenchClaw/ directory. Provenance and modifications are recorded in
+src/benchforge_core/vendor/benchclaw/UPSTREAM.json; its Apache-2.0 license is retained.
+Modifications include configured portable paths, flattened Windows packaging,
+explicit service lifecycle, image-marker repairs and scorer contract integration.
+
+DSH integration references the user's installed deepseek-harness runtime and
+composes its installed preset definitions. DSH code, model weights, simulator
+assets and datasets are not redistributed in this repository.
+
+SpatialForge DSH tool definitions and delivery-review modules are imported from
+the user-authorized SpatialForge working source (2026-09-29). Service execution,
+acceptance rules and GT have not been changed by this client packaging.

@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+**/__pycache__
+runs
+config.local.json
+*.local.yml
+dist
+build
+*.egg-info
+.env
+.benchforge
+third_party/deepseek-harness

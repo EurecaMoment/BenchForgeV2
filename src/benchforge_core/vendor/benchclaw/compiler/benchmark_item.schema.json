@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "required": [
+    "item_id",
+    "media",
+    "question",
+    "answer",
+    "capability_tags",
+    "template_id",
+    "evidence_refs",
+    "metric_id"
+  ],
+  "properties": {
+    "item_id": {
+      "type": "string"
+    },
+    "media": {
+      "type": "array"
+    },
+    "source_media": {
+      "type": "array"
+    },
+    "question": {
+      "type": "string"
+    },
+    "answer": {
+      "type": [
+        "string",
+        "array",
+        "object"
+      ]
+    },
+    "capability_tags": {
+      "type": "array"
+    },
+    "template_id": {
+      "type": "string"
+    },
+    "evidence_refs": {
+      "type": "array"
+    },
+    "metric_id": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

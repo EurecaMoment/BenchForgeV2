@@ -1,0 +1,8 @@
+{
+  "web_http_status": 200,
+  "html_document": true,
+  "isolated_home": true,
+  "official_profile_modified": false,
+  "existing_sessions_modified": false,
+  "scope": "DSH web boot with BenchForge overlay; no model inference or GPU task"
+}

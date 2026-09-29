@@ -1,0 +1,14 @@
+{
+  "dsh": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "ref": "dsh-v0.1.7-rc.1",
+    "license": "MIT",
+    "node": "^22.19.0 || >=24.0.0",
+    "package_manager": "pnpm@11.7.0"
+  },
+  "benchclaw_reference": {
+    "repository": "https://github.com/EurecaMoment/BenchClaw.git",
+    "license": "Apache-2.0",
+    "usage": "Attributed collector and template sources; no legacy stage scheduler"
+  }
+}

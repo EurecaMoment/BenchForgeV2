@@ -1,34 +1,44 @@
 # SpatialForge integration
 
-This directory connects the BenchForge DSH mode to the SpatialForge scene and
-interaction harness without bundling private FIT paths, credentials, model
-weights, or Isaac installations.
+`plugin/tools.mjs` contains the production tool definitions and the delivery
+review hooks, adapted to a configured DSH root, service URL and token environment
+variable. No private host paths or tokens are embedded. `build_preset.py` combines
+them with BenchForge in a separate **BenchForgeV2** preset.
 
-## Offline verification
+## Existing service connection
 
-From the repository root, run:
+Run DSH on the SpatialForge service machine: returned evidence paths are local
+to that machine. Configure the service's existing Windows desktop worker and use
+its single Isaac queue. This client never starts another worker or simulator.
 
-```powershell
+Copy `config.example.json` to a private `spatialforge.local.json`. Set
+`SPATIALFORGE_OPERATOR_TOKEN` in the environment used to launch DSH, then:
+
+```bash
+python integrations/spatialforge/cli.py status --config spatialforge.local.json
+python integrations/spatialforge/cli.py status --config spatialforge.local.json --run-id sf_YOUR_RUN
+python benchforge.py setup --spatialforge-config spatialforge.local.json
+python benchforge.py start
+```
+
+Without a run ID, status calls authenticated `POST /catalog`; with an ID it calls
+`POST /observe`. SpatialForge has no run-status `GET /status` endpoint.
+Missing config or credentials fails with an actionable error.
+
+## Test the code without production jobs
+
+```bash
 python integrations/spatialforge/smoke.py
 ```
 
-The smoke test replays a small capture receipt and checks that the delivery
-contract keeps capture, visual review, interaction, and scene-file status
-separate. It does not call a model API, start Isaac, or require a service.
+Python uses a local HTTP server to verify the request contract. Node replays
+the actual review functions, including failed physics, missing image visibility,
+reference/render attachments and broken delivery links. The former fixture that
+simply asserted `success=true` and `loadable=true` has been removed.
 
-## Real deployment
+## Remaining release work
 
-Copy `config.example.json` to a private file and set `SPATIALFORGE_CONFIG` to
-that file. The configuration must point at an already deployed FIT service and
-desktop worker. Credentials stay outside Git. The adapter is intentionally
-thin: DSH chooses the operation and SpatialForge owns scene execution,
-evidence, and delivery artifacts.
-
-```powershell
-$env:SPATIALFORGE_CONFIG = (Resolve-Path .\integrations\spatialforge\config.local.json)
-python integrations/spatialforge/cli.py status
-```
-
-Isaac Sim and GPU model services are optional for the offline command and must
-be installed and configured separately for real capture. Do not run a second
-Isaac instance on a shared worker.
+The standalone SpatialForge service, PostgreSQL/BenchClaw dependencies, generation
+workers and desktop installation are not yet packaged here. A configured existing
+service is required. Full from-scratch scene production remains an open release
+requirement; client tests and the BenchForge UI do not establish it.

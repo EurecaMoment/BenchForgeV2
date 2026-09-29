@@ -1,0 +1,198 @@
+{
+  "description": "BenchClaw image/video retained answer types and deterministic metric registry. Reference filter for template-metric-code-generation skill.",
+  "answer_types": [
+    "choice",
+    "bool",
+    "number",
+    "point2d",
+    "bbox2d",
+    "mask",
+    "ordered_list",
+    "action_sequence",
+    "relation_tuple"
+  ],
+  "metrics": [
+    {
+      "metric_id": "accuracy",
+      "answer_types": [
+        "choice",
+        "bool"
+      ],
+      "role": "primary",
+      "purpose": "classification and boolean judgment"
+    },
+    {
+      "metric_id": "chance_adjusted_accuracy",
+      "answer_types": [
+        "choice"
+      ],
+      "role": "primary_or_secondary",
+      "purpose": "multiple choice with chance correction"
+    },
+    {
+      "metric_id": "exact_numeric_accuracy",
+      "answer_types": [
+        "number"
+      ],
+      "role": "primary",
+      "purpose": "count or discrete numeric answers"
+    },
+    {
+      "metric_id": "mae",
+      "answer_types": [
+        "number"
+      ],
+      "role": "secondary_or_primary",
+      "purpose": "continuous numeric error"
+    },
+    {
+      "metric_id": "rmse",
+      "answer_types": [
+        "number"
+      ],
+      "role": "secondary",
+      "purpose": "continuous numeric error"
+    },
+    {
+      "metric_id": "abs_rel_error",
+      "answer_types": [
+        "number"
+      ],
+      "role": "secondary_or_primary",
+      "purpose": "scale-normalized numeric error"
+    },
+    {
+      "metric_id": "delta_success",
+      "answer_types": [
+        "number"
+      ],
+      "role": "primary",
+      "purpose": "relative tolerance numeric success"
+    },
+    {
+      "metric_id": "mra",
+      "answer_types": [
+        "number"
+      ],
+      "role": "primary_or_secondary",
+      "purpose": "multi-threshold relative accuracy"
+    },
+    {
+      "metric_id": "point_in_mask",
+      "answer_types": [
+        "point2d",
+        "mask"
+      ],
+      "role": "primary",
+      "purpose": "2D pointing/referring localization"
+    },
+    {
+      "metric_id": "normalized_l2_error",
+      "answer_types": [
+        "point2d"
+      ],
+      "role": "secondary_or_primary",
+      "purpose": "2D point distance"
+    },
+    {
+      "metric_id": "iou_2d",
+      "answer_types": [
+        "bbox2d",
+        "mask"
+      ],
+      "role": "secondary",
+      "purpose": "2D region overlap"
+    },
+    {
+      "metric_id": "acc_iou_2d",
+      "answer_types": [
+        "bbox2d",
+        "mask"
+      ],
+      "role": "primary",
+      "purpose": "thresholded 2D region localization"
+    },
+    {
+      "metric_id": "mask_iou",
+      "answer_types": [
+        "mask"
+      ],
+      "role": "primary_or_secondary",
+      "purpose": "mask overlap"
+    },
+    {
+      "metric_id": "order_exact_accuracy",
+      "answer_types": [
+        "ordered_list"
+      ],
+      "role": "primary",
+      "purpose": "exact ordering"
+    },
+    {
+      "metric_id": "kendall_tau",
+      "answer_types": [
+        "ordered_list"
+      ],
+      "role": "secondary",
+      "purpose": "partial ordering correctness"
+    },
+    {
+      "metric_id": "sequence_exact_match",
+      "answer_types": [
+        "action_sequence"
+      ],
+      "role": "primary",
+      "purpose": "full action/route sequence"
+    },
+    {
+      "metric_id": "step_accuracy",
+      "answer_types": [
+        "action_sequence"
+      ],
+      "role": "secondary",
+      "purpose": "per-step action correctness"
+    },
+    {
+      "metric_id": "relation_accuracy",
+      "answer_types": [
+        "relation_tuple"
+      ],
+      "role": "primary",
+      "purpose": "structured relation tuple match"
+    },
+    {
+      "metric_id": "circular_eval",
+      "answer_types": [
+        "choice"
+      ],
+      "role": "robustness_primary",
+      "purpose": "option permutation robustness"
+    },
+    {
+      "metric_id": "flip_eval",
+      "answer_types": [
+        "choice",
+        "bool"
+      ],
+      "role": "robustness_primary",
+      "purpose": "left/right or transform-pair consistency"
+    }
+  ],
+  "gt_sources": [
+    "simulator_state",
+    "simulator_depth",
+    "simulator_segmentation",
+    "simulator_action_log",
+    "simulator_camera_pose",
+    "simulator_visibility_log",
+    "simulator_physics_and_affordance_state",
+    "semi_supervised_bbox",
+    "semi_supervised_mask",
+    "semi_supervised_depth",
+    "calibrated_measurement",
+    "tracking_annotation",
+    "deterministic_image_transform",
+    "simulator_counterfactual"
+  ],
+  "primary_metric_policy": "Enabled templates must use one of the listed deterministic metrics as primary. LLM judge, captioning metrics, and subjective ratings are not primary metrics in this BenchClaw image/video adaptation."
+}

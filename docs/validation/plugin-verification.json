@@ -1,0 +1,24 @@
+{
+  "registered_tools": [
+    "benchforge_catalog",
+    "benchforge_status",
+    "benchforge_plan",
+    "benchforge_sam3",
+    "benchforge_yoloe",
+    "benchforge_depthanything3",
+    "benchforge_llm_local",
+    "benchforge_habitat",
+    "benchforge_libero",
+    "benchforge_carla",
+    "benchforge_isaac",
+    "benchforge_evidence",
+    "benchforge_build",
+    "benchforge_evaluate",
+    "benchforge_view_image"
+  ],
+  "catalog_call": true,
+  "templates_call": true,
+  "plan_call": true,
+  "status_call": true,
+  "scope": "Actual installed DSH defineTool and actual Node-to-Python calls; registration context is a test harness. No live preset installation or model call."
+}
