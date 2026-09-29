@@ -1,0 +1,120 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "annotation_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Annotation Id",
+      "type": "string"
+    },
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "object_id": {
+      "minLength": 1,
+      "title": "Object Id",
+      "type": "string"
+    },
+    "annotation_type": {
+      "const": "bbox_2d",
+      "default": "bbox_2d",
+      "title": "Annotation Type",
+      "type": "string"
+    },
+    "label": {
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "bbox_xyxy": {
+      "maxItems": 4,
+      "minItems": 4,
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "title": "Bbox Xyxy",
+      "type": "array"
+    },
+    "coordinate_frame_id": {
+      "default": "image",
+      "title": "Coordinate Frame Id",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "producer_type": {
+      "enum": [
+        "simulator",
+        "model",
+        "human",
+        "fixture"
+      ],
+      "title": "Producer Type",
+      "type": "string"
+    },
+    "review_status": {
+      "enum": [
+        "accepted",
+        "needs_human_review",
+        "fixture"
+      ],
+      "title": "Review Status",
+      "type": "string"
+    },
+    "input_annotation_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Input Annotation Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "annotation_id",
+    "asset_id",
+    "object_id",
+    "label",
+    "bbox_xyxy",
+    "confidence",
+    "producer_type",
+    "review_status"
+  ],
+  "title": "Annotation",
+  "type": "object"
+}

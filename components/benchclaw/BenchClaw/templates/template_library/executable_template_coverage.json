@@ -1,0 +1,512 @@
+[
+  {
+    "template_id": "T001",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中是否可见 `{object_category}`？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T002",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT2_MULTI_SELECT",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "从候选项中选择当前图像中可见的所有物体类别。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T003",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "按可见 mask 面积合计，当前图像中主要可见的物体类别是哪一个？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T004",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "按可见 mask 面积合计，当前图像中面积最大的可见物体类别是哪一个？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T006",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中是否同时可见 `{category_A}` 和 `{category_B}`？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T007",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "下列哪一项描述与当前图像中可见的物体类别证据一致？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T008",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A1_VISIBLE_OBJECT_CATEGORY",
+    "fixed_question_template": "当前图像中可见物体类别数量属于哪个区间？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T011",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中可见的 `{object_category}` 数量属于哪个区间？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T012",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中 `{category_A}` 的可见实例数量是否多于 `{category_B}`？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T013",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中哪类物体的可见实例数量最多？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T014",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "将候选物体类别按当前图像中的可见实例数量从多到少排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T015",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A2_COUNTING_AND_SET_SIZE",
+    "fixed_question_template": "当前图像中可见物体实例总数属于哪个区间？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T020",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：不再输出每类裸数字计数；使用 T011/T015 区间题或 T002/T012 代替。",
+    "replacement_template_id": "T011/T015"
+  },
+  {
+    "template_id": "T021",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的左侧？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T022",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的右侧？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T023",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的上方？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T024",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图的图像平面坐标中，物体 A 是否位于物体 B 的下方？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T025",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点最靠近图像中心？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T026",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最左侧？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T027",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最右侧？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T028",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最上方？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T029",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在候选标注物体中，哪个物体的中心点位于图像最下方？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T030",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "标注图中的物体 A 位于图像九宫格的哪个区域？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T031",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "从候选区域中选择包含标注物体 A 中心点的区域。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T032",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图中，物体 A 与物体 B 的可见外接框是否重叠？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T033",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "在标注图中，物体 A 与物体 B 的可见外接框是否相邻或接近？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T034",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "将候选标注物体按图像中从左到右排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T035",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "STATIC_OPTIONAL_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A3_IMAGE_PLANE_SPATIAL",
+    "fixed_question_template": "将候选标注物体按图像中从上到下排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T036",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，物体 A 是否比物体 B 更靠近相机？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T037",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，哪个物体离相机最近？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T038",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，哪个物体离相机最远？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T039",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "将候选标注物体按从近到远排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T040",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，标注物体 A 到相机的距离属于哪个区间？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T041",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "当前图像中是否存在距离相机小于 `{threshold}` 的 `{object_category}`？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T042",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：多实例类别的“整体更靠近”口径不稳定；用 T036/T037/T040 替代。",
+    "replacement_template_id": "T036/T037/T040"
+  },
+  {
+    "template_id": "T043",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：“前方”措辞歧义；用 T036 或 T091 的“更靠近相机”替代。",
+    "replacement_template_id": "T036/T091"
+  },
+  {
+    "template_id": "T045",
+    "executable_in_tool": "yes",
+    "default_strict_core": "yes",
+    "strict_status": "CORE_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A8_COMPLEX_CONSTRAINT_CONSISTENCY",
+    "fixed_question_template": "当前图像中，距离相机最近的标注物体是否属于 `{object_category}`？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T056",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "POSE_3D_EXTENDED_SELECTABLE",
+    "canonical_question_type": "QT4_INTERVAL_CHOICE",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在相机坐标系下，标注物体 A 与标注物体 B 的三维质心距离属于哪个区间？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T057",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "POSE_3D_EXTENDED_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A7_EGOCENTRIC_POSE_3D",
+    "fixed_question_template": "在相机坐标系下，标注物体 A 是否比标注物体 B 更靠近标注物体 C？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T060",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "POSE_3D_EXTENDED_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A5_VISIBLE_SCALE_3D_SIZE",
+    "fixed_question_template": "在候选标注物体中，哪个物体的可见三维包围盒体积最大？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T061",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：3D bbox y 方向尺寸不是自然评测语义；用 T060/T063 替代。",
+    "replacement_template_id": "T060/T063"
+  },
+  {
+    "template_id": "T063",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "POSE_3D_EXTENDED_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A5_VISIBLE_SCALE_3D_SIZE",
+    "fixed_question_template": "将候选标注物体按可见三维包围盒体积从大到小排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T082",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：无法由图像支持类模板会引入不可答判断；用 T085 证据冲突单选替代。",
+    "replacement_template_id": "T085"
+  },
+  {
+    "template_id": "T084",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：元问题，不作为图文 benchmark 题干；用 T001 负例替代。",
+    "replacement_template_id": "T001"
+  },
+  {
+    "template_id": "T090",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：不可见目标距离是否可回答是不可答三选题，不进入模板库。",
+    "replacement_template_id": "T001/T040"
+  },
+  {
+    "template_id": "T091",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT3_BINARY_OR_COMPARISON",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "观察标注图，物体 A 是否比物体 B 更靠近相机？",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T095",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT5_ORDERING",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "将候选标注物体按深度层次由近到远排序。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T096",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，选择“位于图像左半区且距离相机最近的 `{object_category}` 实例”。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T097",
+    "executable_in_tool": "yes",
+    "default_strict_core": "no",
+    "strict_status": "DEPTH_SELECTABLE",
+    "canonical_question_type": "QT1_SINGLE_CHOICE",
+    "primary_capability": "A4_DEPTH_DISTANCE_LAYER",
+    "fixed_question_template": "在候选标注物体中，选择“位于图像右半区且可见面积最大的物体”。",
+    "replacement_template_id": ""
+  },
+  {
+    "template_id": "T099",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：多属性 JSON 匹配容易一物多属性和隐藏评分噪声；拆成 T021/T022/T036/T095。",
+    "replacement_template_id": "T021/T022/T036/T095"
+  },
+  {
+    "template_id": "T100",
+    "executable_in_tool": "locked",
+    "default_strict_core": "no",
+    "strict_status": "DEPRECATED_LOCKED",
+    "canonical_question_type": "DEPRECATED_LOCKED",
+    "primary_capability": "DEPRECATED",
+    "fixed_question_template": "已废弃：输出 object_id/depth_median 属于隐藏元数据，不作为图文评测。",
+    "replacement_template_id": "T096/T097"
+  }
+]

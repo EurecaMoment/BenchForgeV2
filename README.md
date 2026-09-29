@@ -2,7 +2,8 @@
 
 BenchForge 的 DSH 应用、基准构建算法与 SpatialForge 场景生产工具集成。
 本仓库包含可安装的 Python 核心、DSH 启动器、预设生成器、离线示例及
-SpatialForge 的工具注册和交付复审实现。
+SpatialForge 服务端、PostgreSQL 数据引擎、生成 worker、Windows Isaac 执行器、
+工具注册和交付复审实现。
 
 ## 启动应用
 
@@ -35,7 +36,23 @@ Windows 请使用较短的工作目录（例如 `C:\\bfv2`）；深层目录可�
 真实程序评分。第二个示例画出四张测试图，并实际执行设计、编译、生成、筛选、
 评分控制及打包。这些是程序示例，不是 Isaac 场景或照片还原验收。
 
-## 接入 SpatialForge
+## 从零启动 SpatialForge
+
+Linux 服务机安装 Python 3.11、Docker Compose、bubblewrap，执行：
+
+```bash
+python3.11 spatialforge_app.py setup
+python3.11 spatialforge_app.py init
+python3.11 spatialforge_app.py db
+python3.11 spatialforge_app.py serve
+```
+
+Windows 桌面安装 Isaac Sim，从同一仓库运行 worker。完成连接后，
+`examples/push_box_scene.json` 可直接渲染、执行真实外力推动并导出场景。
+完整的桌面配置、扩散模型、DSH 启动与产物位置见
+[逐步安装说明](docs/SPATIALFORGE_INSTALL.md) 和 [模型安装](docs/SPATIALFORGE_MODELS.md)。
+
+## 接入已有 SpatialForge
 
 已有 SpatialForge 后端和桌面 worker 时，复制
 `integrations/spatialforge/config.example.json` 为 `spatialforge.local.json`，
@@ -51,9 +68,8 @@ python benchforge.py start
 SceneProgram、Isaac 采集、证据查看与复审工具。DSH 和 SpatialForge 应部署在
 同一服务机，证据图片使用服务机文件路径；Windows 桌面 worker 负责唯一 Isaac 实例。
 
-**当前版本尚未包含独立部署 SpatialForge 后端与 worker 所需的全部代码和安装流程。**
-因此“从零部署完整 SpatialForge 应用”仍未完成，不能把本仓库离线测试通过
-当作整个场景生产应用已验收。接入说明见 [SpatialForge](integrations/spatialforge/README.md)。
+接入说明见 [SpatialForge](integrations/spatialforge/README.md)。
+后端组件位于 [components](components/README.md)，运行配置均由用户本地生成。
 
 ## 验证与文档
 

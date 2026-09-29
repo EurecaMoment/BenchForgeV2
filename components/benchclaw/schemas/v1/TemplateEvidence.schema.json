@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "additionalProperties": false,
+  "description": "Evidence for an executable legacy template, kept separate from geometric claims.",
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Evidence Id",
+      "type": "string"
+    },
+    "claim_type": {
+      "const": "template",
+      "default": "template",
+      "title": "Claim Type",
+      "type": "string"
+    },
+    "asset_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Asset Refs",
+      "type": "array"
+    },
+    "source_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Refs",
+      "type": "array"
+    },
+    "template_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Template Id",
+      "type": "string"
+    },
+    "derivation": {
+      "minLength": 1,
+      "title": "Derivation",
+      "type": "string"
+    },
+    "fields": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Fields",
+      "type": "object"
+    },
+    "confidence": {
+      "default": 1.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    }
+  },
+  "required": [
+    "evidence_id",
+    "asset_refs",
+    "source_refs",
+    "template_id",
+    "derivation"
+  ],
+  "title": "TemplateEvidence",
+  "type": "object"
+}

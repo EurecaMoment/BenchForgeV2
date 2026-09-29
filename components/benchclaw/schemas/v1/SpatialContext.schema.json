@@ -1,0 +1,166 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "context_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Context Id",
+      "type": "string"
+    },
+    "scene_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "sensor_frame_id": {
+      "default": "image",
+      "title": "Sensor Frame Id",
+      "type": "string"
+    },
+    "world_frame_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "World Frame Id"
+    },
+    "coordinate_convention": {
+      "enum": [
+        "image_x_right_y_down",
+        "camera_x_right_y_down_z_forward"
+      ],
+      "title": "Coordinate Convention",
+      "type": "string"
+    },
+    "length_unit": {
+      "enum": [
+        "px",
+        "m",
+        "cm",
+        "mm"
+      ],
+      "title": "Length Unit",
+      "type": "string"
+    },
+    "bbox_format": {
+      "const": "xyxy",
+      "default": "xyxy",
+      "title": "Bbox Format",
+      "type": "string"
+    },
+    "pixel_boundary": {
+      "const": "half_open",
+      "default": "half_open",
+      "title": "Pixel Boundary",
+      "type": "string"
+    },
+    "transform_direction": {
+      "const": "sensor_to_world",
+      "default": "sensor_to_world",
+      "title": "Transform Direction",
+      "type": "string"
+    },
+    "depth_representation": {
+      "anyOf": [
+        {
+          "enum": [
+            "metric_depth",
+            "normalized_depth",
+            "inverse_depth",
+            "disparity"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Depth Representation"
+    },
+    "depth_axis": {
+      "anyOf": [
+        {
+          "enum": [
+            "camera_z",
+            "euclidean_range"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Depth Axis"
+    },
+    "camera_intrinsics": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Camera Intrinsics"
+    },
+    "camera_extrinsics": {
+      "anyOf": [
+        {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Camera Extrinsics"
+    }
+  },
+  "required": [
+    "context_id",
+    "scene_id",
+    "coordinate_convention",
+    "length_unit"
+  ],
+  "title": "SpatialContext",
+  "type": "object"
+}

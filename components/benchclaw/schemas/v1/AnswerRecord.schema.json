@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw.answer-record/v1",
+      "default": "benchclaw.answer-record/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "item_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "gold": {
+      "$ref": "#/$defs/JsonValue"
+    },
+    "rubric_id": {
+      "default": "choice_exact/v1",
+      "minLength": 1,
+      "title": "Rubric Id",
+      "type": "string"
+    },
+    "template_id": {
+      "default": "bbox_center_2d",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Template Id",
+      "type": "string"
+    },
+    "capability_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Capability Ids",
+      "type": "array"
+    },
+    "metric_parameters": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Metric Parameters",
+      "type": "object"
+    },
+    "evidence_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "choice_semantics": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Choice Semantics",
+      "type": "object"
+    }
+  },
+  "required": [
+    "item_id",
+    "gold",
+    "evidence_refs"
+  ],
+  "title": "AnswerRecord",
+  "type": "object"
+}

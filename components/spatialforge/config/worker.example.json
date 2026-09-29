@@ -1,0 +1,11 @@
+{
+  "url": "http://127.0.0.1:3841",
+  "worker_token_env": "SPATIALFORGE_WORKER_TOKEN",
+  "worker_id": "desktop-isaac-main",
+  "isaac_root": "D:/isaac-sim",
+  "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
+  "runs": "D:/BenchForgeV2-runs",
+  "ssh_host": "user@server",
+  "ssh_forward": "3841:127.0.0.1:3841",
+  "capture_timeout_seconds": 1800
+}

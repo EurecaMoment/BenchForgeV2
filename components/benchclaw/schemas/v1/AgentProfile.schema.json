@@ -1,0 +1,710 @@
+{
+  "$defs": {
+    "CollectionPolicy": {
+      "additionalProperties": false,
+      "description": "Administrator-defined acceptance intent; models cannot weaken it.",
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "min_items": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Items",
+          "type": "integer"
+        },
+        "min_source_records": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Min Source Records",
+          "type": "integer"
+        },
+        "max_majority_baseline": {
+          "default": 0.75,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Max Majority Baseline",
+          "type": "number"
+        },
+        "baseline_min_items": {
+          "default": 4,
+          "minimum": 2,
+          "title": "Baseline Min Items",
+          "type": "integer"
+        },
+        "required_templates": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+            "type": "string"
+          },
+          "title": "Required Templates",
+          "type": "array"
+        }
+      },
+      "title": "CollectionPolicy",
+      "type": "object"
+    },
+    "DatasetSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw.dataset-spec/v1",
+          "default": "benchclaw.dataset-spec/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "objective": {
+          "minLength": 1,
+          "title": "Objective",
+          "type": "string"
+        },
+        "revision": {
+          "default": "v1",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Revision",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceSpec"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "target_items": {
+          "default": 15,
+          "maximum": 10000000,
+          "minimum": 1,
+          "title": "Target Items",
+          "type": "integer"
+        },
+        "modalities": {
+          "items": {
+            "enum": [
+              "rgb",
+              "depth",
+              "mask",
+              "pose",
+              "action",
+              "state",
+              "pointcloud"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Modalities",
+          "type": "array"
+        },
+        "capabilities": {
+          "items": {
+            "enum": [
+              "relative_position_2d",
+              "template_static",
+              "official_qa",
+              "habitat_rgbd",
+              "libero_multiview",
+              "carla_multicam",
+              "data_cleaning",
+              "grey_validation",
+              "analysis_cdm_irt",
+              "metric_program"
+            ],
+            "type": "string"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Capabilities",
+          "type": "array"
+        },
+        "relation_axes": {
+          "items": {
+            "enum": [
+              "x",
+              "y"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "title": "Relation Axes",
+          "type": "array"
+        },
+        "relation_options": {
+          "default": "four_directions",
+          "enum": [
+            "four_directions",
+            "axis_pair"
+          ],
+          "title": "Relation Options",
+          "type": "string"
+        },
+        "template_set": {
+          "default": "bbox_center_2d",
+          "enum": [
+            "bbox_center_2d",
+            "strict_core",
+            "strict_depth",
+            "strict_all_supported"
+          ],
+          "title": "Template Set",
+          "type": "string"
+        },
+        "template_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Template Ids",
+          "type": "array"
+        },
+        "task_contract": {
+          "default": "legacy-v1",
+          "enum": [
+            "legacy-v1",
+            "spatial-v2"
+          ],
+          "title": "Task Contract",
+          "type": "string"
+        },
+        "collection_policy": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionPolicy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "cleaning": {
+          "default": "standard",
+          "enum": [
+            "none",
+            "standard",
+            "data_juicer"
+          ],
+          "title": "Cleaning",
+          "type": "string"
+        },
+        "research": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Research",
+          "type": "object"
+        },
+        "semantic_review": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Semantic Review",
+          "type": "object"
+        },
+        "purpose": {
+          "default": "evaluation",
+          "enum": [
+            "evaluation",
+            "training"
+          ],
+          "title": "Purpose",
+          "type": "string"
+        },
+        "language": {
+          "default": "zh-CN",
+          "enum": [
+            "zh-CN",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        },
+        "quality_policy": {
+          "default": "development-v1",
+          "enum": [
+            "development-v1",
+            "production-v1"
+          ],
+          "title": "Quality Policy",
+          "type": "string"
+        },
+        "split_policy": {
+          "const": "scene_disjoint",
+          "default": "scene_disjoint",
+          "title": "Split Policy",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "retry": {
+          "$ref": "#/$defs/RetryPolicy"
+        },
+        "capacity": {
+          "$ref": "#/$defs/Resources"
+        }
+      },
+      "required": [
+        "name",
+        "objective",
+        "sources"
+      ],
+      "title": "DatasetSpec",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LocalModel": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "model_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_./-]*$",
+          "title": "Model Id",
+          "type": "string"
+        },
+        "endpoint": {
+          "title": "Endpoint",
+          "type": "string"
+        },
+        "api_key_env": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Api Key Env"
+        },
+        "timeout_seconds": {
+          "default": 60,
+          "maximum": 43200,
+          "minimum": 1,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        },
+        "max_tokens": {
+          "default": 64,
+          "maximum": 393216,
+          "minimum": 1,
+          "title": "Max Tokens",
+          "type": "integer"
+        },
+        "enable_thinking": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enable Thinking"
+        },
+        "preserve_thinking": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Preserve Thinking"
+        },
+        "reasoning_effort": {
+          "anyOf": [
+            {
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reasoning Effort"
+        },
+        "thinking_token_budget": {
+          "anyOf": [
+            {
+              "maximum": 262144,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thinking Token Budget"
+        },
+        "temperature": {
+          "default": 0,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Temperature",
+          "type": "number"
+        },
+        "top_p": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top P"
+        },
+        "top_k": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Top K"
+        },
+        "min_p": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min P"
+        },
+        "presence_penalty": {
+          "anyOf": [
+            {
+              "maximum": 2,
+              "minimum": -2,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Presence Penalty"
+        },
+        "repetition_penalty": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repetition Penalty"
+        },
+        "stream": {
+          "default": false,
+          "title": "Stream",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "model_id",
+        "endpoint"
+      ],
+      "title": "LocalModel",
+      "type": "object"
+    },
+    "Resources": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "cpu": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Cpu",
+          "type": "integer"
+        },
+        "gpu": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Gpu",
+          "type": "integer"
+        },
+        "memory_gb": {
+          "default": 2,
+          "exclusiveMinimum": 0,
+          "title": "Memory Gb",
+          "type": "number"
+        }
+      },
+      "title": "Resources",
+      "type": "object"
+    },
+    "RetryPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "max_attempts": {
+          "default": 3,
+          "maximum": 20,
+          "minimum": 1,
+          "title": "Max Attempts",
+          "type": "integer"
+        },
+        "backoff_seconds": {
+          "default": 2,
+          "maximum": 3600,
+          "minimum": 0,
+          "title": "Backoff Seconds",
+          "type": "number"
+        },
+        "timeout_seconds": {
+          "default": 300,
+          "exclusiveMinimum": 0,
+          "maximum": 86400,
+          "title": "Timeout Seconds",
+          "type": "number"
+        }
+      },
+      "title": "RetryPolicy",
+      "type": "object"
+    },
+    "SourceSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "plugin": {
+          "default": "source.entities",
+          "title": "Plugin",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        }
+      },
+      "required": [
+        "source_id",
+        "parameters"
+      ],
+      "title": "SourceSpec",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "template": {
+      "title": "Template",
+      "type": "string"
+    },
+    "model": {
+      "$ref": "#/$defs/LocalModel"
+    },
+    "max_items": {
+      "default": 100,
+      "maximum": 1000,
+      "minimum": 1,
+      "title": "Max Items",
+      "type": "integer"
+    },
+    "max_plan_attempts": {
+      "default": 2,
+      "maximum": 3,
+      "minimum": 1,
+      "title": "Max Plan Attempts",
+      "type": "integer"
+    },
+    "max_auto_retries": {
+      "default": 1,
+      "maximum": 2,
+      "minimum": 0,
+      "title": "Max Auto Retries",
+      "type": "integer"
+    },
+    "max_diagnoses": {
+      "default": 2,
+      "maximum": 3,
+      "minimum": 1,
+      "title": "Max Diagnoses",
+      "type": "integer"
+    },
+    "recipes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/DatasetSpec"
+      },
+      "title": "Recipes",
+      "type": "object"
+    },
+    "repair_recipes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/DatasetSpec"
+      },
+      "title": "Repair Recipes",
+      "type": "object"
+    },
+    "max_quality_repairs": {
+      "default": 0,
+      "maximum": 3,
+      "minimum": 0,
+      "title": "Max Quality Repairs",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "template",
+    "model"
+  ],
+  "title": "AgentProfile",
+  "type": "object"
+}

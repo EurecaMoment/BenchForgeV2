@@ -1,0 +1,117 @@
+{
+  "wood_laminate": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_wood_laminate_tile_light.jpg"
+    },
+    "roughness": 0.55,
+    "metallic": 0.0,
+    "description": "Front-facing light laminate plank pattern for floors, worktops and furniture. Several plank rows are present within one image; uv_scale_m is the whole-image repeat size, not the width of one board. Inspect the source/repeat preview when choosing scale.",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "repeat_size_hint_m": [
+      2.4,
+      1.2
+    ],
+    "repeat_size_hint_basis": "Optional visual starting point for a floor; not a measured source scale.",
+    "preview_file": "material_previews/wood_laminate.jpg"
+  },
+  "office_wall": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Environments/Office/Materials/Textures/T_WallOffice_bc.png",
+      "normal": "Environments/Office/Materials/Textures/T_WallOffice_n.png"
+    },
+    "roughness": 0.8,
+    "metallic": 0.0,
+    "description": "Office wall base-color and normal texture for primitives, containers and composite parts",
+    "source": "installed NVIDIA Isaac asset library",
+    "normal_convention": "source tangent-space encoding; no axis flips applied",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/office_wall.jpg"
+  },
+  "fabric_grid": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_fabric_square_grid.jpg"
+    },
+    "roughness": 0.85,
+    "metallic": 0.0,
+    "description": "Square grid fabric pattern for primitives, containers and composite parts",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/fabric_grid.jpg"
+  },
+  "wood_oak_floor": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_wood_oak_flooring_stained.jpg"
+    },
+    "roughness": 0.5,
+    "metallic": 0.0,
+    "description": "Oblique photograph of stained oak flooring with perspective and baked illumination. Repeating it on a planar floor reproduces the diagonal perspective and visible tile boundaries; wood_laminate provides a front-facing plank pattern.",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/wood_oak_floor.jpg"
+  },
+  "bamboo_desktop": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_bamboo_desktop.jpg"
+    },
+    "roughness": 0.45,
+    "metallic": 0.0,
+    "description": "Bamboo strip grain for worktops and furniture",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/bamboo_desktop.jpg"
+  },
+  "rubber_woven": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_rubber_woven_charcoal.jpg"
+    },
+    "roughness": 0.85,
+    "metallic": 0.0,
+    "description": "Dark woven rubber surface for work mats; image texture, no geometric perforations",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/rubber_woven.jpg"
+  },
+  "sidewalk_concrete": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_concrete_sidewalk_new.jpg"
+    },
+    "roughness": 0.9,
+    "metallic": 0.0,
+    "description": "Concrete pavement surface for sidewalks and masonry",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/sidewalk_concrete.jpg"
+  },
+  "weathered_asphalt": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_asphalt_yellow_weathered.jpg"
+    },
+    "roughness": 0.9,
+    "metallic": 0.0,
+    "description": "Weathered asphalt with a yellow marking already present in the source image",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/weathered_asphalt.jpg"
+  },
+  "grass": {
+    "root": "isaac",
+    "textures": {
+      "base_color": "Materials/Textures/Patterns/nv_grass.jpg"
+    },
+    "roughness": 0.9,
+    "metallic": 0.0,
+    "description": "Grass surface image for ground geometry; individual blades are not generated",
+    "source": "installed NVIDIA Isaac asset library",
+    "calibration": "appearance prior; physical reflectance is not measured",
+    "preview_file": "material_previews/grass.jpg"
+  }
+}

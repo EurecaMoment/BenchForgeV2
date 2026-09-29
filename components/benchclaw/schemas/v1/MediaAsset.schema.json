@@ -1,0 +1,151 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "asset_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "uri": {
+      "minLength": 1,
+      "title": "Uri",
+      "type": "string"
+    },
+    "media_type": {
+      "const": "rgb",
+      "default": "rgb",
+      "title": "Media Type",
+      "type": "string"
+    },
+    "byte_size": {
+      "exclusiveMinimum": 0,
+      "title": "Byte Size",
+      "type": "integer"
+    },
+    "width": {
+      "exclusiveMinimum": 0,
+      "title": "Width",
+      "type": "integer"
+    },
+    "height": {
+      "exclusiveMinimum": 0,
+      "title": "Height",
+      "type": "integer"
+    },
+    "channels": {
+      "const": 3,
+      "default": 3,
+      "title": "Channels",
+      "type": "integer"
+    },
+    "encoding": {
+      "enum": [
+        "PNG",
+        "JPEG"
+      ],
+      "title": "Encoding",
+      "type": "string"
+    },
+    "scene_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "episode_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Episode Id"
+    },
+    "frame_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Frame Id"
+    },
+    "timestamp_ns": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Timestamp Ns"
+    },
+    "spatial_context_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Spatial Context Id",
+      "type": "string"
+    },
+    "source_uri": {
+      "minLength": 1,
+      "title": "Source Uri",
+      "type": "string"
+    },
+    "license_id": {
+      "minLength": 1,
+      "title": "License Id",
+      "type": "string"
+    },
+    "split": {
+      "default": "test",
+      "enum": [
+        "train",
+        "validation",
+        "test"
+      ],
+      "title": "Split",
+      "type": "string"
+    }
+  },
+  "required": [
+    "asset_id",
+    "uri",
+    "byte_size",
+    "width",
+    "height",
+    "encoding",
+    "scene_id",
+    "spatial_context_id",
+    "source_uri",
+    "license_id"
+  ],
+  "title": "MediaAsset",
+  "type": "object"
+}

@@ -20,3 +20,11 @@ jobs:
       - run: python quickstart.py --workspace runs/ci-demo
       - run: python examples/production_demo.py --workspace runs/ci-production
       - run: python integrations/spatialforge/smoke.py
+      - if: matrix.python == '3.12'
+        run: python -m pip install -e "components/benchclaw[postgres]" -e components/spatialforge
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -t . -p test_deployment_config.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -t . -p test_mesh_import_installation.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_worker.py -v

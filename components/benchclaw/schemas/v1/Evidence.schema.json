@@ -1,0 +1,117 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "evidence_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Evidence Id",
+      "type": "string"
+    },
+    "claim_type": {
+      "const": "relative_position_2d",
+      "default": "relative_position_2d",
+      "title": "Claim Type",
+      "type": "string"
+    },
+    "asset_refs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 1,
+      "minItems": 1,
+      "title": "Asset Refs",
+      "type": "array"
+    },
+    "annotation_refs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 2,
+      "minItems": 2,
+      "title": "Annotation Refs",
+      "type": "array"
+    },
+    "axis": {
+      "enum": [
+        "x",
+        "y"
+      ],
+      "title": "Axis",
+      "type": "string"
+    },
+    "measurement": {
+      "title": "Measurement",
+      "type": "number"
+    },
+    "margin_px": {
+      "exclusiveMinimum": 0,
+      "title": "Margin Px",
+      "type": "number"
+    },
+    "relation": {
+      "enum": [
+        "left",
+        "right",
+        "above",
+        "below"
+      ],
+      "title": "Relation",
+      "type": "string"
+    },
+    "derivation": {
+      "const": "bbox_center_delta/v1",
+      "default": "bbox_center_delta/v1",
+      "title": "Derivation",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "visible_asset_ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Visible Asset Ref"
+    }
+  },
+  "required": [
+    "evidence_id",
+    "asset_refs",
+    "annotation_refs",
+    "axis",
+    "measurement",
+    "margin_px",
+    "relation",
+    "confidence"
+  ],
+  "title": "Evidence",
+  "type": "object"
+}

@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "JsonValue": {}
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "record_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Record Id",
+      "type": "string"
+    },
+    "format": {
+      "enum": [
+        "template_entities",
+        "official_qa",
+        "capture"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "asset_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Asset Refs",
+      "type": "array"
+    },
+    "source_uri": {
+      "minLength": 1,
+      "title": "Source Uri",
+      "type": "string"
+    },
+    "review_status": {
+      "enum": [
+        "accepted",
+        "needs_human_review",
+        "fixture"
+      ],
+      "title": "Review Status",
+      "type": "string"
+    },
+    "data": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "title": "Data",
+      "type": "object"
+    }
+  },
+  "required": [
+    "record_id",
+    "format",
+    "asset_refs",
+    "source_uri",
+    "review_status",
+    "data"
+  ],
+  "title": "SourceRecord",
+  "type": "object"
+}

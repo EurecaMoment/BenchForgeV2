@@ -1,0 +1,13 @@
+{
+  "models": {
+    "flux": {"python": "/opt/venvs/flux/bin/python", "path": "/opt/models/FLUX.2-klein-9B"},
+    "sam3": {"python": "/opt/venvs/sam3/bin/python", "path": "/opt/models/sam3"},
+    "sam3d": {"python": "/opt/venvs/sam3d/bin/python", "path": "/opt/models/sam-3d-objects"},
+    "depth_anything": {"python": "/opt/venvs/depth/bin/python", "path": "/opt/models/depth-anything/depth_anything_v2_vits.pth"}
+  },
+  "sources": {
+    "sam3": "/opt/sources/sam3",
+    "sam3d": "/opt/sources/sam-3d-objects",
+    "depth_anything": "/opt/sources/Depth-Anything-V2"
+  }
+}

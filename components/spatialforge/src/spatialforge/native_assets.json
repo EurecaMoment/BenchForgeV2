@@ -1,0 +1,213 @@
+{
+  "office_sofa": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Sofa.usd",
+    "size": [
+      0.82,
+      2.04,
+      0.79
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "upholstered office sofa",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_armchair": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Armchair.usd",
+    "size": [
+      0.82,
+      1.04,
+      0.79
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "upholstered lounge armchair",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_coffee_table": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_TableCoffee.usd",
+    "size": [
+      0.5,
+      0.9,
+      0.46
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "coffee table",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_desk": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_TableD.usd",
+    "size": [
+      0.9,
+      2,
+      0.75986
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "office work table",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_chair": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_ChairOffice.usd",
+    "size": [
+      0.63123,
+      0.65126,
+      1.177
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "office task chair",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_bookcase": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_BookcaseA.usd",
+    "size": [
+      0.418,
+      1.84,
+      2.22
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "bookcase",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_monitor": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_MonitorPC.usd",
+    "size": [
+      0.205,
+      0.532,
+      0.5299
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "desktop monitor",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_laptop": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_NotebookOpen.usd",
+    "size": [
+      0.20978,
+      0.29987,
+      0.01928
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "open notebook (identity requires rendered inspection; not assumed to be a computer)",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_plant": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Plant01.usd",
+    "size": [
+      1.30492,
+      1.54161,
+      1.75496
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "potted indoor plant",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_lamp": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Lamp.usd",
+    "size": [
+      0.21,
+      0.21,
+      0.50799
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "office lamp",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_book": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Book_01.usd",
+    "size": [
+      0.02,
+      0.145,
+      0.205
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "closed book",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_books": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_BooksSet_01.usd",
+    "size": [
+      0.18014,
+      0.36323,
+      0.2465
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "group of books",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_file_cabinet": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_FileCabinet_01.usd",
+    "size": [
+      0.703,
+      0.3921,
+      1.34069
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "file cabinet",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_water_cooler": {
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_WaterCooler.usd",
+    "size": [
+      0.34,
+      0.41935,
+      1.1
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "water dispenser",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  },
+  "office_window": {
+    "supports_native_opacity_multiplier": true,
+    "root": "isaac",
+    "path": "Environments/Office/Props/SM_Window_3m_A.usd",
+    "size": [
+      0.12,
+      3.0,
+      3.0
+    ],
+    "source_up_axis": "Z",
+    "source_meters_per_unit": 1.0,
+    "description": "modular 3m window",
+    "source": "installed NVIDIA Isaac asset library",
+    "measurement": "USD geometry bounds; physical properties uncalibrated"
+  }
+}

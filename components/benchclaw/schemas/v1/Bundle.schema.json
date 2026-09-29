@@ -1,0 +1,1079 @@
+{
+  "$defs": {
+    "Annotation": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "annotation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Annotation Id",
+          "type": "string"
+        },
+        "asset_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "object_id": {
+          "minLength": 1,
+          "title": "Object Id",
+          "type": "string"
+        },
+        "annotation_type": {
+          "const": "bbox_2d",
+          "default": "bbox_2d",
+          "title": "Annotation Type",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "bbox_xyxy": {
+          "maxItems": 4,
+          "minItems": 4,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Bbox Xyxy",
+          "type": "array"
+        },
+        "coordinate_frame_id": {
+          "default": "image",
+          "title": "Coordinate Frame Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "producer_type": {
+          "enum": [
+            "simulator",
+            "model",
+            "human",
+            "fixture"
+          ],
+          "title": "Producer Type",
+          "type": "string"
+        },
+        "review_status": {
+          "enum": [
+            "accepted",
+            "needs_human_review",
+            "fixture"
+          ],
+          "title": "Review Status",
+          "type": "string"
+        },
+        "input_annotation_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Input Annotation Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "annotation_id",
+        "asset_id",
+        "object_id",
+        "label",
+        "bbox_xyxy",
+        "confidence",
+        "producer_type",
+        "review_status"
+      ],
+      "title": "Annotation",
+      "type": "object"
+    },
+    "AnswerRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw.answer-record/v1",
+          "default": "benchclaw.answer-record/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "item_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "gold": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "rubric_id": {
+          "default": "choice_exact/v1",
+          "minLength": 1,
+          "title": "Rubric Id",
+          "type": "string"
+        },
+        "template_id": {
+          "default": "bbox_center_2d",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Template Id",
+          "type": "string"
+        },
+        "capability_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Capability Ids",
+          "type": "array"
+        },
+        "metric_parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Metric Parameters",
+          "type": "object"
+        },
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "choice_semantics": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Choice Semantics",
+          "type": "object"
+        }
+      },
+      "required": [
+        "item_id",
+        "gold",
+        "evidence_refs"
+      ],
+      "title": "AnswerRecord",
+      "type": "object"
+    },
+    "DataFile": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "file_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "File Id",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "depth",
+            "mask",
+            "pose",
+            "action",
+            "state",
+            "pointcloud",
+            "metadata",
+            "usage"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "source_uri": {
+          "minLength": 1,
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "original_uri": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Original Uri"
+        }
+      },
+      "required": [
+        "file_id",
+        "uri",
+        "kind",
+        "byte_size",
+        "source_uri"
+      ],
+      "title": "DataFile",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "claim_type": {
+          "const": "relative_position_2d",
+          "default": "relative_position_2d",
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "asset_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "Asset Refs",
+          "type": "array"
+        },
+        "annotation_refs": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Annotation Refs",
+          "type": "array"
+        },
+        "axis": {
+          "enum": [
+            "x",
+            "y"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "measurement": {
+          "title": "Measurement",
+          "type": "number"
+        },
+        "margin_px": {
+          "exclusiveMinimum": 0,
+          "title": "Margin Px",
+          "type": "number"
+        },
+        "relation": {
+          "enum": [
+            "left",
+            "right",
+            "above",
+            "below"
+          ],
+          "title": "Relation",
+          "type": "string"
+        },
+        "derivation": {
+          "const": "bbox_center_delta/v1",
+          "default": "bbox_center_delta/v1",
+          "title": "Derivation",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "visible_asset_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Visible Asset Ref"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "asset_refs",
+        "annotation_refs",
+        "axis",
+        "measurement",
+        "margin_px",
+        "relation",
+        "confidence"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "MediaAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "asset_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "uri": {
+          "minLength": 1,
+          "title": "Uri",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "rgb",
+          "default": "rgb",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "byte_size": {
+          "exclusiveMinimum": 0,
+          "title": "Byte Size",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "channels": {
+          "const": 3,
+          "default": 3,
+          "title": "Channels",
+          "type": "integer"
+        },
+        "encoding": {
+          "enum": [
+            "PNG",
+            "JPEG"
+          ],
+          "title": "Encoding",
+          "type": "string"
+        },
+        "scene_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "episode_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Episode Id"
+        },
+        "frame_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Frame Id"
+        },
+        "timestamp_ns": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timestamp Ns"
+        },
+        "spatial_context_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Spatial Context Id",
+          "type": "string"
+        },
+        "source_uri": {
+          "minLength": 1,
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "license_id": {
+          "minLength": 1,
+          "title": "License Id",
+          "type": "string"
+        },
+        "split": {
+          "default": "test",
+          "enum": [
+            "train",
+            "validation",
+            "test"
+          ],
+          "title": "Split",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_id",
+        "uri",
+        "byte_size",
+        "width",
+        "height",
+        "encoding",
+        "scene_id",
+        "spatial_context_id",
+        "source_uri",
+        "license_id"
+      ],
+      "title": "MediaAsset",
+      "type": "object"
+    },
+    "PublicMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "language": {
+          "default": "zh-CN",
+          "enum": [
+            "zh-CN",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "title": "PublicMetadata",
+      "type": "object"
+    },
+    "SourceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "record_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Record Id",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "template_entities",
+            "official_qa",
+            "capture"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "asset_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Asset Refs",
+          "type": "array"
+        },
+        "source_uri": {
+          "minLength": 1,
+          "title": "Source Uri",
+          "type": "string"
+        },
+        "review_status": {
+          "enum": [
+            "accepted",
+            "needs_human_review",
+            "fixture"
+          ],
+          "title": "Review Status",
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Data",
+          "type": "object"
+        }
+      },
+      "required": [
+        "record_id",
+        "format",
+        "asset_refs",
+        "source_uri",
+        "review_status",
+        "data"
+      ],
+      "title": "SourceRecord",
+      "type": "object"
+    },
+    "SpatialContext": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "context_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Context Id",
+          "type": "string"
+        },
+        "scene_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "sensor_frame_id": {
+          "default": "image",
+          "title": "Sensor Frame Id",
+          "type": "string"
+        },
+        "world_frame_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "World Frame Id"
+        },
+        "coordinate_convention": {
+          "enum": [
+            "image_x_right_y_down",
+            "camera_x_right_y_down_z_forward"
+          ],
+          "title": "Coordinate Convention",
+          "type": "string"
+        },
+        "length_unit": {
+          "enum": [
+            "px",
+            "m",
+            "cm",
+            "mm"
+          ],
+          "title": "Length Unit",
+          "type": "string"
+        },
+        "bbox_format": {
+          "const": "xyxy",
+          "default": "xyxy",
+          "title": "Bbox Format",
+          "type": "string"
+        },
+        "pixel_boundary": {
+          "const": "half_open",
+          "default": "half_open",
+          "title": "Pixel Boundary",
+          "type": "string"
+        },
+        "transform_direction": {
+          "const": "sensor_to_world",
+          "default": "sensor_to_world",
+          "title": "Transform Direction",
+          "type": "string"
+        },
+        "depth_representation": {
+          "anyOf": [
+            {
+              "enum": [
+                "metric_depth",
+                "normalized_depth",
+                "inverse_depth",
+                "disparity"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Depth Representation"
+        },
+        "depth_axis": {
+          "anyOf": [
+            {
+              "enum": [
+                "camera_z",
+                "euclidean_range"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Depth Axis"
+        },
+        "camera_intrinsics": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Camera Intrinsics"
+        },
+        "camera_extrinsics": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Camera Extrinsics"
+        }
+      },
+      "required": [
+        "context_id",
+        "scene_id",
+        "coordinate_convention",
+        "length_unit"
+      ],
+      "title": "SpatialContext",
+      "type": "object"
+    },
+    "TemplateEvidence": {
+      "additionalProperties": false,
+      "description": "Evidence for an executable legacy template, kept separate from geometric claims.",
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "evidence_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "claim_type": {
+          "const": "template",
+          "default": "template",
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "asset_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Asset Refs",
+          "type": "array"
+        },
+        "source_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Source Refs",
+          "type": "array"
+        },
+        "template_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Template Id",
+          "type": "string"
+        },
+        "derivation": {
+          "minLength": 1,
+          "title": "Derivation",
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Fields",
+          "type": "object"
+        },
+        "confidence": {
+          "default": 1.0,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "asset_refs",
+        "source_refs",
+        "template_id",
+        "derivation"
+      ],
+      "title": "TemplateEvidence",
+      "type": "object"
+    },
+    "VisibleEvalItem": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw.visible-eval-item/v1",
+          "default": "benchclaw.visible-eval-item/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "item_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "prompt": {
+          "minLength": 1,
+          "title": "Prompt",
+          "type": "string"
+        },
+        "media_refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Media Refs",
+          "type": "array"
+        },
+        "answer_type": {
+          "default": "single_choice",
+          "enum": [
+            "single_choice",
+            "multi_choice",
+            "interval",
+            "ordering",
+            "numeric",
+            "json",
+            "text"
+          ],
+          "title": "Answer Type",
+          "type": "string"
+        },
+        "choices": {
+          "$ref": "#/$defs/JsonValue",
+          "default": {}
+        },
+        "public_metadata": {
+          "$ref": "#/$defs/PublicMetadata"
+        }
+      },
+      "required": [
+        "item_id",
+        "prompt",
+        "media_refs"
+      ],
+      "title": "VisibleEvalItem",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw/v1",
+      "default": "benchclaw/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "assets": {
+      "items": {
+        "$ref": "#/$defs/MediaAsset"
+      },
+      "title": "Assets",
+      "type": "array"
+    },
+    "contexts": {
+      "items": {
+        "$ref": "#/$defs/SpatialContext"
+      },
+      "title": "Contexts",
+      "type": "array"
+    },
+    "annotations": {
+      "items": {
+        "$ref": "#/$defs/Annotation"
+      },
+      "title": "Annotations",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Evidence"
+          },
+          {
+            "$ref": "#/$defs/TemplateEvidence"
+          }
+        ]
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "visible": {
+      "items": {
+        "$ref": "#/$defs/VisibleEvalItem"
+      },
+      "title": "Visible",
+      "type": "array"
+    },
+    "answers": {
+      "items": {
+        "$ref": "#/$defs/AnswerRecord"
+      },
+      "title": "Answers",
+      "type": "array"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/SourceRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/DataFile"
+      },
+      "title": "Files",
+      "type": "array"
+    }
+  },
+  "title": "Bundle",
+  "type": "object"
+}

@@ -36,9 +36,11 @@ the actual review functions, including failed physics, missing image visibility,
 reference/render attachments and broken delivery links. The former fixture that
 simply asserted `success=true` and `loadable=true` has been removed.
 
-## Remaining release work
+## Install the bundled service
 
-The standalone SpatialForge service, PostgreSQL/BenchClaw dependencies, generation
-workers and desktop installation are not yet packaged here. A configured existing
-service is required. Full from-scratch scene production remains an open release
-requirement; client tests and the BenchForge UI do not establish it.
+The service, PostgreSQL/BenchClaw engine, SAM worker adapters and desktop executor
+are under `components/`. Use [the installation guide](../../docs/SPATIALFORGE_INSTALL.md)
+to create a new service and attach one Windows desktop. The root
+`spatialforge_app.py dsh-setup` and `dsh-start` commands use the locally generated
+service credentials automatically. Model setup is documented separately so a
+capture or existing-mesh task does not require installing unused models.

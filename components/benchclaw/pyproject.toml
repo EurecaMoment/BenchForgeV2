@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "benchclaw-harness"
+version = "0.1.0"
+description = "Deterministic, recoverable embodied spatial dataset harness"
+requires-python = ">=3.11,<3.14"
+dependencies = ["pydantic==2.11.7", "Pillow==11.3.0", "PyYAML==6.0.2", "SQLAlchemy==2.0.43"]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]==3.2.9"]
+annotation = ["numpy==2.2.6"]
+imports = ["pyarrow==19.0.1", "h5py==3.12.1"]
+test = ["pytest==8.4.2", "numpy==2.2.6"]
+
+[project.scripts]
+benchclaw = "benchclaw.cli:main"
+
+[project.entry-points."benchclaw.plugins"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

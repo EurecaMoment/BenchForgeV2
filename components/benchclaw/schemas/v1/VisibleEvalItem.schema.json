@@ -1,0 +1,110 @@
+{
+  "$defs": {
+    "JsonValue": {},
+    "PublicMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "benchclaw/v1",
+          "default": "benchclaw/v1",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "producer": {
+          "default": "benchclaw",
+          "title": "Producer",
+          "type": "string"
+        },
+        "producer_version": {
+          "default": "0.1.0",
+          "title": "Producer Version",
+          "type": "string"
+        },
+        "created_at": {
+          "title": "Created At",
+          "type": "string"
+        },
+        "language": {
+          "default": "zh-CN",
+          "enum": [
+            "zh-CN",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "title": "PublicMetadata",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "benchclaw.visible-eval-item/v1",
+      "default": "benchclaw.visible-eval-item/v1",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "producer": {
+      "default": "benchclaw",
+      "title": "Producer",
+      "type": "string"
+    },
+    "producer_version": {
+      "default": "0.1.0",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "item_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$",
+      "title": "Item Id",
+      "type": "string"
+    },
+    "prompt": {
+      "minLength": 1,
+      "title": "Prompt",
+      "type": "string"
+    },
+    "media_refs": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Media Refs",
+      "type": "array"
+    },
+    "answer_type": {
+      "default": "single_choice",
+      "enum": [
+        "single_choice",
+        "multi_choice",
+        "interval",
+        "ordering",
+        "numeric",
+        "json",
+        "text"
+      ],
+      "title": "Answer Type",
+      "type": "string"
+    },
+    "choices": {
+      "$ref": "#/$defs/JsonValue",
+      "default": {}
+    },
+    "public_metadata": {
+      "$ref": "#/$defs/PublicMetadata"
+    }
+  },
+  "required": [
+    "item_id",
+    "prompt",
+    "media_refs"
+  ],
+  "title": "VisibleEvalItem",
+  "type": "object"
+}
