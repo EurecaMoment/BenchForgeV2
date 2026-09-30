@@ -17,6 +17,7 @@ class ScenePreflightTests(unittest.TestCase):
         original = copy.deepcopy(program)
         result = preflight_scene(program)
         self.assertFalse(result['passed'])
+        self.assertFalse(result['blocking'])
         self.assertEqual(result['errors'][0]['code'], 'camera_above_declared_ceiling')
         self.assertEqual(program, original)
 

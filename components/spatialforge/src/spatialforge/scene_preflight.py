@@ -2,6 +2,8 @@
 
 The preflight uses only declared room bounds and camera metadata. It does not
 infer walls, move cameras, or turn a design reference into ground truth.
+These diagnostics are non-blocking: semantic zone bounds do not establish
+whether a camera is occluded or outside the physical building.
 """
 from __future__ import annotations
 
@@ -53,6 +55,6 @@ def preflight_scene(program: dict[str, Any], *, vertical_tolerance_m: float = 0.
         else:
             record.update(status="passed", reason="camera_vertical_position_is_plausible")
         records.append(record)
-    return {"schema": "spatialforge.scene-preflight/v1", "passed": not errors,
+    return {"schema": "spatialforge.scene-preflight/v1", "passed": not errors, "blocking": False,
             "errors": errors, "cameras": records,
             "limits": ["declared room bounds only", "does not infer walls or occlusion", "external cameras are allowed"]}
