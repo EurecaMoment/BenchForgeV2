@@ -159,12 +159,17 @@ ConvertTo-Json -Compress -InputObject $rows
     return rows if isinstance(rows,list) else [rows]
 
 
-def owns_command(row,request):
-    command=(row.get('CommandLine') or '').replace('/','\\').casefold()
+def capture_request(row):
+    command=row.get('CommandLine') or ''
     script=str(root/'desktop/isaac_capture.py').replace('/','\\').casefold()
-    requested=str(request.resolve()).replace('/','\\').casefold()
-    # Both the installed executor and the immutable per-attempt request must occur.
-    return script in command and requested in command and '--request' in command
+    if script not in command.replace('/','\\').casefold():return None
+    argument=re.search(r'(?:^|\s)--request\s+(?:"([^"]+)"|(\S+))',command)
+    return Path(argument.group(1) or argument.group(2)).resolve() if argument else None
+
+
+def owns_command(row,request):
+    # Resolve both sides: Windows command lines may use an 8.3 directory alias.
+    return capture_request(row)==request.resolve()
 
 
 class OwnedProcess:
@@ -238,9 +243,8 @@ def wait_owned(job,directory,processes,launched=None):
 
 def recover_other_attempts(job,rows):
     """Finish waiting on a previous owned attempt before allowing another Kit."""
-    script=str(root/'desktop/isaac_capture.py').replace('/','\\').casefold()
-    prefix=str(state_root.resolve()).replace('/','\\').casefold()
-    if not any(script in (row.get('CommandLine') or '').replace('/','\\').casefold() and prefix in (row.get('CommandLine') or '').replace('/','\\').casefold() for row in rows):return
+    requests=[capture_request(row) for row in rows]
+    if not any(request and request.is_relative_to(state_root.resolve()) for request in requests):return
     # Only inspect request receipts if an actual SpatialForge capture process exists.
     for request in state_root.glob('attempt_*/request.json'):
         if request.parent.name==job['token']:continue

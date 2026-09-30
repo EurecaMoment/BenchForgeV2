@@ -70,6 +70,25 @@ class WorkerTests(unittest.TestCase):
             self.assertTrue(worker.owns_command(matching,request))
             self.assertFalse(worker.owns_command({'CommandLine':f'python other.py --request "{request}"'},request))
             self.assertFalse(worker.owns_command({'CommandLine':f'python "{script}" --request "{request.parent.parent}/attempt_2/request.json"'},request))
+            self.assertFalse(worker.owns_command({'CommandLine':f'python "{script}" --request "{request}.other"'},request))
+
+    @unittest.skipUnless(worker.os.name=='nt','Windows short-path aliases')
+    def test_short_path_request_is_owned_and_recovered(self):
+        import ctypes
+        with tempfile.TemporaryDirectory(prefix='spatialforge long path ') as directory:
+            state=Path(directory).resolve()
+            previous={'token':'attempt_0123456789abcdef'}
+            request=state/previous['token']/'request.json'
+            request.parent.mkdir();request.write_text(json.dumps(previous))
+            buffer=ctypes.create_unicode_buffer(32768)
+            if not ctypes.windll.kernel32.GetShortPathNameW(str(state),buffer,len(buffer)):
+                self.skipTest('This volume does not provide short-path aliases')
+            alias=Path(buffer.value)/previous['token']/'request.json'
+            row={'CommandLine':f'python "{worker.root / "desktop/isaac_capture.py"}" --request "{alias}"'}
+            self.assertTrue(worker.owns_command(row,request))
+            with patch.object(worker,'state_root',state,create=True),patch.object(worker,'owned_processes',return_value=[object()]),patch.object(worker,'wait_owned') as wait:
+                worker.recover_other_attempts({'token':'attempt_fedcba9876543210'},[row])
+                wait.assert_called_once_with(previous,request.parent,[unittest.mock.ANY])
 
     def test_recovered_attempt_never_launches_another_process(self):
         with tempfile.TemporaryDirectory() as directory:
