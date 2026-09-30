@@ -82,11 +82,11 @@ def prepare_layout(tools,intent,directory,stop,parent_directory=None,design_dire
         else:
             prompt=spec['prompt']+'\nCreate a coherent spatial design reference, with readable room layout and furniture relationships. No text labels or invented numeric measurements. This image is a design proposal, not ground truth or a validated simulation.'
             if spec['mode']=='edit':prompt+=' Preserve relevant existing structure and implement the requested layout changes in the supplied view.'
-            request={'model_path':os.environ.get('SPATIALFORGE_DIFFUSION_MODEL','/home/maqiang/model/black-forest-labs/FLUX.2-klein-9B'),
-                     'prompt':prompt,'output':str(image),'width':1024,'height':768,'steps':4,'seed':spec.get('seed',42)}
+            model_path=os.environ.get('SPATIALFORGE_DIFFUSION_MODEL') or tools.config.model('flux')['path']
+            request={'model_path':model_path,'prompt':prompt,'output':str(image),'width':1024,'height':768,'steps':4,'seed':spec.get('seed',42)}
             if source:request['image']=str(source)
-            tools.execute('diffusion',request,work/'diffusion',stop)
-            tool='FLUX.2-klein-9B'
+            generated=tools.execute('diffusion',request,work/'diffusion',stop)
+            tool=generated.get('model') or Path(model_path).name
         with Image.open(image) as result:size=list(result.size)
         write_json(receipt,{'schema':'spatialforge.layout-reference/v1','mode':spec['mode'],'tool':tool,'image':'layout_reference.png',
                            'source':contract['source'],'size':size,'seed':spec.get('seed',42),

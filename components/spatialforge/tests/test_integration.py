@@ -1,6 +1,9 @@
 """Bounded, offline checks of the real legacy data adapter (no model requests)."""
 import importlib.util
+from contextlib import ExitStack
 import json
+import os
+from unittest.mock import patch
 import tempfile
 import threading
 import unittest
@@ -43,6 +46,7 @@ class DataIntegration(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'desktop Isaac'):
                 prepare_spec({'spec':spec})
 
+    @patch.dict(os.environ, {'SPATIALFORGE_MODEL_ID':'configured-vision-model','SPATIALFORGE_MODEL_URL':'http://fixture.invalid/v1'})
     def test_review_contract_preserves_source_and_has_no_evaluation(self):
         from benchclaw.compiler import compile_spec
         from benchclaw.plugins import Registry
@@ -52,15 +56,16 @@ class DataIntegration(unittest.TestCase):
             plugins = [u.plugin_id for u in plan.tasks]
             self.assertIn('review.semantic', plugins)
             self.assertIn('review.collection', plugins)
-            self.assertEqual(spec.semantic_review['model_id'], 'Qwen/Qwen3.8-Flash-Next')
+            self.assertEqual(spec.semantic_review['model_id'], 'configured-vision-model')
             self.assertFalse(any('evaluation' in p or 'evaluator' in p for p in plugins))
 
+    @unittest.skipIf(os.name == 'nt', 'The Linux service release exporter uses fcntl')
     def test_real_export_reuses_linked_run_and_stops_without_success(self):
         from PIL import Image, ImageDraw
         from sqlalchemy import select
         from benchclaw.metadata import Repository, runs, tasks
         from spatialforge.generation import ResourceWait
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, ExitStack() as resources:
             root = Path(tmp)
             image=Image.new('RGB', (80, 60), '#b37f42')
             ImageDraw.Draw(image).rectangle((10, 10, 40, 45), fill='#3181c5')
@@ -69,6 +74,7 @@ class DataIntegration(unittest.TestCase):
                                                         'choices':{'A':'brown', 'B':'blue'}, 'answer_type':'single_choice',
                                                         'gold':'A', 'rubric_id':'choice_exact/v1', 'language':'en'})+'\n')
             repo = Repository('sqlite:///'+str(root/'metadata.db'))
+            resources.callback(repo.engine.dispose)
             intent = {'spec':self.spec(root), 'review':False}
             task = {'id':'sf_test.scene0', 'run_id':'sf_test', 'unit':{'intent':intent, 'phase':'dataset', 'revision':0}}
             with repo.transaction() as conn:

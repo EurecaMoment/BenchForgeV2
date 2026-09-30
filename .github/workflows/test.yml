@@ -26,6 +26,8 @@ jobs:
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -t . -p test_deployment_config.py -v
       - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_configured_operations.py -v
+      - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -t . -p test_mesh_import_installation.py -v
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_worker.py -v

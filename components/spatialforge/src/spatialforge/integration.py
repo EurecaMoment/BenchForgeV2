@@ -120,9 +120,13 @@ def catalog(harness=None):
 
 
 def _model_settings():
-    base = os.environ.get('SPATIALFORGE_MODEL_URL', 'http://127.0.0.1:29002/v1').rstrip('/')
-    endpoint = base if base.endswith('/chat/completions') else base + '/chat/completions'
-    return {'model_id':os.environ['SPATIALFORGE_MODEL_ID'], 'endpoint':endpoint,
+    model_id=os.environ.get('SPATIALFORGE_MODEL_ID')
+    base=os.environ.get('SPATIALFORGE_MODEL_URL')
+    if not model_id or not base:
+        raise ValueError('Configure SPATIALFORGE_MODEL_ID and SPATIALFORGE_MODEL_URL for annotation or semantic review')
+    base=base.rstrip('/')
+    endpoint=base if base.endswith('/chat/completions') else base+'/chat/completions'
+    return {'model_id':model_id, 'endpoint':endpoint,
             'api_key_env':os.environ.get('SPATIALFORGE_MODEL_API_KEY_ENV','QWEN_RELAY_API_KEY'),
             'timeout_seconds':600, 'max_tokens':12288, 'enable_thinking':True,
             'preserve_thinking':True, 'reasoning_effort':'xhigh', 'thinking_token_budget':4096,
@@ -168,7 +172,7 @@ def prepare_spec(intent, harness=None):
             model = _model_settings()
             annotation.update(vlm_model=model['model_id'], vlm_base_url=model['endpoint'].removesuffix('/v1/chat/completions'),
                               vlm_generation={k:v for k,v in model.items() if k not in {'model_id','endpoint','api_key_env'}},
-                              annotation_producer='qwen38-flash-next+yoloe+sam3+da3')
+                              annotation_producer=model['model_id']+'+yoloe+sam3+da3')
     review = intent.get('review', True)
     if not isinstance(review, (bool, dict)):
         raise ValueError('review must be a boolean or review settings object')

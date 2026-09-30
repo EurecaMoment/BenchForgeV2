@@ -116,6 +116,8 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 `.spatialforge/models.local.json` 中的解释器、权重、源码路径。
 每种工具只需要自己的配置；采集及已有网格导入无需先安装 SAM3D 或全部模型。
 `models.flux` 是 FLUX.2 Klein 图像生成模型；这里不调用旧 Pic2Sim 的图像剥离流水线。
+布局参考图也使用 `models.flux.path`，相对路径按模型配置文件所在目录解析。
+`SPATIALFORGE_DIFFUSION_MODEL` 可显式覆盖权重路径；参考图回执记录实际使用的模型名称。
 
 需要服务端自动规划和视觉修正时，在 `server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
 
@@ -130,6 +132,10 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 这些字段应合并到已有配置，保留数据库、目录和两个 token；在启动服务的终端设置
 `SPATIALFORGE_MODEL_API_KEY`。该模型用于生产与修复，不作为目标评测模型，也不生成 GT。
 仅 `/capture` 和 SceneProgram 路径不需要该模型。
+`model_url` 可填写 `/v1` 基址或完整 `/v1/chat/completions` 地址。
+可使用自己的 HTTP(S) 模型服务；模型服务不再限定到原部署的内网 IP。
+目录查询和关闭语义复审的已有官方数据导出也无需语言模型；未配置时目录显示
+`unconfigured`。请求自动规划、标注或语义复审时，再提供上述模型配置。
 
 ## 5. 启动完整 DSH 界面
 

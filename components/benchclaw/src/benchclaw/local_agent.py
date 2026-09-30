@@ -5,7 +5,6 @@ import json
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 from sqlalchemy import select, update
@@ -25,15 +24,7 @@ class Strict(BaseModel):
 
 
 class LocalModel(ModelTarget):
-    @model_validator(mode='after')
-    def local_only(self):
-        url=urlsplit(self.endpoint)
-        internal=url.hostname=='172.31.1.7' and url.port==9000
-        if (url.hostname not in {'127.0.0.1','localhost','::1'} and not internal) or url.path!='/v1/chat/completions':
-            raise ValueError('Agent endpoint must be loopback or the configured Qwen internal service')
-        if internal and not self.api_key_env:
-            raise ValueError('The internal Qwen endpoint requires an API-key environment variable')
-        return self
+    """Production model using the operator's explicit HTTP(S) endpoint."""
 
 
 class AgentProfile(Strict):

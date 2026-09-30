@@ -7,12 +7,14 @@ from unittest.mock import patch
 from PIL import Image
 from spatialforge.layout import prepare_layout,validate_layout
 from spatialforge import engine
+from types import SimpleNamespace
 from test_contracts import sample
 
 
 class LayoutGuidance(unittest.TestCase):
     def tools(self,root):
         class Tools:
+            config=SimpleNamespace(model=lambda name: {'path':'/fixture/FLUX.2-klein-9B'})
             calls=[]
             def execute(self,name,request,work,stop):
                 self.calls.append((name,request))

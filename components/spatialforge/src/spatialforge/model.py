@@ -65,11 +65,18 @@ def _completion_once(prompt, trace_dir, images, max_tokens):
     for path in images:
         content.append({'type':'image_url','image_url':{'url':'data:image/png;base64,'+base64.b64encode(Path(path).read_bytes()).decode()}})
     thinking_budget=min(8192,max(1024,max_tokens//2))
-    body={'model':os.environ['SPATIALFORGE_MODEL_ID'],'messages':[{'role':'user','content':content}],
+    model_id=os.environ.get('SPATIALFORGE_MODEL_ID')
+    if not model_id:
+        raise ValueError('SPATIALFORGE_MODEL_ID is required for model-assisted scene review or planning')
+    model_url=os.environ.get('SPATIALFORGE_MODEL_URL')
+    if not model_url:
+        raise ValueError('SPATIALFORGE_MODEL_URL is required for model-assisted scene review or planning')
+    body={'model':model_id,'messages':[{'role':'user','content':content}],
           'reasoning_effort':'xhigh','max_tokens':max(4096,max_tokens+thinking_budget),'thinking_token_budget':thinking_budget,'temperature':.7,'top_p':.9,
           'chat_template_kwargs':{'enable_thinking':True,'preserve_thinking':True},'stream':True,'stream_options':{'include_usage':True}}
     (trace_dir/'request.json').write_text(json.dumps({**body,'messages':[{'role':'user','content':prompt}], 'image_files':[str(p) for p in images]},ensure_ascii=False,indent=2),encoding='utf8')
-    url=os.environ['SPATIALFORGE_MODEL_URL'].rstrip('/')+'/chat/completions'
+    base=model_url.rstrip('/')
+    url=base if base.endswith('/chat/completions') else base+'/chat/completions'
     request=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+os.environ.get(os.environ.get('SPATIALFORGE_MODEL_API_KEY_ENV','QWEN_RELAY_API_KEY'),'local')})
     pieces=[];thinking=[];usage={};finish=None;done=False;start=time.time()
     with (trace_dir/'stream.jsonl').open('w',encoding='utf8') as trace, urllib.request.urlopen(request,timeout=600) as response:

@@ -16,14 +16,16 @@ def _pairs(pairs):
 
 
 def read_program_submission(artifact_root,source_path):
-    roots=[(Path(artifact_root)/'operator_workspaces').resolve(),
-           Path(os.environ.get('SPATIALFORGE_TASK_ROOT','/home/maqiang/SpatialForge-tasks')).resolve()]
+    roots=[(Path(artifact_root)/'operator_workspaces').resolve()]
+    configured_root=os.environ.get('SPATIALFORGE_TASK_ROOT')
+    if configured_root:
+        roots.append(Path(configured_root).expanduser().resolve())
     if not isinstance(source_path,str) or not source_path:raise ValueError('scene_program_path must be a task workspace JSON source_path')
     path=Path(source_path).resolve()
     if not any(path.is_relative_to(root) for root in roots) or path.suffix.lower()!='.json':
         raise ValueError('scene_program_path must be a .json file inside an operator task workspace. '
                          f'Accepted roots: {", ".join(str(root) for root in roots)}. '
-                         f'Use standard file tools to write or copy the task JSON under {roots[1]}, '
+                         'Use standard file tools to write or copy the task JSON under a configured task root, '
                          'or use spatialforge_task_code and its returned source_path.')
     try:
         with path.open('rb') as stream:raw=stream.read(MAX_PROGRAM_BYTES+1)

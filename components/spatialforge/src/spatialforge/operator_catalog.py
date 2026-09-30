@@ -1,5 +1,6 @@
 """Bounded, on-demand discovery with lossless copies in the task workspace."""
 import json
+import os
 from pathlib import Path
 import re
 import uuid
@@ -39,7 +40,8 @@ def _rows(value):
 def _overview():
     return {
         'name': 'SpatialForge', 'catalog_schema': 'spatialforge.operator-catalog/v2',
-        'simulator': 'desktop_isaac_6.0.1', 'model': 'Qwen/Qwen3.8-Flash-Next',
+        'simulator': 'desktop_isaac_6.0.1',
+        'model': os.environ.get('SPATIALFORGE_MODEL_ID') or 'unconfigured',
         'sections': SECTIONS, 'query': {'section': 'one listed section', 'query': 'case-insensitive literal substring; no semantic ranking',
             'item_id': 'exact listed id; use for full selected details', 'offset': 'use next_offset with the same filters',
             'limit': 'positive count, default 20; pages fit the response byte budget', 'workspace_id': 'optional lossless JSON copy of all matches'},

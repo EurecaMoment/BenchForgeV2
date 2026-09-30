@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,7 @@ def stream(content):
     return io.BytesIO(('data: '+json.dumps(event)+'\n\ndata: [DONE]\n').encode())
 
 
+@patch.dict(os.environ, {'SPATIALFORGE_MODEL_ID':'fixture-model','SPATIALFORGE_MODEL_URL':'http://fixture.invalid/v1'})
 class ModelJsonRecoveryTest(unittest.TestCase):
     def test_invalid_cache_is_preserved_and_valid_rejection_is_reused(self):
         with tempfile.TemporaryDirectory() as tmp:
