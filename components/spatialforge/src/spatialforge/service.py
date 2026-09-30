@@ -19,6 +19,7 @@ from .layout import validate_layout,default_layout
 from .capture_transfer import CaptureTransfer,CHUNK_BYTES,validate_capture,decode_chunk
 from .program_submission import read_program_submission
 from .design import start_design_request,require_prior_reference
+from .capture_scope import capture_scope
 
 
 def scene_intent(intent):
@@ -55,6 +56,9 @@ def start_capture_request(store,value):
     intent={'name':value.get('name',submission['program']['title']),'description':'Capture the supplied SceneProgram.',
             'split':'dev','capture_only':True,'scene_program_path':value['scene_program_path']}
     if 'layout' in value:intent['layout']=validate_layout(value['layout'])
+    if 'capture_options' in value:
+        capture_scope(submission['program'],value['capture_options'])
+        intent['capture_options']=value['capture_options']
     rid=store.submit(value['request_key'],[intent],submitted_programs=[submission])
     return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','operation':'capture_only'}
 

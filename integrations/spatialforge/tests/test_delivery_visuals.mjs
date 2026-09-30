@@ -38,3 +38,14 @@ test('text-only routes keep the source paths without pretending to show images',
   assert.match(content[0].text,/layout\/reference.png/);
   assert.match(content[1].text,/capture\/view_0.png/);
 });
+
+test('focused captures request original camera indices and do not invent skipped views', async () => {
+  for (const indices of [[2],[]]) {
+    const requests=[];
+    const create=createDeliveryVisuals({api:async(_route,args)=>{requests.push(args.file);return {source_path:args.file};},images:async()=>[]});
+    const content=await create({task:{id:'sf_focused.scene0',unit:{revision:0,intent:{}},result:{report:{frames:indices.length,capture_scope:{view_indices:indices}}}}});
+    assert.deepEqual(requests,indices.map(i=>`capture/view_${i}.png`));
+    if(indices.length)assert.match(content.at(-1).text,/Latest capture view_2/);
+    else assert.ok(content.every(c=>!c.text.includes('Latest capture view_')));
+  }
+});

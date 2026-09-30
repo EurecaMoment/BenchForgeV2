@@ -16,6 +16,7 @@ class TransferTests(unittest.TestCase):
             root=Path(tmp)
             class Store:
                 def directory(self,*args):return root
+                def snapshot(self,*args):return {'tasks':[{'id':JOB['task_id'],'unit':{'intent':{}}}]}
             (root/'program.json').write_text('{"cameras":[]}')
             (root/'scene.usda').write_text('#usda 1.0\n')
             (root/'evidence.json').write_text('{}')

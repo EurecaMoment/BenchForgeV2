@@ -143,7 +143,9 @@ class Store:
         program=normalize_native_asset_references(json.loads((directory/'program.json').read_text()))
         assets=sorted({o['asset_id'] for o in program['objects'] if o['kind']=='mesh'})
         return {'task_id':task['id'],'revision':task['unit']['revision'],'token':token,
-                'program':program,'assets':assets,'transport_retry':task['unit'].get('transport_retry',0),'capture':{'width':960,'height':720,'steps':180,'dt':1/60}}
+                'program':program,'assets':assets,'transport_retry':task['unit'].get('transport_retry',0),
+                'capture_options':task['unit']['intent'].get('capture_options',{}),
+                'capture':{'width':960,'height':720,'steps':180,'dt':1/60}}
 
     def desktop_state(self):
         with self.repo.engine.connect() as c:

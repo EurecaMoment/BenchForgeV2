@@ -32,9 +32,22 @@ test('a completed capture prompts delivery review, preserving failed action evid
   assert.match(r.messages[0].content[0].text, /"success":false/);
   assert.match(r.messages[0].content[0].text, /no extra robot, dataset/);
   assert.match(r.messages[0].content[0].text, /formal delivery response/);
+  assert.doesNotMatch(r.messages[0].content[0].text, /Your next text/);
   assert.match(r.messages[0].content[0].text, /Do not claim that all views were inspected/);
   assert.match(r.messages[0].content[0].text, /A visible omission or mismatch is unfinished work/);
   assert.match(r.messages[0].content[0].text, /Do not write a generic/);
+});
+
+test('focused output scope is retained without asserting missing outputs were delivered', async () => {
+  const response=structuredClone(receipt);
+  response.tasks[0].result.report.capture_scope={view_indices:[],program_camera_count:3,scene_export_requested:false,full_scene_capture:false};
+  const r=replay(captureEvents(),response);await r.run();
+  const text=r.messages[0].content[0].text;
+  const facts=JSON.parse(text.split('Latest capture receipt: ')[1].split('\n')[0]);
+  assert.equal(facts.capture_scope.full_scene_capture,false);
+  assert.equal(facts.capture_scope.scene_export_requested,false);
+  assert.deepEqual(facts.capture_scope.view_indices,[]);
+  assert.match(text,/does not require an immediate final answer/);
 });
 
 test('physical success retains invisible demonstration and actual location evidence', async () => {

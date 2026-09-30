@@ -40,7 +40,7 @@ def quality_outcome(folder, complete):
 def capture_result(folder, result):
     """Expose capture facts without repeating the full asset/material inventory."""
     report=result['report']
-    summary={key:report[key] for key in ('status','frames','renderable','errors','render_settings') if key in report}
+    summary={key:report[key] for key in ('status','frames','renderable','errors','render_settings','capture_scope','render_qa') if key in report}
     summary['source_path']=str(folder/'capture/report.json')
     views=[]
     for path in sorted((folder/'capture').glob('view_*.json')):

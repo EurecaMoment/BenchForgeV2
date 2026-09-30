@@ -21,8 +21,11 @@ from camera_controls import camera_matrix, apply_camera_optics, camera_evidence
 from primitive_geometry import define_textured_primitive
 from spatialforge.environment_catalog import apply_environment_texture
 from spatialforge.mesh_geometry import transform_mesh_normals
+from spatialforge.capture_scope import capture_scope
 program=validate_program(job['program']);settings=job['capture']
 report={'schema':'spatialforge.capture/v1','token':job['token'],'task_id':job['task_id'],'revision':job['revision'],'status':'failed','errors':[]}
+scope=capture_scope(program,job.get('capture_options'))
+report['capture_scope']=scope
 scene_preflight=preflight_scene(program)
 report['scene_preflight']=scene_preflight
 if not scene_preflight['passed']:
@@ -570,7 +573,8 @@ try:
                                   'limitations':'AABB overlap does not prove mesh intersection; clearance is not contact-tested'},
                       spatial_evidence_step=simulation_step)
     captures=[]
-    for ci,c in enumerate(program['cameras']):
+    for ci in scope['view_indices']:
+        c=program['cameras'][ci]
         # Keep the camera target identity unchanged too. On this Isaac build,
         # switching Product.camera targets can invalidate only the RGB buffer.
         matrix=camera_matrix(c);capture_camera_transform.Set(matrix);apply_camera_optics(capture_camera,c)
@@ -593,13 +597,19 @@ try:
         (output/f'{name}.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf8');captures.append(meta)
     for a in annot.values():a.detach([product])
     product.destroy()
-    report.update(export_scene(stage,output))
+    if scope['scene_export_requested']:
+        report.update(export_scene(stage,output))
     (output/'program.json').write_text(json.dumps(program,ensure_ascii=False,indent=2),encoding='utf8')
     evidence={'schema':'spatialforge.evidence/v1','truth_domain':'synthetic_world','origin':'isaac_native','entities':entities,'frames':captures,'token':job['token'],'physics':report['physics'],'asset_dependencies':dependencies,'material_dependencies':material_dependencies,'space_dependencies':room_dependencies,'declared_interaction':program.get('interactions',program.get('affordances',[])),'interaction':interaction,'render_settings':report['render_settings'],'realism':{'mass_and_contact_properties':'uncalibrated synthetic priors','appearance':'native texture appearance priors, native materials or generated colors; reflectance is not measured','sim2real_gap':'not measured'}}
     evidence['environment_dependencies']=environment_dependencies
     evidence['light_receipts']=report['light_receipts']
+    evidence['capture_scope']=scope
     (output/'evidence.json').write_text(json.dumps(evidence,ensure_ascii=False,indent=2),encoding='utf8')
     report.update(status='captured',frames=len(captures),visible_counts=[len(f['objects']) for f in captures],renderable=all(f['quality']['passed'] for f in captures),render_qa={'passed':all(f['quality']['passed'] for f in captures),'failed_views':[{'frame_id':f['frame_id'],'reasons':f['quality']['reasons']} for f in captures if not f['quality']['passed']]},source_fidelity='not_applicable_programmatic_composition',asset_dependencies=dependencies,material_dependencies=material_dependencies,environment_dependencies=environment_dependencies,realism=evidence['realism'])
+    report['render_qa']['assessed']=bool(captures)
+    if not captures:
+        report['renderable']=None
+        report['render_qa']['passed']=None
     code=0
 except Exception as exc:
     report['errors'].append(repr(exc));traceback.print_exc()

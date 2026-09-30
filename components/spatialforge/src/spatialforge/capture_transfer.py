@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import threading
 import zlib
+from .capture_scope import capture_scope
 
 CHUNK_BYTES = 4 * 1024 * 1024
 MAX_TOTAL_BYTES = 4 * 1024**3
@@ -60,7 +61,10 @@ def validate_capture(directory, job, store):
         raise ValueError('invalid capture status')
     if report['status'] == 'captured':
         stored = json.loads((store.directory(job['task_id'], job['revision'])/'program.json').read_text())
-        required = ['scene.usda', 'evidence.json'] + [f'view_{i}{suffix}' for i in range(len(stored['cameras'])) for suffix in ('.png', '.json', '_depth.npy', '_semantic.npy', '_instance.npy')]
+        task = next(t for t in store.snapshot(job['task_id'].split('.')[0])['tasks'] if t['id'] == job['task_id'])
+        scope = capture_scope(stored, task['unit']['intent'].get('capture_options'))
+        required = ['evidence.json'] + (['scene.usda'] if scope['scene_export_requested'] else [])
+        required += [f'view_{i}{suffix}' for i in scope['view_indices'] for suffix in ('.png', '.json', '_depth.npy', '_semantic.npy', '_instance.npy')]
         if report.get('scene_format')=='usdc':required.append('scene.usdc')
         required.extend(resource['file'] for resource in report.get('scene_resources',[]))
         if not all((directory/p).is_file() and (directory/p).stat().st_size for p in required):

@@ -37,6 +37,16 @@ A receiving agent can use `spatialforge_status` or `spatialforge_wait` with a sh
 
 ## Test the code without production jobs
 
+For focused iteration, `spatialforge_capture` accepts optional
+`capture_options: {view_indices: [2], export_scene: false}`. This captures the
+third program camera as `view_2` and skips USD/resource export. The complete
+SceneProgram, all physics actions and requested action recordings still run.
+Use `view_indices: []` for action evidence alone. Omitting `capture_options`
+captures all cameras and exports the scene, including after a focused run.
+The report records the selection in `capture_scope`; skipped views are not
+visually assessed, and a skipped export provides no new loadable USD.
+Choose the outputs needed for the current task; no iteration mode is mandatory.
+
 Delivery review follows the latest capture across turns when the agent resumes
 that run through status, wait or task evidence. An unrelated follow-up leaves old
 captures alone. Once the review has been issued, later status reads do not repeat
