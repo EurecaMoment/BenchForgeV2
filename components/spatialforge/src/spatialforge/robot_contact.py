@@ -44,18 +44,22 @@ def robot_step_count(action):
     return 120 + sum(math.ceil(w['duration_s']*120) for w in action['waypoints']) + math.ceil(action.get('observe_seconds', 1.5)*120)
 
 
-def object_contact_filter(entity):
-    # Dynamic contacts belong to the rigid body; static contacts belong to
-    # collider descendants, not the entity's non-physical Xform root.
-    return entity['prim_path'] + ('' if entity['dynamic'] else '/.*')
+def object_contact_filters(entity):
+    # Tensor filters each name one body/shape. A wildcard over a static assembly
+    # can match several entries and prevent the contact view from initializing.
+    return [entity['prim_path']] if entity['dynamic'] else entity['collision']['paths']
 
 
-def contact_observation(step, dt, phase, target_position, contact_positions, forces, robot_filter_count):
+def contact_observation(step, dt, phase, target_position, contact_positions, forces, robot_filter_count, object_filter_counts=None):
     """Keep robot columns separate from named scene-object contact columns."""
+    objects={};offset=robot_filter_count
+    for name,position in contact_positions.items():
+        count=object_filter_counts[name] if object_filter_counts is not None else 1
+        objects[name]={'position':position,'force_on_target_N':[sum(f[axis] for f in forces[offset:offset+count]) for axis in range(3)]}
+        offset+=count
     return {'step':step, 'timestamp_sim':step*dt, 'phase':phase, 'target_position':target_position,
             'robot_contact_forces_N':forces[:robot_filter_count],
-            'objects':{name:{'position':position,'force_on_target_N':forces[robot_filter_count+i]}
-                       for i,(name,position) in enumerate(contact_positions.items())}}
+            'objects':objects}
 
 
 def summarize_object_contacts(trace):

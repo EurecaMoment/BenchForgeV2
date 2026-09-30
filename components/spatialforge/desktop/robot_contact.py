@@ -3,7 +3,7 @@ import math
 import numpy as np
 from isaacsim.core.prims import RigidPrim
 from isaacsim.robot.manipulators.examples.franka import Franka, KinematicsSolver
-from spatialforge.robot_contact import evaluate_robot_trajectory, evaluate_robot_visibility, contact_observation, summarize_object_contacts, object_contact_filter
+from spatialforge.robot_contact import evaluate_robot_trajectory, evaluate_robot_visibility, contact_observation, summarize_object_contacts, object_contact_filters
 
 
 class ContactRobot:
@@ -15,6 +15,7 @@ class ContactRobot:
                             orientation=np.asarray(action.get('robot_base_orientation_wxyz',[1.,0.,0.,0.])))
         self.robot.set_joints_default_state(positions=np.array([0.,-.4,0.,-2.4,0.,2.,.8,0.,0.]))
         self.filters = [self.path+'/'+part for part in ['panda_hand','panda_leftfinger','panda_rightfinger']]
+        self.object_filter_counts = {}
 
     def initialize(self):
         self.robot.initialize()
@@ -24,9 +25,11 @@ class ContactRobot:
         self.controller.get_kinematics_solver().set_robot_base_pose(*self.robot.get_world_pose())
 
     def view(self, action, entities):
+        paths={eid:object_contact_filters(entities[eid]) for eid in action.get('contact_object_ids',[])}
+        self.object_filter_counts[action['id']]={eid:len(value) for eid,value in paths.items()}
         return RigidPrim(entities[action['object_id']]['prim_path'],name='robot_contact_'+action['id'],
                          reset_xform_properties=False,track_contact_forces=True,
-                         contact_filter_prim_paths_expr=self.filters+[object_contact_filter(entities[eid]) for eid in action.get('contact_object_ids',[])],max_contact_count=128)
+                         contact_filter_prim_paths_expr=self.filters+[path for group in paths.values() for path in group],max_contact_count=128)
 
     def run(self, action, view, witnesses, sim, dt, start_step, capture, recording=None, contact_positions=None):
         step=start_step;phase='baseline';samples=[];ik_failures=0;recording_started=False;contact_trace=[]
@@ -46,7 +49,7 @@ class ContactRobot:
             if (step-start_step)%3==0:record()
             if contact_positions:
                 contact_trace.append(contact_observation(step,dt,phase,np.asarray(view.get_world_poses()[0])[0].tolist(),
-                    contact_positions(),np.asarray(view.get_contact_force_matrix(dt=dt))[0].tolist(),len(self.filters)))
+                    contact_positions(),np.asarray(view.get_contact_force_matrix(dt=dt))[0].tolist(),len(self.filters),self.object_filter_counts[action['id']]))
             if recording_started:
                 recording.sample(step,phase,{'position':np.asarray(view.get_world_poses()[0])[0].tolist()})
         sim.play()

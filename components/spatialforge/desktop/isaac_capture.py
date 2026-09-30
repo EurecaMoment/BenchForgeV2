@@ -355,6 +355,7 @@ try:
         if dependency:dependencies.append({'entity_id':eid,**dependency})
         entities[eid]={'id':eid,'label':o['label'],'prim_path':path,'size':size,'requested_size':o['size'],'declared_yaw_deg':yaw,'initial_center':center,'support':o['support'],'dynamic':o['dynamic'],'parameter_origin':'synthetic_prior','kind':o['kind'],'physics':physical,'collision':collider,'appearance':material['appearance']}
 
+        collider['paths']=[str(child.GetPath()) for child in Usd.PrimRange(obj.GetPrim()) if child.HasAPI(UsdPhysics.CollisionAPI)]
         if shadow_settings:entities[eid]['shadow_settings']=shadow_settings
         if o['kind']=='mesh':
             entities[eid]['render_representation']=dependency['render_representation']
@@ -430,7 +431,7 @@ try:
             sim.play()
         return InteractionRecording(output,index,action['recording'],settings['dt'],frame)
 
-    rigid_views={};robots={};robot_views={};robot_witnesses={}
+    rigid_views={};robots={};robot_views={};robot_witnesses={};force_contact_counts={}
     if has_robot:
         from robot_contact import ContactRobot
         from isaacsim.core.prims import RigidPrim
@@ -446,10 +447,16 @@ try:
                                            for eid in action.get('witness_object_ids',[])}
     if any(action['supported'] for action in actions):
         from isaacsim.core.prims import RigidPrim
+        from spatialforge.robot_contact import contact_observation, summarize_object_contacts, object_contact_filters
         for action in actions:
-            if action['supported'] and action['action']=='apply_force' and action['object_id'] not in rigid_views:
+            if action['supported'] and action['action']=='apply_force':
                 eid=action['object_id']
-                rigid_views[eid]=RigidPrim(prim_paths_expr=entities[eid]['prim_path'],name='interaction_'+eid,reset_xform_properties=False)
+                contacts=action.get('contact_object_ids',[])
+                paths={c:object_contact_filters(entities[c]) for c in contacts}
+                force_contact_counts[action['id']]={c:len(value) for c,value in paths.items()}
+                rigid_views[action['id']]=RigidPrim(prim_paths_expr=entities[eid]['prim_path'],name='interaction_'+action['id'],reset_xform_properties=False,
+                    track_contact_forces=bool(contacts),
+                    contact_filter_prim_paths_expr=[path for group in paths.values() for path in group],max_contact_count=128)
     sim=SimulationContext(physics_dt=settings['dt'],rendering_dt=settings['dt'],stage_units_in_meters=1.)
     sim.initialize_physics();sim.play()
     for robot in robots.values():robot.initialize()
@@ -499,7 +506,14 @@ try:
                 'robot':record['robot'],**({'recording':record['recording']} if 'recording' in record else {}),
                 **({'object_contacts':{k:v for k,v in record['object_contacts'].items() if k!='trace'}} if 'object_contacts' in record else {})})
             continue
-        view=rigid_views[action['object_id']]
+        view=rigid_views[action['id']]
+        contact_trace=[]
+        def sample_force_contacts(phase):
+            if action.get('contact_object_ids'):
+                contact_trace.append(contact_observation(simulation_step,settings['dt'],phase,
+                    np.asarray(view.get_world_poses()[0])[0].tolist(),
+                    {eid:pose(entities[eid]) for eid in action['contact_object_ids']},
+                    np.asarray(view.get_contact_force_matrix(dt=settings['dt']))[0].tolist(),0,force_contact_counts[action['id']]))
         def record_state(force):
             positions,orientations=view.get_world_poses()
             return {'step':simulation_step,'timestamp_sim':simulation_step*settings['dt'],
@@ -510,6 +524,7 @@ try:
         baseline=[record_state([0.,0.,0.])];sim.play()
         for _ in range(12):
             sim.step(render=False);simulation_step+=1;baseline.append(record_state([0.,0.,0.]))
+            sample_force_contacts('baseline')
         sim.pause()
         drift=max(float(np.linalg.norm(np.asarray(row['position'])-baseline[0]['position'])) for row in baseline)
         action_camera=select_interaction_camera(program['cameras'],action,baseline[-1]['position'])
@@ -523,6 +538,7 @@ try:
             force=action['force_newtons'] if step<action['duration_steps'] else [0.,0.,0.]
             view.apply_forces(np.asarray([force],dtype=np.float32),is_global=True)
             sim.step(render=False);simulation_step+=1;trajectory.append(record_state(force))
+            sample_force_contacts('force' if step<action['duration_steps'] else 'settle_after')
             if recording:recording.sample(simulation_step,'force' if step<action['duration_steps'] else 'settle_after',{'position':trajectory[-1]['position']})
         sim.pause()
         measured=evaluate_force_trajectory(action,trajectory,drift)
@@ -536,12 +552,17 @@ try:
                 'parameters':action,'baseline':baseline,'trajectory':trajectory,'metrics':measured,
                 'before_image':before_image,'after_image':after_image,'visual_evidence':visual_evidence}
         if recording:record['recording']=recording.finish(simulation_step)
+        if contact_trace:
+            record['object_contacts']={'source':'PhysX filtered contacts and USD world poses','sampling_hz':1/settings['dt'],
+                'force_body':action['object_id'],'filter_object_ids':action['contact_object_ids'],
+                'summary':summarize_object_contacts(contact_trace),'trace':contact_trace}
         (output/trajectory_name).write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf8')
         action_results.append({'id':action['id'],'action':'apply_force','object_id':action['object_id'],
                                'status':'succeeded' if measured['success'] else 'failed',**measured,
                                'before':trajectory[0],'after':trajectory[-1],'sample_count':len(trajectory),
                                'trajectory_file':trajectory_name,'before_image':before_image,'after_image':after_image,
-                               'visual_evidence':visual_evidence,**({'recording':record['recording']} if recording else {})})
+                               'visual_evidence':visual_evidence,**({'recording':record['recording']} if recording else {}),
+                               **({'object_contacts':{k:v for k,v in record['object_contacts'].items() if k!='trace'}} if contact_trace else {})})
     interaction={'validated':bool(action_results) and all(row['success'] for row in action_results),
                  'test_kind':'external_force_response','action_results':action_results,
                  'evidence_source':'Isaac physics states and rendered before/after images',

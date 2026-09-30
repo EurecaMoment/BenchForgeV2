@@ -2,7 +2,7 @@ import json,sys,unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT/'src'),str(ROOT/'desktop')]
-from spatialforge.robot_contact import evaluate_robot_trajectory, contact_observation, summarize_object_contacts, object_contact_filter
+from spatialforge.robot_contact import evaluate_robot_trajectory, contact_observation, summarize_object_contacts, object_contact_filters
 from spatialforge.contracts import validate_program
 from scene_runtime import interaction_plan
 
@@ -31,8 +31,8 @@ class RobotContactTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'positive integer'):validate_program(p)
 
     def test_object_contact_columns_do_not_become_robot_contact_or_stationary_witnesses(self):
-        self.assertEqual(object_contact_filter({'prim_path':'/World/surface','dynamic':False}),'/World/surface/.*')
-        self.assertEqual(object_contact_filter({'prim_path':'/World/receiver','dynamic':True}),'/World/receiver')
+        self.assertEqual(object_contact_filters({'prim_path':'/World/surface','dynamic':False,'collision':{'paths':['/World/surface/top','/World/surface/leg']}}),['/World/surface/top','/World/surface/leg'])
+        self.assertEqual(object_contact_filters({'prim_path':'/World/receiver','dynamic':True}),['/World/receiver'])
         rows=[]
         for step,position,force in [(10,[1,0,0],[0,0,0]),(11,[1,.03,0],[0,-2,0]),(12,[1,.06,0],[0,0,0])]:
             rows.append(contact_observation(step,1/120,'push',[0,0,0],{'receiver':position},
