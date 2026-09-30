@@ -1,8 +1,18 @@
 // A capture receipt closes a rendering job, not the user's scene request.
 // Review a new capture, or the latest one explicitly resumed in a later turn.
 export const sourceKind = 'spatialforge-delivery-review';
+const captureTools = new Set(['spatialforge_capture', 'spatialforge_refine', 'spatialforge_status', 'spatialforge_wait', 'spatialforge_evidence']);
+
+// PTC stores settled inner calls separately from the outer run_code result.
+function captureEvents(events) {
+  return events.flatMap(event => event.type === 'tool/ptc-dispatch' ? [
+    {type:'tool/call',data:{name:event.data.name,callId:event.data.subCallId,arguments:JSON.stringify(event.data.arguments)}},
+    {type:'tool/result',data:{message:{toolCallId:event.data.subCallId,isError:event.data.isError,content:event.data.content}}},
+  ] : [event]);
+}
 
 export function pendingCapture(events, turn) {
+  events = captureEvents(events);
   const start = events.findLastIndex(e => e.type === 'turn/start' && e.data.turn === turn);
   const submissions = new Set(['spatialforge_capture', 'spatialforge_refine']);
   const observations = new Set(['spatialforge_status', 'spatialforge_wait', 'spatialforge_evidence']);
@@ -47,7 +57,7 @@ export function pendingCapture(events, turn) {
 }
 
 export function createDeliveryReview({ api, createMessage, visuals = async () => [] }) {
-  return async ({ agent, turn, signal }) => {
+  return async ({ agent, turn, signal }, deliver = message => agent.steer(message)) => {
     signal.throwIfAborted();
     const capture = pendingCapture(agent.session.snapshotEvents(), turn);
     if (!capture) return;
@@ -93,7 +103,24 @@ Use only the user's requested scope: no extra robot, dataset, model review, pres
 
 When the requested work is complete, or an external blocker requires stopping, write the formal delivery response. While repair is possible, continue working; this review does not require an immediate final answer. Write a finished delivery note, not an audit log or a continuation of private reasoning. Start with one clear status sentence: "已完成交付" only when every requested result is supported; otherwise use "部分完成"、"未完成" or "阻塞" and name the missing result. Then give the useful artifact paths and the evidence that actually exists, followed by only concrete blockers or operational requirements that still matter. Do not write a generic "诚实局限" section. Keep capture completion, visual fidelity, physical interaction, and scene-file loadability as separate claims. "render_qa.passed", a successful capture, a checked TODO, or an honest limitation does not by itself prove visual restoration. Do not claim that all views were inspected unless you actually inspected those pixels; say which views were captured versus visually checked. Do not say there are no fixable gaps when a visible requested mismatch remains. Do not expose internal reasoning, review-round narration, TODO history, speculative explanations, or phrases such as "本轮新核验的一项" and "复审全部完成". Do not inflate an approximation into a complete restoration. Use concise user-facing Chinese with direct declarative sentences and normal Markdown links. This review is issued once for this capture submission; unchanged status polling does not issue it again.`;
     const visualContent = await visuals({ task, agent, signal });
-    agent.steer(createMessage({ content: [{ type: 'text', text }, ...visualContent],
+    deliver(createMessage({ content: [{ type: 'text', text }, ...visualContent],
       source: { kind: sourceKind, capture_call_id: capture.callId, task_id: task.id, revision: task.unit.revision } }));
+  };
+}
+
+// Put new observations before the next model decision (including update_goal),
+// rather than waiting until the model has already announced completion.
+export function createCaptureReviewStep(review) {
+  return async (input, next) => {
+    const decision = await next();
+    if (decision.kind !== 'enter') return decision;
+    const events = captureEvents(input.agent.session.snapshotEvents());
+    const boundary = events.findLastIndex(e => e.type === 'step/start' || e.type === 'turn/start');
+    const recent = events.slice(boundary + 1);
+    const calls = new Set(recent.filter(e => e.type === 'tool/call' && captureTools.has(e.data.name)).map(e => e.data.callId));
+    if (!recent.some(e => e.type === 'tool/result' && !e.data.message.isError && calls.has(e.data.message.toolCallId))) return decision;
+    const messages = [];
+    await review(input, message => messages.push(message));
+    return messages.length ? {...decision, messages:[...decision.messages, ...messages]} : decision;
   };
 }

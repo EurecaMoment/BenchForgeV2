@@ -52,6 +52,13 @@ that run through status, wait or task evidence. An unrelated follow-up leaves ol
 captures alone. Once the review has been issued, later status reads do not repeat
 it. This tracks delivery feedback; it does not certify that the user's task is complete.
 
+After a capture or observation tool returns, the next model decision receives
+the capture facts and images before it chooses further tools or closes a goal.
+This also reads nested PTC tool results when `run_code` returns. It does not
+interrupt a running PTC program, alter goal state, reject completion calls, or
+impose a repair sequence. The existing turn-end hook covers other finalization
+paths and uses the same review deduplication.
+
 ```bash
 python integrations/spatialforge/smoke.py
 ```

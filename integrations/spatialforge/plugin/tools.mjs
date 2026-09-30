@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createDeliveryReview } from './delivery_review.mjs';
+import { createDeliveryReview, createCaptureReviewStep } from './delivery_review.mjs';
 import { createDeliveryFileReview } from './delivery_files.mjs';
 import { createDeliveryVisuals } from './delivery_visuals.mjs';
 export const name='spatialforge-tools';
@@ -44,7 +44,9 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
       data:await fs.promises.readFile(imagePath,{signal}),mediaType:'image/png',name:imagePath.split('/').at(-1),
     })})));
   }});
-  ctx.on('agent/turn-stopping',createDeliveryReview({api,createMessage:createUserMessage,visuals}));
+  const review=createDeliveryReview({api,createMessage:createUserMessage,visuals});
+  ctx.on('agent/pre-step',createCaptureReviewStep(review));
+  ctx.on('agent/turn-stopping',input=>review(input));
   ctx.on('agent/turn-stopping',createDeliveryFileReview({createMessage:createUserMessage}));
   ctx.tools.register(defineTool({name:'spatialforge_collaboration',description:'Share lightweight handoffs in the task workspace. Publish observations, artifacts, decisions, blockers and next actions; relate or reply to earlier handoffs; list or read records when agents join, resume or reconcile parallel work. The protocol does not prescribe a fixed orchestration graph.',parameters:{workspace:{type:'string',required:true,description:'Absolute shared task workspace.'},action:{type:'string',enum:['publish','list','read'],required:true},history:{type:'boolean',description:'For list: include earlier versions. Default returns only the latest record per handoff, then applies filters.'},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},output,execute:async(args,exec)=>{
     const file=path.join(path.resolve(args.workspace),'.benchforge','collaboration','handoffs.jsonl');
