@@ -8,8 +8,9 @@ export function pendingCapture(events, turn) {
   const observations = new Set(['spatialforge_status', 'spatialforge_wait', 'spatialforge_evidence']);
   const calls = new Map();
   const reviewed = new Set();
+  const reviewedTasks = new Set();
   const revisited = new Set();
-  let latest;
+  let latest, received;
   let submittedHere = false;
   if (start < 0) return;
   for (const [index, event] of events.entries()) {
@@ -19,6 +20,7 @@ export function pendingCapture(events, turn) {
     }
     if (event.type === 'user/message' && data.source?.kind === sourceKind) {
       reviewed.add(data.source.capture_call_id);
+      reviewedTasks.add(data.source.task_id);
     }
     if (event.type !== 'tool/result' || data.message.isError || !calls.has(data.message.toolCallId)) continue;
     const call = calls.get(data.message.toolCallId);
@@ -29,10 +31,17 @@ export function pendingCapture(events, turn) {
     } else if (call.index > start) {
       const args = JSON.parse(call.arguments);
       revisited.add(args.run_id ?? args.task_id);
+      if (call.name !== 'spatialforge_evidence' && args.run_id) {
+        received = { callId: data.message.toolCallId, runId: args.run_id, taskId: args.run_id + '.scene0' };
+      }
     }
   }
   // An unrelated follow-up does not reopen old work; reminders deduplicate
   // across the whole session, including after replay or reconnection.
+  // A receiving agent has no submission event: explicitly observing a run
+  // supplies that identity. The inspect result below decides whether it is
+  // a completed capture, rather than a generation or dataset operation.
+  if (!latest) return received && !reviewedTasks.has(received.taskId) ? received : undefined;
   return latest && !reviewed.has(latest.callId)
     && (submittedHere || revisited.has(latest.runId) || revisited.has(latest.taskId)) ? latest : undefined;
 }
@@ -45,7 +54,7 @@ export function createDeliveryReview({ api, createMessage, visuals = async () =>
     const run = await api('/inspect', { run_id: capture.runId }, signal);
     const task = run.tasks.find(task => task.id === capture.taskId);
     // Active or failed jobs retain their normal wait/repair/blocker decisions.
-    if (task.state !== 'SUCCEEDED' || task.result.operation !== 'capture_only') return;
+    if (!task || task.state !== 'SUCCEEDED' || task.result.operation !== 'capture_only') return;
     const { report, scene_quality_assessed, data_exported } = task.result;
     const facts = {
       task_id: task.id, revision: task.unit.revision,

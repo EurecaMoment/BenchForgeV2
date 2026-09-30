@@ -141,3 +141,37 @@ test('non-capture, active, failed and cancelled work is not forced to keep waiti
   await assert.rejects(r.run(controller.signal),{name:'AbortError'});
   assert.equal(r.requests.length,0);
 });
+
+test('an agent receiving a capture can review it without the submitting session', async () => {
+  for (const name of ['spatialforge_status','spatialforge_wait']) {
+    const events=[{type:'turn/start',data:{turn:1}},...observationEvents(name,{run_id:'sf_example'})];
+    const r=replay(events);await r.run();
+    assert.equal(r.messages.length,1);
+    assert.equal(r.messages[0].source.task_id,'sf_example.scene0');
+    assert.match(r.messages[0].content[0].text,/"success":false/);
+    events.push({type:'turn/start',data:{turn:2}},...observationEvents(name,{run_id:'sf_example'}));
+    await r.run(undefined,2);
+    assert.equal(r.messages.length,1);
+    assert.equal(r.requests.length,1);
+    assert.equal(pendingCapture(structuredClone(events),2),undefined);
+  }
+});
+
+test('receiving agents resume active captures later, without reopening them on unrelated turns', async () => {
+  const events=[{type:'turn/start',data:{turn:1}},...observationEvents('spatialforge_status',{run_id:'sf_example'})];
+  const response=structuredClone(receipt);response.tasks[0].state='RUNNING';
+  const r=replay(events,response);await r.run();assert.equal(r.messages.length,0);
+  events.push({type:'turn/start',data:{turn:2}});await r.run(undefined,2);
+  assert.equal(r.requests.length,1);
+  events.push({type:'turn/start',data:{turn:3}},...observationEvents('spatialforge_wait',{run_id:'sf_example'}));
+  response.tasks[0].state='SUCCEEDED';await r.run(undefined,3);
+  assert.equal(r.messages.length,1);
+});
+
+test('observing another operation or an unsuccessful tool does not create a scene review', async () => {
+  const events=[{type:'turn/start',data:{turn:1}},...observationEvents('spatialforge_status',{run_id:'image_run'})];
+  const r=replay(events,{tasks:[{id:'image_run.diffusion',state:'SUCCEEDED',result:{operation:'diffusion'}}]});
+  await r.run();assert.equal(r.messages.length,0);
+  const failed=replay([{type:'turn/start',data:{turn:1}},...observationEvents('spatialforge_status',{run_id:'sf_example'},true)]);
+  await failed.run();assert.equal(failed.requests.length,0);
+});

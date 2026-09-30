@@ -33,6 +33,8 @@ Useful roles include planning, asset/layout construction, visual review, interac
 
 Publish a complete new snapshot with the same `handoff_id` to update it. `list` returns one current record per handoff and filters that current state by status, role or agent; a resolved blocker will not reappear from an earlier version. `read` returns the same latest snapshot. Use `list` with `history: true` for earlier versions, including old blockers and agent assignments. The append-only file keeps all versions for inspection.
 
+A receiving agent can use `spatialforge_status` or `spatialforge_wait` with a shared capture's `run_id`. When its session has no capture submission, this explicit observation lets the existing delivery review load that completed capture and its images. The submitting agent's conversation is not required. Repeated observations do not repeat the review; unrelated turns do not reopen the task. Generation and dataset operations keep their own behavior. A received handoff or review message does not establish that the user's requirements are complete.
+
 ## Test the code without production jobs
 
 Delivery review follows the latest capture across turns when the agent resumes
