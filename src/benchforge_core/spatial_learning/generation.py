@@ -110,6 +110,9 @@ def generate(args,directory,config=None):
     for partition in PARTITIONS:
         folder=root/partition;folder.mkdir()
         handles[partition]=[(folder/name).open('w',encoding='utf8') for name in ['questions.jsonl','authority.jsonl','sft.jsonl']]
+    excluded=set(args.get('exclude_template_ids', []))
+    selected=[t for t in selected if t['id'] not in excluded]
+    if not selected:raise ValueError('No matching templates after exclusions')
     for ti,template in enumerate(selected):
         family=template['scene_family'];profile=template['scene_profile']
         profile_index=sorted({t['scene_profile'] for t in selected}).index(profile)
@@ -151,7 +154,7 @@ def generate(args,directory,config=None):
                 if condition=='natural':answer_counts[template['id']][json.dumps(private['answer'],sort_keys=True)]+=1
     for files in handles.values():
         for handle in files:handle.close()
-    report={'templates':len(selected),'per_capability_templates':dict(Counter(t['primary_capabilities'][0] for t in selected)),
+    report={'templates':len(selected),'excluded_template_ids':sorted(excluded),'per_capability_templates':dict(Counter(t['primary_capabilities'][0] for t in selected)),
         'items':dict(counts),'scene_groups':len(groups),'group_partitions':groups,'template_counts':dict(template_counts),
         'failed_demonstrations':failures,'source':'program','model_api_calls':0,'rendered':render_media,
         'conditions':conditions,'structural_heldout_profiles':sorted(heldout),
