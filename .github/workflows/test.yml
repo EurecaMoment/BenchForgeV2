@@ -28,3 +28,7 @@ jobs:
         run: python -m unittest discover -s components/spatialforge/tests -t . -p test_mesh_import_installation.py -v
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_worker.py -v
+      - if: matrix.python == '3.12'
+        run: python -m pip install opencv-python-headless
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_interaction_recording.py -v

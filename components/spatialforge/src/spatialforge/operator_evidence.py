@@ -14,6 +14,7 @@ def _allowed(name):
                      'layout_reference.png','layout_reference.json','generation/reference.png','generation/input_mask.png','generation/asset_ref.json','generation/asset_request.json','capture/program.json','capture/report.json','capture/evidence.json','layout/reference.png','layout/receipt.json'}
             or bool(re.fullmatch(r'capture/view_\d+(?:\.png|\.json|_(?:depth|semantic|instance)\.npy)',name))
             or bool(re.fullmatch(r'capture/interaction_\d+_(?:before\.png|after\.png|trajectory\.json)',name))
+            or bool(re.fullmatch(r'capture/interaction_\d+(?:\.mp4|_recording\.json|_frames\.zip)',name))
             or name in PUBLIC_RELEASE_FILES
             or bool(re.fullmatch(r'release/images/[^/]+\.png',name))
             or bool(re.fullmatch(r'model_calls/scene_plan_\d+/(?:validation_error|response|parse_error)\.json',name))

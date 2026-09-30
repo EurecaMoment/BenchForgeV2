@@ -16,10 +16,16 @@ class RobotContactTest(unittest.TestCase):
                 'robot_base_position':[0,0,0],'waypoints':[{'id':'push','position':[.52,.1,.05],'duration_s':4}]}]}
         validate_program(p)
         self.assertTrue(interaction_plan(p)[0]['supported'])
+        p['interactions'][0]['recording']={'every_steps':4}
+        self.assertEqual(validate_program(p)['interactions'][0]['recording'],{'every_steps':4})
         p['interactions']=[{'id':'force','action':'apply_force','object_id':'can','force_newtons':[.5,0,0]}]
         validate_program(p)
         plan=interaction_plan(p)[0]
         self.assertEqual((plan['duration_steps'],plan['observe_steps'],plan['min_displacement_m']),(30,90,.02))
+        p['interactions'][0]['recording']={}
+        self.assertEqual(validate_program(p)['interactions'][0]['recording'],{})
+        p['interactions'][0]['recording']={'every_steps':0}
+        with self.assertRaisesRegex(ValueError,'positive integer'):validate_program(p)
 
     def test_contact_and_falling_outcomes(self):
         def row(step,y,force=0,q=None):

@@ -32,7 +32,7 @@ class TransferTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'incomplete native capture'):validate_capture(root,JOB,Store())
             (root/'scene_resource_000.hdr').write_bytes(b'hdr fixture')
             validate_capture(root,JOB,Store())
-            files=[{'name':name,'size':1,'mtime_ns':1} for name in ('report.json','scene_resource_000.hdr','scene_resource_001.jpg','scene_resource_002.exr','scene_resource_003.mdl')]
+            files=[{'name':name,'size':1,'mtime_ns':1} for name in ('report.json','scene_resource_000.hdr','scene_resource_001.jpg','scene_resource_002.exr','scene_resource_003.mdl','interaction_0.mp4','interaction_0_frames.zip','interaction_0_recording.json')]
             self.assertEqual(validate_manifest(files),files)
 
     def test_compression_is_bounded_and_truncated_payload_is_rejected(self):

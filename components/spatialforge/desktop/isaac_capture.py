@@ -383,7 +383,9 @@ try:
 
     def capture_rgb(name):
         def retain_rejected(rgb,diagnostic):
-            if rgb is not None:Image.fromarray(rgb.astype(np.uint8)).save(output/('rejected_'+name))
+            if rgb is not None:
+                image_path=output/name
+                Image.fromarray(rgb.astype(np.uint8)).save(image_path.with_name('rejected_'+image_path.name))
         def reinitialize_rgb():
             # Isaac 6.0.1 can keep initial LdrColor all zero indefinitely until
             # a camera pose change dirties the render product. Prime once at a
@@ -409,6 +411,18 @@ try:
         if not diagnostic['valid_rgb']:raise RuntimeError(f'{name}: RGB remains all zero after bounded render warmup; interaction evidence unavailable')
         visibility=object_visibility(annot['instance_segmentation'].get_data(),object_id,entities[object_id]['prim_path'],(settings['height'],settings['width']))
         return name,visibility
+
+    def recording_for(index, action):
+        if 'recording' not in action:return None
+        from interaction_recording import InteractionRecording
+        def frame(name):
+            # Rendering freezes simulation time; resume the existing context
+            # after saving this state, without replaying or moving the target.
+            sim.pause()
+            rgb,_=capture_rgb(name)
+            Image.fromarray(rgb.astype(np.uint8)).save(output/name)
+            sim.play()
+        return InteractionRecording(output,index,action['recording'],settings['dt'],frame)
 
     rigid_views={};robots={};robot_views={};robot_witnesses={}
     if has_robot:
@@ -464,7 +478,8 @@ try:
             action_camera=select_interaction_camera(program['cameras'],action,center)
             capture_camera_transform.Set(camera_matrix(action_camera));apply_camera_optics(capture_camera,action_camera)
             record,simulation_step=robots[action['robot_id']].run(action,robot_views[action['id']],robot_witnesses[action['id']],
-                sim,settings['dt'],simulation_step,lambda phase:interaction_rgb(f'interaction_{ai}_{phase}.png',action['object_id']))
+                sim,settings['dt'],simulation_step,lambda phase:interaction_rgb(f'interaction_{ai}_{phase}.png',action['object_id']),
+                recording=recording_for(ai,action))
             record['visual_evidence'].update(camera={**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera))},
                                               selection='explicit' if 'camera_id' in action else 'closest_view_direction')
             name=f'interaction_{ai}_trajectory.json'
@@ -474,7 +489,7 @@ try:
                 'status':'succeeded' if measured['success'] else 'failed',**measured,
                 'before':trajectory[0],'after':trajectory[-1],'sample_count':len(trajectory),'trajectory_file':name,
                 'before_image':record['before_image'],'after_image':record['after_image'],'visual_evidence':record['visual_evidence'],
-                'robot':record['robot']})
+                'robot':record['robot'],**({'recording':record['recording']} if 'recording' in record else {})})
             continue
         view=rigid_views[action['object_id']]
         def record_state(force):
@@ -494,10 +509,13 @@ try:
         apply_camera_optics(capture_camera,action_camera)
         before_image,before_visibility=interaction_rgb(f'interaction_{ai}_before.png',action['object_id'])
         trajectory=[record_state([0.,0.,0.])];sim.play()
+        recording=recording_for(ai,action)
+        if recording:recording.sample(simulation_step,'before',{'position':trajectory[-1]['position']})
         for step in range(action['duration_steps']+action['observe_steps']):
             force=action['force_newtons'] if step<action['duration_steps'] else [0.,0.,0.]
             view.apply_forces(np.asarray([force],dtype=np.float32),is_global=True)
             sim.step(render=False);simulation_step+=1;trajectory.append(record_state(force))
+            if recording:recording.sample(simulation_step,'force' if step<action['duration_steps'] else 'settle_after',{'position':trajectory[-1]['position']})
         sim.pause()
         measured=evaluate_force_trajectory(action,trajectory,drift)
         after_image,after_visibility=interaction_rgb(f'interaction_{ai}_after.png',action['object_id'])
@@ -509,12 +527,13 @@ try:
                 'force_frame':'world','force_application':'center of mass','dt':settings['dt'],
                 'parameters':action,'baseline':baseline,'trajectory':trajectory,'metrics':measured,
                 'before_image':before_image,'after_image':after_image,'visual_evidence':visual_evidence}
+        if recording:record['recording']=recording.finish(simulation_step)
         (output/trajectory_name).write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf8')
         action_results.append({'id':action['id'],'action':'apply_force','object_id':action['object_id'],
                                'status':'succeeded' if measured['success'] else 'failed',**measured,
                                'before':trajectory[0],'after':trajectory[-1],'sample_count':len(trajectory),
                                'trajectory_file':trajectory_name,'before_image':before_image,'after_image':after_image,
-                               'visual_evidence':visual_evidence})
+                               'visual_evidence':visual_evidence,**({'recording':record['recording']} if recording else {})})
     interaction={'validated':bool(action_results) and all(row['success'] for row in action_results),
                  'test_kind':'external_force_response','action_results':action_results,
                  'evidence_source':'Isaac physics states and rendered before/after images',

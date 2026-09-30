@@ -5,7 +5,7 @@ import math
 def validate_robot_action(action, objects):
     required = {'id', 'action', 'object_id', 'robot_id', 'robot_base_position', 'waypoints'}
     optional = {'robot_base_orientation_wxyz', 'end_effector_orientation_wxyz',
-                'witness_object_ids', 'observe_seconds', 'camera_id'}
+                'witness_object_ids', 'observe_seconds', 'camera_id', 'recording'}
     if not required <= set(action) <= required | optional:
         raise ValueError('robot_push needs id, object_id, robot_id, robot_base_position and waypoints')
     if not objects[action['object_id']]['dynamic']:

@@ -10,7 +10,7 @@ CHUNK_BYTES = 4 * 1024 * 1024
 MAX_TOTAL_BYTES = 4 * 1024**3
 MAX_FILE_BYTES = 2 * 1024**3
 MAX_FILES = 160
-SUFFIXES = {'.usda', '.usd', '.usdc', '.json', '.png', '.npy', '.txt', '.log',
+SUFFIXES = {'.usda', '.usd', '.usdc', '.json', '.png', '.npy', '.txt', '.log', '.mp4', '.zip',
             '.jpg', '.jpeg', '.hdr', '.exr', '.tif', '.tiff', '.webp', '.bmp', '.dds', '.tga', '.tx', '.mdl'}
 
 

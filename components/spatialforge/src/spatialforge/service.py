@@ -207,7 +207,7 @@ def main():
                 elif self.path=='/download':
                     task_id=value['task_id'];snap=store.snapshot(task_id.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==task_id)
                     directory=store.root/task_id/('revision_'+str(value.get('revision',task['unit']['revision'])));file=safe_path(directory,value['file'],must_exist=True)
-                    if file.suffix not in {'.zip','.json','.jsonl','.usda','.glb','.png','.jpg','.jpeg','.npy','.npz','.ply','.obj','.gltf','.bin'}:raise ValueError('unsupported artifact download')
+                    if file.suffix not in {'.zip','.json','.jsonl','.usda','.glb','.png','.jpg','.jpeg','.npy','.npz','.ply','.obj','.gltf','.bin','.mp4'}:raise ValueError('unsupported artifact download')
                     self.binary(file.read_bytes(),'application/octet-stream')
                 elif self.path=='/worker/asset':
                     from .contracts import ident

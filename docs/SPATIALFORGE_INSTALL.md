@@ -88,6 +88,17 @@ python3.11 spatialforge_app.py capture \
 打开 USD 时保持整个 capture 目录一起移动。这个例子的几何全部程序生成；
 使用原生资产的其他场景，其导出依赖以 `scene_export` 清单为准。
 
+需要连续交互演示时，在对应 `apply_force` 或 `robot_push` 中增加
+`"recording": {"every_steps": 2}`。每隔指定物理步渲染当前真实状态，输出
+`interaction_0.mp4`、`interaction_0_recording.json` 和原始 PNG 的
+`interaction_0_frames.zip`；按动作序号递增。时间线包含物理步、仿真时间和目标位置，
+解压 PNG 包后可与其逐帧对照。视频 FPS 为 `1/(every_steps*dt)`，例如 60 Hz
+物理步隔 2 步录制为 30 FPS。`recording:{}` 自动选择约 30 FPS；省略则只采交互端点。
+渲染会增加实际耗时，不推进额外物理步，也不插值或拼接端点制造运动。动作最后时刻若不在
+采样网格内，仍由独立 after 图记录。视频编码使用 Isaac Python 的 OpenCV；若该安装缺少
+它，执行 `python.bat -m pip install opencv-python-headless`。MP4、PNG 包与时间线随正常
+worker 上传，可用 evidence 读取路径或复制至任务工作区。
+
 ## 4. 配置扩散、分割、生成资产和深度
 
 按 [模型安装](SPATIALFORGE_MODELS.md) 安装需要的模型，编辑

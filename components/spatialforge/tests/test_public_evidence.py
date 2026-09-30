@@ -6,6 +6,23 @@ from spatialforge.operator_evidence import evidence
 
 
 class PublicEvidence(unittest.TestCase):
+    def test_interaction_video_and_frame_archive_are_readable_and_copyable(self):
+        with tempfile.TemporaryDirectory() as temp:
+            class Store:
+                root = Path(temp)
+                def snapshot(self, rid):
+                    return {'tasks':[{'id':rid+'.scene0','state':'SUCCEEDED','unit':{'revision':0}}]}
+            store = Store()
+            capture = store.root/'sf_video.scene0/revision_0/capture'
+            capture.mkdir(parents=True)
+            for name in ['interaction_0.mp4','interaction_0_frames.zip']:
+                (capture/name).write_bytes(b'fixture recording artifact')
+                result = evidence(store,'sf_video.scene0',file='capture/'+name,workspace_id='video_review')
+                self.assertEqual(Path(result['source_path']).read_bytes(),(capture/name).read_bytes())
+            (capture/'interaction_0_recording.json').write_text('{"fps":30}')
+            self.assertEqual(evidence(store,'sf_video.scene0',file='capture/interaction_0_recording.json')['data']['fps'],30)
+            self.assertEqual(len(evidence(store,'sf_video.scene0',file='capture')['files']),3)
+
     def test_view_image_maps_pixels_to_captured_objects_in_selected_revision(self):
         with tempfile.TemporaryDirectory() as temp:
             class Store:

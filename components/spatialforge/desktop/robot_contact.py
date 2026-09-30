@@ -28,8 +28,8 @@ class ContactRobot:
                          reset_xform_properties=False,track_contact_forces=True,
                          contact_filter_prim_paths_expr=self.filters,max_contact_count=128)
 
-    def run(self, action, view, witnesses, sim, dt, start_step, capture):
-        step=start_step;phase='baseline';samples=[];ik_failures=0
+    def run(self, action, view, witnesses, sim, dt, start_step, capture, recording=None):
+        step=start_step;phase='baseline';samples=[];ik_failures=0;recording_started=False
         def record():
             p,q=view.get_world_poses()
             samples.append({'step':step,'timestamp_sim':step*dt,'phase':phase,
@@ -44,11 +44,16 @@ class ContactRobot:
             nonlocal step
             sim.step(render=False);step+=1
             if (step-start_step)%3==0:record()
+            if recording_started:
+                recording.sample(step,phase,{'position':np.asarray(view.get_world_poses()[0])[0].tolist()})
         sim.play()
         for _ in range(round(1/dt)):advance()
         # Compare motion to the settled state immediately before approach.
         baseline=samples; samples=[]; record()
         sim.pause();before_image,before_visibility=capture('before');sim.play()
+        if recording:
+            recording.sample(step,'before',{'position':samples[-1]['position']})
+            recording_started=True
         orientation=np.asarray(action.get('end_effector_orientation_wxyz',[0.,1.,0.,0.]))
         for waypoint in action['waypoints']:
             # Interpolate in the same right_gripper frame that Lula targets.
@@ -76,4 +81,5 @@ class ContactRobot:
             'object_direct_force_calls':0,'object_pose_writes_after_start':0,
             'before_image':before_image,'after_image':after_image,
             'visual_evidence':{'before':before_visibility,'after':after_visibility}}
+        if recording:record['recording']=recording.finish(step)
         return record,step

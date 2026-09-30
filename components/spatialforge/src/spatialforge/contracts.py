@@ -128,7 +128,7 @@ def merge_scene_extension(base, added):
 def _validate_force_action(action, objects):
     required = {'id', 'action', 'object_id', 'force_newtons'}
     optional = {'duration_steps', 'observe_steps', 'min_displacement_m', 'max_displacement_m',
-                'max_vertical_displacement_m', 'max_final_speed_m_s', 'max_initial_speed_m_s', 'max_drift_m', 'camera_id'}
+                'max_vertical_displacement_m', 'max_final_speed_m_s', 'max_initial_speed_m_s', 'max_drift_m', 'camera_id', 'recording'}
     require(required <= set(action) <= required | optional, 'invalid apply_force fields')
     require(action['object_id'] in objects and objects[action['object_id']]['dynamic'], 'apply_force needs a dynamic object')
     numbers(action['force_newtons'], 3, -1000, 1000)
@@ -137,7 +137,7 @@ def _validate_force_action(action, objects):
     for key, default in (('duration_steps', 30), ('observe_steps', 90)):
         value = action.get(key, default)
         require(type(value) is int and 1 <= value <= 600, f'{key} must be 1..600')
-    for key in optional - {'duration_steps', 'observe_steps', 'camera_id'}:
+    for key in optional - {'duration_steps', 'observe_steps', 'camera_id', 'recording'}:
         if key in action:
             numbers([action[key]], 1, 0, 100)
     minimum = action.get('min_displacement_m', .02)
@@ -324,6 +324,11 @@ def _validate_scene_extensions(p):
             if 'object_id' in action: require(action['object_id'] in objects, 'affordance object must exist')
             if 'target_id' in action: require(action['target_id'] in objects, 'affordance target must exist')
             if field == 'interactions': require(action['action'] in {'apply_force','robot_push'}, 'unsupported executable interaction; use affordances for declarations')
+            if 'recording' in action:
+                recording = action['recording']
+                require(isinstance(recording, dict) and set(recording) <= {'every_steps'}, 'recording accepts optional every_steps')
+                if 'every_steps' in recording:
+                    require(type(recording['every_steps']) is int and recording['every_steps'] > 0, 'recording.every_steps must be a positive integer')
             if action['action'] == 'robot_push' and (field == 'interactions' or 'interactions' not in p):
                 from .robot_contact import validate_robot_action
                 validate_robot_action(action, objects)
@@ -588,6 +593,7 @@ SCENE_SCHEMA_DESCRIPTION += '\nRegistered texture IDs: ' + ', '.join(NATIVE_MATE
 SCENE_SCHEMA_DESCRIPTION += '\nRegistered texture materials accept optional appearance.texture_tint:[r,g,b] in 0..1. It multiplies base-color texture in linear RGB after sRGB decoding; [1,1,1] retains the original texture. It does not modify normal maps, geometry, source files or imported/native asset materials. Object color and named material base_color remain fallback colors when no texture is used. Use texture_tint to stain wood or tint fabric while retaining its pattern. Named appearance merges before object overrides; omission preserves existing textured appearance. Material receipts include the tint.'
 SCENE_SCHEMA_DESCRIPTION += '\nThere is no generic opacity/transmission parameter. Registered native assets with supports_native_opacity_multiplier=true accept appearance.native_opacity_multiplier in 0..1, applied only to existing unconnected MDL Opacity_Multiply inputs. It multiplies native alpha, not measured optical transmittance; preserve textures, geometry and colliders. Other materials in the same object remain unchanged unless separately supported. Check actual appearance_overrides and rendered views. All entries in cameras are final scene snapshots after interactions. Camera IDs such as before/after do not change capture time. Separate interaction_*_before/after.png files record the real action. Distinct-view requests require different useful camera poses; duplicate poses do not add coverage.'
 SCENE_SCHEMA_DESCRIPTION += '\nAn executable action may set camera_id to an existing camera for its before/after images. Otherwise the executor selects the authored camera aimed closest to the target object. The pose stays fixed across that action; visual_evidence records the camera and target pixel bounds in both images. Use those images and visibility to assess the action.'
+SCENE_SCHEMA_DESCRIPTION += '\nFor an interaction demonstration, an apply_force or robot_push action can add recording:{every_steps:4}. The executor renders actual simulation states at that step interval and exports an MP4, original PNG frames and a timeline with simulation timestamps and target positions. Empty recording:{} selects approximately 30 fps from physics dt; omitting recording keeps endpoint-only captures. This adds rendering work but no physics steps, interpolated motion or extra simulator. FPS is 1/(every_steps*physics_dt); the final after image remains available when the action ends between video samples. Use the returned recording receipt for filenames and timing.'
 SCENE_SCHEMA_DESCRIPTION += '\nExecutable robot_push actions: {id,action:"robot_push",object_id,robot_id,robot_base_position:[x,y,z],waypoints:[{id,position:[x,y,z],duration_s}],optional robot_base_orientation_wxyz,end_effector_orientation_wxyz,witness_object_ids,observe_seconds,camera_id}. Uses installed official Franka Panda, closed fingers and Lula IK joint targets. Waypoints describe the right_gripper IK frame in world meters; this differs from the reported right-finger body origin. Default base orientation [1,0,0,0], end-effector orientation [0,1,0,0], observation 1.5 seconds. A shared robot_id keeps the same base pose. Target and any witness objects must be dynamic. Robot captures run physics at 120 Hz and preserve ordinary apply_force step counts. Mass, friction and mesh collision approximation stay scene-authored. Success requires >=.04m target translation, >=3 sampled hand contacts above .05N, <=.005m movement before contact threshold, <=.01m witness movement and final target root-Z tilt <=20 degrees, <=.02m vertical displacement throughout the trajectory, and target visibility in both endpoint images; checks and raw trajectories remain visible on failure. No target force or pose commands, grasp, measured dynamics or general motion-planning claim. Place the robot on a support, author reachable collision-aware waypoints, inspect actual before/after evidence, and revise task content when needed. Total action steps stay within the existing 10000-step budget.'
 SCENE_SCHEMA_DESCRIPTION += '\nEnvironment lights may additionally select environment_id from this registry: '+json.dumps({key:{k:v for k,v in record.items() if k!='path'} for key,record in ENVIRONMENTS.items()})+'. The HDR texture affects illumination and visible sky, not scene geometry. An optional direction sets the world direction of the HDR lower pole, tilting the whole environment after stage-up-axis alignment; it does not specify the sun position. Omit direction to retain the level horizon. HDR brightness must be verified in the actual renderer and exposure. Preserve texture provenance and compare actual rendered sky before selecting intensity. An HDR image does not supply outdoor geometry or metric GT. You may explicitly create outdoor objects using supported SceneProgram kinds and registered assets, respecting bounds and recording synthetic/program provenance. Never claim uncreated or merely pictured background geometry was simulated.'
 
