@@ -3,10 +3,22 @@ from . import data, evaluation, production, research, annotation
 from .backends import backend
 from .capture_adapter import adapt_capture
 from .artifacts import read
+from .spatial_learning.registry import catalog as spatial_catalog
+from .spatial_learning.generation import generate as spatial_generate
+from .spatial_learning.evaluation import evaluate as spatial_evaluate
+from .spatial_learning.curriculum import curriculum
+from .spatial_learning.training import train as spatial_train
+from .spatial_learning.monitor import monitor as training_monitor
+from .spatial_learning.export import export as spatial_export
+from .spatial_learning.experiments import experiment as spatial_experiment
 from pathlib import Path
 import re
 
 OPERATIONS={
+ 'spatial_catalog':spatial_catalog,'spatial_generate':spatial_generate,'spatial_evaluate':spatial_evaluate,
+ 'curriculum':curriculum,'spatial_train':spatial_train,'training_monitor':training_monitor,
+ 'spatial_export':spatial_export,
+ 'spatial_experiment':spatial_experiment,
  'backend':backend,
  'adapt_capture':adapt_capture,
  'acquire':data.acquire,'normalize':data.normalize,'clean':data.clean,'annotate':annotation.annotate,

@@ -1,0 +1,6 @@
+{
+  "groups_per_profile": 20,
+  "seed": 42000,
+  "conditions": ["natural", "supplied_intermediate", "isolated"],
+  "render": true
+}

@@ -20,6 +20,7 @@ dsh = ["PyYAML>=6"]
 production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10"]
 research = ["pypdf>=5"]
 datasets = ["pyarrow>=15"]
+training = ["torch>=2.4", "transformers>=4.49", "tokenizers>=0.21", "peft>=0.14", "Pillow>=10", "numpy>=1.24"]
 
 [project.scripts]
 benchforge = "benchforge_core.cli:main"
@@ -30,6 +31,7 @@ include = ["benchforge_core*"]
 
 [tool.setuptools.package-data]
 benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "vendor/**/*"]
+"benchforge_core.spatial_learning" = ["graph.json", "templates.json"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]

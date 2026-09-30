@@ -21,6 +21,10 @@
     {
       "area": "evaluation/release",
       "tools": "model_eval, score, baselines, diagnose, report, package, usage"
+    },
+    {
+      "area": "spatial capability learning",
+      "tools": "spatial_catalog, spatial_generate, spatial_evaluate, curriculum, spatial_train, training_monitor, spatial_export, spatial_experiment"
     }
   ],
   "requests": {
@@ -228,6 +232,49 @@
           }
         ]
       }
+    },
+    "spatial_catalog": {
+      "section": "templates",
+      "capability": "N11",
+      "limit": 12
+    },
+    "spatial_generate": {
+      "capability": "N11",
+      "groups_per_profile": 20,
+      "seed": 42000,
+      "render": true
+    },
+    "spatial_evaluate": {
+      "dataset": "/path/to/dataset",
+      "partition": "curriculum_dev",
+      "predictions": "/path/to/predictions.jsonl"
+    },
+    "curriculum": {
+      "state": "/path/to/curriculum.json",
+      "feedback": "/path/to/feedback.jsonl",
+      "checkpoint": "checkpoint-100",
+      "window_id": "window-1",
+      "condition": "C",
+      "budget": 1000
+    },
+    "spatial_train": {
+      "config": "/path/to/training.json",
+      "run": "/path/to/run"
+    },
+    "training_monitor": {
+      "run": "/path/to/run"
+    },
+    "spatial_export": {
+      "dataset": "/absolute/dataset"
+    },
+    "spatial_experiment": {
+      "config": "/absolute/train.json",
+      "run": "/absolute/comparison",
+      "seeds": [
+        11,
+        29,
+        71
+      ]
     }
   },
   "execution": "Annotation HTTP tools attach to configured services. Service paths must be visible to the backend. Habitat/LIBERO invoke bundled collectors in separate configured SDK environments; their old HTTP health services do not collect data. CARLA connects to its configured simulator. Isaac uses the bundled native cuboid/camera collector with a configured Isaac Python launcher; an external script can replace it explicitly.",

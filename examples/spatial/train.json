@@ -1,0 +1,24 @@
+{
+  "model": "/path/to/local/small-model",
+  "dataset": "/path/to/generated/dataset",
+  "device": "cuda:0",
+  "multimodal": true,
+  "local_files_only": true,
+  "condition": "C",
+  "seed": 11,
+  "windows": 10,
+  "steps_per_window": 100,
+  "batch_size": 1,
+  "learning_rate": 0.00002,
+  "max_length": 8192,
+  "max_new_tokens": 512,
+  "dev_limit": 540,
+  "selection_limit": 270,
+  "curriculum": {
+    "min_samples": 100,
+    "min_scenes": 20,
+    "promotion_windows": 2,
+    "promotion_success": 0.9,
+    "retention_drop": 0.03
+  }
+}

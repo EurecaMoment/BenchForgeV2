@@ -1,0 +1,816 @@
+{
+  "schema": "benchforge.spatial_graph/v1",
+  "nodes": [
+    {
+      "id": "N01",
+      "name": "距离感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N02",
+      "name": "尺寸感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N03",
+      "name": "形状感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N04",
+      "name": "自运动感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "motion",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N05",
+      "name": "外部运动感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "motion",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N06",
+      "name": "重力方向感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N07",
+      "name": "物体朝向感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N08",
+      "name": "拓扑关系感知",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N09",
+      "name": "跨视角对应",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N10",
+      "name": "目标检测",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N11",
+      "name": "空间定位",
+      "level": "L1",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N12",
+      "name": "空间描述",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N13",
+      "name": "语义关系理解",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N14",
+      "name": "运动语义理解",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "motion",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N15",
+      "name": "视角转换",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N16",
+      "name": "可供性理解",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N17",
+      "name": "认知地图",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "graph",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N18",
+      "name": "空间记忆检索",
+      "level": "L2",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "motion",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N19",
+      "name": "动力学推理",
+      "level": "L3",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "motion",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N20",
+      "name": "几何问题推理",
+      "level": "L3",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N21",
+      "name": "空间关系推理",
+      "level": "L3",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "geometry",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N22",
+      "name": "操作序列规划",
+      "level": "L3",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "execution",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N23",
+      "name": "路径规划",
+      "level": "L3",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "graph",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N24",
+      "name": "操作执行",
+      "level": "L4",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "execution",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N25",
+      "name": "导航执行",
+      "level": "L4",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "graph",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N26",
+      "name": "主动知识获取",
+      "level": "L4",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "execution",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    },
+    {
+      "id": "N27",
+      "name": "自主目标生成",
+      "level": "L4",
+      "source": {
+        "document": "空间能力知识图谱_周报汇报.pptx",
+        "pages": [
+          3,
+          4
+        ]
+      },
+      "family": "execution",
+      "measurement_scope": "controlled synthetic scenes and explicit input conditions",
+      "training_status": "unmeasured",
+      "candidate_dependencies_are_not_locks": true
+    }
+  ],
+  "edges": [
+    {
+      "source": "N01",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "metric mapping",
+      "substitutable_by": "given metric depth",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N04",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "moving observer",
+      "substitutable_by": "given camera poses",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N08",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "connectivity mapping",
+      "substitutable_by": "given local edges",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N09",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "multiple views",
+      "substitutable_by": "given correspondences",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N11",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "landmark positions",
+      "substitutable_by": "given coordinates",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N15",
+      "target": "N17",
+      "relation": "conditional_information_support",
+      "condition": "multiple reference frames",
+      "substitutable_by": "given transforms",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N17",
+      "target": "N18",
+      "relation": "conditional_information_support",
+      "condition": "map-based task",
+      "substitutable_by": "given map",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N17",
+      "target": "N23",
+      "relation": "conditional_information_support",
+      "condition": "map-based task",
+      "substitutable_by": "given map",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N17",
+      "target": "N25",
+      "relation": "conditional_information_support",
+      "condition": "map-based task",
+      "substitutable_by": "given map",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N17",
+      "target": "N26",
+      "relation": "conditional_information_support",
+      "condition": "map-based task",
+      "substitutable_by": "given map",
+      "evidence": "PPT page 4",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N10",
+      "target": "N11",
+      "relation": "conditional_information_support",
+      "condition": "localization starts from visual object identification",
+      "substitutable_by": "given target box",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N01",
+      "target": "N13",
+      "relation": "conditional_information_support",
+      "condition": "metric referring expressions",
+      "substitutable_by": "given pair distances",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N02",
+      "target": "N16",
+      "relation": "conditional_information_support",
+      "condition": "clearance or size-dependent affordance",
+      "substitutable_by": "given dimensions",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N03",
+      "target": "N16",
+      "relation": "conditional_information_support",
+      "condition": "shape-dependent fitting",
+      "substitutable_by": "given compatible interfaces",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N06",
+      "target": "N19",
+      "relation": "conditional_information_support",
+      "condition": "gravity-dependent prediction",
+      "substitutable_by": "given gravity vector",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N05",
+      "target": "N19",
+      "relation": "conditional_information_support",
+      "condition": "predicting motion from observation",
+      "substitutable_by": "given velocity and acceleration",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N07",
+      "target": "N15",
+      "relation": "conditional_information_support",
+      "condition": "orientation-sensitive frame transform",
+      "substitutable_by": "given transformation matrix",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N09",
+      "target": "N15",
+      "relation": "conditional_information_support",
+      "condition": "transform across views with object correspondence",
+      "substitutable_by": "given correspondences",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N11",
+      "target": "N15",
+      "relation": "conditional_information_support",
+      "condition": "transforming visually observed positions",
+      "substitutable_by": "given coordinates",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N01",
+      "target": "N20",
+      "relation": "conditional_information_support",
+      "condition": "metric geometric reasoning",
+      "substitutable_by": "given metric coordinates",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N03",
+      "target": "N20",
+      "relation": "conditional_information_support",
+      "condition": "reasoning over observed geometry",
+      "substitutable_by": "given geometric primitives",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N12",
+      "target": "N21",
+      "relation": "conditional_information_support",
+      "condition": "reasoning over a spatial description",
+      "substitutable_by": "given relation facts",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N13",
+      "target": "N22",
+      "relation": "conditional_information_support",
+      "condition": "planning for a relationally specified target",
+      "substitutable_by": "given goal state",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N16",
+      "target": "N22",
+      "relation": "conditional_information_support",
+      "condition": "planning under action affordances",
+      "substitutable_by": "given legal transitions",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N07",
+      "target": "N22",
+      "relation": "conditional_information_support",
+      "condition": "orientation-dependent operation plan",
+      "substitutable_by": "given aligned pose",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N22",
+      "target": "N24",
+      "relation": "conditional_information_support",
+      "condition": "executing a multi-action goal",
+      "substitutable_by": "given executable plan",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N11",
+      "target": "N24",
+      "relation": "conditional_information_support",
+      "condition": "feedback-driven target positioning",
+      "substitutable_by": "given measured pose",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N23",
+      "target": "N25",
+      "relation": "conditional_information_support",
+      "condition": "navigation using planned routes",
+      "substitutable_by": "given feasible path",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N18",
+      "target": "N25",
+      "relation": "conditional_information_support",
+      "condition": "navigation using prior observations",
+      "substitutable_by": "given visited-state history",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N14",
+      "target": "N26",
+      "relation": "conditional_information_support",
+      "condition": "choose observations about ambiguous motion",
+      "substitutable_by": "given event classification",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N21",
+      "target": "N26",
+      "relation": "conditional_information_support",
+      "condition": "eliminating spatial hypotheses",
+      "substitutable_by": "given surviving hypotheses",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N16",
+      "target": "N27",
+      "relation": "conditional_information_support",
+      "condition": "selecting feasible goals",
+      "substitutable_by": "given goal feasibility",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N23",
+      "target": "N27",
+      "relation": "conditional_information_support",
+      "condition": "cost-sensitive spatial goals",
+      "substitutable_by": "given route costs",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    },
+    {
+      "source": "N26",
+      "target": "N27",
+      "relation": "conditional_information_support",
+      "condition": "information-seeking goal selection",
+      "substitutable_by": "given information estimates",
+      "evidence": "engineering curriculum hypothesis; not an imported PPT edge",
+      "validated_training_transfer": false
+    }
+  ],
+  "source_inventory": {
+    "capabilities": 27,
+    "reported_candidate_edges": 155,
+    "reported_tasks": 44,
+    "reported_question_types": 25,
+    "original_json_supplied": false
+  },
+  "source_boundary": "Only relationships identifiable in supplied pages are imported; other templates are engineering extensions.",
+  "courses": [
+    {
+      "id": "LOC",
+      "primary": [
+        "N11"
+      ],
+      "source_page": 7,
+      "controls": [
+        "center",
+        "bbox",
+        "correction"
+      ]
+    },
+    {
+      "id": "XVP",
+      "primary": [
+        "N15",
+        "N19"
+      ],
+      "source_page": 8,
+      "controls": [
+        "motion_only",
+        "transform_only",
+        "future_state_supplied",
+        "joint"
+      ]
+    },
+    {
+      "id": "MAP",
+      "original_task_id": "T-C08",
+      "primary": [
+        "N17",
+        "N16",
+        "N23"
+      ],
+      "supporting": [
+        "N02"
+      ],
+      "source_page": 9,
+      "controls": [
+        "local_observations",
+        "given_map",
+        "given_feasible_graph"
+      ]
+    },
+    {
+      "id": "INS",
+      "primary": [
+        "N11",
+        "N07",
+        "N22",
+        "N24"
+      ],
+      "source_page": 10,
+      "controls": [
+        "given_pose",
+        "given_plan",
+        "feedback_execution",
+        "failure_recovery"
+      ]
+    }
+  ],
+  "scheduling": "Branch-specific mastery; no mandatory L1-to-L4 order."
+}

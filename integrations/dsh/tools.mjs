@@ -47,9 +47,27 @@ export async function apply(ctx, config) {
     collaboration:'Share lightweight, structured handoffs in the task workspace. Agents can publish observations, artifacts, decisions, blockers and next actions, relate a handoff to earlier work, and reply to another agent. List or read the record when joining, resuming or reconciling parallel work; the protocol does not prescribe an orchestration graph.'
   };
   const object={type:'object',properties:{},additionalProperties:true};
+  Object.assign(definitions, {
+    spatial_catalog:'Read the 27-node spatial capability graph and executable template specifications. Conditional graph relations guide task selection without imposing prerequisite locks.',
+    spatial_generate:'Generate grouped training and evaluation worlds, observations, program answers and feedback episodes from selected spatial templates. Train/dev/test roles remain separate.',
+    spatial_evaluate:'Score saved answers or replay actions against program truth and environment states. No model API judging.',
+    curriculum:'Update condition-specific mastery from development feedback and allocate a training budget. Compare fixed A, adaptive B and graph-guided C using the same candidate pool.',
+    spatial_train:'Train a locally configured small model with windowed SFT, development feedback, curriculum sampling and resumable checkpoints. Specify the model and compute configuration explicitly.',
+    training_monitor:'Read live training loss, capability feedback, allocations, checkpoints and guidance from a training run.'
+  });
+  definitions.spatial_export='Export spatial datasets as portable Parquet with embedded images and separate program authority.';
+  definitions.spatial_experiment='Compare fixed A, adaptive B and graph-guided C from the same initial local checkpoint and training budget; report actual token and time costs.';
   definitions.backend='Inspect or explicitly start an optional configured backend in its own environment. Existing services keep their lifecycle outside this operation.';
   definitions.adapt_capture='Convert native Habitat/LIBERO/CARLA capture to compiler evidence. Habitat samples continuous visible surface regions and computes calibrated camera range from raw depth; semantic labels come from the selected source records.';
   const schemas={
+    spatial_catalog:{section:{type:'string',enum:['graph','templates']},capability:{type:'string'},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
+    spatial_generate:{capability:{type:'string'},template_ids:{type:'array',items:{type:'string'}},groups_per_profile:{type:'integer'},seed:{type:'integer'},render:{type:'boolean'},conditions:{type:'array',items:{type:'string',enum:['natural','supplied_intermediate','isolated']}},heldout_profiles:{type:'array',items:{type:'string'}}},
+    spatial_export:{dataset:{type:'string',required:true}},
+    spatial_experiment:{config:{type:'string',required:true},run:{type:'string'},seeds:{type:'array',items:{type:'integer'}}},
+    spatial_evaluate:{dataset:{type:'string',required:true},partition:{type:'string',enum:['curriculum_dev','selection_dev','sealed_test']},predictions:{type:'string',required:true}},
+    curriculum:{state:{type:'string',required:true},feedback:{type:'string'},checkpoint:{type:'string'},window_id:{type:'string'},condition:{type:'string',enum:['A','B','C']},budget:{type:'integer'},template_ids:{type:'array',items:{type:'string'}},settings:{type:'object',additionalProperties:true}},
+    spatial_train:{config:{type:'string',required:true},run:{type:'string'},action:{type:'string',enum:['run','start']}},
+    training_monitor:{run:{type:'string',required:true},guidance:{type:'object',properties:{pause:{type:'boolean'},stop_after_window:{type:'boolean'},learning_rate:{type:'number'},hint_fraction:{type:'number'},difficulty:{type:'integer'}}}},
     backend:{name:{type:'string',required:true},action:{type:'string',enum:['status','start']}},
     adapt_capture:{input:{type:'string',required:true},simulator:{type:'string',enum:['habitat','libero','carla']},camera:{type:'object',additionalProperties:true},regions:{type:'integer'},radius:{type:'integer'}},
     catalog:{section:{type:'string',enum:['overview','templates','migration']},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
@@ -434,12 +452,13 @@ export async function apply(ctx, config) {
     payload:{...object,description:'Native backend inference arguments. Catalog includes exact examples.'},task_id:{type:'string'},timeout_seconds:{type:'integer'}};
   for(const tool of ['habitat','libero','carla']) schemas[tool]={argv:{type:'array',items:{type:'string'},description:'Collector arguments; catalog has examples. Use --help for installed SDK collector options.'},timeout_seconds:{type:'integer'}};
   for (const [tool, description] of Object.entries(definitions)) {
+    if (config.includeTools && !config.includeTools.includes(tool)) continue;
     if (tool === 'collaboration') continue;
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output, execute:(args,exec)=>{const {workspace,...request}=args; return invoke(config.python || 'python',workspace,config.configPath,tool,request,exec.signal);}}));
   }
-  ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
+  if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
     parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...schemas.collaboration}, output,
     execute:async (args,exec)=>{
       const {workspace,...request}=args;
@@ -477,7 +496,7 @@ export async function apply(ctx, config) {
       }
       throw new Error(`Unknown collaboration action: ${request.action}`);
     }}));
-  ctx.tools.register(defineTool({name:'benchforge_view_image', description:'Show a real local capture or annotation image to the model and user.',
+  if (!config.includeTools || config.includeTools.includes('view_image')) ctx.tools.register(defineTool({name:'benchforge_view_image', description:'Show a real local capture or annotation image to the model and user.',
     parameters:{path:{type:'string',required:true}},
     output:{...output,render:(_args,value)=>[{type:'image',attachment:value.image}]},
     execute:async args=>{
