@@ -34,8 +34,10 @@ hybrid_rendering=any(o['kind']=='mesh' and o.get('render_representation')!='mesh
                      and (Path(job['asset_paths'][o['asset_id']]).parent/'gaussian.npz').is_file()
                      for o in program['objects'])
 render_config=render_options(program,settings,has_gaussians=hybrid_rendering)
-hybrid_args=['--/app/useFabricSceneDelegate=true','--/UJITSO/geometry=true'] if hybrid_rendering else []
 has_robot=any(a.get('action')=='robot_push' for a in program.get('interactions',program.get('affordances',[])))
+# Articulated scenes also use Fabric with UJITSO geometry: the legacy geometry
+# path can crash Isaac 6.0.1 when synthetic-data instance annotation starts.
+hybrid_args=['--/app/useFabricSceneDelegate=true','--/UJITSO/geometry=true'] if hybrid_rendering or has_robot else []
 if has_robot:
     hybrid_args+=['--enable','isaacsim.robot.manipulators.examples']
     settings={**settings,'dt':1/120}
@@ -479,7 +481,8 @@ try:
             capture_camera_transform.Set(camera_matrix(action_camera));apply_camera_optics(capture_camera,action_camera)
             record,simulation_step=robots[action['robot_id']].run(action,robot_views[action['id']],robot_witnesses[action['id']],
                 sim,settings['dt'],simulation_step,lambda phase:interaction_rgb(f'interaction_{ai}_{phase}.png',action['object_id']),
-                recording=recording_for(ai,action))
+                recording=recording_for(ai,action),
+                contact_positions=(lambda:{eid:pose(entities[eid]) for eid in action['contact_object_ids']}) if action.get('contact_object_ids') else None)
             record['visual_evidence'].update(camera={**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera))},
                                               selection='explicit' if 'camera_id' in action else 'closest_view_direction')
             name=f'interaction_{ai}_trajectory.json'
@@ -489,7 +492,8 @@ try:
                 'status':'succeeded' if measured['success'] else 'failed',**measured,
                 'before':trajectory[0],'after':trajectory[-1],'sample_count':len(trajectory),'trajectory_file':name,
                 'before_image':record['before_image'],'after_image':record['after_image'],'visual_evidence':record['visual_evidence'],
-                'robot':record['robot'],**({'recording':record['recording']} if 'recording' in record else {})})
+                'robot':record['robot'],**({'recording':record['recording']} if 'recording' in record else {}),
+                **({'object_contacts':{k:v for k,v in record['object_contacts'].items() if k!='trace'}} if 'object_contacts' in record else {})})
             continue
         view=rigid_views[action['object_id']]
         def record_state(force):

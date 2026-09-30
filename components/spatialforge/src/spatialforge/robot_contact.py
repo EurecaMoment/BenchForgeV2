@@ -5,7 +5,7 @@ import math
 def validate_robot_action(action, objects):
     required = {'id', 'action', 'object_id', 'robot_id', 'robot_base_position', 'waypoints'}
     optional = {'robot_base_orientation_wxyz', 'end_effector_orientation_wxyz',
-                'witness_object_ids', 'observe_seconds', 'camera_id', 'recording'}
+                'witness_object_ids', 'observe_seconds', 'camera_id', 'recording', 'contact_object_ids'}
     if not required <= set(action) <= required | optional:
         raise ValueError('robot_push needs id, object_id, robot_id, robot_base_position and waypoints')
     if not objects[action['object_id']]['dynamic']:
@@ -32,6 +32,9 @@ def validate_robot_action(action, objects):
         raise ValueError('robot witness_object_ids must be unique object ids')
     if any(w == action['object_id'] or w not in objects or not objects[w]['dynamic'] for w in witnesses):
         raise ValueError('robot witnesses must name other dynamic objects')
+    contacts = action.get('contact_object_ids', [])
+    if not isinstance(contacts, list) or len(set(contacts)) != len(contacts) or any(c == action['object_id'] or c not in objects for c in contacts):
+        raise ValueError('contact_object_ids must name distinct other scene objects')
     observe = action.get('observe_seconds', 1.5)
     if type(observe) not in (int, float) or not math.isfinite(observe) or observe <= 0:
         raise ValueError('robot observe_seconds must be positive')
@@ -39,6 +42,34 @@ def validate_robot_action(action, objects):
 
 def robot_step_count(action):
     return 120 + sum(math.ceil(w['duration_s']*120) for w in action['waypoints']) + math.ceil(action.get('observe_seconds', 1.5)*120)
+
+
+def object_contact_filter(entity):
+    # Dynamic contacts belong to the rigid body; static contacts belong to
+    # collider descendants, not the entity's non-physical Xform root.
+    return entity['prim_path'] + ('' if entity['dynamic'] else '/.*')
+
+
+def contact_observation(step, dt, phase, target_position, contact_positions, forces, robot_filter_count):
+    """Keep robot columns separate from named scene-object contact columns."""
+    return {'step':step, 'timestamp_sim':step*dt, 'phase':phase, 'target_position':target_position,
+            'robot_contact_forces_N':forces[:robot_filter_count],
+            'objects':{name:{'position':position,'force_on_target_N':forces[robot_filter_count+i]}
+                       for i,(name,position) in enumerate(contact_positions.items())}}
+
+
+def summarize_object_contacts(trace):
+    """Observed contact and motion, without imposing a manipulation objective."""
+    result = {}
+    for name, initial in trace[0]['objects'].items():
+        magnitudes = [math.sqrt(sum(v*v for v in row['objects'][name]['force_on_target_N'])) for row in trace]
+        nonzero = [i for i, force in enumerate(magnitudes) if force > 0]
+        final = trace[-1]['objects'][name]['position']
+        result[name] = {'nonzero_contact_steps':len(nonzero), 'peak_contact_force_N':max(magnitudes),
+                        'first_nonzero_contact_step':trace[nonzero[0]]['step'] if nonzero else None,
+                        'last_nonzero_contact_step':trace[nonzero[-1]]['step'] if nonzero else None,
+                        'displacement_vector_m':[a-b for a,b in zip(final,initial['position'])]}
+    return result
 
 
 def evaluate_robot_trajectory(samples):

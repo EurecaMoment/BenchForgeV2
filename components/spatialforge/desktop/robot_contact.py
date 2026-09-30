@@ -3,7 +3,7 @@ import math
 import numpy as np
 from isaacsim.core.prims import RigidPrim
 from isaacsim.robot.manipulators.examples.franka import Franka, KinematicsSolver
-from spatialforge.robot_contact import evaluate_robot_trajectory, evaluate_robot_visibility
+from spatialforge.robot_contact import evaluate_robot_trajectory, evaluate_robot_visibility, contact_observation, summarize_object_contacts, object_contact_filter
 
 
 class ContactRobot:
@@ -26,16 +26,16 @@ class ContactRobot:
     def view(self, action, entities):
         return RigidPrim(entities[action['object_id']]['prim_path'],name='robot_contact_'+action['id'],
                          reset_xform_properties=False,track_contact_forces=True,
-                         contact_filter_prim_paths_expr=self.filters,max_contact_count=128)
+                         contact_filter_prim_paths_expr=self.filters+[object_contact_filter(entities[eid]) for eid in action.get('contact_object_ids',[])],max_contact_count=128)
 
-    def run(self, action, view, witnesses, sim, dt, start_step, capture, recording=None):
-        step=start_step;phase='baseline';samples=[];ik_failures=0;recording_started=False
+    def run(self, action, view, witnesses, sim, dt, start_step, capture, recording=None, contact_positions=None):
+        step=start_step;phase='baseline';samples=[];ik_failures=0;recording_started=False;contact_trace=[]
         def record():
             p,q=view.get_world_poses()
             samples.append({'step':step,'timestamp_sim':step*dt,'phase':phase,
                 'position':np.asarray(p)[0].tolist(),'orientation_wxyz':np.asarray(q)[0].tolist(),
                 'linear_velocity_m_s':np.asarray(view.get_linear_velocities())[0].tolist(),
-                'robot_contact_forces_N':np.asarray(view.get_contact_force_matrix(dt=dt))[0].tolist(),
+                'robot_contact_forces_N':np.asarray(view.get_contact_force_matrix(dt=dt))[0][:len(self.filters)].tolist(),
                 'witnesses':{key:np.asarray(v.get_world_poses()[0])[0].tolist() for key,v in witnesses.items()},
                 'robot_joint_positions':np.asarray(self.robot.get_joint_positions()).tolist(),
                 'robot_finger_position':np.asarray(self.robot.end_effector.get_world_pose()[0]).tolist(),
@@ -44,6 +44,9 @@ class ContactRobot:
             nonlocal step
             sim.step(render=False);step+=1
             if (step-start_step)%3==0:record()
+            if contact_positions:
+                contact_trace.append(contact_observation(step,dt,phase,np.asarray(view.get_world_poses()[0])[0].tolist(),
+                    contact_positions(),np.asarray(view.get_contact_force_matrix(dt=dt))[0].tolist(),len(self.filters)))
             if recording_started:
                 recording.sample(step,phase,{'position':np.asarray(view.get_world_poses()[0])[0].tolist()})
         sim.play()
@@ -76,10 +79,15 @@ class ContactRobot:
         record={'schema':'spatialforge.interaction/v1','id':action['id'],'action':'robot_push','object_id':action['object_id'],
             'physics_backend':'Isaac PhysX','executor':'Franka articulation controller and Lula inverse kinematics',
             'parameters':action,'dt':dt,'baseline':baseline,'trajectory':samples,'metrics':measured,
+            'trajectory_every_steps':3,'trajectory_hz':1/(3*dt),
             'robot':{'prim_path':self.path,'usd':self.usd,'contact_filter_paths':self.filters,'ik_failures':ik_failures,
                      'ik_frame':self.controller.get_end_effector_frame(),'observed_finger_prim_path':self.path+'/panda_rightfinger'},
             'object_direct_force_calls':0,'object_pose_writes_after_start':0,
             'before_image':before_image,'after_image':after_image,
             'visual_evidence':{'before':before_visibility,'after':after_visibility}}
         if recording:record['recording']=recording.finish(step)
+        if contact_trace:
+            record['object_contacts']={'source':'PhysX filtered contacts and USD world poses','sampling_hz':1/dt,
+                'force_body':action['object_id'],'filter_object_ids':action['contact_object_ids'],
+                'summary':summarize_object_contacts(contact_trace),'trace':contact_trace}
         return record,step

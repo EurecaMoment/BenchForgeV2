@@ -44,6 +44,7 @@ test('physical success retains invisible demonstration and actual location evide
     checks:{moved_in_force_direction:true},before:{position:[.62,-1.3,.0525]},after:{position:[.754,-1.3,.0525]},
     before_image:'interaction_0_before.png',after_image:'interaction_0_after.png',
     recording:{source:'rendered_simulation_steps',video:'interaction_0.mp4',timeline_file:'interaction_0_recording.json',frame_count:67,fps:30,interpolated_frames:0},
+    object_contacts:{sampling_hz:120,summary:{receiver:{nonzero_contact_steps:3,displacement_vector_m:[0,.02,0]}}},
     visual_evidence:{before:{visible_pixels:0,bbox_xyxy:null},after:{visible_pixels:0,bbox_xyxy:null}},
   }];
   const r=replay(captureEvents(),response);await r.run();
@@ -55,6 +56,7 @@ test('physical success retains invisible demonstration and actual location evide
   assert.equal(facts.actions[0].before_position_m[2],.0525);
   assert.equal(facts.actions[0].recording.video,'interaction_0.mp4');
   assert.equal(facts.actions[0].recording.interpolated_frames,0);
+  assert.equal(facts.actions[0].object_contacts.summary.receiver.nonzero_contact_steps,3);
   assert.match(text,/not whether it occurred at the requested location/);
 });
 

@@ -99,6 +99,17 @@ python3.11 spatialforge_app.py capture \
 它，执行 `python.bat -m pip install opencv-python-headless`。MP4、PNG 包与时间线随正常
 worker 上传，可用 evidence 读取路径或复制至任务工作区。
 
+机器人推动另一物件并发生碰撞时，可在 `robot_push` 增加
+`"contact_object_ids": ["receiver", "surface"]`，记录目标与这些物件之间的接触。
+它们可以是动态或静态物件；此字段不要求它们保持静止。
+`witness_object_ids` 仍表示需要检查保持静止的旁观物件。
+`object_contacts.trace` 在原交互 trajectory JSON 中记录每一物理步的双方位置、
+指定物件施加到目标上的接触力，以及独立列出的机器人手/指接触力；report 中提供摘要。
+读取较大的 trajectory JSON 时用 evidence 的 `workspace_id` 复制至任务工作区后处理。
+普通机器人运动轨迹为 40 Hz（每 3 个物理步），接触记录为 120 Hz，视频采样间隔独立。
+`examples/robot_collision_scene.json` 使用程序几何和官方 Franka 演示这两个可选字段，
+可通过与桌台示例相同的 capture 命令提交。
+
 ## 4. 配置扩散、分割、生成资产和深度
 
 按 [模型安装](SPATIALFORGE_MODELS.md) 安装需要的模型，编辑

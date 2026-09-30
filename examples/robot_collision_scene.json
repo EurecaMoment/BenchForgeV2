@@ -1,0 +1,228 @@
+{
+  "schema": "spatialforge.scene/v2",
+  "scene_id": "robot_object_contact",
+  "title": "Franka pushes a blue cylinder into a red block",
+  "assumptions": [
+    "Engineering demonstration. Reuses previously exercised Franka waypoints with procedural objects. Dynamics are simulation observations."
+  ],
+  "materials": [],
+  "objects": [
+    {
+      "id": "test_surface",
+      "label": "contact test surface",
+      "kind": "box",
+      "size": [
+        1.3,
+        1.1,
+        0.04
+      ],
+      "xy": [
+        0.4,
+        0.0
+      ],
+      "base_z": 0.0,
+      "support": "ground",
+      "dynamic": false,
+      "mass_kg": 0.0,
+      "color": [
+        0.36,
+        0.25,
+        0.13
+      ]
+    },
+    {
+      "id": "front_black",
+      "label": "front_black",
+      "kind": "cylinder",
+      "size": [
+        0.09,
+        0.09,
+        0.16
+      ],
+      "xy": [
+        0.52,
+        0
+      ],
+      "color": [
+        0.04,
+        0.3,
+        0.7
+      ],
+      "base_z": 0.041,
+      "support": "ground",
+      "dynamic": true,
+      "mass_kg": 0.15,
+      "physics": {
+        "static_friction": 0.4,
+        "dynamic_friction": 0.3,
+        "restitution": 0.0
+      }
+    },
+    {
+      "id": "receiver",
+      "label": "receiver",
+      "kind": "box",
+      "size": [
+        0.11,
+        0.08,
+        0.1
+      ],
+      "xy": [
+        0.52,
+        0.22
+      ],
+      "color": [
+        0.7,
+        0.04,
+        0.02
+      ],
+      "base_z": 0.041,
+      "support": "ground",
+      "dynamic": true,
+      "mass_kg": 0.12,
+      "physics": {
+        "static_friction": 0.4,
+        "dynamic_friction": 0.3,
+        "restitution": 0.0
+      }
+    },
+    {
+      "id": "stationary",
+      "label": "stationary",
+      "kind": "box",
+      "size": [
+        0.08,
+        0.08,
+        0.08
+      ],
+      "xy": [
+        0.72,
+        -0.24
+      ],
+      "color": [
+        0.05,
+        0.65,
+        0.08
+      ],
+      "base_z": 0.041,
+      "support": "ground",
+      "dynamic": true,
+      "mass_kg": 0.15,
+      "physics": {
+        "static_friction": 0.4,
+        "dynamic_friction": 0.3,
+        "restitution": 0.0
+      }
+    }
+  ],
+  "lights": [
+    {
+      "id": "sky",
+      "kind": "environment",
+      "intensity": 700,
+      "color": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "sun",
+      "kind": "sun",
+      "intensity": 1800,
+      "color": [
+        1,
+        1,
+        1
+      ],
+      "direction": [
+        0.5,
+        0.5,
+        -1
+      ]
+    }
+  ],
+  "cameras": [
+    {
+      "id": "independent_tins",
+      "position": [
+        1.3,
+        -1.1,
+        0.82
+      ],
+      "target": [
+        0.34,
+        0,
+        0.2
+      ],
+      "focal_length_mm": 30
+    }
+  ],
+  "render_environment": {
+    "renderer": "PathTracing",
+    "samples_per_pixel": 16,
+    "exposure": 0.4
+  },
+  "interactions": [
+    {
+      "id": "push_front_tin",
+      "action": "robot_push",
+      "object_id": "front_black",
+      "robot_id": "franka",
+      "robot_base_position": [
+        0,
+        0,
+        0.04
+      ],
+      "camera_id": "independent_tins",
+      "witness_object_ids": [
+        "stationary"
+      ],
+      "waypoints": [
+        {
+          "id": "approach",
+          "position": [
+            0.52,
+            -0.16,
+            0.32
+          ],
+          "duration_s": 1.5
+        },
+        {
+          "id": "lower",
+          "position": [
+            0.52,
+            -0.16,
+            0.05
+          ],
+          "duration_s": 1.5
+        },
+        {
+          "id": "push",
+          "position": [
+            0.52,
+            0.1,
+            0.05
+          ],
+          "duration_s": 4.0
+        },
+        {
+          "id": "retract",
+          "position": [
+            0.52,
+            0.1,
+            0.32
+          ],
+          "duration_s": 1.25
+        }
+      ],
+      "contact_object_ids": [
+        "receiver",
+        "test_surface"
+      ],
+      "recording": {
+        "every_steps": 24
+      }
+    }
+  ]
+}

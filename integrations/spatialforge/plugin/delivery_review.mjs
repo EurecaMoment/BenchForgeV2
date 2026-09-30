@@ -64,6 +64,7 @@ export function createDeliveryReview({ api, createMessage, visuals = async () =>
         before_position_m: action.before?.position, after_position_m: action.after?.position,
         before_image: action.before_image, after_image: action.after_image,
         recording: action.recording,
+        object_contacts: action.object_contacts,
         before_visibility: action.visual_evidence?.before, after_visibility: action.visual_evidence?.after,
       })),
       reference: task.unit.intent.layout,
