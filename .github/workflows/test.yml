@@ -34,3 +34,5 @@ jobs:
         run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_interaction_recording.py -v
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -t . -p test_robot_contact.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/desktop -t . -p test_capture_images.py -v

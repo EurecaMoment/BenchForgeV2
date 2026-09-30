@@ -1,5 +1,8 @@
 import unittest
+import sys
+from pathlib import Path
 import numpy as np
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from capture_images import read_rgb_bounded, instance_region, object_visibility
 
 
@@ -45,6 +48,16 @@ class CaptureReadinessTests(unittest.TestCase):
         self.assertEqual(events,['retained','reinitialize'])
         self.assertTrue(r['render_reinitialized']);self.assertFalse(r['valid_rgb'])
         self.assertFalse(r['final_camera_changed'])
+
+    def test_warm_product_samples_fresh_pixels_with_one_render(self):
+        pixels=np.zeros((4,6,3),dtype=np.uint8);steps=[]
+        def render():
+            steps.append(1);pixels[:]=len(steps)*40
+        for expected in [40,80]:
+            rgb,receipt=read_rgb_bounded(lambda:pixels,render,(4,6),lambda *args:None,render_steps=1)
+            self.assertEqual(int(rgb[0,0,0]),expected)
+            self.assertEqual(receipt['render_steps_per_attempt'],1)
+        self.assertEqual(len(steps),2)
 
 
 if __name__=='__main__':unittest.main()

@@ -18,10 +18,10 @@ def object_visibility(instance, object_id, prim_path, image_shape):
             'bbox_xyxy':[int(xs.min()),int(ys.min()),int(xs.max()+1),int(ys.max()+1)] if len(xs) else None}
 
 
-def read_rgb_bounded(read, render_step, expected_shape, on_rejected, max_attempts=3, reinitialize=None):
+def read_rgb_bounded(read, render_step, expected_shape, on_rejected, max_attempts=3, reinitialize=None, render_steps=5):
     attempts=[];rgb=None;reinitialized=False
     for attempt in range(max_attempts):
-        for _ in range(5):render_step()
+        for _ in range(render_steps):render_step()
         raw=np.asarray(read())
         shape_ok=raw.ndim==3 and raw.shape[:2]==tuple(expected_shape) and raw.shape[2]>=3
         rgb=raw[:,:,:3].copy() if shape_ok else None
@@ -38,4 +38,4 @@ def read_rgb_bounded(read, render_step, expected_shape, on_rejected, max_attempt
                 reinitialize();reinitialized=True
     return rgb,{'valid_rgb':attempts[-1]['nonzero_rgb'],'attempts':attempts,
                 'simulation_advanced':False,'final_camera_changed':False,
-                'render_reinitialized':reinitialized,'max_attempts':max_attempts}
+                'render_reinitialized':reinitialized,'max_attempts':max_attempts,'render_steps_per_attempt':render_steps}

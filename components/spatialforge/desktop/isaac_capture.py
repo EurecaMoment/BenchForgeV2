@@ -383,7 +383,7 @@ try:
             camera.GetPrim().CreateAttribute('exposure:iso',Sdf.ValueTypeNames.Float).Set(100.*2.**render_config['exposure'])
         return camera,matrix
 
-    def capture_rgb(name):
+    def capture_rgb(name,render_steps=5):
         def retain_rejected(rgb,diagnostic):
             if rgb is not None:
                 image_path=output/name
@@ -401,7 +401,7 @@ try:
             finally:capture_camera_transform.Set(original)
         rgb,diagnostic=read_rgb_bounded(annot['rgb'].get_data,
             lambda:rep.orchestrator.step(rt_subframes=4,delta_time=0.,pause_timeline=True),
-            (settings['height'],settings['width']),retain_rejected,reinitialize=reinitialize_rgb)
+            (settings['height'],settings['width']),retain_rejected,reinitialize=reinitialize_rgb,render_steps=render_steps)
         diagnostic['temporary_camera_offset_m']=.001 if diagnostic['render_reinitialized'] else 0.
         report.setdefault('image_diagnostics',{})[name]=diagnostic
         if rgb is None:raise RuntimeError(f'{name}: invalid RGB buffer after bounded render warmup; see image_diagnostics')
@@ -421,7 +421,10 @@ try:
             # Rendering freezes simulation time; resume the existing context
             # after saving this state, without replaying or moving the target.
             sim.pause()
-            rgb,_=capture_rgb(name)
+            # The before image has initialized this persistent camera/product.
+            # One complete rendering step samples the current physics state;
+            # repeating startup warmup for every video frame wastes renders.
+            rgb,_=capture_rgb(name,render_steps=1)
             Image.fromarray(rgb.astype(np.uint8)).save(output/name)
             sim.play()
         return InteractionRecording(output,index,action['recording'],settings['dt'],frame)
