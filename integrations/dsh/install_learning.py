@@ -11,7 +11,7 @@ TOOLS=['spatial_catalog','spatial_generate','spatial_export','spatial_evaluate',
 def install(path,python,dsh_root):
     path=Path(path);data=yaml.load(path.read_text(encoding='utf8'),Loader=Loader)
     plugin={'id':'spatial-learning-tools','name':str(Path(__file__).with_name('tools.mjs').resolve()),
-        'config':{'python':str(Path(python).resolve()),'dshRoot':str(Path(dsh_root).resolve()),'includeTools':TOOLS}}
+        'config':{'python':str(Path(python).expanduser().absolute()),'dshRoot':str(Path(dsh_root).resolve()),'includeTools':TOOLS}}
     changed=[]
     for patch in data:
         for preset in patch.get('insert',[]):

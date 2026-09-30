@@ -95,10 +95,13 @@ def make_item(template,seed,difficulty,group,media_directory=None):
 
 
 def generate(args,directory,config=None):
-    root=Path(directory)/'dataset';root.mkdir(parents=True)
+    root=Path(directory)/'dataset'
     selected=templates(args.get('capability'))
     if args.get('template_ids'):selected=[t for t in selected if t['id'] in args['template_ids']]
+    excluded=set(args.get('exclude_template_ids', []))
+    selected=[t for t in selected if t['id'] not in excluded]
     if not selected:raise ValueError('No matching templates')
+    profiles=sorted({t['scene_profile'] for t in templates()})
     # World identity is independent of query and capability. Repeated tasks
     # inherit partition membership; there is no random per-row split.
     groups_per_profile=int(args.get('groups_per_profile',20));seed=int(args.get('seed',42000))
@@ -107,15 +110,13 @@ def generate(args,directory,config=None):
     render_media=args.get('render',True)
     if not render_media and any(t['input_mode'] in ['image','image_sequence'] for t in selected):
         raise ValueError('Visual training items require rendered observations. Select structured tasks to generate without images.')
+    root.mkdir(parents=True)
     for partition in PARTITIONS:
         folder=root/partition;folder.mkdir()
         handles[partition]=[(folder/name).open('w',encoding='utf8') for name in ['questions.jsonl','authority.jsonl','sft.jsonl']]
-    excluded=set(args.get('exclude_template_ids', []))
-    selected=[t for t in selected if t['id'] not in excluded]
-    if not selected:raise ValueError('No matching templates after exclusions')
     for ti,template in enumerate(selected):
         family=template['scene_family'];profile=template['scene_profile']
-        profile_index=sorted({t['scene_profile'] for t in selected}).index(profile)
+        profile_index=profiles.index(profile)
         for gi in range(groups_per_profile):
             partition=PARTITIONS[0 if gi%20<12 else 1 if gi%20<15 else 2 if gi%20<17 else 3]
             if profile in heldout:partition='sealed_test'

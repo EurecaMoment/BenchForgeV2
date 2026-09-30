@@ -5,6 +5,27 @@ import path from 'node:path';
 import {test} from 'node:test';
 import {apply} from '../tools.mjs';
 
+test('learning tools declare supported nested object schemas and expose exclusions',async()=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'benchforge-learning-'));
+  const toolsDir=path.join(root,'packages/core/tools/lib');
+  await fs.mkdir(toolsDir,{recursive:true});
+  await fs.writeFile(path.join(toolsDir,'package.json'),JSON.stringify({type:'module'}));
+  await fs.writeFile(path.join(toolsDir,'index.js'),'export function defineTool(value){return value;}');
+  const includeTools=['spatial_catalog','spatial_generate','spatial_export','spatial_evaluate','curriculum','spatial_train','spatial_experiment','training_monitor'];
+  const registered=new Map();
+  try {
+    await apply({tools:{register:tool=>registered.set(tool.name,tool)}},{dshRoot:root,includeTools});
+    assert.equal(registered.size,includeTools.length);
+    function check(schema,label) {
+      if(schema.type==='object') assert.equal(typeof schema.additionalProperties,'boolean',label);
+      for(const [name,child] of Object.entries(schema.properties || {})) check(child,`${label}.${name}`);
+      if(schema.items) check(schema.items,`${label}[]`);
+    }
+    for(const tool of registered.values()) for(const [name,schema] of Object.entries(tool.parameters)) check(schema,`${tool.name}.${name}`);
+    assert.ok(registered.get('benchforge_spatial_generate').parameters.exclude_template_ids);
+  } finally {await fs.rm(root,{recursive:true,force:true});}
+});
+
 test('collaboration handoffs are append-only and readable by another agent',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'benchforge-collab-'));
   const dsh=path.join(root,'dsh');

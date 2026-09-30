@@ -77,7 +77,13 @@ def create_scene(template, seed, difficulty=1, group=None):
             second['position']=first['position'][:];second['size']=[s*.3 for s in first['size']]
     if template['primary_capabilities'][0]=='N07':
         objects[1]['heading']=(objects[0]['heading']+rng.choice([0,90,180,270,30,60]))%360
-    if template['primary_capabilities'][0]=='N03' and rng.random()<.5:objects[1]['shape']=objects[0]['shape']
+    if nid=='N03':
+        # Balance holes, concavity and reflection classes in the shared world,
+        # independently of which shape question will be asked about it.
+        shape_strata=['ring','cross','triangle','rectangle','ring','arrow','pentagon','ellipse','ring','cross','triangle','hexagon']
+        objects[0]['shape']=shape_strata[seed%len(shape_strata)]
+        if rng.random()<.5:objects[1]['shape']=objects[0]['shape']
+        for obj in objects[:2]:obj['label']=obj['color']+' '+obj['shape']
     if nid in ['N04','N05','N14','N18']:
         # Moving foreground stays in the central band; static references are
         # visible around it, so later frames cannot hide the tracked target.
@@ -99,6 +105,8 @@ def create_scene(template, seed, difficulty=1, group=None):
     elif profile=='camera_motion':p=[p[1],p[0]];a=[0,0]
     elif profile=='two_targets':v=[-v[0],-v[1]]
     start=rng.randint(0,4);interval=rng.choice([.5,1,1.5]);times=[start+i*interval for i in range(3+difficulty+rng.randrange(2))]
+    turn_time=(times[-1]-times[0])*rng.uniform(.25,.75)
+    turn_sign=rng.choice([-1,1])
     positions=[]
     for t in times:
         point=[p[j]+t*v[j]+.5*a[j]*t*t for j in range(2)]
@@ -106,7 +114,9 @@ def create_scene(template, seed, difficulty=1, group=None):
         if profile=='stop_start' and t in [1,2]:point=[p[j]+v[j] for j in range(2)]
         if profile=='orbit':point=[5+2*math.cos(t*.4),5+2*math.sin(t*.4)]
         if profile=='zigzag':point[1]+=(-1)**len(positions)*.5
-        if profile=='turning' and t>1:point=[p[0]+v[0],p[1]+v[1]+(t-1)*abs(v[0])]
+        if profile=='turning':
+            elapsed=t-times[0]
+            point=[p[0]+turn_sign*max(0,elapsed-turn_time)*abs(v[1]),p[1]+min(elapsed,turn_time)*v[1]]
         positions.append(point)
     # Apply an independently sampled sequence treatment, so event questions
     # cannot infer the answer from a profile name or a fixed motion direction.
@@ -142,26 +152,32 @@ def create_scene(template, seed, difficulty=1, group=None):
     if graph_profile=='diamond':
         for e in edges:e.update(cost=2,width=1.2)
     start_node,goal_node=rng.sample(nodes,2)
-    camera_translation=[rng.uniform(-.2,.2),rng.uniform(-.2,.2)];camera_rotation=rng.choice([-10,-5,5,10])
+    camera_translation=rotate([rng.uniform(.06,.13),0],rng.uniform(-180,180));camera_rotation=rng.choice([-10,-5,5,10])
     camera_law='constant'
-    if profile=='linear':camera_rotation=0
-    elif profile=='accelerating':camera_law='accelerating'
+    if profile=='accelerating':camera_law='accelerating'
     elif profile=='decelerating':camera_law='decelerating'
-    elif profile=='turning':camera_translation=[0,0]
+    elif profile=='turning':camera_law='turning'
     elif profile=='reversal':camera_law='reversal'
     elif profile=='stop_start':camera_law='stop_start'
-    elif profile=='orbit':camera_translation=[0,0];camera_rotation*=2
+    elif profile=='orbit':camera_law='orbit';camera_rotation*=2
     elif profile=='zigzag':camera_law='zigzag'
     elif profile=='camera_motion':camera_rotation=-camera_rotation
     elif profile=='two_targets':camera_translation=[camera_translation[1],camera_translation[0]]
-    camera_poses=[]
+    camera_poses=[];duration=times[-1]-times[0]
+    turn_at=duration*rng.uniform(.3,.7);orbit_radius=rng.uniform(.25,.6)
     for i,t in enumerate(times):
-        f=(t-times[0]);duration=times[-1]-times[0]
+        elapsed=t-times[0];f=elapsed
         if camera_law=='accelerating':f=f*f/duration
         elif camera_law=='decelerating':f=2*f-f*f/duration
-        elif camera_law=='reversal':f=min(f,duration-f)
+        elif camera_law=='reversal':f=min(f,2*turn_at-f)
         elif camera_law=='stop_start':f=max(0,f-duration/3)
         x,y=[f*v for v in camera_translation]
+        if camera_law=='turning':
+            after=rotate(camera_translation,turn_sign*90)
+            x,y=[min(elapsed,turn_at)*camera_translation[j]+max(0,elapsed-turn_at)*after[j] for j in range(2)]
+        elif camera_law=='orbit':
+            theta=math.radians(f*camera_rotation)
+            x,y=orbit_radius*(math.cos(theta)-1),orbit_radius*math.sin(theta)
         if camera_law=='zigzag':y+=(i%2)*.2
         camera_poses.append([x,y,f*camera_rotation])
     # Preserve each graph family but vary endpoint roles and metric constraints.

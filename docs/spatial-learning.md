@@ -56,6 +56,8 @@ BenchForgeV2 新生成的模式自动包含这些核心工具。现有自定义 
 python integrations/dsh/install_learning.py --preset /path/to/custom.patch.yml --python /path/to/venv/bin/python --dsh-root /path/to/deepseek-harness
 ```
 
+生成器支持可选 `exclude_template_ids` 质量门控。它只排除调用方已由程序审计标记的模板，默认不改变模板池；视觉任务仍要求实际渲染观察。
+
 安装器保存原文件，只向该自定义模式添加学习工具；不修改 DSH 官方预设。待会话空闲时重载 Harness 即生效。
 
 训练按窗口执行：参数更新 → 在 curriculum_dev 上程序评分 → 更新条件化掌握度 → 选择下一窗口样本。在 selection_dev 上逐能力比较初始参考；超过配置的保持退化量则恢复已接受模型及优化器。参考不会随退化下调。`resume` 指向 checkpoint 目录，可恢复模型、优化器、随机数、采样器及课程状态。

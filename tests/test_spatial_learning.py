@@ -139,5 +139,74 @@ class SpatialLearningTests(unittest.TestCase):
             finally:runtime.close()
             self.assertEqual(result['total'],120)
 
+    def test_exclusions_preserve_worlds_and_run_before_media_validation(self):
+        ids=['N21.consistent.scatter.v1','N21.consistent.grid.v1']
+        with tempfile.TemporaryDirectory() as tmp:
+            full=generate({'template_ids':ids,'groups_per_profile':1,'render':False},Path(tmp)/'full')
+            subset=generate({'template_ids':ids+['N03.shape.scatter.v1'],
+                'exclude_template_ids':[ids[1],'N03.shape.scatter.v1'],
+                'groups_per_profile':1,'render':False},Path(tmp)/'subset')
+            def authority(result):
+                return [json.loads(line) for line in (Path(result['dataset'])/'train/authority.jsonl').read_text().splitlines()]
+            expected=next(row for row in authority(full) if row['template_id']==ids[0])
+            self.assertEqual(authority(subset),[expected])
+
+    def test_shape_worlds_include_positive_and_negative_morphology(self):
+        from benchforge_core.spatial_learning.generation import build_task
+        for profile in sorted({t['scene_profile'] for t in templates('N03')}):
+            for query in ['holes','convex','reflected_match','rotated_match']:
+                template=next(t for t in templates('N03') if t['scene_profile']==profile and t['query']==query)
+                answers=[build_task(create_scene(template,61003+i,2),template)['answer'] for i in range(20)]
+                self.assertGreaterEqual(len(set(answers)),2,template['id'])
+                self.assertLessEqual(max(answers.count(a) for a in set(answers)),16,template['id'])
+
+    def test_camera_profiles_move_visible_landmarks_and_vary_endpoint(self):
+        import math
+        from benchforge_core.spatial_learning.motion_tasks import observed_scenes
+        from benchforge_core.spatial_learning.scenes import bbox
+        for profile in ['linear','turning','orbit','reversal']:
+            template=next(t for t in templates('N04') if t['scene_profile']==profile)
+            endpoints=set()
+            for seed in range(62100,62112):
+                scene=create_scene(template,seed,3);poses=scene['motion']['camera_poses']
+                self.assertEqual(poses[0],[0,0,0])
+                self.assertGreater(sum(math.dist(a[:2],b[:2]) for a,b in zip(poses,poses[1:])),.01)
+                endpoints.add(tuple(round(v,5) for v in poses[-1]))
+                frames,_=observed_scenes(scene,'N04')
+                self.assertNotEqual(frames[0]['objects'][0]['position'],frames[-1]['objects'][0]['position'])
+                for frame in frames:
+                    for obj in frame['objects']:
+                        self.assertTrue(all(0<=v<=10 for v in bbox(obj)),(profile,seed,bbox(obj)))
+            self.assertGreater(len(endpoints),1,profile)
+
+    def test_turning_motion_retains_observed_turns_and_stationary_controls(self):
+        import math
+        template=next(t for t in templates('N05') if t['scene_profile']=='turning')
+        turns=stationary=0
+        for seed in range(62100,62140):
+            positions=create_scene(template,seed,2)['motion']['positions']
+            steps=[[b[j]-a[j] for j in range(2)] for a,b in zip(positions,positions[1:])]
+            stationary+=sum(math.hypot(*s) for s in steps)<.01
+            turns+=any(abs(a[0]*b[1]-a[1]*b[0])>.001 for a,b in zip(steps,steps[1:]))
+        self.assertGreater(turns,10)
+        self.assertGreater(stationary,0)
+
+    def test_learning_installer_keeps_venv_interpreter_path(self):
+        import os
+        import subprocess
+        import sys
+        import venv
+        import yaml
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);environment=root/'venv'
+            venv.EnvBuilder(with_pip=False,symlinks=os.name!='nt').create(environment)
+            python=environment/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
+            preset=root/'custom.patch.yml'
+            preset.write_text(yaml.safe_dump([{'insert':[{'name':'@deepseek-ai/dsh-agent-preset','config':{'id':'learning','plugins':[]}}]}]))
+            installer=Path(__file__).resolve().parents[1]/'integrations/dsh/install_learning.py'
+            subprocess.run([sys.executable,str(installer),'--preset',str(preset),'--python',str(python),'--dsh-root',str(root)],check=True,capture_output=True)
+            config=yaml.safe_load(preset.read_text())[0]['insert'][0]['config']['plugins'][0]['config']
+            self.assertEqual(config['python'],str(python.absolute()))
+
 
 if __name__=='__main__':unittest.main()
