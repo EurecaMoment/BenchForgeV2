@@ -117,6 +117,8 @@ def create_scene(template, seed, difficulty=1, group=None):
         if profile=='turning':
             elapsed=t-times[0]
             point=[p[0]+turn_sign*max(0,elapsed-turn_time)*abs(v[1]),p[1]+min(elapsed,turn_time)*v[1]]
+            if template['query'] in ['crossing','stationary','decelerate']:
+                point[0] += turn_sign*(.9+.2*(seed%5))*max(0,elapsed-turn_time)
         positions.append(point)
     # Apply an independently sampled sequence treatment, so event questions
     # cannot infer the answer from a profile name or a fixed motion direction.

@@ -163,6 +163,13 @@ class GenerationTools:
                     return result
         if stop.is_set():
             raise RuntimeError('generation canceled; partial artifacts retained')
+        endpoint = os.environ.get('SPATIALFORGE_INFERENCE_URL')
+        if endpoint:
+            from .inference_service import execute_remote
+            result = execute_remote(endpoint, name, request, work, stop)
+            if not self._outputs_exist(name, request, result):
+                raise ValueError(f'{name} returned incomplete remote output; inspect the shared artifacts')
+            return result
         # Loading config also adds BenchForge to this process import path.
         config = self.config
         WORKER_MODULES = {'sam3': 'pic2sim.workers.sam3'}
