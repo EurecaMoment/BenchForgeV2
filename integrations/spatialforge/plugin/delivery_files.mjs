@@ -32,7 +32,7 @@ export async function inspectDeliveryFiles(files, cwd, signal) {
   for (const name of [...metadata].sort()) {
     signal.throwIfAborted();
     let view;
-    try { view = JSON.parse(await fs.readFile(name, 'utf8')); }
+    try { view = JSON.parse(await fs.readFile(name, { encoding: 'utf8', signal })); }
     catch (error) {
       if (!(error instanceof SyntaxError)) throw error;
       issues.push({ metadata: name, problem: 'invalid_json' }); continue;

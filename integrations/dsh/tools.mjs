@@ -1,34 +1,66 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import {pathToFileURL} from 'node:url';
-import {spawn} from 'node:child_process';
+import {defineTool} from '@deepseek-ai/dsh-tools';
+import Schema from '@deepseek-ai/schemastery';
+import {launchEnvironmentOf} from '@deepseek-ai/dsh-launch-environment';
 
 export const name = 'benchforge-tools';
-export const inject = ['tools'];
+export const inject = ['tools', 'attachments', 'subprocess'];
+export const Config = Schema.object({
+  python: Schema.string().default('python3'),
+  configPath: Schema.string(),
+  dshRoot: Schema.string(),
+  includeTools: Schema.array(Schema.string()),
+  environment: Schema.dict(Schema.string()).default({}),
+  forwardEnvironment: Schema.array(Schema.string()).default([]),
+  maxOutputBytes: Schema.number().min(1024).default(16 * 1024 * 1024),
+  graceMs: Schema.number().min(1).default(1000),
+});
 
-export function invoke(python, workspace, configPath, tool, request, signal) {
-  return new Promise((resolve, reject) => {
-    const argv = ['-m', 'benchforge_core.cli', tool, '--workspace', workspace, '--input', '-'];
-    if (configPath) argv.push('--config', configPath);
-    const child = spawn(python, argv, {stdio:['pipe','pipe','pipe'], signal,
-      windowsHide:true, env:{...process.env, PYTHONIOENCODING:'utf-8'}});
-    let stdout = '', stderr = '';
-    child.stdout.on('data', x => stdout += x);
-    child.stderr.on('data', x => stderr += x);
-    child.on('error', reject);
-    child.on('close', code => {
-      if (code !== 0) return reject(new Error(stderr || `BenchForge exited ${code}`));
-      try {resolve(JSON.parse(stdout));} catch (error) {reject(error);}
-    });
-    child.stdin.on('error', reject);
-    child.stdin.end(JSON.stringify(request));
-  });
+export async function invoke(subprocess, python, workspace, configPath, tool, request, signal, options = {}) {
+  signal?.throwIfAborted();
+  const cwd = path.resolve(workspace);
+  await fs.mkdir(cwd, {recursive:true});
+  const env = {...options.environment, PYTHONIOENCODING:'utf-8', BENCHFORGE_MANAGED_SUBPROCESS:'1'};
+  const executable = await subprocess.resolveExecutable(python, env, signal);
+  signal?.throwIfAborted();
+  const argv = [executable, '-m', 'benchforge_core.cli', tool, '--workspace', cwd, '--input', '-'];
+  if (configPath) argv.push('--config', path.resolve(configPath));
+  const handle = subprocess.spawn({argv, cwd, env, signal, graceMs:options.graceMs ?? 1000,
+    stdio:{stdin:{data:JSON.stringify(request)}, stdout:{maxBytes:options.maxOutputBytes ?? 16 * 1024 * 1024}, stderr:{maxBytes:65536}}});
+  options.active?.add(handle);
+  try {
+    const outcome = await handle.done;
+    signal?.throwIfAborted();
+    const stdout = handle.collected.stdout.readFrom(0);
+    const stderr = handle.collected.stderr.readFrom(0);
+    if (outcome.exitCode !== 0) throw new Error(stderr.text || `BenchForge exited ${outcome.exitCode ?? outcome.signal}`);
+    if (stdout.lossy) throw new Error(`BenchForge JSON exceeds maxOutputBytes (${options.maxOutputBytes ?? 16 * 1024 * 1024}); increase the plugin limit for this result.`);
+    return JSON.parse(stdout.text);
+  } finally {
+    // A CLI result is complete only after all of its owned work has stopped.
+    // Explicit background jobs transfer to their own service before returning.
+    handle.terminate();
+    await handle.waitForExit();
+    options.active?.delete(handle);
+  }
 }
 
 export async function apply(ctx, config) {
-  const {defineTool} = await import(pathToFileURL(path.join(config.dshRoot,'packages/core/tools/lib/index.js')));
+  const active = new Set();
+  const lifetime = new AbortController();
+  ctx.effect(() => async () => {
+    lifetime.abort(new DOMException('BenchForge plugin unloaded', 'AbortError'));
+    for (const handle of active) handle.terminate();
+    await Promise.all([...active].map(handle => handle.waitForExit()));
+  });
+  const snapshot = launchEnvironmentOf(ctx);
+  const environment = Object.fromEntries((config.forwardEnvironment || []).map(key => [key,snapshot.get(key)?.value]).filter(([,value])=>value!==undefined));
+  Object.assign(environment,config.environment);
   const output = {schema:{type:'object',properties:{},additionalProperties:true},
     render:(_args,value)=>[{type:'text',text:JSON.stringify(value)}]};
+  const operationOutput = {...output,schema:{type:'object',properties:{operation_id:{type:'string',required:true},artifact_dir:{type:'string',required:true}},additionalProperties:true}};
+  const statusOutput = {...output,schema:{type:'object',properties:{operations:{type:'array',required:true,items:{type:'object',properties:{id:{type:'string',required:true},tool:{type:'string',required:true},state:{type:'string',required:true}},additionalProperties:true}}},additionalProperties:true}};
   const definitions = {
     catalog:'Discover callable production tools and exact request examples. Start with requests and compiler_templates. section=migration separates implementation from validation.',
     status:'Read persisted operation results and artifact paths. Does not retry operations.',
@@ -456,17 +488,20 @@ export async function apply(ctx, config) {
     if (tool === 'collaboration') continue;
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
-      output, execute:(args,exec)=>{const {workspace,...request}=args; return invoke(config.python || 'python',workspace,config.configPath,tool,request,exec.signal);}}));
+      output:tool==='catalog'?output:tool==='status'?statusOutput:operationOutput,
+      execute:(args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal; return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment,active});}}));
   }
   if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
     parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...schemas.collaboration}, output,
     execute:async (args,exec)=>{
+      exec.signal?.throwIfAborted();
       const {workspace,...request}=args;
       const directory=path.join(path.resolve(workspace),'.benchforge','collaboration');
       const file=path.join(directory,'handoffs.jsonl');
-      await fs.mkdir(directory,{recursive:true});
       if(request.action==='publish'){
         if(!request.role || !request.summary) throw new Error('collaboration publish needs role and summary');
+        await fs.mkdir(directory,{recursive:true});
+        exec.signal?.throwIfAborted();
         const handoff={handoff_id:request.handoff_id || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
           created_at:new Date().toISOString(),agent:request.agent || exec.agent?.session?.id || 'current-agent',
           role:request.role,status:request.status || 'working',summary:request.summary,
@@ -475,11 +510,13 @@ export async function apply(ctx, config) {
           reply_to:request.reply_to || null,related_handoff_ids:request.related_handoff_ids || [],
           requested_from:request.requested_from || [],decision:request.decision || null,
           confidence:request.confidence ?? null,supersedes_handoff_id:request.supersedes_handoff_id || null};
+        // Join a begun append before observing cancellation, keeping each record whole.
         await fs.appendFile(file,JSON.stringify(handoff)+'\n','utf8');
+        exec.signal?.throwIfAborted();
         return handoff;
       }
       let rows=[];
-      try{rows=(await fs.readFile(file,'utf8')).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}
+      try{rows=(await fs.readFile(file,{encoding:'utf8',signal:exec.signal})).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}
       catch(error){if(error.code!=='ENOENT') throw error;}
       if(request.action==='list') {
         if(!request.history) rows=[...new Map(rows.map(item=>[item.handoff_id,item])).values()];
@@ -499,9 +536,13 @@ export async function apply(ctx, config) {
   if (!config.includeTools || config.includeTools.includes('view_image')) ctx.tools.register(defineTool({name:'benchforge_view_image', description:'Show a real local capture or annotation image to the model and user.',
     parameters:{path:{type:'string',required:true}},
     output:{...output,render:(_args,value)=>[{type:'image',attachment:value.image}]},
-    execute:async args=>{
-      const attachments=ctx.get('attachments');
-      const data=await fs.readFile(args.path);
-      return {image:await attachments.saveImage({data,mediaType:/\.jpe?g$/i.test(args.path)?'image/jpeg':'image/png',name:path.basename(args.path)})};
+    execute:async (args,exec)=>{
+      exec.signal?.throwIfAborted();
+      const attachments=ctx.attachments;
+      const data=await fs.readFile(args.path,{signal:exec.signal});
+      exec.signal?.throwIfAborted();
+      const image=await attachments.saveImage({data,mediaType:/\.jpe?g$/i.test(args.path)?'image/jpeg':'image/png',name:path.basename(args.path)});
+      exec.signal?.throwIfAborted();
+      return {image};
     }}));
 }

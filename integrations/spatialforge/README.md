@@ -1,9 +1,11 @@
 # SpatialForge integration
 
 `plugin/tools.mjs` contains the production tool definitions and the delivery
-review hooks, adapted to a configured DSH root, service URL and token environment
+review hooks, using public DSH package imports, service URL and token environment
 variable. No private host paths or tokens are embedded. `build_preset.py` combines
-them with BenchForge in a separate **BenchForgeV2** preset.
+them with BenchForge in a separate **BenchForgev2** preset. The installable
+Node bundle and supported package/Node versions are documented in
+[the integration guide](../README.md).
 
 ## Existing service connection
 

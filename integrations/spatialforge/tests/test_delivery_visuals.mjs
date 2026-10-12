@@ -49,3 +49,19 @@ test('focused captures request original camera indices and do not invent skipped
     else assert.ok(content.every(c=>!c.text.includes('Latest capture view_')));
   }
 });
+
+test('failed evidence reads settle only after all owned requests stop', async () => {
+  let secondSettled=false,imagesCalled=false;
+  const failure=new Error('fixture evidence failure');
+  const create=createDeliveryVisuals({
+    api:async(_route,args)=>{
+      if(args.file==='capture/view_0.png')throw failure;
+      await new Promise(resolve=>setTimeout(resolve,15));secondSettled=true;
+      return {source_path:args.file};
+    },
+    images:async()=>{imagesCalled=true;return [];},
+  });
+  await assert.rejects(create({task:{id:'sf_fixture.scene0',unit:{revision:0,intent:{}},result:{report:{frames:2}}}}),error=>error===failure);
+  assert.equal(secondSettled,true);
+  assert.equal(imagesCalled,false);
+});

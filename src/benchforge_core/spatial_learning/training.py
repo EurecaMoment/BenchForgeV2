@@ -6,9 +6,7 @@ checkpoint. Optional backend imports are deferred until training starts.
 import json
 import random
 import time
-import subprocess
 import sys
-import os
 from collections import defaultdict
 from pathlib import Path
 from .curriculum import allocate,update_state
@@ -17,6 +15,7 @@ from .generation import write_json
 from .monitor import emit
 from .scoring import score
 from .environments import environment
+from ..processes import start_background
 
 
 class TransformersSolver:
@@ -230,10 +229,8 @@ def train(args,directory,config=None):
     if args.get('action')=='start':
         run_dir=Path(args.get('run',Path(directory)/'training')).resolve();run_dir.mkdir(parents=True,exist_ok=True)
         command=[sys.executable,'-m','benchforge_core.spatial_learning.training','--config',str(Path(args['config']).resolve()),'--run',str(run_dir)]
-        with (run_dir/'process.log').open('ab') as log:
-            process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=log,stderr=log,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0,start_new_session=os.name!='nt')
-        result={'pid':process.pid,'run':str(run_dir),'log':str(run_dir/'process.log')};write_json(run_dir/'job.json',result)
+        process=start_background(command,cwd=Path.cwd(),log=run_dir/'process.log')
+        result={**process,'run':str(run_dir),'log':str(run_dir/'process.log')};write_json(run_dir/'job.json',result)
         return result
     settings=json.loads(Path(args['config']).read_text(encoding='utf8'))
     return run(settings,args.get('run',Path(directory)/'training'))

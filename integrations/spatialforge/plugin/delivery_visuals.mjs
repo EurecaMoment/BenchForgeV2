@@ -8,9 +8,13 @@ export function createDeliveryVisuals({ api, images }) {
     const indices = task.result?.report?.capture_scope?.view_indices ?? Array.from({ length: count }, (_value, index) => index);
     const views = indices.map(index => `capture/view_${index}.png`);
     const files = [...(hasReference ? ['layout/reference.png'] : []), ...views];
-    const evidence = await Promise.all(files.map(file => api('/evidence', {
+    const reads = await Promise.allSettled(files.map(file => api('/evidence', {
       task_id: task.id, revision: task.unit.revision, file,
     }, signal)));
+    // Wait for every owned evidence read, including on cancellation/failure.
+    const failed = reads.find(read => read.status === 'rejected');
+    if (failed) throw failed.reason;
+    const evidence = reads.map(read => read.value);
     const paths = evidence.map(item => item.source_path);
     const blocks = await images(paths, agent, signal);
     const labels = [

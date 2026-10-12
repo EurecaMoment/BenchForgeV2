@@ -1,7 +1,10 @@
 """Generate a new BenchForge mode. Never writes official presets or profiles."""
 import argparse
 from copy import deepcopy
+import json
+import os
 from pathlib import Path
+import subprocess
 import yaml
 
 
@@ -20,6 +23,41 @@ class Dumper(yaml.SafeDumper):
 Loader.add_constructor('tag:yaml.org,2002:js', lambda loader,node:JavaScript(loader.construct_scalar(node)))
 Dumper.add_representer(JavaScript, lambda dumper,value:dumper.represent_scalar('tag:yaml.org,2002:js',str(value)))
 
+
+def load_sources(dsh_root=None, node=None, resolve_from=None):
+    """Resolve official preset assets through the package's supported exports."""
+    if resolve_from is None:
+        if dsh_root is None:
+            resolve_from=Path(__file__).resolve().parents[1]/'package.json'
+        else:
+            # Compatibility for source-based launchers: this is only a Node lookup
+            # location, never the source path of an imported implementation/asset.
+            root=Path(dsh_root).resolve()
+            cli_manifest=root/'apps/cli/package.json'
+            resolve_from=cli_manifest if cli_manifest.exists() else root/'package.json'
+    names=['standard','ptc','minimal','cordis']
+    script="""const {createRequire}=require('node:module');
+const requireFrom=createRequire(process.argv[1]);
+const names=JSON.parse(process.argv[2]);
+console.log(JSON.stringify(Object.fromEntries(names.map(name=>
+  [name,requireFrom.resolve('@deepseek-ai/dsh-web-app/presets/'+name+'.patch.yml')]))));"""
+    command=[node or os.environ.get('BENCHFORGE_DSH_NODE','node'),'-e',script,
+             str(Path(resolve_from).resolve()),json.dumps(names)]
+    result=subprocess.run(command,capture_output=True,text=True)
+    if result.returncode:
+        raise RuntimeError('Cannot resolve official @deepseek-ai/dsh-web-app preset exports. '
+                           'Use a current DSH Node interpreter (--node) and installed package '
+                           'lookup location (--dsh-resolve-from).\n'+result.stderr.strip())
+    assets=json.loads(result.stdout)
+    return {name:yaml.load(Path(assets[name]).read_text(encoding='utf-8'),Loader=Loader)
+            for name in names}
+
+
+def add_source_arguments(parser):
+    parser.add_argument('--dsh-root',type=Path,help='Compatibility lookup root for an existing DSH source installation')
+    parser.add_argument('--dsh-resolve-from',type=Path,help='Package manifest used as the Node public-package lookup location')
+    parser.add_argument('--node',help='DSH-compatible Node executable (or BENCHFORGE_DSH_NODE)')
+
 PERSONA = '''You operate BenchForge, an independent benchmark construction mode.
 Keep Standard's conversational interaction, file tools, image inspection and task code. Choose the available tools that fit the current objective; catalog, methods, source processing, annotation, compilation, synthesis, scoring, review and reporting are composable capabilities rather than a required sequence.
 Use direct tools, PTC and collaboration tools when they help. Split genuinely independent work among available agents, keep a shared workspace, and publish concise handoffs so another agent can resume, reply, reconcile evidence or take over a blocked piece. Handoffs may link related work and state a decision, but no fixed graph, round count, role roster or approval step is implied. Coordinate simulator submissions through the configured execution boundary and avoid overwriting active artifacts.
@@ -33,13 +71,13 @@ Prefer task code and inputs for task-specific changes. Keep verification proport
 '''
 
 
-def build(sources, root, python, config_path):
+def build(sources, root, python, config_path, *, package_imports=False):
     def preset(name):
         return next(row for patch in sources[name] for row in patch.get('insert',[]) if row['id']=='preset-'+name)
     result=deepcopy(preset('standard'))
-    result['id']='preset-benchforge'
+    result['id']='preset-benchforgev2'
     cfg=result['config']
-    cfg.update(id='benchforge',name='BenchForge',order=-2,
+    cfg.update(id='benchforgev2',name='BenchForgev2',order=-2,
                description='Composable benchmark construction, annotation, simulation and evidence.')
     plugins=cfg['plugins']
     persona=next(p for p in plugins if p['id']=='persona')
@@ -51,24 +89,23 @@ def build(sources, root, python, config_path):
     for row in persistent['config']:
         if row['id'] in ('persistent-bash','persistent-pwsh'):
             shell='bash' if row['id']=='persistent-bash' else 'pwsh'
-            row['name']=str(Path(__file__).with_name('persistent-shell.mjs').resolve())
-            row['config']={'shell':shell,'timeoutMs':row['config']['timeoutMs'],'dshRoot':str(root.resolve())}
+            row['name']='@eurecamoment/benchforge-dsh/persistent-shell' if package_imports else str(Path(__file__).with_name('persistent-shell.mjs').resolve())
+            row['config']={**row.get('config',{}),'shell':shell}
     plugins.append(persistent)
     plugins.append(deepcopy(next(p for p in preset('cordis')['config']['plugins'] if p['id']=='tool-cordis')))
-    plugins.append({'id':'benchforge-tools','name':str(Path(__file__).with_name('tools.mjs').resolve()),
-                    'config':{'dshRoot':str(root.resolve()),'python':python,'configPath':str(config_path.resolve())}})
+    plugins.append({'id':'benchforge-tools','name':'@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports else str(Path(__file__).with_name('tools.mjs').resolve()),
+                    'config':{'python':python,'configPath':str(config_path.resolve())}})
     return [{'insert':[result]}]
 
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dsh-root',required=True,type=Path)
+    add_source_arguments(parser)
     parser.add_argument('--python',default='python')
     parser.add_argument('--config',required=True,type=Path)
     parser.add_argument('--output',required=True,type=Path)
     args=parser.parse_args()
-    base=args.dsh_root/'packages/bundle/web-app/presets'
-    sources={name:yaml.load((base/(name+'.patch.yml')).read_text(encoding='utf-8'),Loader=Loader) for name in ['standard','ptc','minimal','cordis']}
+    sources=load_sources(args.dsh_root,args.node,args.dsh_resolve_from)
     result=build(sources,args.dsh_root,args.python,args.config)
     args.output.write_text(yaml.dump(result,Dumper=Dumper,sort_keys=False,allow_unicode=True),encoding='utf-8')
 

@@ -1,10 +1,9 @@
 """Explicitly start configured optional backends without a global service manager."""
 import json
-import os
-import subprocess
 import urllib.request
 from pathlib import Path
 from .artifacts import write
+from .processes import start_background
 
 
 def backend(args,directory,config):
@@ -23,11 +22,8 @@ def backend(args,directory,config):
     command=cfg['command']
     if not isinstance(command,list) or not command:raise ValueError('Backend command must be an argv list')
     log=directory/'backend.log'
-    kwargs={'start_new_session':True} if os.name!='nt' else {'creationflags':subprocess.CREATE_NO_WINDOW|subprocess.CREATE_NEW_PROCESS_GROUP}
-    with log.open('ab') as out:
-        proc=subprocess.Popen(command,cwd=cfg.get('cwd',str(directory)),env={**os.environ,**cfg.get('env',{})},
-                              stdout=out,stderr=subprocess.STDOUT,stdin=subprocess.DEVNULL,**kwargs)
-    result={'backend':name,'pid':proc.pid,'started':True,'ready':False,'log':str(log),
+    process=start_background(command,cwd=cfg.get('cwd',str(directory)),log=log,env=cfg.get('env'))
+    result={'backend':name,**process,'started':True,'ready':False,'log':str(log),
             'next':'Call backend status after startup. A started process is not inference acceptance.'}
     write(directory/'backend-process.json',result)
     return result

@@ -1,0 +1,54 @@
+{
+  "name": "@eurecamoment/benchforge-dsh",
+  "version": "0.2.1",
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "BenchForgev2 and SpatialForge tools for DeepSeek Harness",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EurecaMoment/BenchForgeV2.git",
+    "directory": "integrations"
+  },
+  "engines": { "node": "^22.19.0 || >=24.0.0" },
+  "exports": {
+    ".": "./dsh/tools.mjs",
+    "./benchforge-tools": "./dsh/tools.mjs",
+    "./spatialforge-tools": "./spatialforge/plugin/tools.mjs",
+    "./persistent-shell": "./dsh/persistent-shell.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dsh/*.mjs",
+    "dsh/build_preset.py",
+    "spatialforge/plugin/*.mjs",
+    "spatialforge/build_preset.py",
+    "spatialforge/build_development_preset.py",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-subprocess": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-tool-bash-persistent": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-tool-pwsh-persistent": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-web-app": "0.1.7-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@deepseek-ai/dsh-tools": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-subprocess": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-subprocess-local": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-launch-environment": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-tool-bash-persistent": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-tool-pwsh-persistent": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-web-app": "0.1.7-rc.1"
+  }
+}
