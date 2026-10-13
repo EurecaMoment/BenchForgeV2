@@ -17,6 +17,16 @@ verified for these adapters; upgrade the pins together after testing against the
 target Harness. A linked checkout shares the running Harness packages through
 the public peer dependencies. Standalone tests use the matching dev dependencies.
 
+For a fresh checkout or CI runner, install the locked Node dependencies before
+running the integration smoke checks:
+
+```bash
+npm ci --prefix integrations
+python integrations/spatialforge/smoke.py
+```
+
+Installing Python extras alone does not install the public DSH Node packages.
+
 From the repository root:
 
 ```bash
