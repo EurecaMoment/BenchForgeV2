@@ -39,3 +39,4 @@ TestResults.xml
 
 .spatialforge/
 outputs/
+.deployment/

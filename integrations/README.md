@@ -10,6 +10,23 @@ The bundle adds one independent **BenchForgev2** preset. It does not replace
 or the separately configured **SpatialForge** development preset. Their existing
 deployment bindings remain owned by the user profile.
 
+## FIT checkout location
+
+The maintained FIT checkout is `/home/maqiang/GitHub/BenchForgeV2`, on the
+`SpatialForge` development branch. Update this checkout in place; do not create
+a new top-level directory for each commit. Task templates are under
+`src/benchforge_core/pipelines/task_templates.json` and pipeline recipes under
+`src/benchforge_core/pipelines/definitions/`.
+
+Machine-local `.deployment/` holds the retained `published` and `legacy`
+versions, Python launchers, deployment receipts and `history/`. These files are
+ignored by Git. The three DSH modes remain distinct: SpatialForge uses the
+checkout root, BenchForgev2 uses `.deployment/published`, and BenchForge uses
+`.deployment/legacy`. Historical external paths may remain compatibility
+symlinks for existing sessions; they are not additional maintained checkouts.
+Model weights, environments, simulator installations and production artifacts
+remain in their existing runtime locations.
+
 ## Install and configure
 
 Use DSH `0.1.7-rc.1` with Node `^22.19.0 || >=24`. The manifest pins the API version
