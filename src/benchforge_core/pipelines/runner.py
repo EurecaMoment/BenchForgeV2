@@ -59,9 +59,6 @@ def execute_step(step, arguments, directory, environment, client):
         recipe = recipes[step['pipeline_id']]
         inputs = arguments
         steps = recipe['steps']
-        if recipe['id'] == 'data.capability':
-            steps = [dict(row) for row in steps]
-            steps[0] = {**steps[0], 'arguments': {'selections': '$inputs.selections', 'evidence': '$inputs.evidence', 'seed': '$inputs.seed', 'split': '$inputs.split'}}
         nested = {'schema': 'spatialforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe['id'], 'inputs': inputs, 'steps': steps}
         nested_path = Path(directory)/'nested-plan.json'
         write(nested_path, nested)

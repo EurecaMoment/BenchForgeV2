@@ -55,7 +55,6 @@ def plan(args, directory, config=None):
                 if tid not in catalog:
                     raise ValueError(f'Unknown template {tid}')
         inputs.update(selections=selections, split=inputs.get('split', 'train'), seed=inputs.get('seed', 20261013))
-        pipeline['steps'][0]['arguments'] = {'selections': '$inputs.selections', 'evidence': '$inputs.evidence', 'seed': '$inputs.seed', 'split': '$inputs.split'}
     value = {'schema': 'spatialforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe,
              'objective': objective, 'inputs': inputs, 'steps': pipeline['steps'], 'selections': selections,
              'template_contracts': [{k: catalog[tid][k] for k in ('id', 'task_id', 'task_name', 'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links')} | {'execution': supports(tid)} for tid in dict.fromkeys(tid for s in selections for tid in s['template_ids'])]}
