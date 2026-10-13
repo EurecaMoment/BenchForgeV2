@@ -11,10 +11,17 @@ from .spatial_learning.training import train as spatial_train
 from .spatial_learning.monitor import monitor as training_monitor
 from .spatial_learning.export import export as spatial_export
 from .spatial_learning.experiments import experiment as spatial_experiment
+from .pipelines.catalog import catalog as pipeline_catalog
+from .pipelines.planner import plan as pipeline_plan
+from .pipelines.runner import pipeline_run, status as pipeline_status
+from .pipelines.evaluation import evaluate as pipeline_evaluate
 from pathlib import Path
 import re
 
 OPERATIONS={
+ 'pipeline_catalog':pipeline_catalog,'pipeline_plan':pipeline_plan,
+ 'pipeline_run':pipeline_run,'pipeline_status':pipeline_status,
+ 'pipeline_evaluate':pipeline_evaluate,
  'spatial_catalog':spatial_catalog,'spatial_generate':spatial_generate,'spatial_evaluate':spatial_evaluate,
  'curriculum':curriculum,'spatial_train':spatial_train,'training_monitor':training_monitor,
  'spatial_export':spatial_export,

@@ -1,0 +1,1 @@
+{"id":"asset.prepare","version":1,"description":"复用、导入或生成资产，保留来源和坐标约定。","inputs":{"intent":"object","service_config":"path"},"outputs":{"asset":"AssetBundle"},"steps":[{"id":"asset","uses":"spatialforge.asset","arguments":{"intent":"$inputs.intent"}},{"id":"asset_ready","uses":"spatialforge.observe","arguments":{"run_id":"$asset.run_id"},"await_terminal":true}]}

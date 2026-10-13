@@ -80,6 +80,11 @@ export async function apply(ctx, config) {
   };
   const object={type:'object',properties:{},additionalProperties:true};
   Object.assign(definitions, {
+    pipeline_catalog:'Discover composable production recipes and the user-provided 89 tasks / 267 exact measurement templates. Capability links retrieve candidates; they do not define primary measurement or inherit validation. Read conditions and execution support before selecting.',
+    pipeline_plan:'Create a persistent production plan for one capability or multiple exact task templates. Interpret user intent and supply selections with template_ids/count/reason; plain text without explicit IDs returns candidates for your semantic decomposition. Compose recipes with shared typed artifacts.',
+    pipeline_run:'Execute or resume a frozen pipeline plan. Reuses completed steps, submits to the existing single Isaac queue, and returns waiting/needs_input/needs_evidence when unfinished. For exact document templates supply protocol-bound source evidence when no program generator exists. State completed concerns production, not benchmark approval.',
+    pipeline_status:'Read the persisted pipeline step states and artifacts without submitting or retrying work.',
+    pipeline_evaluate:'Score saved answers against the exact imported template protocol: numeric error with units, grouped ordering and IoU/detection sets. Separate per-template metrics; no model API judging or pooled 27-capability claim.',
     spatial_catalog:'Read the 27-node spatial capability graph and executable template specifications. Conditional graph relations guide task selection without imposing prerequisite locks.',
     spatial_generate:'Generate grouped training and evaluation worlds, observations, program answers and feedback episodes from selected spatial templates. Train/dev/test roles remain separate.',
     spatial_evaluate:'Score saved answers or replay actions against program truth and environment states. No model API judging.',
@@ -92,6 +97,11 @@ export async function apply(ctx, config) {
   definitions.backend='Inspect or explicitly start an optional configured backend in its own environment. Existing services keep their lifecycle outside this operation.';
   definitions.adapt_capture='Convert native Habitat/LIBERO/CARLA capture to compiler evidence. Habitat samples continuous visible surface regions and computes calibrated camera range from raw depth; semantic labels come from the selected source records.';
   const schemas={
+    pipeline_catalog:{section:{type:'string',enum:['pipelines','capabilities','tasks','templates','protocol']},capability:{type:'string'},template_ids:{type:'array',items:{type:'string'}},task_ids:{type:'array',items:{type:'string'}},query:{type:'string'},item_id:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
+    pipeline_plan:{objective:{type:'string'},pipeline_id:{type:'string'},capability:{type:'string'},capabilities:{type:'array',items:{type:'string'}},template_ids:{type:'array',items:{type:'string'}},task_ids:{type:'array',items:{type:'string'}},target_items:{type:'integer'},selections:{type:'array',items:{type:'object',additionalProperties:false,properties:{template_ids:{type:'array',items:{type:'string'},required:true},count:{type:'integer',required:true},reason:{type:'string',required:true}}}},steps:{type:'array',items:{type:'object',additionalProperties:true,properties:{id:{type:'string',required:true},uses:{type:'string',required:true},pipeline_id:{type:'string'},arguments:{type:'object',additionalProperties:true},await_terminal:{type:'boolean'}}}},inputs:{type:'object',additionalProperties:true},evidence:{type:'string'},seed:{type:'integer'},split:{type:'string',enum:['train','dev','test','sealed']},service_config:{type:'string'}},
+    pipeline_run:{plan:{type:'string',required:true},run:{type:'string'},bindings:{type:'object',additionalProperties:true}},
+    pipeline_status:{run:{type:'string',required:true}},
+    pipeline_evaluate:{dataset:{type:'string',required:true},predictions:{type:'string',required:true}},
     spatial_catalog:{section:{type:'string',enum:['graph','templates']},capability:{type:'string'},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
     spatial_generate:{capability:{type:'string'},template_ids:{type:'array',items:{type:'string'}},exclude_template_ids:{type:'array',items:{type:'string'}},groups_per_profile:{type:'integer'},seed:{type:'integer'},render:{type:'boolean'},conditions:{type:'array',items:{type:'string',enum:['natural','supplied_intermediate','isolated']}},heldout_profiles:{type:'array',items:{type:'string'}}},
     spatial_export:{dataset:{type:'string',required:true}},

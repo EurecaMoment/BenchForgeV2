@@ -1,0 +1,1 @@
+{"id":"data.package","version":1,"description":"打包公开题目媒体、私有authority和训练答案，保留协议、分区和数量缺口。","inputs":{"dataset":"path"},"outputs":{"public_bundle":"path","authority_bundle":"path","training_bundle":"optional path"},"steps":[{"id":"package","uses":"data.package","arguments":{"dataset":"$inputs.dataset"}}]}

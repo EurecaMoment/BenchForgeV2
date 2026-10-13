@@ -32,6 +32,7 @@ include = ["benchforge_core*"]
 [tool.setuptools.package-data]
 benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "vendor/**/*"]
 "benchforge_core.spatial_learning" = ["graph.json", "templates.json"]
+"benchforge_core.pipelines" = ["task_templates.json", "definitions/*.json"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
