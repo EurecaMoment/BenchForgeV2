@@ -101,9 +101,12 @@ class PipelineTests(unittest.TestCase):
             runtime = Runtime(root)
             planned = runtime.call('pipeline_plan', {'pipeline_id': 'scene.capture', 'inputs': {'scene_program_path': '/workspace/scene.json', 'service_config': 'fixture.json'}})
             calls = []
+            submission_keys = []
             ready = [False]
             def client(route, arguments, config):
                 calls.append(route)
+                if route == '/capture':
+                    submission_keys.append(arguments['request_key'])
                 return {'run_id': 'sf_fixture', 'state': 'SUCCEEDED' if ready[0] else 'RUNNING'} if route == '/inspect' else {'run_id': 'sf_fixture', 'state': 'accepted'}
             result = run({'plan': planned['plan'], '_workspace': str(root)}, root/'execution', client=client)
             self.assertEqual(result['state'], 'waiting')
@@ -115,6 +118,13 @@ class PipelineTests(unittest.TestCase):
             composed = run({'plan': combined['plan'], '_workspace': str(root)}, root/'composed', client=client)
             self.assertEqual(composed['state'], 'completed')
             self.assertEqual(composed['outputs']['data']['outputs']['questions']['accepted'], 2)
+            independent = run({'plan': combined['plan'], '_workspace': str(root)}, root/'independent', client=client)
+            self.assertEqual(independent['state'], 'completed')
+            self.assertEqual(len(submission_keys), 3)
+            self.assertEqual(len(set(submission_keys)), 3)
+            resumed = run({'plan': combined['plan'], 'run': composed['run'], '_workspace': str(root)}, root/'resume-composed', client=client)
+            self.assertEqual(resumed['state'], 'completed')
+            self.assertEqual(len(submission_keys), 3)
             runtime.close()
 
 

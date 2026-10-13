@@ -97,8 +97,10 @@ def run(args, directory, config=None, client=service_call):
     write(frozen, plan)
     state_path = run_root/'state.json'
     state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
-    environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_run_key': str(run_root)}
-    environment['_run_key'] = 'pipeline.'+run_root.parent.name+'.'+run_root.name
+    # The full persisted run path distinguishes nested recipes in separate plans
+    # and stays the same when an interrupted submission is resumed.
+    environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'],
+                   '_run_key': 'pipeline:'+run_root.as_posix()}
     for step in plan['steps']:
         prior = state['steps'].get(step['id'])
         if prior and prior['state'] == 'completed':
