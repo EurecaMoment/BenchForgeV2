@@ -95,6 +95,14 @@ class Runtime:
             raise
 
     def execute(self, tool, args, directory):
+        from .model_services import MODEL_TOOLS
+        if tool in MODEL_TOOLS:
+            from importlib import import_module
+            client = import_module(".model_services." + tool.removeprefix("model_"), __package__)
+            return client.call(action=args.get("action", "submit"), request=args.get("request"),
+                               work=args.get("work") or str(directory / "inference"),
+                               job_id=args.get("job_id"), config=self.config.get("model_services"),
+                               timeout_seconds=args.get("timeout_seconds", 300))
         from .workbench import OPERATIONS, execute
         if tool in OPERATIONS or tool == 'method':
             return execute(tool,args,directory,self.config)

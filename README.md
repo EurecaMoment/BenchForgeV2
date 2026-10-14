@@ -3,6 +3,7 @@
 空间能力图谱、27 项能力模板、程序真值数据、课程训练和实时监控见 [空间学习指南](docs/spatial-learning.md)。可用 `examples/spatial_learning_demo.py` 在 CPU 上验证小 Transformer 的实际训练、开发评分和断点续训。
 
 BenchForge 的 DSH 应用、基准构建算法与 SpatialForge 场景生产工具集成。
+八个独立模型 API 客户端及 SpatialForge 运行时热更新见 [服务调用与热更新](docs/MODEL_SERVICES.md)。
 本仓库包含可安装的 Python 核心、DSH 启动器、预设生成器、离线示例及
 SpatialForge 服务端、PostgreSQL 数据引擎、生成 worker、Windows Isaac 执行器、
 工具注册和交付复审实现。

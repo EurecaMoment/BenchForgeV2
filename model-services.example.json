@@ -1,0 +1,32 @@
+{
+  "model_services": {
+    "url": "http://127.0.0.1:3951",
+    "http_timeout_seconds": 30,
+    "tools": {
+      "yoloe": {
+        "request_defaults": {}
+      },
+      "sam3": {
+        "request_defaults": {}
+      },
+      "moge": {
+        "request_defaults": {}
+      },
+      "lama": {
+        "request_defaults": {}
+      },
+      "flux": {
+        "request_defaults": {}
+      },
+      "osor_flux": {
+        "request_defaults": {}
+      },
+      "objectclear": {
+        "request_defaults": {}
+      },
+      "qwen_image_edit": {
+        "request_defaults": {}
+      }
+    }
+  }
+}

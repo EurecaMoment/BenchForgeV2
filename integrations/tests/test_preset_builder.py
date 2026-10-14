@@ -26,7 +26,8 @@ class PresetBuilderTest(unittest.TestCase):
         plugins=row['config']['plugins']
         learning=next(p for p in plugins if p['id']=='spatial-learning-tools')
         self.assertEqual(learning['config']['includeTools'],development.LEARNING_TOOLS)
-        self.assertEqual(len(learning['config']['includeTools']),8)
+        self.assertIn('pipeline_run',learning['config']['includeTools'])
+        self.assertIn('model_objectclear_fill',learning['config']['includeTools'])
         self.assertEqual(learning['config']['python'],'python-development')
         self.assertNotIn('configPath',learning['config'])
         self.assertEqual(learning['name'],'@eurecamoment/benchforge-dsh/benchforge-tools')

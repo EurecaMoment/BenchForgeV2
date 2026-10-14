@@ -4,10 +4,15 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
-import { objectOutput, runOutput, taskRunOutput, observationOutput, taskOutput, cancellationOutput } from './schemas.mjs';
-import { createDeliveryReview, createCaptureReviewStep } from './delivery_review.mjs';
-import { createDeliveryFileReview } from './delivery_files.mjs';
-import { createDeliveryVisuals } from './delivery_visuals.mjs';
+// An operator-issued revision refreshes this plugin and its local helpers while
+// the official Harness keeps already-bound agent revisions alive.
+const revision = new URL(import.meta.url).search;
+const { objectOutput, runOutput, taskRunOutput, observationOutput, taskOutput, cancellationOutput } =
+  await import(new URL('./schemas.mjs' + revision, import.meta.url));
+const { createDeliveryReview, createCaptureReviewStep } =
+  await import(new URL('./delivery_review.mjs' + revision, import.meta.url));
+const { createDeliveryFileReview } = await import(new URL('./delivery_files.mjs' + revision, import.meta.url));
+const { createDeliveryVisuals } = await import(new URL('./delivery_visuals.mjs' + revision, import.meta.url));
 export const name='spatialforge-tools';
 // Delivery visual feedback resolves the active model route and stores image
 // attachments while the turn-stopping hook is running. Declare both services

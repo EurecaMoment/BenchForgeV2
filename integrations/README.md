@@ -27,6 +27,27 @@ symlinks for existing sessions; they are not additional maintained checkouts.
 Model weights, environments, simulator installations and production artifacts
 remain in their existing runtime locations.
 
+### Hot-update SpatialForge without changing DSH
+
+Run the following in the fixed FIT checkout with its existing Python environment:
+
+```bash
+cd /home/maqiang/GitHub/BenchForgeV2
+.deployment/python-development integrations/spatialforge/hot_update.py --pull
+```
+
+The script fast-forwards the existing `SpatialForge` branch, updates only that
+custom preset in the user's web profile and waits for the official runtime to
+adopt it. Revisioned plugin URLs also refresh the local SpatialForge helpers.
+It never edits DSH source or official presets, restarts DSH, or starts model/GPU
+services. Already-bound sessions keep their previous revision; a new SpatialForge
+session uses the update. To use code already deployed, omit `--pull`.
+
+The private files `.deployment/model-services.json`,
+`.deployment/spatialforge.local.json` and `.deployment/python-development`
+must already exist. See [independent model clients](../docs/MODEL_SERVICES.md)
+for endpoint configuration and the eight callable interfaces.
+
 ## Install and configure
 
 Use DSH `0.1.7-rc.1` with Node `^22.19.0 || >=24`. The manifest pins the API version

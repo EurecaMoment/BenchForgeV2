@@ -4,11 +4,12 @@ import sys
 import subprocess
 from .runtime import Runtime, read
 from .workbench import OPERATIONS
+from .model_services import MODEL_TOOLS
 
 
 def main():
     parser = argparse.ArgumentParser(description="Composable BenchClaw capabilities")
-    parser.add_argument("tool", choices=["catalog", "status", "plan", "sam3", "yoloe", "depthanything3", "llm_local", "habitat", "libero", "carla", "isaac", "evidence", "build", "evaluate", "method", *OPERATIONS])
+    parser.add_argument("tool", choices=["catalog", "status", "plan", "sam3", "yoloe", "depthanything3", "llm_local", "habitat", "libero", "carla", "isaac", "evidence", "build", "evaluate", "method", *OPERATIONS, *MODEL_TOOLS])
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--config")
     parser.add_argument("--input", help="JSON request file; '-' reads stdin")

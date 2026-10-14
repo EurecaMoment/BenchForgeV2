@@ -493,6 +493,23 @@ export async function apply(ctx, config) {
     action:{type:'string',description:'infer (default), health; DA3 also task, YOLOE visual, local VLM models.'},
     payload:{...object,description:'Native backend inference arguments. Catalog includes exact examples.'},task_id:{type:'string'},timeout_seconds:{type:'integer'}};
   for(const tool of ['habitat','libero','carla']) schemas[tool]={argv:{type:'array',items:{type:'string'},description:'Collector arguments; catalog has examples. Use --help for installed SDK collector options.'},timeout_seconds:{type:'integer'}};
+  const modelClients = {
+    yoloe:'YOLOE detection and segmentation', sam3:'SAM3 segmentation',
+    moge:'MoGe depth, points and camera intrinsics', lama:'LaMa masked image repair',
+    flux_fill:'FLUX image fill', osor_flux_fill:'OSOR image fill',
+    objectclear_fill:'ObjectClear object removal and background recovery', qwen_image_edit:'Qwen image editing',
+  };
+  for (const [client, purpose] of Object.entries(modelClients)) {
+    const tool = `model_${client}`;
+    definitions[tool] = `Call the independent ${purpose} API client. submit returns a durable job_id; use status/result/wait/cancel for that job. health checks the existing service. Native request arguments and absolute shared paths belong in request. This client never loads weights or starts a local GPU/model process. Predictions are not GT.`;
+    schemas[tool] = {
+      action:{type:'string',enum:['submit','status','result','wait','cancel','health'],description:'submit is asynchronous and is the default; wait is bounded by timeout_seconds.'},
+      request:{type:'object',additionalProperties:true,description:'Native request for the externally deployed model; configure operator defaults in model_services.tools.'},
+      work:{type:'string',description:'Absolute artifact directory shared with the inference service; defaults to this operation directory.'},
+      job_id:{type:'string',description:'Existing durable job ID, required for status/result/wait/cancel.'},
+      timeout_seconds:{type:'number',description:'Maximum wait duration; the job continues if this wait expires.'},
+    };
+  }
   for (const [tool, description] of Object.entries(definitions)) {
     if (config.includeTools && !config.includeTools.includes(tool)) continue;
     if (tool === 'collaboration') continue;
