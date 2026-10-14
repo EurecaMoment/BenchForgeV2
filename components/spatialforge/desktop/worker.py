@@ -48,6 +48,14 @@ def finish_job(job,directory,outcome,error=None):
     if remaining:
         for process in remaining:process.close()
         raise RuntimeError('cannot release desktop while owned Isaac processes remain')
+    resident=state_root/'resident' if state_root is not None else None
+    if resident and (resident/'status.json').exists():
+        status=json.loads((resident/'status.json').read_text(encoding='utf8'))
+        if status.get('token')==job['token']:
+            processes=resident_processes(resident)
+            active=bool(processes)
+            for process in processes:process.close()
+            if active:raise RuntimeError('cannot release desktop during resident capture')
     pending={'job':job_identity(job),'outcome':outcome,'processes_stopped':True,'error':error,'transport_retry':job.get('transport_retry',0)}
     write_json(directory/'finish_pending.json',pending)
     result=api('/worker/finish',pending)
@@ -172,6 +180,14 @@ def owns_command(row,request):
     return capture_request(row)==request.resolve()
 
 
+def owns_resident(row,state):
+    command=(row.get('CommandLine') or '').replace('/','\\')
+    script=str(root/'desktop/isaac_resident.py').replace('/','\\')
+    if script.casefold() not in command.casefold():return False
+    argument=re.search(r'(?:^|\s)--state\s+(?:"([^"]+)"|(\S+))',command)
+    return bool(argument) and Path(argument.group(1) or argument.group(2)).resolve()==state.resolve()
+
+
 class OwnedProcess:
     """Keep a Windows handle, so monitoring follows the original process identity."""
     def __init__(self,row):
@@ -207,6 +223,99 @@ def owned_processes(request,rows=None):
         if process.active():active.append(process)
         else:process.close()
     return active
+
+
+def resident_processes(state,rows=None):
+    handles=[OwnedProcess(row) for row in (process_snapshot() if rows is None else rows) if owns_resident(row,state)]
+    active=[]
+    for process in handles:
+        if process.active():active.append(process)
+        else:process.close()
+    return active
+
+
+def stop_resident(state,processes):
+    known={p.pid for p in processes}
+    for process in resident_processes(state):
+        if process.pid not in known:processes.append(process)
+        else:process.close()
+    for process in processes:process.terminate_tree()
+    deadline=time.monotonic()+25
+    while any(p.active() for p in processes) and time.monotonic()<deadline:time.sleep(.2)
+    if any(p.active() for p in processes):raise RuntimeError('resident Isaac is still terminating')
+
+
+def run_resident(job,directory,rows):
+    state=state_root/'resident';state.mkdir(exist_ok=True)
+    request=directory/'request.json';output=directory/'capture'
+    receipt=directory/'resident.json';result_path=directory/'resident_result.json'
+    previous=json.loads(receipt.read_text(encoding='utf8')) if receipt.exists() else {}
+    started=previous.get('started_at',time.time())
+    processes=resident_processes(state,rows)
+    try:
+        while True:
+            if result_path.exists():
+                result=json.loads(result_path.read_text(encoding='utf8'))
+                if result['token']!=job['token']:raise RuntimeError('resident result belongs to another attempt')
+                if result['state']!='restart_required':
+                    if result['state']=='failed' and processes:stop_resident(state,processes)
+                    return result
+                # Incompatible renderer/extension profiles require a fresh process.
+                stop_resident(state,processes)
+                for process in processes:process.close()
+                processes=[];previous={};result_path.unlink()
+            if not processes:
+                if previous:
+                    result={'token':job['token'],'state':'failed','error':'resident ended before task cleanup completed'}
+                    write_json(result_path,result);return result
+                job=prepare_assets(job);write_json(request,job)
+                for name in ('command.json','active.json','status.json'):
+                    (state/name).unlink(missing_ok=True)
+                command=[os.environ['COMSPEC'],'/d','/c',str(Path(config['isaac_root'])/'python.bat'),
+                         str(root/'desktop/isaac_resident.py'),'--state',str(state),
+                         '--idle-seconds',str(config.get('isaac_idle_seconds',300))]
+                with (state/'isaac.log').open('ab') as log:
+                    process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,creationflags=NO_WINDOW)
+                processes=[OwnedProcess({'ProcessId':process.pid,'ParentProcessId':os.getpid()})]
+            if not previous:
+                if not request.exists():write_json(request,prepare_assets(job))
+                status=json.loads((state/'status.json').read_text(encoding='utf8')) if (state/'status.json').exists() else {}
+                if status.get('state') in {'stopping','stopped'}:
+                    stop_resident(state,processes)
+                    for process in processes:process.close()
+                    processes=[]
+                    continue
+                if status.get('token') and status['token']!=job['token']:
+                    raise RuntimeError('resident is still executing another owned attempt')
+                previous={'token':job['token'],'started_at':started,'log':str(state/'isaac.log')}
+                write_json(receipt,previous)
+                write_json(state/'command.json',{'action':'capture','request':str(request),'output':str(output)})
+            elif not (state/'command.json').exists() and not (state/'active.json').exists() and not (output/'report.json').exists():
+                # Recover a supervisor interruption between recording intent and sending it.
+                write_json(state/'command.json',{'action':'capture','request':str(request),'output':str(output)})
+            next_heartbeat=0.
+            while not result_path.exists():
+                if not any(p.active() for p in processes):
+                    # The python.bat shell may have exited while its child survived.
+                    children=resident_processes(state)
+                    for process in processes:process.close()
+                    processes=children
+                    if not processes:
+                        result={'token':job['token'],'state':'failed','error':'resident process ended without completion receipt'}
+                        write_json(result_path,result);return result
+                if time.monotonic()>=next_heartbeat:
+                    try:canceled=api('/worker/heartbeat',{**job_identity(job),'progress':{'stage':'capture','started_at':started,'executor':'resident'}}).get('cancel')
+                    except (OSError,urllib.error.URLError):canceled=False
+                    next_heartbeat=time.monotonic()+8
+                    if canceled or time.time()-started>config.get('capture_timeout_seconds',1800):
+                        stop_resident(state,processes)
+                        reason='canceled' if canceled else 'timeout'
+                        write_json(directory/'termination.json',{'reason':reason,'time':time.time(),'token':job['token']})
+                        result={'token':job['token'],'state':'failed','error':reason}
+                        write_json(result_path,result);return result
+                time.sleep(.25)
+    finally:
+        for process in processes:process.close()
 
 
 def wait_owned(job,directory,processes,launched=None):
@@ -271,6 +380,16 @@ def run_job(job):
     if processes:
         # Do not rewrite the request or start another Kit when the same token survived us.
         wait_owned(job,directory,processes)
+    elif (directory/'resident.json').exists() or (config.get('isaac_resident',True) and not report.exists()):
+        status=api('/worker/heartbeat',job_identity(job))
+        if status.get('committed') or status.get('finished'):write_json(directory/'commit.json',status);return
+        if status.get('cancel') and not (directory/'resident.json').exists():finish_job(job,directory,'canceled');return
+        result=run_resident(job,directory,rows)
+        if result['state']=='failed':
+            output.mkdir(exist_ok=True)
+            value=json.loads(report.read_text(encoding='utf8')) if report.exists() else {'token':job['token'],'errors':[]}
+            value['status']='failed';value.setdefault('errors',[]).append(result['error'])
+            write_json(report,value)
     elif not report.exists():
         status=api('/worker/heartbeat',job_identity(job))
         if status.get('cancel'):finish_job(job,directory,'canceled');return
