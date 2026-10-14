@@ -11,13 +11,15 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from benchforge_core.model_services import CLIENTS
-from benchforge_core.model_services.client import ModelService
+from benchforge_core.model_services.client import ModelService, ModelUnavailableError
 from benchforge_core.runtime import Runtime
 
 
 class ModelClients(unittest.TestCase):
     def setUp(self):
         self.requests = []
+        self.checks = []
+        self.availability = None
         self.jobs = {}
         owner = self
 
@@ -40,6 +42,14 @@ class ModelClients(unittest.TestCase):
 
             def do_POST(self):
                 payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                if self.path.startswith("/tools/"):
+                    tool = self.path.split("/")[2]
+                    owner.checks.append({"tool": tool, **payload})
+                    self.reply(owner.availability or {"tool": tool, "available": True, "status": "ready"})
+                    return
+                if self.path != "/jobs":
+                    self.reply({"error": "Unknown endpoint"}, 404)
+                    return
                 owner.requests.append(payload)
                 job = {"id": str(len(owner.requests)), "status": "queued", "tool": payload["tool"]}
                 owner.jobs[job["id"]] = job
@@ -69,8 +79,11 @@ class ModelClients(unittest.TestCase):
             self.assertEqual(result["inference_status"], "queued")
             self.assertNotIn("result", result)
             self.assertEqual(self.requests[-1]["tool"], route)
+            self.assertEqual(self.checks[-1]["tool"], route)
+            self.assertEqual(result["availability"]["available"], True)
             self.assertEqual(self.requests[-1]["work"], str(work))
         self.assertEqual(self.requests[3]["request"]["model_path"], "/external/lama.pt")
+        self.assertEqual(self.checks[3]["request"]["model_path"], "/external/lama.pt")
         code = "import importlib,sys; from benchforge_core.model_services import CLIENTS; [importlib.import_module('benchforge_core.model_services.'+n) for n in CLIENTS]; assert not any(n in sys.modules for n in ['torch','transformers','diffusers','pic2sim'])"
         result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                                 env={**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")})
@@ -87,6 +100,27 @@ class ModelClients(unittest.TestCase):
         self.assertEqual(client.call("lama", action="status", job_id=job_id)["error"], "provider failed")
         self.assertEqual(client.call("lama", action="cancel", job_id=job_id)["inference_status"], "canceled")
         self.assertEqual(len(self.requests), 1)
+        self.assertEqual(len(self.checks), 1)
+
+    def test_unavailable_or_generic_health_never_submits_a_job(self):
+        client = ModelService(self.config)
+        for report in [{"tool": "lama", "available": False, "reason": "weights not accessible"},
+                       {"status": "ready"}, {"tool": "sam3", "available": True}]:
+            self.availability = report
+            with self.assertRaisesRegex(ModelUnavailableError, "no job submitted"):
+                client.call("lama", request={"model_path": "/missing/lama.pt"}, work=self.root / "blocked")
+        self.assertEqual(len(self.requests), 0)
+        self.assertFalse((self.root / "blocked").exists())
+        self.assertEqual(self.checks[0]["request"]["model_path"], "/missing/lama.pt")
+        self.availability = {"tool": "lama", "available": False, "reason": "weights not accessible"}
+        self.assertFalse(client.call("lama", action="health")["health"]["available"])
+
+    def test_failed_separate_availability_endpoint_never_submits(self):
+        self.config["availability_url"] = self.config["url"] + "/missing"
+        # The fixture returns 404 for this endpoint, simulating a missing readiness deployment.
+        with self.assertRaisesRegex(ModelUnavailableError, "availability check failed"):
+            ModelService(self.config).call("lama", work=self.root / "blocked")
+        self.assertEqual(self.requests, [])
 
     def test_standalone_cli_and_runtime_return_service_receipts(self):
         result = subprocess.run([sys.executable, "-m", "benchforge_core.model_services.yoloe",

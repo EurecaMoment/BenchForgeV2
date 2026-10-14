@@ -501,7 +501,7 @@ export async function apply(ctx, config) {
   };
   for (const [client, purpose] of Object.entries(modelClients)) {
     const tool = `model_${client}`;
-    definitions[tool] = `Call the independent ${purpose} API client. submit returns a durable job_id; use status/result/wait/cancel for that job. health checks the existing service. Native request arguments and absolute shared paths belong in request. This client never loads weights or starts a local GPU/model process. Predictions are not GT.`;
+    definitions[tool] = `Call the independent ${purpose} API client. Before submit it checks this tool's provider availability with the actual model request; unavailable or unreachable tools fail without submitting a job. Stop dependent steps on that error. health returns the same per-tool availability report. submit returns a durable job_id; use status/result/wait/cancel for that job. Native request arguments and absolute shared paths belong in request. This client never loads weights or starts a local GPU/model process. Predictions are not GT.`;
     schemas[tool] = {
       action:{type:'string',enum:['submit','status','result','wait','cancel','health'],description:'submit is asynchronous and is the default; wait is bounded by timeout_seconds.'},
       request:{type:'object',additionalProperties:true,description:'Native request for the externally deployed model; configure operator defaults in model_services.tools.'},

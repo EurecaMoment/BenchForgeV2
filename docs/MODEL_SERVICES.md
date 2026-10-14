@@ -31,15 +31,28 @@ FIT 上的 API 地址目前为 `http://127.0.0.1:3951`，通过既有连接到 g
 
 ## 调用协议
 
-- `submit`（默认）：POST /jobs；只提交一次，返回 job_id 和 inference_status。
+- `submit`（默认）：先向外部可用性接口 POST /tools/{tool}/health，带上合并默认值后的实际 request。
+  只有同一 tool 明确返回 available=true 才 POST /jobs；失败会报出具体原因，不提交任务。
+  提交只进行一次，返回 job_id 和 inference_status，并保存本次可用性回执。
 - `status`、`result`：GET /jobs/{id}；保留 queued/running/completed/failed/canceled 真实状态。
 - `wait`：有界查询同一任务，默认最多 300 秒；超时后任务继续，不重复提交。
 - `cancel`：DELETE /jobs/{id}，只取消指定任务。
-- `health`：GET /health，不加载模型；当前服务的 health 是路由健康状态，
-  不代表八个模型都已驻留或每种产物质量均通过。
+- `health`：调用同一个逐工具可用性接口，不加载模型。
+  泛化的 GET /health 在线状态不能代替此检查。status/result/wait/cancel 可在模型不可用时继续查询或取消既有任务。
+
+当前外部检查服务由模型部署方运行在 g3022，FIT 经独立连接访问 3952。
+它核对推理服务、实际 Python/worker 与依赖位置、请求对应的模型文件和允许 GPU 的当前剩余显存。
+检查代码与部署目录位于已有模型部署树，独立于 BenchForgeV2：
+`/home/maqiang/GitHub/SpatialForge/runtime/compute-g3022/model_availability.py`。
+BenchForgeV2 不包含其部署/启动实现。检查成功表示当前可受理，
+不表示权重已加载、推理已完成或所有依赖的二进制兼容性已验证。
+显存检查不预留 GPU；最终分配及运行失败仍以推理服务返回的真实任务状态为准。
+如果接口离线、工具缺失、权重路径错误或 GPU 不够，DSH 必须先解决该原因再继续依赖它的步骤。
 
 复制根目录的 `model-services.example.json` 到
 `.deployment/model-services.json`，设置 `model_services.url`。
+设置 `model_services.availability_url` 指向部署方的可用性接口；省略时使用同一个推理 API。
+若服务没有逐工具可用性接口，客户端会拒绝提交，不降级为通用在线检查。
 可在 `model_services.tools.<服务端tool>.request_defaults` 保存该工具的
 模型路径等参数；这些是外部 API 请求默认值，不是客户端的模型启动配置。
 私有配置、token 和机器路径不提交 GitHub。生产模型不得编辑这份操作员配置。

@@ -6,6 +6,11 @@ from pathlib import Path
 import time
 from urllib.parse import quote
 from urllib.request import Request, ProxyHandler, build_opener
+from urllib.error import URLError
+
+
+class ModelUnavailableError(RuntimeError):
+    """The provider cannot accept this model request; no job was submitted."""
 
 
 class ModelService:
@@ -16,28 +21,42 @@ class ModelService:
             raise ValueError("Configure model_services.url or BENCHFORGE_INFERENCE_URL")
         self.opener = build_opener(ProxyHandler({}))
 
-    def rpc(self, route, payload=None, method=None):
+    def rpc(self, route, payload=None, method=None, *, base_url=None, timeout_seconds=None):
         headers = {"Content-Type": "application/json"}
         if self.config.get("token_env"):
             headers["Authorization"] = "Bearer " + os.environ[self.config["token_env"]]
         body = None if payload is None else json.dumps(payload).encode()
-        request = Request(self.url + route, data=body, headers=headers, method=method)
-        with self.opener.open(request, timeout=self.config.get("http_timeout_seconds", 30)) as response:
+        request = Request((base_url or self.url) + route, data=body, headers=headers, method=method)
+        with self.opener.open(request, timeout=timeout_seconds or self.config.get("http_timeout_seconds", 30)) as response:
             return json.load(response)
 
+    def availability(self, tool, request):
+        endpoint = self.config.get("availability_url", self.url).rstrip("/")
+        try:
+            report = self.rpc("/tools/" + quote(tool, safe="") + "/health", {"request": request},
+                              base_url=endpoint, timeout_seconds=self.config.get("health_timeout_seconds", 10))
+        except (URLError, TimeoutError, ValueError) as exc:
+            raise ModelUnavailableError(f"{tool} availability check failed at {endpoint}: {exc}; no job submitted") from exc
+        return report
+
     def call(self, tool, *, action="submit", request=None, work=None, job_id=None, timeout_seconds=300):
+        defaults = self.config.get("tools", {}).get(tool, {}).get("request_defaults", {})
+        model_request = {**defaults, **(request or {})}
         if action == "health":
-            return {"service": self.url, "health": self.rpc("/health")}
+            return {"service": self.url, "health": self.availability(tool, model_request)}
         if action == "submit":
             if work is None:
                 raise ValueError("submit requires an absolute shared work directory")
             directory = Path(work).expanduser()
             if not directory.is_absolute():
                 raise ValueError("work must be an absolute path visible to the inference service")
+            availability = self.availability(tool, model_request)
+            if availability.get("tool") != tool or availability.get("available") is not True:
+                raise ModelUnavailableError(f"{tool} unavailable: {availability.get('reason', availability)}; no job submitted")
             directory.mkdir(parents=True, exist_ok=True)
-            defaults = self.config.get("tools", {}).get(tool, {}).get("request_defaults", {})
-            job = self.rpc("/jobs", {"tool": tool, "request": {**defaults, **(request or {})}, "work": str(directory)})
+            job = self.rpc("/jobs", {"tool": tool, "request": model_request, "work": str(directory)})
             (directory / "model-service-job.json").write_text(json.dumps(job, indent=2), encoding="utf-8")
+            (directory / "model-service-availability.json").write_text(json.dumps(availability, indent=2), encoding="utf-8")
         else:
             if not job_id:
                 raise ValueError(action + " requires job_id")
@@ -54,6 +73,7 @@ class ModelService:
                     time.sleep(min(1, max(0, deadline - time.monotonic())))
                     job = self.rpc(route)
         return {"service": self.url, "job_id": job["id"], "inference_status": job["status"], "job": job,
+                **({"availability": availability} if action == "submit" else {}),
                 **({"result": job["result"]} if "result" in job else {}),
                 **({"error": job["error"]} if "error" in job else {})}
 

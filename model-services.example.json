@@ -1,6 +1,8 @@
 {
   "model_services": {
     "url": "http://127.0.0.1:3951",
+    "availability_url": "http://127.0.0.1:3952",
+    "health_timeout_seconds": 10,
     "http_timeout_seconds": 30,
     "tools": {
       "yoloe": {
