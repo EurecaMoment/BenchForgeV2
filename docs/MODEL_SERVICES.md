@@ -46,6 +46,7 @@ FIT 上的 API 地址目前为 `http://127.0.0.1:3951`，通过既有连接到 g
 `/home/maqiang/GitHub/SpatialForge/runtime/compute-g3022/model_availability.py`。
 BenchForgeV2 不包含其部署/启动实现。检查成功表示当前可受理，
 不表示权重已加载、推理已完成或所有依赖的二进制兼容性已验证。
+扩散模型检查模型入口清单，不做完整权重扫描或冷加载；实际加载问题仍由任务状态返回。
 显存检查不预留 GPU；最终分配及运行失败仍以推理服务返回的真实任务状态为准。
 如果接口离线、工具缺失、权重路径错误或 GPU 不够，DSH 必须先解决该原因再继续依赖它的步骤。
 
@@ -85,9 +86,10 @@ Python 调用：
 
 ```python
 from benchforge_core.model_services import lama
-receipt = lama.call(config={"url": "http://127.0.0.1:3951"},
+config = {"url": "http://127.0.0.1:3951", "availability_url": "http://127.0.0.1:3952"}
+receipt = lama.call(config=config,
                     request=request, work="/shared/lama-job")
-result = lama.call(config={"url": "http://127.0.0.1:3951"},
+result = lama.call(config=config,
                    action="result", job_id=receipt["job_id"])
 ```
 
