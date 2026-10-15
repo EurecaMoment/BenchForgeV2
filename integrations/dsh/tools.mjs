@@ -498,6 +498,9 @@ export async function apply(ctx, config) {
     moge:'MoGe depth, points and camera intrinsics', lama:'LaMa masked image repair',
     flux_fill:'FLUX image fill', osor_flux_fill:'OSOR image fill',
     objectclear_fill:'ObjectClear object removal and background recovery', qwen_image_edit:'Qwen image editing',
+    diffusion:'FLUX.2 Klein 1024x1024 image generation and editing',
+    depth_anything:'Depth Anything 3 metric depth estimation; request must supply calibrated intrinsics or focal_length_px',
+    sam3d:'SAM3D paired Mesh and Gaussian generation in one request; texture_baking=false retains vertex colors',
   };
   for (const [client, purpose] of Object.entries(modelClients)) {
     const tool = `model_${client}`;

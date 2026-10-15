@@ -32,6 +32,8 @@ class LayoutGuidance(unittest.TestCase):
             tools=self.tools(root);intent={'layout':{'mode':'generate','prompt':'Reading and work zones','seed':7}}
             prepare_layout(tools,intent,a,threading.Event());prepare_layout(tools,intent,b,threading.Event())
             self.assertEqual(len(tools.calls),1)
+            self.assertEqual(tools.calls[0][1]['width'],1024)
+            self.assertEqual(tools.calls[0][1]['height'],1024)
             self.assertEqual((a/'layout_reference.png').read_bytes(),(b/'layout_reference.png').read_bytes())
             receipt=json.loads((b/'layout_reference.json').read_text())
             self.assertFalse(receipt['gt_source']);self.assertFalse(receipt['metric_layout_verified'])

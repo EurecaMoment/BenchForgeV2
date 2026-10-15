@@ -1,7 +1,7 @@
 {
   "model_services": {
-    "url": "http://127.0.0.1:3951",
-    "availability_url": "http://127.0.0.1:3952",
+    "url": "http://127.0.0.1:4960",
+    "availability_url": "http://127.0.0.1:4960",
     "health_timeout_seconds": 10,
     "http_timeout_seconds": 30,
     "tools": {
@@ -28,6 +28,15 @@
       },
       "qwen_image_edit": {
         "request_defaults": {}
+      },
+      "diffusion": {
+        "request_defaults": {"width": 1024, "height": 1024, "steps": 4}
+      },
+      "depth_anything": {
+        "request_defaults": {}
+      },
+      "sam3d": {
+        "request_defaults": {"texture_baking": false}
       }
     }
   }

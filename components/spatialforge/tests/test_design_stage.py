@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import threading
 import unittest
 from unittest.mock import patch
@@ -32,9 +33,11 @@ class DesignStage(unittest.TestCase):
     def finish(self, task):
         class Tools:
             calls = []
+            config = SimpleNamespace(model=lambda name: {'path': '/fixture/FLUX.2-klein-9B'})
             def execute(self, name, request, work, stop):
                 self.calls.append(name)
                 Image.new('RGB', (64, 48), 'tan').save(request['output'])
+                return {'status': 'ok', 'model': 'FLUX.2-klein-9B'}
         tools = Tools()
         with patch.object(design, 'GenerationTools', return_value=tools):
             design.execute_design(self.store, task, threading.Event())

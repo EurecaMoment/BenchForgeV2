@@ -6,11 +6,12 @@
 ## 模型服务边界
 
 `src/benchforge_core/model_services` 是仅依赖 Python 标准库的客户端包。
-八个模块均可独立导入或使用 `python -m` 调用，不导入 Torch、Diffusers、
+各模块均可独立导入或使用 `python -m` 调用，不导入 Torch、Diffusers、
 Transformers、Pic2Sim，不下载权重，不探测或分配 GPU，不启动模型进程。
 
 模型加载、权重路径、Python 环境和 GPU 调度由现有外部推理服务负责。
-FIT 上的 API 地址目前为 `http://127.0.0.1:3951`，通过既有连接到 g3022。
+FIT 上的生产 API 为 `http://127.0.0.1:4960`：外部适配层把常驻模型请求转给 g3024，
+其余工具和旧 job 保留原 g3022 的 3951/3952 路由。
 客户端与服务使用已挂载的共享文件路径；这不是上传图像字节的接口。
 任务代码应提供服务端可见的绝对输入和输出路径。
 
@@ -24,6 +25,22 @@ FIT 上的 API 地址目前为 `http://127.0.0.1:3951`，通过既有连接到 g
 | osor_flux_fill | benchforge_model_osor_flux_fill | osor_flux |
 | objectclear_fill | benchforge_model_objectclear_fill | objectclear |
 | qwen_image_edit | benchforge_model_qwen_image_edit | qwen_image_edit |
+| diffusion | benchforge_model_diffusion | diffusion |
+| depth_anything | benchforge_model_depth_anything | depth_anything |
+| sam3d | benchforge_model_sam3d | sam3d |
+
+常驻模型位于 g3024 GPU4–7：FLUX.2 Klein、DA3METRIC-LARGE、SAM3、SAM3D。
+输入规格为 1024×1024。DA3 请求必须提供输入图像像素坐标下的相机 `intrinsics`
+或校准的 `focal_length_px`；输出为米制深度估计，不能当作 GT。
+SAM3D 同一请求输出 Mesh 与 Gaussian；默认 `texture_baking=false`，Mesh 使用顶点颜色。
+当前纹理烘焙依赖不可用，显式开启会在提交前返回原因。
+原 `spatialforge_diffusion/sam3/depth/sam3d` 场景工具使用同一常驻路由。
+远程场景请求不再读取本地模型路径配置，模型部署依然独立于本仓库。
+
+适配层的 `/tools/{tool}/health` 查询常驻模型就绪状态；`/jobs` 在 FIT 保存任务与产物回执，
+通过现有 SSH 连接访问 g3024 的 `/infer`。既有 job ID 仍可查询。
+常驻 `/infer` 在派发后不支持中断，`cancel` 对此明确返回 409，不伪报取消。
+已通过真实 DSH 原生工具与 PTC 读回验收；64 并发、每请求一秒的指标未达成。
 
 本次新增的接口不复制八个旧 worker 或它们的启动器。现有部署的模型服务
 继续使用其自己的实现；旧版可选模型执行代码的历史保留不等于新客户端
@@ -40,7 +57,7 @@ FIT 上的 API 地址目前为 `http://127.0.0.1:3951`，通过既有连接到 g
 - `health`：调用同一个逐工具可用性接口，不加载模型。
   泛化的 GET /health 在线状态不能代替此检查。status/result/wait/cancel 可在模型不可用时继续查询或取消既有任务。
 
-当前外部检查服务由模型部署方运行在 g3022，FIT 经独立连接访问 3952。
+旧工具的外部检查服务由模型部署方运行在 g3022，FIT 经独立连接访问 3952。
 它核对推理服务、实际 Python/worker 与依赖位置、请求对应的模型文件和允许 GPU 的当前剩余显存。
 检查代码与部署目录位于已有模型部署树，独立于 BenchForgeV2：
 `/home/maqiang/GitHub/SpatialForge/runtime/compute-g3022/model_availability.py`。

@@ -322,7 +322,9 @@ class GenerationTools:
             prompt = spec.get('prompt', spec['label'])
             if not spec.get('source_image'):
                 prompt += '. A realistic product photograph of one complete standalone object, three quarter view, centered, entire object visible, neutral light gray seamless background, fine material detail, no text, no other objects, no cropping.'
-            request = {'model_path': os.environ.get('SPATIALFORGE_DIFFUSION_MODEL', self.config.model('flux')['path']), 'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', 42), 'width': 768, 'height': 768, 'steps': 4}
+            request = {'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', 42), 'width': 1024, 'height': 1024, 'steps': 4}
+            if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+                request['model_path'] = os.environ.get('SPATIALFORGE_DIFFUSION_MODEL') or self.config.model('flux')['path']
             if spec.get('source_image'):
                 request['image'] = str(self.source_path(spec['source_image']))
                 sources['image'] = source_contract['source_image']
@@ -343,7 +345,9 @@ class GenerationTools:
             sources['mask'] = source_contract['source_mask']
         else:
             segment_dir = work / 'segmentation'
-            request = {'checkpoint': str(Path(self.config.model('sam3')['path']) / 'sam3.pt'), 'image': str(image), 'output_dir': str(segment_dir), 'confidence': .2}
+            request = {'image': str(image), 'output_dir': str(segment_dir), 'confidence': .2}
+            if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+                request['checkpoint'] = str(Path(self.config.model('sam3')['path']) / 'sam3.pt')
             if spec.get('subject_box'):
                 request['instances'] = [{'id': 0, 'label': spec['label'], 'box': spec['subject_box']}]
             else:
@@ -357,7 +361,10 @@ class GenerationTools:
         with Image.open(mask) as selected_mask:
             if selected_mask.convert('L').getextrema()[1] < 128:
                 raise ValueError('subject mask is empty')
-        request = {'source_root': self.config.data['sources']['sam3d'], 'config_path': str(Path(self.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'), 'output_dir': str(work / 'mesh'), 'objects': [{'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': spec.get('seed', 42)}]}
+        request = {'output_dir': str(work / 'mesh'), 'objects': [{'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': spec.get('seed', 42)}]}
+        if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+            request.update(source_root=self.config.data['sources']['sam3d'],
+                           config_path=str(Path(self.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
         if spec.get('texture_baking'):request['texture_baking']=True
         reconstructed = self.execute('sam3d', request, work / 'sam3d', stop)
         selected_asset = next(a for a in reconstructed['assets'] if a['object_id'] == 'subject')

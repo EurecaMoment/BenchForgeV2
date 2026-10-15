@@ -31,6 +31,9 @@ class HotUpdate(unittest.TestCase):
         plugins = result[0]["insert"][3]["config"]["plugins"]
         learning = plugins[0]
         self.assertIn("model_lama", learning["config"]["includeTools"])
+        self.assertIn("model_diffusion", learning["config"]["includeTools"])
+        self.assertIn("model_depth_anything", learning["config"]["includeTools"])
+        self.assertIn("model_sam3d", learning["config"]["includeTools"])
         self.assertIn("pipeline_run", learning["config"]["includeTools"])
         self.assertEqual(learning["name"], str(ROOT / "integrations/dsh/tools.mjs") + "?spatialforge_revision=123")
         self.assertIn(str(ROOT), plugins[1]["config"]["serviceConfig"])

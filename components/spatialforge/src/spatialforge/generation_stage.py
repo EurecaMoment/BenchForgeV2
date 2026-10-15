@@ -24,7 +24,7 @@ def validate_generation_request(tools, name, parameters):
     if name == 'diffusion':
         if not isinstance(value.get('prompt'), str) or not value['prompt'].strip():
             raise ValueError('diffusion requires prompt')
-        for key, default in (('width', 768), ('height', 768), ('steps', 4)):
+        for key, default in (('width', 1024), ('height', 1024), ('steps', 4)):
             value.setdefault(key, default)
             if type(value[key]) is not int or value[key] <= 0:
                 raise ValueError(f'{key} must be a positive integer')
@@ -88,25 +88,28 @@ def execute_generation_stage(store, task, stop):
     if name == 'diffusion':
         output = work / 'image.png'
         request = {key: value[key] for key in ('prompt', 'width', 'height', 'steps', 'seed')}
-        request.update(model_path=os.environ.get('SPATIALFORGE_DIFFUSION_MODEL',
-                       tools.config.model('flux')['path']), output=str(output))
+        request['output'] = str(output)
+        if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+            request['model_path'] = os.environ.get('SPATIALFORGE_DIFFUSION_MODEL') or tools.config.model('flux')['path']
         if value.get('source_image'):
             request['image'] = value['source_image']
         result['worker'] = tools.execute(name, request, work / 'worker', stop)
         result['source_path'] = str(output)
     elif name == 'depth_anything':
         request = {'image': value['source_image'], 'output_dir': str(work / 'depth'),
-                   'model_path': os.environ.get('SPATIALFORGE_DEPTH_MODEL',
-                       tools.config.model('depth_anything')['path']),
-                   'source_root': tools.config.data['sources']['depth_anything'],
-                   'device': 'cpu', 'cpu_threads': 4, 'input_size': value['input_size']}
+                   'input_size': value['input_size']}
+        if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+            request.update(model_path=os.environ.get('SPATIALFORGE_DEPTH_MODEL') or tools.config.model('depth_anything')['path'],
+                           source_root=tools.config.data['sources']['depth_anything'], device='cpu', cpu_threads=4)
+        request.update({key: value[key] for key in ('intrinsics', 'focal_length_px', 'intrinsics_source') if key in value})
         worker = tools.execute(name, request, work / 'worker', stop)
         result.update(worker=worker, source_path=worker['depth'], visualization=worker['visualization'],
                       depth_type=worker['depth_type'], units=worker['units'], scale=worker['scale'])
     elif name == 'sam3':
         output = work / 'segmentation'
-        request = {'checkpoint': str(Path(tools.config.model('sam3')['path']) / 'sam3.pt'),
-                   'image': value['source_image'], 'output_dir': str(output), 'confidence': value['confidence']}
+        request = {'image': value['source_image'], 'output_dir': str(output), 'confidence': value['confidence']}
+        if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+            request['checkpoint'] = str(Path(tools.config.model('sam3')['path']) / 'sam3.pt')
         request.update({key: value[key] for key in ('prompts', 'instances', 'box_padding_ratio') if key in value})
         worker = tools.execute(name, request, work / 'worker', stop)
         result['worker'] = worker
@@ -117,9 +120,10 @@ def execute_generation_stage(store, task, stop):
         output = work / 'meshes'
         objects = [{'object_id': item['object_id'], 'image': value['source_image'],
                     'mask': item['source_mask'], 'seed': item.get('seed', value.get('seed',42))} for item in value['objects']]
-        request = {'source_root': tools.config.data['sources']['sam3d'],
-                   'config_path': str(Path(tools.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'),
-                   'output_dir': str(output), 'objects': objects}
+        request = {'output_dir': str(output), 'objects': objects}
+        if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
+            request.update(source_root=tools.config.data['sources']['sam3d'],
+                           config_path=str(Path(tools.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
         if value.get('texture_baking'):request['texture_baking']=True
         worker = tools.execute(name, request, work / 'worker', stop)
         result['worker'] = worker

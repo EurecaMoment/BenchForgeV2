@@ -1,5 +1,6 @@
 """Stage composition with real artifact files and mocked inference, no GPU."""
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event
@@ -13,6 +14,49 @@ from spatialforge.generation import GenerationTools
 
 
 class GenerationStage(unittest.TestCase):
+    def test_remote_depth_needs_no_local_model_configuration_and_preserves_calibration(self):
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            image = root / 'source.png'
+            Image.new('RGB', (1024, 1024), 'tan').save(image)
+            calls = []
+
+            class Tools(GenerationTools):
+                @property
+                def config(self):
+                    raise AssertionError('Remote model requests must not load local model configuration')
+
+                def execute(self, name, request, work, stop):
+                    calls.append(request)
+                    output = Path(request['output_dir'])
+                    output.mkdir(parents=True)
+                    depth, preview = output / 'depth_m.npy', output / 'preview.png'
+                    depth.write_bytes(b'external-model-output')
+                    Image.new('L', (1024, 1024)).save(preview)
+                    return {'status': 'ok', 'depth': str(depth), 'visualization': str(preview),
+                            'depth_type': 'metric_depth_estimate', 'units': 'meter', 'scale': 'estimated'}
+
+            class Store:
+                def directory(self, task_id, revision):
+                    return root / task_id / ('revision_' + str(revision))
+
+                def update(self, *args, **kwargs):
+                    pass
+
+            store = Store()
+            store.root = root
+            calibration = [[1200, 0, 512], [0, 1200, 512], [0, 0, 1]]
+            task = {'id': 'depth.scene0', 'unit': {'revision': 0, 'intent': {'tool': 'depth_anything',
+                    'parameters': {'source_image': str(image), 'intrinsics': calibration,
+                                   'intrinsics_source': 'simulator calibration'}}}}
+            with patch.object(stage, 'GenerationTools', Tools), patch.dict(os.environ, SPATIALFORGE_INFERENCE_URL='http://external-models'):
+                result = stage.execute_generation_stage(store, task, Event())
+            self.assertEqual(calls[0]['intrinsics'], calibration)
+            self.assertNotIn('model_path', calls[0])
+            self.assertNotIn('device', calls[0])
+            self.assertEqual(result['units'], 'meter')
+            self.assertFalse(result['gt_source'])
+
     def test_independent_outputs_compose_and_register_only_on_request(self):
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
