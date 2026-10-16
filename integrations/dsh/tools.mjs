@@ -501,6 +501,7 @@ export async function apply(ctx, config) {
     diffusion:'FLUX.2 Klein 1024x1024 image generation and editing',
     depth_anything:'Depth Anything 3 metric depth estimation; request must supply calibrated intrinsics or focal_length_px',
     sam3d:'SAM3D paired Mesh and Gaussian generation in one request; texture_baking=false retains vertex colors',
+    blender:'Blender Cycles CUDA rendering of a FIT-visible .blend scene; returns a PNG image',
   };
   for (const [client, purpose] of Object.entries(modelClients)) {
     const tool = `model_${client}`;
