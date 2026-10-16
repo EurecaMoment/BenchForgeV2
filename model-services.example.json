@@ -37,6 +37,9 @@
       },
       "sam3d": {
         "request_defaults": {"texture_baking": false}
+      },
+      "blender": {
+        "request_defaults": {"width": 1024, "height": 1024, "samples": 16, "frame": 1}
       }
     }
   }

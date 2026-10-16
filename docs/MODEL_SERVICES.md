@@ -28,6 +28,7 @@ FIT 上的生产 API 为 `http://127.0.0.1:4960`：外部适配层把常驻模�
 | diffusion | benchforge_model_diffusion | diffusion |
 | depth_anything | benchforge_model_depth_anything | depth_anything |
 | sam3d | benchforge_model_sam3d | sam3d |
+| blender | benchforge_model_blender | blender |
 
 常驻模型位于 g3024 GPU4–7：FLUX.2 Klein、DA3METRIC-LARGE、SAM3、SAM3D。
 输入规格为 1024×1024。DA3 请求必须提供输入图像像素坐标下的相机 `intrinsics`
@@ -37,10 +38,42 @@ SAM3D 同一请求输出 Mesh 与 Gaussian；默认 `texture_baking=false`，Mes
 原 `spatialforge_diffusion/sam3/depth/sam3d` 场景工具使用同一常驻路由。
 远程场景请求不再读取本地模型路径配置，模型部署依然独立于本仓库。
 
+Blender Cycles is a separate FIT provider exposed as `model_blender`. It runs the
+official Blender 5.2.2 LTS binary with CUDA on the dedicated GPU 4. Submit an
+absolute FIT-visible `blend_file` or `scene_file`, an absolute `output` path (or
+let the provider write `render.png` under the job workspace), and optional
+`width`, `height`, `samples`, and `frame`. The provider returns the rendered
+image and timing metadata. It does not provide Isaac PhysX state, robot
+interaction evidence, or benchmark GT.
+
+Blender request example (the `.blend` file must already exist on FIT):
+
+```json
+{
+  "workspace": "/home/maqiang/blender/dsh-workspace",
+  "work": "/home/maqiang/blender/dsh-workspace/render-01",
+  "request": {
+    "blend_file": "/home/maqiang/blender/renders/smoke-scene.blend",
+    "width": 1024,
+    "height": 1024,
+    "samples": 16,
+    "frame": 1
+  }
+}
+```
+
+Call `benchforge_model_blender` with this input, then use `action="wait"` and
+the returned `job_id`. The completed result contains `output` and `log` paths.
+Each job writes into its own work directory. Availability first checks the
+external service and the requested scene; a submitted job is not a rendered
+image. These client definitions do not prove the external Blender deployment
+or a real DSH render has passed acceptance.
+
 适配层的 `/tools/{tool}/health` 查询常驻模型就绪状态；`/jobs` 在 FIT 保存任务与产物回执，
 通过现有 SSH 连接访问 g3024 的 `/infer`。既有 job ID 仍可查询。
 常驻 `/infer` 在派发后不支持中断，`cancel` 对此明确返回 409，不伪报取消。
-已通过真实 DSH 原生工具与 PTC 读回验收；64 并发、每请求一秒的指标未达成。
+四个既有常驻模型已通过真实 DSH 原生工具与 PTC 读回验收；
+其 64 并发、每请求一秒的指标未达成。新增 Blender 需单独验收。
 
 本次新增的接口不复制八个旧 worker 或它们的启动器。现有部署的模型服务
 继续使用其自己的实现；旧版可选模型执行代码的历史保留不等于新客户端

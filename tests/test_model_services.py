@@ -135,6 +135,10 @@ class ModelClients(unittest.TestCase):
         self.assertEqual(result["inference_status"], "queued")
         self.assertTrue((Path(result["artifact_dir"]) / "result.json").is_file())
         self.assertEqual(runtime.call("model_lama", {"action": "health"})["health"]["status"], "ready")
+        self.assertEqual(runtime.call("model_blender", {"action": "health"})["health"]["tool"], "blender")
+        blender = runtime.call("model_blender", {"request": {"blend_file": "/shared/scene.blend"}})
+        self.assertEqual(blender["inference_status"], "queued")
+        self.assertEqual(self.requests[-1]["tool"], "blender")
 
 
 if __name__ == "__main__":
