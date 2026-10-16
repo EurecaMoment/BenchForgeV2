@@ -3,6 +3,9 @@
 新模式的集成代码统一维护于 FIT 的 `/home/maqiang/GitHub/BenchForgeV2`，
 公开仓库为 EurecaMoment/BenchForgeV2，开发分支为 SpatialForge。
 
+本文件描述轻量客户端和外部服务边界，不是模型部署手册。权重、模型启动器、GPU
+分配、远程隧道和生产服务均由部署方维护；客户端不会复制权重或启动重模型。
+
 ## 模型服务边界
 
 `src/benchforge_core/model_services` 是仅依赖 Python 标准库的客户端包。

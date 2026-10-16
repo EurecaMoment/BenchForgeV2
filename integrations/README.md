@@ -1,4 +1,4 @@
-# BenchForgev2 DSH bundle
+# BenchForgeV2 DSH integration
 
 This directory is the Node plugin subpackage of the **same BenchForgeV2
 repository**. It declares public entrypoints and a DSH bundle manifest. Python
@@ -8,7 +8,29 @@ dependencies; installing the bundle does not provision or restart them.
 The bundle adds one independent **BenchForgev2** preset. It does not replace
 `standard`, `ptc`, `minimal`, `cordis`, the first-generation **BenchForge** preset,
 or the separately configured **SpatialForge** development preset. Their existing
-deployment bindings remain owned by the user profile.
+deployment bindings remain owned by the user profile. These are three modes in
+one DSH installation, not three maintained application repositories.
+
+## Current FIT simulation route
+
+The current production route is:
+
+```text
+DSH on FIT
+  → FIT SpatialForge service and queue
+  → external a800-remote-fit dispatcher
+  → FIT 127.0.0.1:18766 reverse-SSH endpoint
+  → thunlp-node1, Isaac Sim 6.2.0 on A800
+  → capture and evidence returned to FIT
+```
+
+`desktop-isaac` is a retained database lease name; the active remote worker is
+`a800-remote-fit`. FIT's loopback port is a tunnel endpoint, not a local Isaac
+process. The dispatcher and the Isaac installation on A800 are deployed outside
+this repository. A successful real DSH task has verified this route, but that
+receipt does not prove present service health or throughput. The Windows worker
+described by the self-hosted install guide is an alternative deployment, not the
+current FIT production worker.
 
 ## FIT checkout location
 

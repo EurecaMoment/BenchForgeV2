@@ -1,5 +1,10 @@
 # Bundled runtime components
 
+These are the repository-owned components. They do not include the external FIT
+A800 dispatcher, remote Isaac installation, model weights, model startup code or
+production credentials. The current FIT route and the optional Windows worker
+boundary are documented in the [repository README](../README.md).
+
 - `spatialforge/`: scene service, native asset/material catalog, task sandbox,
   generated-asset adapters, durable capture transport, and Windows Isaac executor.
 - `benchclaw/`: PostgreSQL repository, dataset specification, deterministic spatial

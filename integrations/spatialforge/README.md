@@ -7,11 +7,29 @@ them with BenchForge in a separate **BenchForgev2** preset. The installable
 Node bundle and supported package/Node versions are documented in
 [the integration guide](../README.md).
 
-## Existing service connection
+## Current FIT service connection
 
-Run DSH on the SpatialForge service machine: returned evidence paths are local
-to that machine. Configure the service's existing Windows desktop worker and use
-its single Isaac queue. This client never starts another worker or simulator.
+The active FIT route for scene work is:
+
+```text
+DSH on FIT
+  → FIT SpatialForge service and queue
+  → external a800-remote-fit dispatcher
+  → FIT 127.0.0.1:18766 reverse-SSH endpoint
+  → thunlp-node1, Isaac Sim 6.2.0 on A800
+  → capture and evidence returned to FIT
+```
+
+`desktop-isaac` is the retained database lease name; the current worker identity
+is `a800-remote-fit`. The FIT loopback address is a tunnel endpoint, not a local
+Isaac process. The dispatcher and A800 Isaac installation are external to this
+repository and are not started or migrated by this plugin. A real DSH task has
+verified the route, but that receipt is not a current health or throughput claim.
+
+The Windows single-instance worker remains a supported self-hosted alternative.
+This client never starts a second worker, simulator, tunnel or model service;
+do not configure both workers to claim the same queue without an explicit server
+capacity policy.
 
 Copy `config.example.json` to a private `spatialforge.local.json`. Set
 `SPATIALFORGE_OPERATOR_TOKEN` in the environment used to launch DSH, then:
