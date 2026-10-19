@@ -251,6 +251,20 @@ class ProductExports(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'Missing capture evidence'):
                 products._package_capture(directory,release,evidence)
 
+    def test_spatialtree_zip_is_included_in_interaction_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp);capture=directory/'capture';capture.mkdir()
+            bundle=capture/'interaction_0_spatialtree.zip';bundle.write_bytes(b'native trajectory')
+            evidence={'interaction':{'validated':False,'test_kind':'native_trajectory_recording',
+                'action_results':[{'id':'walk','action':'record_trajectory','status':'recorded',
+                    'trajectory_complete':True,'recording':{'spatialtree':{'bundle':bundle.name}}}]}}
+            release=directory/'release';release.mkdir()
+            summary=products._package_capture(directory,release,evidence)
+            self.assertFalse(summary['interaction_validated'])
+            with zipfile.ZipFile(release/'interaction_bundle.zip') as archive:
+                self.assertIn(bundle.name,archive.namelist())
+                self.assertEqual(archive.read(bundle.name),b'native trajectory')
+
     def test_binary_scene_bundle_contains_referenced_payload(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory=Path(tmp);capture=directory/'capture';capture.mkdir()

@@ -36,6 +36,31 @@ class TransferTests(unittest.TestCase):
             files=[{'name':name,'size':1,'mtime_ns':1} for name in ('report.json','scene_resource_000.hdr','scene_resource_001.jpg','scene_resource_002.exr','scene_resource_003.mdl','interaction_0.mp4','interaction_0_frames.zip','interaction_0_recording.json')]
             self.assertEqual(validate_manifest(files),files)
 
+    def test_spatialtree_bundle_is_required_before_capture_commit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);(root/'capture').mkdir()
+            action={'id':'walk','action':'record_trajectory','camera_id':'view','duration_steps':30,
+                    'recording':{'spatialtree':{}}}
+            (root/'program.json').write_text(json.dumps({'interactions':[action]}))
+            capture=root/'remote-capture';capture.mkdir()
+            for name in ('evidence.json','interaction_0.mp4','interaction_0_frames.zip',
+                         'interaction_0_recording.json','interaction_0_spatialtree.zip'):
+                (capture/name).write_bytes(b'artifact')
+            report={'token':JOB['token'],'status':'captured','interaction':{'action_results':[{
+                'id':'walk','action':'record_trajectory','recording':{
+                    'video':'interaction_0.mp4','frames_archive':'interaction_0_frames.zip',
+                    'timeline_file':'interaction_0_recording.json',
+                    'spatialtree':{'bundle':'interaction_0_spatialtree.zip'}}}]}}
+            (capture/'report.json').write_text(json.dumps(report))
+            class Store:
+                def directory(self,*args):return root
+                def snapshot(self,*args):return {'tasks':[{'id':JOB['task_id'],'unit':{'intent':{}}}]}
+            with patch('spatialforge.capture_transfer.capture_scope',return_value={'scene_export_requested':False,'view_indices':[]}):
+                validate_capture(capture,JOB,Store())
+                (capture/'interaction_0_spatialtree.zip').unlink()
+                with self.assertRaisesRegex(ValueError,'incomplete native capture'):
+                    validate_capture(capture,JOB,Store())
+
     def test_compression_is_bounded_and_truncated_payload_is_rejected(self):
         raw=b'0.1, 2.3, 4.5, '*100
         self.assertEqual(decode_chunk(zlib.compress(raw),'deflate'),raw)

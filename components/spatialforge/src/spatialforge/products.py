@@ -97,8 +97,14 @@ def _package_capture(directory, release, evidence):
         for action in actions:
             for key in ('trajectory_file','before_image','after_image'):
                 if action.get(key):files[action[key]]=_capture_file(capture,action[key])
+            recording = action.get('recording', {})
+            spatialtree = recording.get('spatialtree', {}) if isinstance(recording, dict) else {}
+            bundle = spatialtree.get('bundle') if isinstance(spatialtree, dict) else None
+            if bundle:
+                files[bundle] = _capture_file(capture, bundle)
             if action.get('success') is True and not all(action.get(k) for k in ('trajectory_file','before_image','after_image')):
-                raise ValueError('Successful interaction lacks trajectory or before/after image evidence')
+                if action.get('action') != 'record_trajectory':
+                    raise ValueError('Successful interaction lacks trajectory or before/after image evidence')
         with zipfile.ZipFile(release/'interaction_bundle.zip','w',zipfile.ZIP_DEFLATED) as archive:
             archive.writestr('interaction.json',json.dumps(interaction,ensure_ascii=False,indent=2))
             for relative,path in files.items():archive.write(path,relative)

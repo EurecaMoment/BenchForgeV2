@@ -20,8 +20,14 @@ class PublicEvidence(unittest.TestCase):
                 result = evidence(store,'sf_video.scene0',file='capture/'+name,workspace_id='video_review')
                 self.assertEqual(Path(result['source_path']).read_bytes(),(capture/name).read_bytes())
             (capture/'interaction_0_recording.json').write_text('{"fps":30}')
+            (capture/'interaction_0_spatialtree.json').write_text('{"schema":"spatialtree.trajectory/v1"}')
+            (capture/'interaction_0_spatialtree.zip').write_bytes(b'native trajectory bundle')
             self.assertEqual(evidence(store,'sf_video.scene0',file='capture/interaction_0_recording.json')['data']['fps'],30)
-            self.assertEqual(len(evidence(store,'sf_video.scene0',file='capture')['files']),3)
+            self.assertEqual(evidence(store,'sf_video.scene0',file='capture/interaction_0_spatialtree.json')['data']['schema'],
+                             'spatialtree.trajectory/v1')
+            self.assertEqual(Path(evidence(store,'sf_video.scene0',file='capture/interaction_0_spatialtree.zip')['source_path']).read_bytes(),
+                             b'native trajectory bundle')
+            self.assertEqual(len(evidence(store,'sf_video.scene0',file='capture')['files']),5)
 
     def test_view_image_maps_pixels_to_captured_objects_in_selected_revision(self):
         with tempfile.TemporaryDirectory() as temp:
