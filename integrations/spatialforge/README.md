@@ -57,6 +57,12 @@ A receiving agent can use `spatialforge_status` or `spatialforge_wait` with a sh
 
 ## Test the code without production jobs
 
+For native Isaac video/trajectory data, see
+[the SpatialTree trajectory contract](../../docs/SPATIALTREE_TRAJECTORIES.md).
+It is an opt-in extension of action recordings and exports RGB, depth,
+semantic/instance annotators, camera/object poses and action timestamps from the
+same simulator state.
+
 For focused iteration, `spatialforge_capture` accepts optional
 `capture_options: {view_indices: [2], export_scene: false}`. This captures the
 third program camera as `view_2` and skips USD/resource export. The complete

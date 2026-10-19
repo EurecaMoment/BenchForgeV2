@@ -67,6 +67,16 @@ def validate_capture(directory, job, store):
         required += [f'view_{i}{suffix}' for i in scope['view_indices'] for suffix in ('.png', '.json', '_depth.npy', '_semantic.npy', '_instance.npy')]
         if report.get('scene_format')=='usdc':required.append('scene.usdc')
         required.extend(resource['file'] for resource in report.get('scene_resources',[]))
+        action_results = report.get('interaction', {}).get('action_results', [])
+        for action in stored.get('interactions', stored.get('affordances', [])):
+            if 'spatialtree' not in action.get('recording', {}):
+                continue
+            result = next((row for row in action_results if row.get('id') == action['id']), None)
+            if result is None or not result.get('recording', {}).get('spatialtree'):
+                raise ValueError('SpatialTree interaction did not produce a complete native trajectory')
+            spatialtree = result.get('recording', {}).get('spatialtree', {})
+            required.extend([result['recording']['video'], result['recording']['frames_archive'],
+                             result['recording']['timeline_file'], spatialtree['bundle']])
         if not all((directory/p).is_file() and (directory/p).stat().st_size for p in required):
             raise ValueError('incomplete native capture bundle')
 
