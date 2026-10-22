@@ -8,9 +8,27 @@ The production directory is `src/benchforge_core/pipelines/definitions/`. JSON f
 - `benchforge_pipeline_plan`: interpret a user goal and provide `selections=[{template_ids,count,reason}]`, or select an explicit capability/task/template. Plain text without IDs returns candidates for the host DSH semantic agent to select. Lexical retrieval is not an automatic capability verdict.
 - `benchforge_pipeline_run`: execute or resume the saved plan. Supply `run` to resume. Returns `waiting`, `needs_input`, `needs_evidence`, `failed` or `completed` and artifact paths.
 - `benchforge_pipeline_status`: read current step states without executing.
+- `benchforge_pipeline_artifacts`: read the run's typed artifact manifest, parent references, evidence paths and shape-contract results without executing or retrying.
+- `benchforge_pipeline_repair_plan`: create a reviewable repair proposal for a failed artifact. It chooses local field repair, template rebinding, candidate resynthesis, skill re-execution, upstream rollback or final rejection; it never edits GT or runs the repair.
 - `benchforge_pipeline_evaluate`: evaluate saved answers with deterministic protocol scorers. No target model API calls.
 
-Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The SpatialForge development preset exposes all five tools alongside existing learning and scene tools.
+Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The SpatialForge development preset exposes these seven pipeline tools alongside existing learning and scene tools.
+
+## Artifact lineage and bounded repair
+
+Every persisted pipeline step writes `pipeline_run/artifacts.jsonl`. A record contains
+`artifact_id`, `artifact_type`, `version`, `parents`, `producer`, declared evidence
+references, contract results, status and the result path. The runner derives parent
+references from explicit `$step_id` bindings and keeps old records when a waiting or
+failed step is retried. The default status for a completed step is `candidate`; it is
+not a benchmark approval. Operation-specific gates must explicitly promote a record
+to `verified` later.
+
+Execution failures and missing bindings also write `pipeline_run/repair-plans.jsonl`.
+The proposal is deliberately separate from execution: inspect it, correct the task
+input or evidence in a new run, then rerun the same contracts. No repair operation
+changes an answer, GT, acceptance rule or remote service automatically. The manifest
+is a small versioned JSONL record and does not perform content hashing or broad scans.
 
 ## One capability or several templates
 

@@ -4,6 +4,8 @@ import os
 import urllib.request
 from pathlib import Path
 from ..runtime import read, write
+from .artifact_graph import ArtifactGraph, binding_roots, make_record
+from .repair import create_plan
 from .production import produce, package
 
 SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
@@ -94,6 +96,9 @@ def run(args, directory, config=None, client=service_call):
     write(frozen, plan)
     state_path = run_root/'state.json'
     state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
+    state.setdefault('run_id', f'run-{run_root.name}')
+    graph = ArtifactGraph(run_root)
+    artifact_ids = {}
     # The full persisted run path distinguishes nested recipes in separate plans
     # and stays the same when an interrupted submission is resumed.
     environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'],
@@ -105,15 +110,28 @@ def run(args, directory, config=None, client=service_call):
             if read(run_root/'steps'/step['id']/'request.json') != arguments:
                 raise ValueError('Completed step inputs changed; create a new plan/run')
             environment[step['id']] = prior['result']
+            prior_artifact = prior.get('artifact')
+            if prior_artifact:
+                artifact_ids[step['id']] = prior_artifact.get('artifact_id')
             continue
         step_root = run_root/'steps'/step['id']
         step_root.mkdir(parents=True, exist_ok=True)
         try:
             arguments = bind(step.get('arguments', {}), environment)
             write(step_root/'request.json', arguments)
+            parent_ids = [artifact_ids[root] for root in binding_roots(step.get('arguments', {})) if root in artifact_ids]
             result = execute_step(step, arguments, step_root, environment, client)
+            result_path = step_root/'result.json'
+            operation = step.get('uses', 'pipeline')
+            # Persist non-terminal receipts too; artifact manifests must point
+            # to a readable result when a run pauses for evidence or input.
+            write(result_path, result)
+            artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
+                                  operation=operation, arguments=arguments, result=result,
+                                  parent_ids=parent_ids, declared_type=step.get('artifact_type'),
+                                  result_path=str(result_path.resolve()))
             if result.get('state') in ('needs_evidence', 'needs_input', 'waiting'):
-                state['steps'][step['id']] = {'state': result['state'], 'result': result}
+                state['steps'][step['id']] = {'state': result['state'], 'result': result, 'artifact': artifact}
                 state['state'] = result['state']
                 state['next'] = 'Read exact template conditions, generate/source evidence and rerun with bindings.evidence. Completed upstream steps remain reusable.'
                 write(state_path, state)
@@ -123,21 +141,33 @@ def run(args, directory, config=None, client=service_call):
                 if lifecycle in ('FAILED_FINAL', 'CANCELED'):
                     raise RuntimeError('Upstream scene lifecycle failed: '+str(result))
                 if lifecycle != 'SUCCEEDED':
-                    state['steps'][step['id']] = {'state': 'waiting', 'result': result}
+                    state['steps'][step['id']] = {'state': 'waiting', 'result': result, 'artifact': artifact}
                     state['state'] = 'waiting'
                     write(state_path, state)
                     return {'run': str(run_root.resolve()), **state}
-            write(step_root/'result.json', result)
-            state['steps'][step['id']] = {'state': 'completed', 'result': result}
+            state['steps'][step['id']] = {'state': 'completed', 'result': result, 'artifact': artifact}
             environment[step['id']] = result
+            artifact_ids[step['id']] = artifact['artifact_id']
             state['state'] = 'running'
             write(state_path, state)
         except MissingBinding as error:
-            state.update(state='needs_input', missing_binding=str(error), step=step['id'])
+            artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
+                                  operation=step.get('uses', 'pipeline'), arguments=step.get('arguments', {}),
+                                  result={}, parent_ids=[], declared_type=step.get('artifact_type'),
+                                  result_path=None, error=str(error))
+            repair = create_plan(run=run_root, artifact=artifact, failure_code='missing_binding', reason=str(error))
+            graph.append_repair(repair)
+            state.update(state='needs_input', missing_binding=str(error), step=step['id'], artifact=artifact, repair=repair)
             write(state_path, state)
             return {'run': str(run_root.resolve()), **state}
         except Exception as error:
-            state['steps'][step['id']] = {'state': 'failed', 'error': str(error)}
+            artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
+                                  operation=step.get('uses', 'pipeline'), arguments=step.get('arguments', {}),
+                                  result={}, parent_ids=[], declared_type=step.get('artifact_type'),
+                                  result_path=None, error=str(error))
+            repair = create_plan(run=run_root, artifact=artifact, failure_code='execution_error', reason=str(error))
+            graph.append_repair(repair)
+            state['steps'][step['id']] = {'state': 'failed', 'error': str(error), 'artifact': artifact, 'repair': repair}
             state['state'] = 'failed'
             write(state_path, state)
             raise

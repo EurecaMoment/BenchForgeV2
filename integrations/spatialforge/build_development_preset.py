@@ -11,7 +11,8 @@ spec.loader.exec_module(base)
 
 LEARNING_TOOLS = ['spatial_catalog', 'spatial_generate', 'spatial_export', 'spatial_evaluate',
                   'curriculum', 'spatial_train', 'spatial_experiment', 'training_monitor',
-                  'pipeline_catalog', 'pipeline_plan', 'pipeline_run', 'pipeline_status', 'pipeline_evaluate']
+                  'pipeline_catalog', 'pipeline_plan', 'pipeline_run', 'pipeline_status',
+                  'pipeline_artifacts', 'pipeline_repair_plan', 'pipeline_evaluate']
 MODEL_TOOLS = ['model_yoloe', 'model_sam3', 'model_moge', 'model_lama',
                'model_flux_fill', 'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
                'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender']
