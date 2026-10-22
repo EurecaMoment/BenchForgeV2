@@ -11,6 +11,16 @@ or the separately configured **SpatialForge** development preset. Their existing
 deployment bindings remain owned by the user profile. These are three modes in
 one DSH installation, not three maintained application repositories.
 
+## Evaluation workbench UI
+
+`spatialforge/ui` is a separate root UI plugin in this same repository. It adds
+the DSH sidebar workbench with persisted runs/artifacts, version-isolated dataset
+browsing, server-side pagination and generation quality reports. It does not edit
+official DSH source or start model/simulator services. Install or refresh it in an
+already running DSH with `python integrations/spatialforge/install_workbench.py`.
+See [the workbench guide](../docs/frontend-workbench-v2.md) for data boundaries,
+configuration and acceptance requirements.
+
 ## Current FIT simulation route
 
 The current production route is:

@@ -25,6 +25,9 @@
     "spatialforge/build_preset.py",
     "spatialforge/build_development_preset.py",
     "spatialforge/hot_update.py",
+    "spatialforge/install_workbench.py",
+    "spatialforge/ui/*.js",
+    "spatialforge/ui/package.json",
     "cordis.patch.yml",
     "README.md"
   ],
