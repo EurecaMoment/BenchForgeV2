@@ -1,5 +1,10 @@
 # SpatialForge composable pipelines and exact task templates
 
+The consolidated operator UI for these pipelines is documented in
+[frontend-workbench-v2.md](frontend-workbench-v2.md). It maps plans, runs,
+typed artifacts, contracts, repair proposals, dataset browsing and releases
+without treating chat output as production state.
+
 The production directory is `src/benchforge_core/pipelines/definitions/`. JSON files are editable recipes with IDs, input/output descriptions, registered operations and artifact references. `task_templates.json` imports the user-provided 出题模板.html: 89 tasks, 267 measurement templates and their common/individual protocols. N IDs are capability associations, C/P IDs identify tasks, and Cxx-Tyy identifies an exact measurement variant. Original design and legacy validation fields remain separate from adapter execution status.
 
 ## DSH entrypoints
