@@ -1,4 +1,4 @@
-"""Install the BenchForge workbench as one root plugin in an already running DSH."""
+"""Install the SpatialForge-only workbench in an already running DSH."""
 import argparse
 from copy import deepcopy
 import importlib.util
@@ -11,15 +11,23 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("benchforge_hot_update", ROOT / "integrations/spatialforge/hot_update.py")
 hot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hot)
-PLUGIN_ID = "benchforge-workbench-ui"
+PRESET_ID = "spatialforge-standard-ptc"
+PLUGIN_ID = "spatialforge-evaluation-ui"
 PACKAGE = "@eurecamoment/benchforge-spatialforge-ui"
 
 
 def update_profile(profile, root, workspace_paths, revision=None):
     result = deepcopy(profile)
-    # This is a host/root plugin. Session presets cannot own a global panel.
-    inserted = [row for patch in result for row in patch.get("insert", [])]
-    matches = [row for row in inserted if row.get("id") == PLUGIN_ID]
+    # Remove the earlier global installation while preserving unrelated host plugins.
+    for patch in result:
+        patch["insert"] = [row for row in patch.get("insert", []) if row.get("id") != "benchforge-workbench-ui"]
+    presets = [row for patch in result for row in patch.get("insert", [])
+               if isinstance(row.get("config"), dict) and row["config"].get("id") == PRESET_ID]
+    if len(presets) != 1:
+        raise ValueError("SpatialForge preset is missing or duplicated")
+    config = presets[0]["config"]
+    rows = config.setdefault("plugins", [])
+    matches = [row for row in rows if row.get("id") == PLUGIN_ID]
     if len(matches) > 1:
         raise ValueError("Duplicate workbench plugin rows")
     source = str(root / "integrations/spatialforge/ui/index.js")
@@ -33,7 +41,7 @@ def update_profile(profile, root, workspace_paths, revision=None):
         matches[0].clear()
         matches[0].update(row)
     else:
-        result.append({"insert": [row]})
+        rows.append(row)
     return result
 
 

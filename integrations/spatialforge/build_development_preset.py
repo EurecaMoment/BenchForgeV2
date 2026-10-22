@@ -48,6 +48,12 @@ def build(sources, dsh_root, python, service_config, *, package_imports=False):
     plugins.append({'id': 'spatialforge-tools',
                     'name': '@eurecamoment/benchforge-dsh/spatialforge-tools' if package_imports else str(ROOT / 'integrations/spatialforge/plugin/tools.mjs'),
                     'config': {'serviceConfig': str(service_config.resolve())}})
+    # The evaluation workbench is a client/server plugin of the SpatialForge
+    # preset.  Keeping this row here (rather than in a root profile patch)
+    # means ordinary DSH presets never mount the workbench.
+    plugins.append({'id': 'spatialforge-evaluation-ui',
+                    'name': '@eurecamoment/benchforge-spatialforge-ui' if package_imports else str(ROOT / 'integrations/spatialforge/ui/index.js'),
+                    'config': {}})
     return result
 
 

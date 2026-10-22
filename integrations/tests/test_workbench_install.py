@@ -11,21 +11,31 @@ spec.loader.exec_module(install)
 
 
 class WorkbenchInstall(unittest.TestCase):
-    def test_root_plugin_is_idempotent_and_does_not_rewrite_modes(self):
+    def test_ui_plugin_is_installed_only_in_spatialforge_preset_and_is_idempotent(self):
         profile = [{"insert": [
             {"id": "official", "name": "@deepseek-ai/dsh-client-ui-sidebar"},
+            {"id": "benchforge-workbench-ui", "name": "/old/global/workbench/index.js"},
             {"id": "spatialforge", "config": {"id": "spatialforge-standard-ptc", "plugins": [{"id": "existing"}]}},
         ]}]
         original = deepcopy(profile)
         result = install.update_profile(profile, ROOT, [ROOT / "task-workspace"])
         self.assertEqual(profile, original)
-        self.assertEqual(result[0], original[0])
-        self.assertEqual(result[-1]["insert"][0]["id"], "benchforge-workbench-ui")
+        self.assertEqual(result[0]["insert"][0], original[0]["insert"][0])
+        self.assertEqual(result[0]["insert"][0]["name"], "@deepseek-ai/dsh-client-ui-sidebar")
+        self.assertEqual([row["id"] for row in result[0]["insert"]], ["official", "spatialforge"])
+        spatial_plugins = result[0]["insert"][1]["config"]["plugins"]
+        self.assertEqual(spatial_plugins[0]["id"], "existing")
+        self.assertEqual(spatial_plugins[-1]["id"], "spatialforge-evaluation-ui")
         self.assertEqual(install.update_profile(result, ROOT, [ROOT / "task-workspace"]), result)
-        result[-1]["insert"][0]["config"]["maxRuns"] = 20
+        spatial_plugins[-1]["config"]["maxRuns"] = 20
         refreshed = install.update_profile(result, ROOT, None, "next")
-        self.assertEqual(refreshed[-1]["insert"][0]["config"], result[-1]["insert"][0]["config"])
-        self.assertTrue(refreshed[-1]["insert"][0]["name"].endswith("?workbench_revision=next"))
+        updated = refreshed[0]["insert"][1]["config"]["plugins"][-1]
+        self.assertEqual(updated["config"], spatial_plugins[-1]["config"])
+        self.assertTrue(updated["name"].endswith("?workbench_revision=next"))
+
+    def test_refuses_profile_without_exactly_one_spatialforge_preset(self):
+        with self.assertRaises(ValueError):
+            install.update_profile([{"insert": [{"id": "ordinary"}]}], ROOT, None)
 
     def test_reads_current_and_older_global_assignment_forms(self):
         self.assertEqual(install.graph_from_html('<script>globalThis["__DSH_BOOT__"] = {"entries":[]};</script>'), {"entries": []})

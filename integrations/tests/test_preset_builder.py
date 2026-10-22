@@ -33,6 +33,8 @@ class PresetBuilderTest(unittest.TestCase):
         self.assertEqual(learning['name'],'@eurecamoment/benchforge-dsh/benchforge-tools')
         self.assertEqual(next(p for p in plugins if p['id']=='spatialforge-tools')['name'],
                          '@eurecamoment/benchforge-dsh/spatialforge-tools')
+        self.assertEqual(next(p for p in plugins if p['id']=='spatialforge-evaluation-ui')['name'],
+                         '@eurecamoment/benchforge-spatialforge-ui')
 
     def test_preserves_official_presets_and_persistent_configuration(self):
         import copy

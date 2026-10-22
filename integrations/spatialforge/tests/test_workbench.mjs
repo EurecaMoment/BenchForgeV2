@@ -24,20 +24,25 @@ const fixtureCode = [
   'print(json.dumps(outputs))',
 ].join('\n');
 
-test('real persisted pipelines: isolated versions, public pagination, contracts and no mutation', async () => {
+test('real persisted pipelines: session-workspace isolation, public pagination, contracts and no mutation', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-'));
+  const otherDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-other-'));
   try {
     const outputs = JSON.parse(execFileSync(python, ['-c', fixtureCode, directory], {
       cwd: ROOT, env: {...process.env, PYTHONPATH: path.join(ROOT, 'src')}, encoding: 'utf8',
     }));
     const dbStat = await fs.stat(path.join(directory, 'runs.sqlite'));
-    const handler = createWorkbenchHandler({}, () => [{id: 'registered-workspace', path: directory, title: 'Actual fixture'}]);
+    const handler = createWorkbenchHandler({}, () => [
+      {id: 'registered-workspace', path: directory, title: 'Actual fixture'},
+      {id: 'other-workspace', path: otherDirectory, title: 'Other environment'},
+    ]);
     const request = async (params) => {
-      const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams(params)));
+      const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({workspace_path: directory, ...params})));
       assert.equal(response.status, 200, await response.clone().text());
       return response.json();
     };
     const summary = await request({view: 'summary'});
+    assert.deepEqual(summary.sources.map((source) => source.workspace), ['Actual fixture']);
     assert.equal(summary.runs.length, 2);
     assert.equal(summary.datasets.length, 2);
     assert.equal(summary.counts.verified, 0);
@@ -45,6 +50,10 @@ test('real persisted pipelines: isolated versions, public pagination, contracts 
     const version = summary.datasets.find((x) => x.report.accepted === 30);
     const small = summary.datasets.find((x) => x.report.accepted === 3);
     assert.notEqual(version.id, small.id);
+    const otherSummary = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({view: 'summary', workspace_path: otherDirectory})));
+    assert.deepEqual((await otherSummary.json()).runs, []);
+    const unscopedSummary = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=summary'));
+    assert.deepEqual((await unscopedSummary.json()).runs, []);
     const secondPage = await request({view: 'dataset', dataset: version.id, page: 2, page_size: 24});
     assert.equal(secondPage.total, 30);
     assert.equal(secondPage.items.length, 6);
@@ -52,6 +61,10 @@ test('real persisted pipelines: isolated versions, public pagination, contracts 
     assert.equal(secondPage.authority_exposed, false);
     const other = await request({view: 'dataset', dataset: small.id});
     assert.equal(other.total, 3);
+    const crossWorkspace = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({
+      view: 'dataset', dataset: version.id, workspace_path: otherDirectory,
+    })));
+    assert.equal(crossWorkspace.status, 404);
     const filtered = await request({view: 'dataset', dataset: version.id, q: 'item_00000024', template: 'C01-T01', split: 'train'});
     assert.equal(filtered.total, 1);
     assert.equal(filtered.items[0].item_id, 'item_00000024');
@@ -74,17 +87,21 @@ test('real persisted pipelines: isolated versions, public pagination, contracts 
     const response = await request({view: 'dataset', dataset: version.id});
     assert.ok(!JSON.stringify(response).includes('PRIVATE_ORACLE_SENTINEL'));
     const escape = Buffer.from(JSON.stringify(['registered-workspace', '..'])).toString('base64url');
-    assert.equal((await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + escape))).status, 403);
-    const invalidPage = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + version.id + '&page=-1'));
+    const workspaceParam = 'workspace_path=' + encodeURIComponent(directory);
+    assert.equal((await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + escape + '&' + workspaceParam))).status, 403);
+    const invalidPage = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + version.id + '&page=-1&' + workspaceParam));
     assert.equal(invalidPage.status, 400);
-  } finally { await fs.rm(directory, {recursive: true, force: true}); }
+  } finally {
+    await fs.rm(directory, {recursive: true, force: true});
+    await fs.rm(otherDirectory, {recursive: true, force: true});
+  }
 });
 
 test('missing manifest counts remain unknown and an empty index is not invented as verified data', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-empty-'));
   try {
     const handler = createWorkbenchHandler({workspacePaths: [directory]});
-    const response = await handler(new Request('http://dsh.test/api/benchforge/workbench'));
+    const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({workspace_path: directory})));
     const summary = await response.json();
     assert.equal(summary.counts, null);
     assert.deepEqual(summary.runs, []);
@@ -92,25 +109,40 @@ test('missing manifest counts remain unknown and an empty index is not invented 
   } finally { await fs.rm(directory, {recursive: true, force: true}); }
 });
 
-test('browser bundle registers official main/sidebar slots and owns locale disposal', async () => {
+test('evaluation launcher is gated to SpatialForge and opens its right-side session panel', async () => {
   let registration;
   vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'),
     {window: {__ModuleLoader__: {load: (value) => registration = value}}});
   assert.equal(registration.id, '@eurecamoment/benchforge-spatialforge-ui');
-  const plugin = registration.factory((id) => { assert.equal(id, 'react'); return {createElement() {}}; });
-  const seats = [], disposed = [];
+  const plugin = registration.factory((id) => {
+    assert.equal(id, 'react');
+    return {createElement: (type, props, ...children) => ({type, props: props || {}, children})};
+  });
+  const seats = [], disposed = [], opened = [], components = new Map();
+  let definition;
   plugin.apply({
     locale: {register: (_ns, dictionaries) => {
       assert.deepEqual(Object.keys(dictionaries.zh), Object.keys(dictionaries.en));
       return () => disposed.push('locale');
     }, bind: () => (key) => key},
     effect: (effect) => { const cleanup = effect(); disposed.push(cleanup); },
-    slots: {inject: (seat, callback) => { seats.push(seat); callback(); }, register: (options) => {
-      assert.ok(options.key === 'benchforge-workbench' || options.id === 'benchforge-workbench');
+    sidebarRight: {openTab: (kind) => opened.push(kind)},
+    sidebarRightTabs: {register: (value) => { definition = value; return () => {}; }},
+    slots: {inject: (seat, callback) => { seats.push(seat); callback(); }, register: (options, component) => {
+      components.set(options.id || options.key, component);
       return () => {};
     }},
   });
-  assert.deepEqual(seats, ['main', 'sidebar.panellist']);
+  assert.deepEqual(seats, ['sidebar.right.pane.tab', 'conversation.session.header.utilities']);
+  assert.equal(definition.kind, 'benchforge-spatialforge-evaluation');
+  assert.equal(definition.guide, undefined);
+  const launcher = components.get('spatialforge-evaluation-launcher');
+  assert.equal(launcher({useProjection: () => 'benchforgev2'}), null);
+  const spatialForgeButton = launcher({useProjection: () => 'spatialforge-standard-ptc'});
+  assert.equal(spatialForgeButton.type, 'button');
+  spatialForgeButton.props.onClick();
+  assert.deepEqual(opened, ['benchforge-spatialforge-evaluation']);
+  assert.equal(components.get('benchforge-spatialforge-evaluation')({useProjection: () => 'benchforgev2'}), null);
   disposed.find((entry) => typeof entry === 'function')();
   assert.ok(disposed.includes('locale'));
 });

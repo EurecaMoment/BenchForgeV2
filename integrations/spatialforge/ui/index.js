@@ -85,7 +85,7 @@ async function tailJsonl(file, limit, signal) {
   return {rows, total};
 }
 
-async function workspaceRoots(config, registered) {
+async function workspaceRoots(config, registered, requestedPath) {
   const roots = new Map();
   const inputs = [...registered, ...(config.workspacePaths || []).map((p) => ({id: 'path:' + p, path: p, title: path.basename(p)}))];
   for (const input of inputs) {
@@ -94,7 +94,12 @@ async function workspaceRoots(config, registered) {
       if (!roots.has(directory)) roots.set(directory, {id: String(input.id), path: directory, title: input.title || path.basename(directory)});
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  return [...roots.values()];
+  const values = [...roots.values()];
+  if (!requestedPath) return [];
+  let resolved;
+  try { resolved = await fs.realpath(requestedPath); }
+  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  return values.filter((root) => root.path === resolved);
 }
 
 async function discover(roots, config, signal) {
@@ -199,9 +204,12 @@ function integer(value, fallback, maximum) {
   if (!Number.isSafeInteger(number) || number < 1 || number > maximum) throw new ApiError('Invalid pagination');
   return number;
 }
-function mediaReferences(row, id, index) {
-  return (Array.isArray(row.media) ? row.media : []).map((_, media) =>
-    'api/benchforge/workbench?' + new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media)}));
+function mediaReferences(row, id, index, workspacePath) {
+  return (Array.isArray(row.media) ? row.media : []).map((_, media) => {
+    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media)});
+    if (workspacePath) params.set('workspace_path', workspacePath);
+    return 'api/benchforge/workbench?' + params;
+  });
 }
 async function readDataset(url, roots, signal) {
   const id = url.searchParams.get('dataset');
@@ -210,6 +218,7 @@ async function readDataset(url, roots, signal) {
   const pageSize = integer(url.searchParams.get('page_size'), 24, 96);
   const template = url.searchParams.get('template') || '', split = url.searchParams.get('split') || '';
   const query = (url.searchParams.get('q') || '').toLocaleLowerCase();
+  const workspacePath = url.searchParams.get('workspace_path') || '';
   const items = [], templates = new Set(), splits = new Set();
   let total = 0, all = 0;
   for await (const {row, index} of jsonLines(questions, signal)) {
@@ -219,7 +228,7 @@ async function readDataset(url, roots, signal) {
     if (template && row.template_id !== template || split && row.split !== split) continue;
     if (query && ![row.item_id, row.id, row.question, row.task_id, row.template_id].some((value) => String(value || '').toLocaleLowerCase().includes(query))) continue;
     if (total >= (page - 1) * pageSize && items.length < pageSize) {
-      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index)});
+      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath)});
     }
     total++;
   }
@@ -254,7 +263,7 @@ export function createWorkbenchHandler(config, registered = () => []) {
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
-      const roots = await workspaceRoots(limits, registered());
+      const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       let value;
       if (view === 'summary') value = await discover(roots, limits, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal);

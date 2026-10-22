@@ -23,6 +23,10 @@ PRESET_ID = "spatialforge-standard-ptc"
 
 def update_profile(profile, root, python, mode_config, service_config, revision):
     result = deepcopy(profile)
+    # Retire the previous global workbench row. The UI now lives only in the
+    # SpatialForge preset, so ordinary modes never load its client package.
+    for patch in result:
+        patch["insert"] = [row for row in patch.get("insert", []) if row.get("id") != "benchforge-workbench-ui"]
     preset = next(row for patch in result for row in patch.get("insert", [])
                   if isinstance(row.get("config"), dict) and row["config"].get("id") == PRESET_ID)
     config = preset["config"]
@@ -30,6 +34,7 @@ def update_profile(profile, root, python, mode_config, service_config, revision)
     plugins = {
         "spatial-learning-tools": root / "integrations/dsh/tools.mjs",
         "spatialforge-tools": root / "integrations/spatialforge/plugin/tools.mjs",
+        "spatialforge-evaluation-ui": root / "integrations/spatialforge/ui/index.js",
         "persistent-bash": root / "integrations/dsh/persistent-shell.mjs",
         "persistent-pwsh": root / "integrations/dsh/persistent-shell.mjs",
     }
@@ -49,6 +54,11 @@ def update_profile(profile, root, python, mode_config, service_config, revision)
             if isinstance(row.get("config"), list):
                 walk(row["config"])
     walk(config["plugins"])
+    ui = next((row for row in config["plugins"] if row.get("id") == "spatialforge-evaluation-ui"), None)
+    if ui is None:
+        config["plugins"].append({"id": "spatialforge-evaluation-ui",
+                                   "name": str(plugins["spatialforge-evaluation-ui"]) + "?spatialforge_revision=" + revision,
+                                   "config": {}})
     return result
 
 

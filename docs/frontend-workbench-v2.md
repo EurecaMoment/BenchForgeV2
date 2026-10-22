@@ -1,15 +1,19 @@
-# BenchForgeV2 / SpatialForge 评测工作台
+# BenchForgeV2 / SpatialForge 对话内评测环境
 
-工作台作为 DSH 官方扩展机制下的一个根插件加载，代码位于
-`integrations/spatialforge/ui`。它在 DSH 侧栏增加“评测工作台”，主区域使用
-`main` slot，复用 DSH 登录、主题、语言和生命周期。没有修改官方 DSH 源码，
-没有 iframe 或独立应用根节点。
+工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
+不改 DSH 源码。UI 不占聊天主区域，也不增加全局导航项。它只在 `SpatialForge`
+preset (`spatialforge-standard-ptc`) 的会话标题栏显示“评测集”入口。用户点击后，
+评测工作台在该会话的右侧边栏打开，原 SpatialForge 对话记录、输入框和工具保持原位。UI 插件和读取 API 作为 SpatialForge preset 的子插件加载，不挂到 DSH 根 profile。
+
+右侧面板是会话上下文的延伸：运行、数据集版本、样本浏览和质量报告都服务于当前
+SpatialForge 会话。面板状态按 Session ID 保存，数据查询按该会话的工作目录限制到
+对应 DSH 工作区；其他 preset 不会加载评测工作台，也没有入口。工作区缺失时 API 返回空结果，其他工作区数据不会混入列表。
 
 ## 产品取舍
 
 保留直接帮助制造评测集的四个入口：
 
-| 入口 | 实际提供的功能 |
+| 面板内入口 | 实际提供的功能 |
 | --- | --- |
 | 总览 | 最近运行、数据集目录、已记录 artifact 状态、索引来源和读取失败 |
 | 运行与产物 | 步骤状态、冻结计划摘要、父产物、证据引用、合同结果和已保存修复建议 |
@@ -20,7 +24,7 @@
 空白的导航页。没有真实模型响应矩阵时不展示 IRT；没有发布凭据时不展示“已发布”；
 生成完成、结构合同通过和生成接纳数量都不改写为“已验证”。
 
-当前页面以读取和定位问题为目标。计划生成、启动/恢复运行、创建修复 proposal、
+当前面板以读取和定位问题为目标。计划生成、启动/恢复运行、创建修复 proposal、
 评分与打包继续使用已集成的 DSH 工具。界面没有伪造可写按钮或后台执行状态，
 也不修改 GT、质量规则或原失败记录。
 
@@ -33,7 +37,9 @@ flowchart LR
   B --> D[public dataset snapshots]
   C --> E[Authenticated workbench API]
   D --> E
-  E --> F[DSH sidebar and main slot]
+    E --> F[SpatialForge session header launcher]
+    F --> G[Right sidebar evaluation panel]
+    G --> H[Original chat and composer remain in place]
 ```
 
 - 从 DSH `workspaceRegistry.list()` 取得工作区；额外目录通过插件配置 `workspacePaths` 明确加入。
@@ -47,8 +53,10 @@ flowchart LR
 - 公开字段使用 allowlist。数据接口不读取 `authority.jsonl`、`sft.jsonl` 或私有 oracle；
   媒体只允许读取题目声明且位于 `media/` 下的公开图片。
 - 模型预测仍是候选证据，GT 来自官方、程序或仿真。结构合同不证明场景或题目质量。
-- 选中版本、筛选、页码和显示方式保存在 URL 的 `bf_*` 参数；样本返回后保留列表位置。
-  切换请求和组件卸载会取消未完成的读取。
+- 选中版本、筛选、页码和显示方式保存在 `localStorage` 中的 Session 专属键；不会写入
+  页面 URL，也不会串到另一个会话。切换请求和组件卸载会取消未完成的读取。
+- 每次面板请求都带当前 Session 的 `cwd`。服务端只返回工作目录与已登记 DSH 工作区
+  根目录完全匹配的数据；没有匹配工作区时显示提示，不回退到全局数据列表。
 
 ## 接口
 
@@ -56,10 +64,10 @@ flowchart LR
 
 | GET `/api/benchforge/workbench` 参数 | 返回 |
 | --- | --- |
-| `view=summary` | 运行、数据集目录、artifact 统计、索引读取范围/失败 |
-| `view=run&run=<id>` | 步骤、计划摘要、artifact manifest、修复建议 |
-| `view=dataset&dataset=<id>&page=1&page_size=24` | 当前版本公开样本和分页，可加 template/split/q |
-| `view=media&dataset=<id>&item=<row>&media=<index>` | 题目声明的公开图片 |
+| `view=summary&workspace_path=<cwd>` | 当前会话工作区内的运行、数据集目录、artifact 统计和索引状态 |
+| `view=run&run=<id>&workspace_path=<cwd>` | 当前工作区内的步骤、计划摘要、artifact manifest 和修复建议 |
+| `view=dataset&dataset=<id>&workspace_path=<cwd>&page=1&page_size=24` | 当前版本公开样本和分页，可加 template/split/q |
+| `view=media&dataset=<id>&workspace_path=<cwd>&item=<row>&media=<index>` | 当前工作区内题目声明的公开图片 |
 
 浏览器不接收 SpatialForge operator token。DSH 认证 cookie 不保存进部署回执。
 运行接口提供操作者使用的来源路径和合同信息；它不是对外考生评测服务。
@@ -99,5 +107,6 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
   candidate/verified 边界、只读数据库、非法路径和官方 slot 注册生命周期。
 - `python -m unittest discover -s integrations/tests -p test_workbench_install.py -v`：
   根插件安装幂等、不改其他模式、当前 DSH boot graph 格式。
-- 浏览器验收已覆盖真实 DSH 侧栏入口、主区域、运行详情、公开样本、
-  列表返回、分页/筛选以及小屏幕布局；不得用静态 mockup 代替。
+- 本次整改后需再做一次 DSH 浏览器验收，确认普通 preset 不显示入口、SpatialForge
+  会话标题栏按钮可打开右侧面板、原聊天与输入框仍在、会话工作区过滤和分页/媒体可用。
+  旧版主区域入口的浏览器结果不能替代本次验收。

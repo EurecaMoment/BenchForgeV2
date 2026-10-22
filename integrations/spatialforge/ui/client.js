@@ -3,11 +3,12 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const PANEL = 'benchforge-workbench';
+    const PANEL = 'benchforge-spatialforge-evaluation';
+    const SPATIALFORGE_PRESET = 'spatialforge-standard-ptc';
     const NS = 'benchforgeWorkbench';
     const dictionaries = {
       zh: {
-        panel: '评测工作台', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
+        panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
         subtitle: '查看实际运行和数据产物；完成、候选与已验证分别计数。', refresh: '刷新', loading: '读取中…',
         scope: '显示已登记工作区中的最近索引记录；未统计的数据以“—”表示。', snapshot: '快照时间',
         draft: '草稿', candidate: '候选', verified: '已验证', rejected: '已拒绝', superseded: '已替代',
@@ -39,7 +40,7 @@ window.__ModuleLoader__.load({
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
       },
       en: {
-        panel: 'Evaluation workbench', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
+        panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
         subtitle: 'Inspect persisted runs and datasets. Completion, candidacy and verification are distinct.', refresh: 'Refresh', loading: 'Loading…',
         scope: 'Recent indexed records in registered workspaces. Unmeasured values are shown as —.', snapshot: 'Snapshot',
         draft: 'Draft', candidate: 'Candidate', verified: 'Verified', rejected: 'Rejected', superseded: 'Superseded',
@@ -80,13 +81,11 @@ window.__ModuleLoader__.load({
       '.bfw-code,.bfw-json{font:12px/1.55 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}.bfw-json{padding:12px;background:var(--dsw-alias-bg-layer-2);border-radius:6px;max-height:380px;overflow:auto}.bfw-pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;background:var(--dsw-alias-bg-layer-2);white-space:nowrap}.bfw-pill.verified{color:var(--dsw-alias-state-success-primary)}.bfw-pill.failed,.bfw-pill.rejected{color:var(--dsw-alias-state-error-primary)}.bfw-empty{padding:24px 16px;color:var(--dsw-alias-label-secondary)}.bfw-error{padding:12px;border-left:3px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;margin:12px 0}',
       '.bfw-details{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}.bfw-artifact{padding:14px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin:8px 0;overflow-wrap:anywhere}.bfw-artifact summary{cursor:pointer}.bfw-version{display:block;max-width:540px;overflow-wrap:anywhere}.bfw-pagination{justify-content:flex-end;margin-top:16px}.bfw-label{display:grid;gap:5px;font-size:12px;max-width:100%}',
       '.bfw-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bfw-item{display:flex;flex-direction:column;text-align:left;cursor:pointer;min-width:0;border:1px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;padding:12px;font:inherit}.bfw-item img{width:100%;height:145px;object-fit:contain;background:var(--dsw-alias-bg-layer-2);margin-bottom:10px}.bfw-item p{white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}.bfw-item .bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-width:100%;max-height:560px;object-fit:contain;margin:12px auto}.bfw-question{white-space:pre-wrap;font-size:16px;overflow-wrap:anywhere}.bfw-counts{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px}',
+      '.bfw-root[data-spatialforge-panel=true]{padding:12px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-shell{max-width:none}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:block;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:8px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:nowrap;overflow:auto;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:8px 9px;white-space:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:20px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:1fr;gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:8px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label,.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:100%;min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:500px}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:space-between}',
+      '.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:6px 10px;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '@media(max-width:760px){.bfw-root{padding:18px 14px}.bfw-header{display:block}.bfw-header>.bfw-button{margin-top:12px}.bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bfw-details{grid-template-columns:1fr}.bfw-table{min-width:560px}.bfw-tabs{flex-wrap:nowrap;overflow:auto}.bfw-tab{white-space:nowrap}.bfw-items{grid-template-columns:1fr}.bfw-select{width:100%}.bfw-toolbar>.bfw-label{width:100%}}',
     ].join('\n');
 
-    function Icon({size = 18}) {
-      return h('svg', {width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, 'aria-hidden': true},
-        h('rect', {x: 4, y: 4, width: 16, height: 16, rx: 3}), h('path', {d: 'M8 8h8M8 12h5M8 16h8'}));
-    }
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
     function button(label, onClick, props = {}) { return h('button', {type: 'button', className: 'bfw-button', onClick, ...props}, label); }
     function card(title, children) { return h('section', {className: 'bfw-card'}, h('h2', null, title), h('div', {className: 'bfw-body'}, children)); }
@@ -98,16 +97,18 @@ window.__ModuleLoader__.load({
         h('tbody', null, rows.map((cells, i) => h('tr', {key: i}, cells.map((cell, j) => h('td', {key: j}, cell)))))));
     }
     function select(label, value, onChange, options) {
-      return h('label', {className: 'bfw-label'}, label, h('select', {className: 'bfw-select', value, onChange: (e) => onChange(e.target.value)},
+      return h('label', {className: 'bfw-label'}, label, h('select', {className: 'bfw-select', 'aria-label': label, value, onChange: (e) => onChange(e.target.value)},
         options.map(([id, text]) => h('option', {key: id, value: id}, text))));
     }
-    function initialState() {
-      const p = new URLSearchParams(location.search);
-      const page = Number(p.get('bf_page') || 1), pageSize = Number(p.get('bf_size') || 24);
-      return {tab: ['overview', 'runs', 'datasets', 'quality'].includes(p.get('bf_tab')) ? p.get('bf_tab') : 'overview',
-        run: p.get('bf_run') || '', dataset: p.get('bf_dataset') || '', template: p.get('bf_template') || '',
-        split: p.get('bf_split') || '', q: p.get('bf_q') || '', page: Number.isSafeInteger(page) && page > 0 ? page : 1,
-        size: [24, 48, 96].includes(pageSize) ? pageSize : 24, layout: p.get('bf_layout') === 'table' ? 'table' : 'grid'};
+    function initialState(sessionId) {
+      const fallback = {tab: 'overview', run: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'grid'};
+      const saved = JSON.parse(localStorage.getItem('bfw:spatialforge:' + sessionId) || 'null');
+      if (saved && ['overview', 'runs', 'datasets', 'quality'].includes(saved.tab)) {
+        return {...fallback, ...saved, size: [24, 48, 96].includes(saved.size) ? saved.size : 24,
+          page: Number.isSafeInteger(saved.page) && saved.page > 0 ? saved.page : 1,
+          layout: saved.layout === 'table' ? 'table' : 'grid'};
+      }
+      return fallback;
     }
     function useRecord(params, revision) {
       const key = params ? new URLSearchParams(params).toString() : '';
@@ -169,47 +170,39 @@ window.__ModuleLoader__.load({
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
-    function Workbench({t}) {
-      const [route, setRoute] = React.useState(initialState);
+    function Workbench({t, sessionId, useSessions}) {
+      const [route, setRoute] = React.useState(() => initialState(sessionId));
       const [revision, setRevision] = React.useState(0);
       const [sample, setSample] = React.useState(null);
       const [search, setSearch] = React.useState(route.q);
-      const [workspace, setWorkspace] = React.useState('');
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
-      const summary = useRecord({view: 'summary'}, revision);
-      const run = useRecord(route.tab === 'runs' && route.run ? {view: 'run', run: route.run} : null, revision);
-      const dataset = useRecord(['datasets', 'quality'].includes(route.tab) && route.dataset ?
-        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size} : null, revision);
-      React.useEffect(() => {
-        const url = new URL(location.href);
-        const values = {bf_tab: route.tab, bf_run: route.run, bf_dataset: route.dataset, bf_template: route.template,
-          bf_split: route.split, bf_q: route.q, bf_page: route.page, bf_size: route.size, bf_layout: route.layout};
-        for (const [key, value] of Object.entries(values)) if (value) url.searchParams.set(key, String(value)); else url.searchParams.delete(key);
-        history.replaceState(history.state, '', url);
-      }, [route]);
+      const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
+      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath} : null, revision);
+      const run = useRecord(workspacePath && route.tab === 'runs' && route.run ? {view: 'run', run: route.run, workspace_path: workspacePath} : null, revision);
+      const dataset = useRecord(workspacePath && ['datasets', 'quality'].includes(route.tab) && route.dataset ?
+        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision);
+      React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.template, route.split, route.q]);
-      const rows = (summary.value?.runs || []).filter((row) => !workspace || row.workspace_id === workspace);
-      const datasets = (summary.value?.datasets || []).filter((row) => !workspace || row.workspace_id === workspace);
+      const rows = summary.value?.runs || [];
+      const datasets = summary.value?.datasets || [];
       const selectedDataset = summary.value?.datasets?.find((row) => row.id === route.dataset);
       const openRun = (id) => update({tab: 'runs', run: id});
       const openDataset = (id) => { update({tab: 'datasets', dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(item.label, () => openRun(item.id)), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
-      const workspaceOptions = [['', t('all')], ...new Map((summary.value?.runs || []).concat(summary.value?.datasets || []).map((row) => [row.workspace_id, [row.workspace_id, row.workspace]])).values()];
       const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) => [row.id, row.workspace + ' / ' + row.version])];
       let body;
       if (route.tab === 'overview') {
-        body = h(React.Fragment, null,
+        body = workspacePath ? h(React.Fragment, null,
           h('div', {className: 'bfw-counts'}, h('span', null, t('runCount') + ': ' + (summary.value?.runs.length ?? '—')),
             h('span', null, t('datasetCount') + ': ' + (summary.value?.datasets.length ?? '—'))),
           h('div', {className: 'bfw-stats'}, ['draft', 'candidate', 'verified', 'rejected', 'superseded'].map((key) =>
             h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, summary.value?.counts?.[key] ?? '—')))),
           card(t('recent'), runTable(rows.slice(0, 8))),
           card(t('sources'), table([t('workspace'), t('state'), t('details')], (summary.value?.sources || []).map((source) =>
-            [source.workspace, t(source.status), source.error || (source.truncated ? t('truncated') : source.limit ? source.limit + ' ' + t('limit') : '—')]))));
+            [source.workspace, t(source.status), source.error || (source.truncated ? t('truncated') : source.limit ? source.limit + ' ' + t('limit') : '—')])))) : empty(t('noWorkspace'));
       } else if (route.tab === 'runs') {
         body = h(React.Fragment, null,
-          h('div', {className: 'bfw-toolbar'}, select(t('workspace'), workspace, setWorkspace, workspaceOptions)),
           card(t('runs'), runTable(rows)),
           run.loading ? empty(t('loading')) : h(RunDetails, {record: run.value, t}));
       } else if (route.tab === 'quality') {
@@ -221,7 +214,6 @@ window.__ModuleLoader__.load({
         body = h(React.Fragment, null,
           card(t('directory'), h(React.Fragment, null,
             h('p', {className: 'bfw-muted'}, t('datasetNote')),
-            h('div', {className: 'bfw-toolbar'}, select(t('workspace'), workspace, setWorkspace, workspaceOptions)),
             datasets.length ? table([t('workspace'), t('version'), t('generationAccepted'), t('state'), t('open')], datasets.map((row) =>
               [row.workspace, h('span', {className: 'bfw-code bfw-version'}, row.version), row.report?.accepted ?? '—', status(row.state, t), button(t('browse'), () => openDataset(row.id))])) : empty(t('noDatasets')))),
           route.dataset && card(t('datasets'), h(React.Fragment, null,
@@ -254,7 +246,7 @@ window.__ModuleLoader__.load({
               h('span', null, t('page') + ' ' + route.page + ' / ' + (data?.pages || 1)),
               button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})))));
       }
-      return h('div', {className: 'bfw-root', 'data-benchforge-workbench': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
+      return h('div', {className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
         h('header', {className: 'bfw-header'}, h('div', null,
           h('div', {className: 'bfw-kicker'}, 'BENCHFORGEV2 / SPATIALFORGE'), h('h1', {className: 'bfw-title'}, t('panel')),
           h('div', {className: 'bfw-muted'}, t('subtitle'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
@@ -266,12 +258,21 @@ window.__ModuleLoader__.load({
         summary.loading && empty(t('loading')), body));
     }
     return {
-      inject: ['slots', 'locale'],
+      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, dictionaries));
         const t = ctx.locale.bind(NS);
-        ctx.slots.inject('main', () => ctx.slots.register({name: 'main', key: PANEL, locale: NS}, Workbench));
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({name: 'sidebar.panellist', id: PANEL, order: 10, label: () => t('panel'), locale: NS}, Icon));
+        ctx.effect(() => ctx.sidebarRightTabs.register({id: PANEL, kind: PANEL, title: () => t('panel'), keepMounted: true}),
+          'benchforge-spatialforge-ui: SpatialForge-only panel page');
+        ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab', key: PANEL, locale: NS,
+        }, ({useProjection, useSessions, sessionId}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
+          ? h(Workbench, {t, sessionId, useSessions}) : null));
+        ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+          name: 'conversation.session.header.utilities', id: 'spatialforge-evaluation-launcher', order: 80, locale: NS,
+        }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
+          ? h('button', {type: 'button', className: 'bfw-evaluation-launcher', 'aria-label': t('openEvaluation'),
+            title: t('openEvaluation'), onClick: () => ctx.sidebarRight.openTab(PANEL)}, t('openEvaluation')) : null));
       },
     };
   },
