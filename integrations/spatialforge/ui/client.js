@@ -24,6 +24,9 @@ window.__ModuleLoader__.load({
         taskLimit: '本页显示前 12 项任务；完整状态可在对话使用 spatialforge_status 查看。',
         noProduction: '尚未找到本会话场景任务或工作区 pipeline 回执；聊天生成中的文字不计为生产完成。',
         recentOperations: '最近工具操作', observerNotConfigured: '场景队列观察器未配置；当前仅读取工作区 pipeline。',
+        productionDetails: '查看生产明细', runFilter: '筛选运行名称、ID 或状态', versionFilter: '筛选版本、运行或任务',
+        noMatchingRuns: '没有符合筛选条件的运行。', noMatchingVersions: '没有符合筛选条件的数据集版本。',
+        chooseVersionForReport: '先选择一个数据集版本，再查看对应的质量报告。',
         stageStateSource: '步骤状态来源', workspacePipeline: '工作区流水线', sessionProduction: '本会话场景任务',
         panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
         subtitle: '从评测目标到数据集交付，组织每一步操作与产物。', refresh: '刷新', loading: '读取中…',
@@ -82,6 +85,9 @@ window.__ModuleLoader__.load({
         taskLimit: 'Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.',
         noProduction: 'No session scene job or workspace pipeline receipt found. Chat prose is not production completion.',
         recentOperations: 'Recent tool operations', observerNotConfigured: 'Scene observer is not configured; only workspace pipelines are observed.',
+        productionDetails: 'View production details', runFilter: 'Filter runs by name, ID or state', versionFilter: 'Filter versions, runs or tasks',
+        noMatchingRuns: 'No runs match this filter.', noMatchingVersions: 'No dataset versions match this filter.',
+        chooseVersionForReport: 'Choose a dataset version to view its quality report.',
         stageStateSource: 'Step status source', workspacePipeline: 'Workspace pipeline', sessionProduction: 'Session scene job',
         panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
         subtitle: 'From evaluation goals to dataset delivery: actions and artifacts at every step.', refresh: 'Refresh', loading: 'Loading…',
@@ -140,11 +146,13 @@ window.__ModuleLoader__.load({
       '.bfw-code,.bfw-json{font:12px/1.55 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}.bfw-json{padding:12px;background:var(--dsw-alias-bg-layer-2);border-radius:6px;max-height:380px;overflow:auto}.bfw-pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;background:var(--dsw-alias-bg-layer-2);white-space:nowrap}.bfw-pill.verified{color:var(--dsw-alias-state-success-primary)}.bfw-pill.failed,.bfw-pill.rejected{color:var(--dsw-alias-state-error-primary)}.bfw-empty{padding:24px 16px;color:var(--dsw-alias-label-secondary)}.bfw-error{padding:12px;border-left:3px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;margin:12px 0}',
       '.bfw-details{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}.bfw-artifact{padding:14px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin:8px 0;overflow-wrap:anywhere}.bfw-artifact summary{cursor:pointer}.bfw-version{display:block;max-width:540px;overflow-wrap:anywhere}.bfw-pagination{justify-content:flex-end;margin-top:16px}.bfw-label{display:grid;gap:5px;font-size:12px;max-width:100%}',
       '.bfw-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bfw-item{display:flex;flex-direction:column;text-align:left;cursor:pointer;min-width:0;border:1px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;padding:12px;font:inherit}.bfw-item img{width:100%;height:145px;object-fit:contain;background:var(--dsw-alias-bg-layer-2);margin-bottom:10px}.bfw-item p{white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}.bfw-item .bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-width:100%;max-height:560px;object-fit:contain;margin:12px auto}.bfw-question{white-space:pre-wrap;font-size:16px;overflow-wrap:anywhere}.bfw-counts{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px}',
-      '.bfw-root[data-spatialforge-panel=true]{padding:12px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-shell{max-width:none}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:block;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:8px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:nowrap;overflow:auto;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:8px 9px;white-space:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:20px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:1fr;gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:8px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label,.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:100%;min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:500px}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:space-between}',
+      '.bfw-root[data-spatialforge-panel=true]{padding:12px 10px;container-type:inline-size}.bfw-root[data-spatialforge-panel=true] .bfw-shell{max-width:none}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:block;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:8px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:nowrap;overflow:auto;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:8px 9px;white-space:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:20px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:1fr;gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:8px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label,.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:100%;min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:500px}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:space-between}',
       '.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:6px 10px;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '@media(max-width:760px){.bfw-root{padding:18px 14px}.bfw-header{display:block}.bfw-header>.bfw-button{margin-top:12px}.bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bfw-details{grid-template-columns:1fr}.bfw-table{min-width:560px}.bfw-tabs{flex-wrap:nowrap;overflow:auto}.bfw-tab{white-space:nowrap}.bfw-items{grid-template-columns:1fr}.bfw-select{width:100%}.bfw-toolbar>.bfw-label{width:100%}}',
       '.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:16px 0}.bfw-stage{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:inherit;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:12px 10px;cursor:pointer;min-width:0;font:inherit}.bfw-stage[aria-current=step]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-stage-index{font:12px ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}.bfw-stage strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.bfw-stage-heading{display:flex;gap:12px;align-items:flex-start;margin:18px 0}.bfw-stage-number{font:24px ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}.bfw-stage-heading h2{font-size:20px;margin:0 0 5px}.bfw-stage-heading p{margin:0}.bfw-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:96px;resize:vertical;line-height:1.6}.bfw-callout{padding:14px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);margin:12px 0;overflow-wrap:anywhere}.bfw-callout p{margin:5px 0}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent;white-space:normal;text-align:left}.bfw-catalog{display:grid;gap:8px;margin:12px 0}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:12px;border-radius:8px;min-width:0}.bfw-template header{display:flex;justify-content:space-between;align-items:center;gap:8px}.bfw-template p{margin:7px 0}.bfw-template[aria-selected=true]{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}.bfw-selected{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-stage-footer{display:flex;justify-content:space-between;gap:8px;margin:18px 0}.bfw-notice{padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:9px 5px;gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:12px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:auto}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:wrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:0;width:100%}.bfw-stage:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
-      '.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere}.bfw-production p{margin:6px 0}.bfw-production progress{width:100%;accent-color:var(--dsw-alias-brand-primary)}.bfw-live-task,.bfw-live-line{padding:10px 0;border-top:1px solid var(--dsw-alias-border-l3);margin-top:8px}.bfw-stage-state{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:#ef6a6a}.bfw-stage-state[data-stage-state=completed]{color:#42aa83}',
+      '.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:8px;padding:10px;margin:12px 0;overflow-wrap:anywhere}.bfw-production p{margin:6px 0}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.bfw-production progress{width:100%;accent-color:var(--dsw-alias-brand-primary)}.bfw-live-details>summary{cursor:pointer;padding:7px 0;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding:10px 0;border-top:1px solid var(--dsw-alias-border-l3);margin-top:8px}.bfw-stage-state{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:#ef6a6a}.bfw-stage-state[data-stage-state=completed]{color:#42aa83}',
+      '.bfw-list-controls{display:grid;gap:6px;margin:10px 0}.bfw-list-controls .bfw-toolbar{margin:0}.bfw-list-controls .bfw-input{min-width:0}.bfw-list-controls .bfw-pagination{margin:0;justify-content:space-between}',
+      '@media(max-width:1100px){.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{min-height:66px;padding:9px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-index{white-space:nowrap}}',
     ].join('\n');
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -162,14 +170,32 @@ window.__ModuleLoader__.load({
         options.map(([id, text]) => h('option', {key: id, value: id}, text))));
     }
     function initialState(sessionId) {
-      const fallback = {tab: 'workflow', stage: 'S1', run: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'grid'};
+      const fallback = {tab: 'workflow', stage: 'S1', run: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'grid',
+        runFilter: '', runListPage: 1, runListSize: 12, versionFilter: '', versionListPage: 1, versionListSize: 12};
       const saved = JSON.parse(localStorage.getItem('bfw:spatialforge:' + sessionId) || 'null');
       if (saved && ['workflow', 'overview', 'runs', 'datasets', 'quality'].includes(saved.tab)) {
         return {...fallback, ...saved, size: [24, 48, 96].includes(saved.size) ? saved.size : 24,
           page: Number.isSafeInteger(saved.page) && saved.page > 0 ? saved.page : 1,
+          runListPage: Number.isSafeInteger(saved.runListPage) && saved.runListPage > 0 ? saved.runListPage : 1,
+          versionListPage: Number.isSafeInteger(saved.versionListPage) && saved.versionListPage > 0 ? saved.versionListPage : 1,
+          runListSize: [12, 24, 48].includes(saved.runListSize) ? saved.runListSize : 12,
+          versionListSize: [12, 24, 48].includes(saved.versionListSize) ? saved.versionListSize : 12,
           layout: saved.layout === 'table' ? 'table' : 'grid'};
       }
       return fallback;
+    }
+    function displayRef(value) {
+      const parts = String(value || '').split(/[\\/]/).filter(Boolean);
+      if (parts[0] === 'operations' && parts[1]) return '运行 ' + parts[1].slice(0, 8);
+      const visible = parts.filter((part) => !['steps', 'questions', 'dataset', 'pipeline_run'].includes(part));
+      return visible[visible.length - 1] || String(value || '—');
+    }
+    function filteredPage(items, query, page, size, searchable) {
+      const needle = String(query || '').trim().toLocaleLowerCase();
+      const matches = needle ? items.filter((item) => searchable(item).toLocaleLowerCase().includes(needle)) : items;
+      const pages = Math.max(1, Math.ceil(matches.length / size));
+      const current = Math.min(Math.max(1, page), pages);
+      return {items: matches.slice((current - 1) * size, current * size), total: matches.length, pages, page: current};
     }
     function useRecord(params, revision, interval = 0, active = true) {
       const key = params ? new URLSearchParams(params).toString() : '';
@@ -245,53 +271,72 @@ window.__ModuleLoader__.load({
     }
     function Production({record, pipeline, scene, selected, selectScene, visible, conversationRunning, t}) {
       const value = record.value, jobs = value?.scenes?.runs || [];
+      const tasks = scene?.tasks || [];
+      const activeTask = tasks.find((row) => row.state === 'RUNNING') || tasks.find((row) => row.state !== 'SUCCEEDED') || tasks[0];
+      const productionState = scene ? lifecycle(scene.state) : pipeline?.state || 'unknown';
+      const visibleError = scene?.error || activeTask?.failure || activeTask?.progress?.error || pipeline?.current?.error || pipeline?.missing_binding;
       const unavailable = record.error || ['unavailable', 'partial'].includes(value?.scenes?.status) ||
         value?.sources?.some((source) => ['index_error', 'record_error'].includes(source.status));
+      const details = [];
+      if (pipeline) details.push(h('div', {className: 'bfw-live-line'},
+        h('div', {className: 'bfw-muted'}, t('workspacePipeline')),
+        h('span', {className: 'bfw-code', title: pipeline.label}, displayRef(pipeline.label), ' '),
+        status(pipeline.state, t),
+        h('p', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
+        pipeline.total !== null && pipeline.total > 0 && h('progress', {max: pipeline.total, value: pipeline.completed, 'aria-label': t('persistedSteps')}),
+        pipeline.current && h('p', null, t('currentStep') + ': ' + pipeline.current.id + ' · ' + (pipeline.current.uses || '') +
+          (pipeline.current.state === 'unknown' ? ' · ' + t('unrecordedStep') : '')),
+        (pipeline.missing_binding || pipeline.current?.error || pipeline.next) && h('p', {className: 'bfw-muted'},
+          t('reason') + ': ' + (pipeline.missing_binding || pipeline.current?.error || pipeline.next))));
+      if (jobs.length) details.push(select(t('sceneJobs'), selected, selectScene,
+        jobs.map((row) => [row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))])));
+      if (scene) {
+        details.push(h('p', null, status(lifecycle(scene.state), t), ' · ' + t('completedTasks') + ': ' +
+          tasks.filter((row) => row.state === 'SUCCEEDED').length + ' / ' + tasks.length));
+        if (scene.error) details.push(h('p', {className: 'bfw-error'}, scene.error));
+        for (const row of tasks.slice(0, 12)) {
+          const progress = row.progress || {}, revisions = row.evidence?.captured_revisions || [];
+          details.push(h('div', {className: 'bfw-live-task', key: row.id, 'data-production-task': row.id},
+            h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ', status(lifecycle(row.state), t)),
+            h('p', null, t('phase') + ': ' + (row.phase || '—') +
+              (progress.stage ? ' · ' + t('workerStage') + ': ' + progress.stage : '') + ' · r' + row.revision),
+            progress.age_seconds !== undefined && h('p', {className: 'bfw-muted'}, t('workerAge') + ': ' + progress.age_seconds + ' s'),
+            progress.total_bytes > 0 && h('p', null, t('transfer') + ': ' +
+              ((progress.bytes_received || 0) / 1048576).toFixed(1) + ' / ' + (progress.total_bytes / 1048576).toFixed(1) + ' MB'),
+            row.queue && h('p', {className: 'bfw-warning'}, t('waiting') + ': ' + row.queue.reason + (row.queue.blocking_task_id ? ' · ' + row.queue.blocking_task_id : '')),
+            (row.failure || progress.error) && h('pre', {className: 'bfw-json bfw-error'}, JSON.stringify(row.failure || progress.error, null, 2)),
+            h('p', {className: 'bfw-muted'}, t('capturedViews') + ': ' + revisions.reduce((n, r) => n + r.views, 0) +
+              ' · ' + t('actionTraces') + ': ' + revisions.reduce((n, r) => n + r.action_traces, 0)),
+            row.summary && h('p', null, t('accepted') + ': ' + (row.summary.accepted ?? '—') + ' / ' + (row.summary.target_items ?? '—')),
+            row.quality && h('p', {className: 'bfw-muted'}, t('publication') + ': ' + row.quality.publication_status + ' · ' +
+              t('approval') + ': ' + t(row.quality.benchmark_approved ? 'yes' : 'no')),
+            row.downloads?.length > 0 && h('p', {className: 'bfw-code'}, row.downloads.join(' · '))));
+        }
+        if (tasks.length > 12) details.push(h('p', {className: 'bfw-muted'}, t('taskLimit')));
+      }
+      if (!scene && !pipeline && !record.loading) details.push(empty(t('noProduction')));
+      if (value?.operations?.length > 0) details.push(h('details', null,
+        h('summary', null, t('recentOperations')),
+        table([t('operator'), t('state'), t('updated')], value.operations.slice(0, 8).map((row) =>
+          [row.tool, status(row.state, t), row.started_at || '—']))));
       return h('section', {className: 'bfw-production', 'data-production-monitor': true, 'aria-label': t('productionMonitor')},
         h('div', {className: 'bfw-toolbar'}, h('strong', null, t('productionMonitor')),
           h('span', {className: 'bfw-pill ' + (unavailable ? 'failed' : 'running'), 'data-live-state': unavailable ? 'stale' : record.loading ? 'loading' : 'live'},
             t(unavailable ? 'staleSnapshot' : record.loading ? 'loading' : visible ? 'autoRefresh' : 'pollingPaused'))),
-        h('p', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—') +
-          ' · ' + t(conversationRunning ? 'conversationRunning' : 'productionScope')),
+        h('p', {className: 'bfw-production-summary'},
+          status(productionState, t),
+          activeTask && h('span', {className: 'bfw-code'}, activeTask.id),
+          activeTask?.phase && h('span', null, t('phase') + ': ' + activeTask.phase),
+          pipeline && h('span', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
+          h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
         record.error && h('p', {className: 'bfw-error', role: 'alert'}, t('retainedSnapshot') + ' · ' + record.error),
         unavailable && !record.error && h('p', {className: 'bfw-error'}, t('partialObservation')),
-        pipeline && h('div', {className: 'bfw-live-line'}, h('div', {className: 'bfw-muted'}, t('workspacePipeline')),
-          h('span', {className: 'bfw-code'}, pipeline.label), ' ', status(pipeline.state, t),
-          h('p', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
-          pipeline.total !== null && pipeline.total > 0 && h('progress', {max: pipeline.total, value: pipeline.completed, 'aria-label': t('persistedSteps')}),
-          pipeline.current && h('p', null, t('currentStep') + ': ' + pipeline.current.id + ' · ' + (pipeline.current.uses || '') +
-            (pipeline.current.state === 'unknown' ? ' · ' + t('unrecordedStep') : '')),
-          (pipeline.missing_binding || pipeline.current?.error || pipeline.next) && h('p', {className: 'bfw-muted'},
-            t('reason') + ': ' + (pipeline.missing_binding || pipeline.current?.error || pipeline.next))),
-        jobs.length > 0 && select(t('sceneJobs'), selected, selectScene,
-          jobs.map((row) => [row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))])),
-        scene && h(React.Fragment, null,
-          h('p', null, status(lifecycle(scene.state), t), ' · ' + t('completedTasks') + ': ' +
-            scene.tasks.filter((row) => row.state === 'SUCCEEDED').length + ' / ' + scene.tasks.length),
-          scene.error && h('p', {className: 'bfw-error'}, scene.error),
-          scene.tasks.slice(0, 12).map((row) => {
-            const progress = row.progress || {}, revisions = row.evidence?.captured_revisions || [];
-            return h('div', {className: 'bfw-live-task', key: row.id, 'data-production-task': row.id},
-              h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ', status(lifecycle(row.state), t)),
-              h('p', null, t('phase') + ': ' + (row.phase || '—') +
-                (progress.stage ? ' · ' + t('workerStage') + ': ' + progress.stage : '') + ' · r' + row.revision),
-              progress.age_seconds !== undefined && h('p', {className: 'bfw-muted'}, t('workerAge') + ': ' + progress.age_seconds + ' s'),
-              progress.total_bytes > 0 && h('p', null, t('transfer') + ': ' +
-                ((progress.bytes_received || 0) / 1048576).toFixed(1) + ' / ' + (progress.total_bytes / 1048576).toFixed(1) + ' MB'),
-              row.queue && h('p', {className: 'bfw-warning'}, t('waiting') + ': ' + row.queue.reason + (row.queue.blocking_task_id ? ' · ' + row.queue.blocking_task_id : '')),
-              (row.failure || progress.error) && h('pre', {className: 'bfw-json bfw-error'}, JSON.stringify(row.failure || progress.error, null, 2)),
-              h('p', {className: 'bfw-muted'}, t('capturedViews') + ': ' + revisions.reduce((n, r) => n + r.views, 0) +
-                ' · ' + t('actionTraces') + ': ' + revisions.reduce((n, r) => n + r.action_traces, 0)),
-              row.summary && h('p', null, t('accepted') + ': ' + (row.summary.accepted ?? '—') + ' / ' + (row.summary.target_items ?? '—')),
-              row.quality && h('p', {className: 'bfw-muted'}, t('publication') + ': ' + row.quality.publication_status + ' · ' +
-                t('approval') + ': ' + t(row.quality.benchmark_approved ? 'yes' : 'no')),
-              row.downloads?.length > 0 && h('p', {className: 'bfw-code'}, row.downloads.join(' · ')));
-          }), scene.tasks.length > 12 && h('p', {className: 'bfw-muted'}, t('taskLimit'))),
-        !scene && !pipeline && !record.loading && empty(t('noProduction')),
-        value?.operations?.length > 0 && h('details', null, h('summary', null, t('recentOperations')),
-          table([t('operator'), t('state'), t('updated')], value.operations.slice(0, 8).map((row) =>
-            [row.tool, status(row.state, t), row.started_at || '—']))),
-        value?.scenes?.status === 'not_configured' && h('p', {className: 'bfw-muted'}, t('observerNotConfigured')));
+        visibleError && h('p', {className: 'bfw-error', role: 'alert'},
+          typeof visibleError === 'string' ? visibleError : JSON.stringify(visibleError)),
+        value?.scenes?.status === 'not_configured' && h('p', {className: 'bfw-muted'}, t('observerNotConfigured')),
+        h('details', {className: 'bfw-live-details'},
+          h('summary', null, t('productionDetails')),
+          ...details));
     }
 
     function blueprintState(sessionId) {
@@ -426,6 +471,10 @@ window.__ModuleLoader__.load({
       const rows = summary.value?.runs || [];
       const datasets = summary.value?.datasets || [];
       const selectedDataset = summary.value?.datasets?.find((row) => row.id === route.dataset);
+      const runListing = filteredPage(rows, route.runFilter, route.runListPage, route.runListSize,
+        (row) => [row.label, row.id, row.state].join(' '));
+      const versionListing = filteredPage(datasets, route.versionFilter, route.versionListPage, route.versionListSize,
+        (row) => [row.workspace, row.version, row.run_id, row.state].join(' '));
       const stage = STAGES.find((step) => step.id === route.stage) || STAGES[0];
       const activeRun = rows.find((row) => row.id === selectedRunId);
       const pipeline = progress.value?.pipelines?.find((row) => row.id === selectedRunId) ||
@@ -449,8 +498,18 @@ window.__ModuleLoader__.load({
       const openRun = (id) => update({tab: 'runs', run: id});
       const openDataset = (id) => { update({tab: 'datasets', dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
-        items.map((item) => [item.workspace, button(item.label, () => openRun(item.id)), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
-      const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) => [row.id, row.workspace + ' / ' + row.version])];
+        items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
+      const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) =>
+        [row.id, row.workspace + ' / ' + displayRef(row.version)])];
+      const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h('div', {className: 'bfw-list-controls'},
+        h('div', {className: 'bfw-toolbar'},
+          h('input', {className: 'bfw-input', type: 'search', 'aria-label': label, placeholder: label, value: query, onChange: (e) => onQuery(e.target.value)}),
+          select(t('pageSize'), String(pageSize), (value) => onPageSize(Number(value)), [12, 24, 48].map((value) => [String(value), String(value)])),
+          h('span', {className: 'bfw-muted'}, t('matches') + ': ' + listing.total)),
+        h('div', {className: 'bfw-pagination'},
+          button(t('previous'), () => onPage(listing.page - 1), {disabled: listing.page <= 1}),
+          h('span', null, t('page') + ' ' + listing.page + ' / ' + listing.pages),
+          button(t('nextPage'), () => onPage(listing.page + 1), {disabled: listing.page >= listing.pages})));
       let body;
       if (route.tab === 'workflow') {
         body = h(React.Fragment, null,
@@ -488,19 +547,33 @@ window.__ModuleLoader__.load({
             [source.workspace, t(source.status), source.error || (source.truncated ? t('truncated') : source.limit ? source.limit + ' ' + t('limit') : '—')])))) : empty(t('noWorkspace'));
       } else if (route.tab === 'runs') {
         body = h(React.Fragment, null,
-          card(t('runs'), runTable(rows)),
+          card(t('runs'), h(React.Fragment, null,
+            listControls(runListing, route.runFilter, t('runFilter'),
+              (value) => update({runFilter: value, runListPage: 1}),
+              (page) => update({runListPage: page}),
+              route.runListSize,
+              (size) => update({runListSize: size, runListPage: 1})),
+            runListing.total ? runTable(runListing.items) : empty(rows.length ? t('noMatchingRuns') : t('noRuns')))),
           run.loading ? empty(t('loading')) : h(RunDetails, {record: run.value, t}));
       } else if (route.tab === 'quality') {
         body = h(React.Fragment, null,
           select(t('chooseDataset'), route.dataset, (id) => update({dataset: id, page: 1}), versionOptions),
-          card(t('report'), dataset.loading ? empty(t('loading')) : h(Quality, {report: dataset.value?.report || selectedDataset?.report, t})));
+          card(t('report'), !route.dataset ? empty(t('chooseVersionForReport')) :
+            dataset.loading ? empty(t('loading')) : h(Quality, {report: dataset.value?.report || selectedDataset?.report, t})));
       } else {
         const data = dataset.value;
         body = h(React.Fragment, null,
           card(t('directory'), h(React.Fragment, null,
             h('p', {className: 'bfw-muted'}, t('datasetNote')),
-            datasets.length ? table([t('workspace'), t('version'), t('generationAccepted'), t('state'), t('open')], datasets.map((row) =>
-              [row.workspace, h('span', {className: 'bfw-code bfw-version'}, row.version), row.report?.accepted ?? '—', status(row.state, t), button(t('browse'), () => openDataset(row.id))])) : empty(t('noDatasets')))),
+            datasets.length ? h(React.Fragment, null,
+              listControls(versionListing, route.versionFilter, t('versionFilter'),
+                (value) => update({versionFilter: value, versionListPage: 1}),
+                (page) => update({versionListPage: page}),
+                route.versionListSize,
+                (size) => update({versionListSize: size, versionListPage: 1})),
+              versionListing.total ? table([t('workspace'), t('version'), t('generationAccepted'), t('state'), t('open')], versionListing.items.map((row) =>
+                [row.workspace, h('span', {className: 'bfw-code bfw-version', title: row.version}, displayRef(row.version)), row.report?.accepted ?? '—', status(row.state, t), button(t('browse'), () => openDataset(row.id))])) :
+                empty(t('noMatchingVersions'))) : empty(t('noDatasets')))),
           route.dataset && card(t('datasets'), h(React.Fragment, null,
             select(t('chooseDataset'), route.dataset, openDataset, versionOptions),
             h('p', {className: 'bfw-muted'}, t('publicNote')),
