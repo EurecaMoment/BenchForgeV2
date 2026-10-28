@@ -27,6 +27,8 @@ window.__ModuleLoader__.load({
         productionDetails: '查看生产明细', runFilter: '筛选运行名称、ID 或状态', versionFilter: '筛选版本、运行或任务',
         noMatchingRuns: '没有符合筛选条件的运行。', noMatchingVersions: '没有符合筛选条件的数据集版本。',
         chooseVersionForReport: '先选择一个数据集版本，再查看对应的质量报告。',
+        noMatchingTemplates: '没有符合条件的模板。', clearFilters: '清空筛选', searchTemplates: '搜索模板',
+        readFailed: '读取失败，请重试。', retry: '重试', sampleRemoved: '该样本已不在当前结果中，已返回列表。',
         stageStateSource: '步骤状态来源', workspacePipeline: '工作区流水线', sessionProduction: '本会话场景任务',
         panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
         subtitle: '从评测目标到数据集交付，组织每一步操作与产物。', refresh: '刷新', loading: '读取中…',
@@ -88,6 +90,8 @@ window.__ModuleLoader__.load({
         productionDetails: 'View production details', runFilter: 'Filter runs by name, ID or state', versionFilter: 'Filter versions, runs or tasks',
         noMatchingRuns: 'No runs match this filter.', noMatchingVersions: 'No dataset versions match this filter.',
         chooseVersionForReport: 'Choose a dataset version to view its quality report.',
+        noMatchingTemplates: 'No templates match these filters.', clearFilters: 'Clear filters', searchTemplates: 'Search templates',
+        readFailed: 'Could not read the records. Please retry.', retry: 'Retry', sampleRemoved: 'This sample is no longer in the current results. Returned to the list.',
         stageStateSource: 'Step status source', workspacePipeline: 'Workspace pipeline', sessionProduction: 'Session scene job',
         panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
         subtitle: 'From evaluation goals to dataset delivery: actions and artifacts at every step.', refresh: 'Refresh', loading: 'Loading…',
@@ -149,10 +153,10 @@ window.__ModuleLoader__.load({
       '.bfw-root[data-spatialforge-panel=true]{padding:12px 10px;container-type:inline-size}.bfw-root[data-spatialforge-panel=true] .bfw-shell{max-width:none}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:block;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:8px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:nowrap;overflow:auto;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:8px 9px;white-space:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:20px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:1fr;gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:8px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label,.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:100%;min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:500px}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:space-between}',
       '.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:6px 10px;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '@media(max-width:760px){.bfw-root{padding:18px 14px}.bfw-header{display:block}.bfw-header>.bfw-button{margin-top:12px}.bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bfw-details{grid-template-columns:1fr}.bfw-table{min-width:560px}.bfw-tabs{flex-wrap:nowrap;overflow:auto}.bfw-tab{white-space:nowrap}.bfw-items{grid-template-columns:1fr}.bfw-select{width:100%}.bfw-toolbar>.bfw-label{width:100%}}',
-      '.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:16px 0}.bfw-stage{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:inherit;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:12px 10px;cursor:pointer;min-width:0;font:inherit}.bfw-stage[aria-current=step]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-stage-index{font:12px ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}.bfw-stage strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.bfw-stage-heading{display:flex;gap:12px;align-items:flex-start;margin:18px 0}.bfw-stage-number{font:24px ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}.bfw-stage-heading h2{font-size:20px;margin:0 0 5px}.bfw-stage-heading p{margin:0}.bfw-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:96px;resize:vertical;line-height:1.6}.bfw-callout{padding:14px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);margin:12px 0;overflow-wrap:anywhere}.bfw-callout p{margin:5px 0}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent;white-space:normal;text-align:left}.bfw-catalog{display:grid;gap:8px;margin:12px 0}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:12px;border-radius:8px;min-width:0}.bfw-template header{display:flex;justify-content:space-between;align-items:center;gap:8px}.bfw-template p{margin:7px 0}.bfw-template[aria-selected=true]{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}.bfw-selected{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-stage-footer{display:flex;justify-content:space-between;gap:8px;margin:18px 0}.bfw-notice{padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:9px 5px;gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:12px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:auto}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:wrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:0;width:100%}.bfw-stage:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
+      '.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:16px 0}.bfw-stage{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:inherit;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:12px 10px;cursor:pointer;min-width:0;font:inherit}.bfw-stage[aria-current=step]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-stage-index{font:12px ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}.bfw-stage strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.bfw-stage-heading{display:flex;gap:12px;align-items:flex-start;margin:18px 0}.bfw-stage-number{font:24px ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}.bfw-stage-heading h2{font-size:20px;margin:0 0 5px}.bfw-stage-heading p{margin:0}.bfw-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:96px;resize:vertical;line-height:1.6}.bfw-callout{padding:14px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);margin:12px 0;overflow-wrap:anywhere}.bfw-callout p{margin:5px 0}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent;white-space:normal;text-align:left}.bfw-catalog{display:grid;gap:8px;margin:12px 0}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:12px;border-radius:8px;min-width:0}.bfw-template header{display:flex;justify-content:space-between;align-items:center;gap:8px}.bfw-template p{margin:7px 0}.bfw-template[data-selected=true]{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}.bfw-selected{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-stage-footer{display:flex;justify-content:space-between;gap:8px;margin:18px 0}.bfw-notice{padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:9px 5px;gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:12px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:auto}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:wrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:0;width:100%}.bfw-stage:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:8px;padding:10px;margin:12px 0;overflow-wrap:anywhere}.bfw-production p{margin:6px 0}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.bfw-production progress{width:100%;accent-color:var(--dsw-alias-brand-primary)}.bfw-live-details>summary{cursor:pointer;padding:7px 0;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding:10px 0;border-top:1px solid var(--dsw-alias-border-l3);margin-top:8px}.bfw-stage-state{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:#ef6a6a}.bfw-stage-state[data-stage-state=completed]{color:#42aa83}',
       '.bfw-list-controls{display:grid;gap:6px;margin:10px 0}.bfw-list-controls .bfw-toolbar{margin:0}.bfw-list-controls .bfw-input{min-width:0}.bfw-list-controls .bfw-pagination{margin:0;justify-content:space-between}',
-      '@media(max-width:1100px){.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{min-height:66px;padding:9px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-index{white-space:nowrap}}',
+      '@container(max-width:620px){.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{min-height:66px;padding:9px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-index{white-space:nowrap}}',
     ].join('\n');
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -324,10 +328,11 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-pill ' + (unavailable ? 'failed' : 'running'), 'data-live-state': unavailable ? 'stale' : record.loading ? 'loading' : 'live'},
             t(unavailable ? 'staleSnapshot' : record.loading ? 'loading' : visible ? 'autoRefresh' : 'pollingPaused'))),
         h('p', {className: 'bfw-production-summary'},
-          status(productionState, t),
-          activeTask && h('span', {className: 'bfw-code'}, activeTask.id),
-          activeTask?.phase && h('span', null, t('phase') + ': ' + activeTask.phase),
-          pipeline && h('span', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
+          h('span', {role: 'status', 'aria-live': 'polite', 'aria-atomic': true},
+            status(productionState, t), ' ',
+            activeTask && h('span', {className: 'bfw-code'}, activeTask.id), ' ',
+            activeTask?.phase && h('span', null, t('phase') + ': ' + activeTask.phase), ' ',
+            pipeline && h('span', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—'))),
           h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
         record.error && h('p', {className: 'bfw-error', role: 'alert'}, t('retainedSnapshot') + ' · ' + record.error),
         unavailable && !record.error && h('p', {className: 'bfw-error'}, t('partialObservation')),
@@ -363,7 +368,7 @@ window.__ModuleLoader__.load({
     }
 
     function Blueprint({blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-      capability, setCapability, save, prepare, t}) {
+      capability, setCapability, save, prepare, retry, t}) {
       const update = (key, value) => setBlueprint((old) => ({...old, [key]: value, savedAt: null,
         ...(key === 'templates' ? {target: Math.max(old.target, value.length)} : {}),
         ...(key === 'target' ? {target: Math.max(value, old.templates.length)} : {})}));
@@ -382,18 +387,21 @@ window.__ModuleLoader__.load({
         card(t('selectedTemplates'), h(React.Fragment, null,
           blueprint.templates.length ? blueprint.templates.map((row, i) => h('div', {className: 'bfw-selected', key: row.id},
             h('span', null, h('span', {className: 'bfw-code'}, row.id), ' · ', row.title),
-            h('span', null, allocations(blueprint)[i].target_items + ' ' + t('item')), button(t('removeTemplate'), () => toggle(row)))) : empty(t('noSelection')),
+            h('span', null, allocations(blueprint)[i].target_items + ' ' + t('item')), button(t('removeTemplate'), () => toggle(row), {'aria-label': t('removeTemplate') + ' ' + row.id}))) : empty(t('noSelection')),
           h('div', {className: 'bfw-toolbar'}, button(t('saveBlueprint'), save), button(t('preparePlan'), prepare, {className: 'bfw-button bfw-action'})),
           blueprint.savedAt && h('p', {className: 'bfw-muted'}, t('savedAt') + ': ' + new Date(blueprint.savedAt).toLocaleString()))),
         card(t('templateCatalog'), h(React.Fragment, null,
           h('p', {className: 'bfw-muted'}, t('catalogDesign')),
           catalog.value && h('div', {className: 'bfw-counts'}, h('span', null, catalog.value.task_count + ' ' + t('task')), h('span', null, catalog.value.template_count + ' ' + t('template'))),
-          h('div', {className: 'bfw-toolbar'}, h('input', {className: 'bfw-input', 'aria-label': t('templateCatalog'), value: catalogQuery,
+          h('div', {className: 'bfw-toolbar'}, h('input', {className: 'bfw-input', 'aria-label': t('searchTemplates'), value: catalogQuery,
             placeholder: t('search'), onChange: (e) => {setCatalogQuery(e.target.value); setCatalogPage(1);}}),
           select(t('capability'), capability, (id) => {setCapability(id); setCatalogPage(1);}, [['', t('all')], ...(catalog.value?.capabilities || []).map((id) => [id, id])])),
           catalog.error && h('p', {className: 'bfw-error', role: 'alert'}, catalog.error),
-          catalog.loading ? empty(t('loading')) : h('div', {className: 'bfw-catalog'}, (catalog.value?.items || []).map((row) =>
-            h('article', {className: 'bfw-template', key: row.id, 'aria-selected': selected.has(row.id)},
+          catalog.loading ? empty(t('loading')) : catalog.error && !catalog.value ? button(t('retry'), retry) :
+            !catalog.value?.items.length ? h('div', {className: 'bfw-empty', role: 'status'}, t('noMatchingTemplates'), ' ',
+              button(t('clearFilters'), () => {setCatalogQuery(''); setCapability(''); setCatalogPage(1);})) :
+            h('div', {className: 'bfw-catalog'}, (catalog.value?.items || []).map((row) =>
+            h('article', {className: 'bfw-template', key: row.id, 'data-selected': selected.has(row.id)},
               h('header', null, h('strong', null, row.title), button(t(selected.has(row.id) ? 'removeTemplate' : 'selectTemplate'), () => toggle(row), {'aria-pressed': selected.has(row.id)})),
               h('p', {className: 'bfw-code'}, row.id + ' · ' + row.capabilities.join(' / ')),
               h('p', {className: 'bfw-muted'}, row.task_name),
@@ -445,6 +453,8 @@ window.__ModuleLoader__.load({
 
     function Workbench({t, sessionId, useSessions, inputActions}) {
       const panelRef = React.useRef(null);
+      const sampleHeadingRef = React.useRef(null);
+      const sampleTriggerRef = React.useRef(null);
       const visible = usePanelVisible(panelRef);
       const [route, setRoute] = React.useState(() => initialState(sessionId));
       const [revision, setRevision] = React.useState(0);
@@ -466,8 +476,27 @@ window.__ModuleLoader__.load({
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
       const dataset = useRecord(workspacePath && ['datasets', 'quality'].includes(route.tab) && route.dataset ?
         {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision, 30000, visible);
+      const sampleId = sample?.row_index;
+      const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
+        (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
-      React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.template, route.split, route.q]);
+      React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
+      React.useEffect(() => {
+        if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({page: Math.max(1, dataset.value.pages)});
+      }, [dataset.value, route.page]);
+      React.useEffect(() => {
+        if (sample && dataset.value && !currentSample) {setSample(null); setNotice(t('sampleRemoved'));}
+      }, [dataset.value, sample, currentSample]);
+      React.useEffect(() => {
+        if (route.tab !== 'datasets') return;
+        if (sample) sampleHeadingRef.current?.focus();
+        else if (sampleTriggerRef.current) {
+          const trigger = [...panelRef.current.querySelectorAll('[data-sample-row]')]
+            .find((element) => element.dataset.sampleRow === sampleTriggerRef.current);
+          (trigger || panelRef.current.querySelector('[aria-label="题目、ID 或任务"]'))?.focus();
+          sampleTriggerRef.current = null;
+        }
+      }, [sampleId, route.tab]);
       const rows = summary.value?.runs || [];
       const datasets = summary.value?.datasets || [];
       const selectedDataset = summary.value?.datasets?.find((row) => row.id === route.dataset);
@@ -496,7 +525,10 @@ window.__ModuleLoader__.load({
         setNotice(t(inserted ? 'draftReady' : 'draftBusy'));
       };
       const openRun = (id) => update({tab: 'runs', run: id});
-      const openDataset = (id) => { update({tab: 'datasets', dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
+      const changeDataset = (id, tab = route.tab) => { update({tab, dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
+      const openDataset = (id) => changeDataset(id, 'datasets');
+      const openSample = (item) => {sampleTriggerRef.current = String(item.row_index); setSample(item);};
+      const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
       const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) =>
@@ -516,7 +548,7 @@ window.__ModuleLoader__.load({
           h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
             h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
           stage.id === 'S1' ? h(Blueprint, {blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-            capability, setCapability, save: saveBlueprint, prepare, t}) : h(React.Fragment, null,
+            capability, setCapability, save: saveBlueprint, prepare, retry: () => setRevision((value) => value + 1), t}) : h(React.Fragment, null,
             h('div', {className: 'bfw-callout'}, h('strong', null, t('stepOutput') + ' · ' + t(stage.key + 'Output')),
               h('p', null, t(stage.id === 'S2' ? 'sceneFirstNote' : stage.id === 'S5' ? 'qualityPolicy' : 'evidencePolicy'))),
             h('div', {className: 'bfw-toolbar'}, button(t('prepareStage'), prepare, {className: 'bfw-button bfw-action'}),
@@ -530,7 +562,7 @@ window.__ModuleLoader__.load({
                 json({parents: artifact.parents, evidence_refs: artifact.evidence_refs, contract_results: artifact.contract_results}))) : empty(t('noStepArtifacts')),
               activeRun && button(t('openRun'), () => openRun(selectedRunId)))),
             ['S4', 'S5'].includes(stage.id) && card(t('directory'), datasets.length ? h(React.Fragment, null,
-              select(t('chooseDataset'), route.dataset, (id) => update({dataset: id}), versionOptions),
+              select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
               h('div', {className: 'bfw-toolbar'}, button(t('openData'), () => route.dataset ? openDataset(route.dataset) : update({tab: 'datasets'})),
                 button(t('openQuality'), () => update({tab: 'quality'}))),
               stage.id === 'S5' && selectedDataset && h(Quality, {report: selectedDataset.report, t})) : empty(t('noDatasets')))),
@@ -542,7 +574,7 @@ window.__ModuleLoader__.load({
             h('span', null, t('datasetCount') + ': ' + (summary.value?.datasets.length ?? '—'))),
           h('div', {className: 'bfw-stats'}, ['draft', 'candidate', 'verified', 'rejected', 'superseded'].map((key) =>
             h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, summary.value?.counts?.[key] ?? '—')))),
-          card(t('recent'), runTable(rows.slice(0, 8))),
+          card(t('recent'), summary.error && !summary.value ? readFailure() : runTable(rows.slice(0, 8))),
           card(t('sources'), table([t('workspace'), t('state'), t('details')], (summary.value?.sources || []).map((source) =>
             [source.workspace, t(source.status), source.error || (source.truncated ? t('truncated') : source.limit ? source.limit + ' ' + t('limit') : '—')])))) : empty(t('noWorkspace'));
       } else if (route.tab === 'runs') {
@@ -553,19 +585,19 @@ window.__ModuleLoader__.load({
               (page) => update({runListPage: page}),
               route.runListSize,
               (size) => update({runListSize: size, runListPage: 1})),
-            runListing.total ? runTable(runListing.items) : empty(rows.length ? t('noMatchingRuns') : t('noRuns')))),
-          run.loading ? empty(t('loading')) : h(RunDetails, {record: run.value, t}));
+            summary.error && !summary.value ? readFailure() : runListing.total ? runTable(runListing.items) : empty(rows.length ? t('noMatchingRuns') : t('noRuns')))),
+          run.loading ? empty(t('loading')) : run.error && !run.value ? readFailure() : h(RunDetails, {record: run.value, t}));
       } else if (route.tab === 'quality') {
         body = h(React.Fragment, null,
-          select(t('chooseDataset'), route.dataset, (id) => update({dataset: id, page: 1}), versionOptions),
+          select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
           card(t('report'), !route.dataset ? empty(t('chooseVersionForReport')) :
-            dataset.loading ? empty(t('loading')) : h(Quality, {report: dataset.value?.report || selectedDataset?.report, t})));
+            dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : h(Quality, {report: dataset.value?.report || selectedDataset?.report, t})));
       } else {
         const data = dataset.value;
         body = h(React.Fragment, null,
           card(t('directory'), h(React.Fragment, null,
             h('p', {className: 'bfw-muted'}, t('datasetNote')),
-            datasets.length ? h(React.Fragment, null,
+            summary.error && !summary.value ? readFailure() : datasets.length ? h(React.Fragment, null,
               listControls(versionListing, route.versionFilter, t('versionFilter'),
                 (value) => update({versionFilter: value, versionListPage: 1}),
                 (page) => update({versionListPage: page}),
@@ -587,21 +619,24 @@ window.__ModuleLoader__.load({
               button(t('grid'), () => update({layout: 'grid'}), {'aria-pressed': route.layout === 'grid'}),
               button(t('table'), () => update({layout: 'table'}), {'aria-pressed': route.layout === 'table'}),
               h('span', {className: 'bfw-muted'}, t('matches') + ': ' + (data?.total ?? '—') + ' / ' + t('total') + ': ' + (data?.all ?? '—'))),
-            dataset.loading ? empty(t('loading')) : sample ? h(React.Fragment, null,
-              button(t('close'), () => setSample(null)), h('p', {className: 'bfw-code'}, sample.item_id || sample.id),
-              h('p', {className: 'bfw-question'}, sample.question),
-              h('h3', null, t('media')), sample.media?.length ? sample.media.map((src, i) => h('img', {className: 'bfw-observation', key: src, src, alt: t('media') + ' ' + (i + 1)})) : empty(t('noMedia')),
-              h('details', null, h('summary', null, t('details')), json({...sample, media: undefined}))) :
-              !data?.items.length ? empty(t('noItems')) : route.layout === 'table' ?
+            dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : currentSample ? h(React.Fragment, null,
+              button(t('close'), () => setSample(null)), h('h3', {className: 'bfw-code', ref: sampleHeadingRef, tabIndex: -1}, currentSample.item_id || currentSample.id),
+              h('p', {className: 'bfw-question'}, currentSample.question),
+              h('h3', null, t('media')), currentSample.media?.length ? currentSample.media.map((src, i) => h('img', {className: 'bfw-observation', key: src, src, alt: t('media') + ' ' + (i + 1)})) : empty(t('noMedia')),
+              h('details', null, h('summary', null, t('details')), json({...currentSample, media: undefined}))) :
+              !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
+                (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
                 table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
-                  [item.item_id || item.id, item.template_id || '—', item.split || '—', item.question, button(t('open'), () => setSample(item))])) :
-                h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index, onClick: () => setSample(item)},
+                  [item.item_id || item.id, item.template_id || '—', item.split || '—', item.question,
+                    button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
+                h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
+                  'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
                   item.media?.[0] && h('img', {src: item.media[0], loading: 'lazy', alt: t('media')}),
                   h('span', {className: 'bfw-code'}, item.item_id || item.id), h('p', {className: 'bfw-question-preview'}, item.question),
                   h('span', {className: 'bfw-muted'}, (item.template_id || '') + ' · ' + (item.split || ''))))),
-            h('div', {className: 'bfw-pagination'},
+            !currentSample && h('div', {className: 'bfw-pagination'},
               button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
-              h('span', null, t('page') + ' ' + route.page + ' / ' + (data?.pages || 1)),
+              h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
               button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})))));
       }
       return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
@@ -620,12 +655,21 @@ window.__ModuleLoader__.load({
         workspacePath && h(Production, {record: progress, pipeline, scene, selected: scene?.run_id || '',
           selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t}),
         h('nav', {className: 'bfw-tabs', role: 'tablist', 'aria-label': t('panel')}, ['workflow', 'overview', 'runs', 'datasets', 'quality'].map((key) =>
-          h('button', {type: 'button', key, className: 'bfw-tab', role: 'tab', 'aria-selected': route.tab === key, onClick: () => update({tab: key})}, t(key)))),
+          h('button', {type: 'button', key, className: 'bfw-tab', role: 'tab', id: 'bfw-tab-' + sessionId + '-' + key,
+            'aria-selected': route.tab === key, 'aria-controls': 'bfw-content-' + sessionId, tabIndex: route.tab === key ? 0 : -1,
+            onClick: () => update({tab: key}), onKeyDown: (event) => {
+              const tabs = ['workflow', 'overview', 'runs', 'datasets', 'quality'], index = tabs.indexOf(key);
+              const next = {ArrowRight: (index + 1) % tabs.length, ArrowLeft: (index + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1}[event.key];
+              if (next === undefined) return;
+              event.preventDefault(); update({tab: tabs[next]});
+              event.currentTarget.parentElement.querySelectorAll('[role=tab]')[next].focus();
+            }}, t(key)))),
         h('p', {className: 'bfw-muted'}, route.tab === 'workflow' ? t('workflowNote') : t('scope')),
         notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
         summary.value && h('div', {className: 'bfw-kicker'}, t('snapshot') + ': ' + summary.value.snapshot_at),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
-        summary.loading && route.tab !== 'workflow' && empty(t('loading')), body));
+        summary.loading && route.tab !== 'workflow' && empty(t('loading')),
+        h('div', {role: 'tabpanel', id: 'bfw-content-' + sessionId, 'aria-labelledby': 'bfw-tab-' + sessionId + '-' + route.tab, tabIndex: 0}, body)));
     }
     return {
       inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs'],

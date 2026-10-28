@@ -97,3 +97,20 @@ to disable and enable **only** the existing root workbench plugin when replacing
 its module. Changing its entry/config alone may leave the previous handler active.
 Do not restart DSH while a session is running. Preserve the root placement,
 SpatialForge preset gate, model services, simulator services and other plugins.
+
+Usability behavior
+------------------
+
+The live monitor defaults to a compact summary with expandable details. Run and
+dataset-version directories have search and 12/24/48-row pagination. Five-step
+navigation responds to the actual sidebar width, including narrow sidebars on
+wide desktop windows. Tabs support arrow keys, Home and End.
+
+Changing a dataset version clears that version's template, split and query
+filters across workflow, quality and dataset views. Public sample details read
+from the current successful dataset response, so refresh updates changed items
+and returns to the list when the selected item disappears. Opening a sample
+focuses its heading; returning restores focus to its original list button.
+If a dataset shrinks, an out-of-range page is corrected and reloaded. Empty
+search results offer clear filters. Read errors offer retry and do not imply
+that records or quality reports are absent.
