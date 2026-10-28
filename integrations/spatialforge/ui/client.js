@@ -15,6 +15,16 @@ window.__ModuleLoader__.load({
     ];
     const dictionaries = {
       zh: {
+        productionMonitor: '生产实况', autoRefresh: '自动更新 · 约 3 秒', staleSnapshot: '观测异常 · 非最新状态', pollingPaused: '隐藏时暂停更新',
+        lastObserved: '最近观测', conversationRunning: 'DSH 对话执行中；以下为工具记录', productionScope: '当前工作区与本会话场景任务',
+        retainedSnapshot: '连接异常，保留上次成功观测，恢复后自动续更', partialObservation: '部分来源读取失败；显示的是可读取记录，不能据此判断全部任务正常。',
+        persistedSteps: '已落盘完成步骤', currentStep: '当前待完成步骤', unrecordedStep: '尚无执行回执', sceneJobs: '本会话场景任务',
+        completedTasks: '执行完成任务', phase: '生产阶段', workerStage: 'worker 最近上报', workerAge: '距 worker 上报', transfer: '已接收产物',
+        capturedViews: '已记录图像', actionTraces: '交互轨迹', publication: '发布状态', canceled: '已取消',
+        taskLimit: '本页显示前 12 项任务；完整状态可在对话使用 spatialforge_status 查看。',
+        noProduction: '尚未找到本会话场景任务或工作区 pipeline 回执；聊天生成中的文字不计为生产完成。',
+        recentOperations: '最近工具操作', observerNotConfigured: '场景队列观察器未配置；当前仅读取工作区 pipeline。',
+        stageStateSource: '步骤状态来源', workspacePipeline: '工作区流水线', sessionProduction: '本会话场景任务',
         panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
         subtitle: '从评测目标到数据集交付，组织每一步操作与产物。', refresh: '刷新', loading: '读取中…',
         scope: '显示已登记工作区中的最近索引记录；未统计的数据以“—”表示。', snapshot: '快照时间',
@@ -63,6 +73,16 @@ window.__ModuleLoader__.load({
         savedAt: '草稿保存于', navigation: 'BenchForge 五步', liveRecords: '当前会话的实际产物', requiredGoal: '先填写评测目标。', perTemplate: '题 / 模板',
       },
       en: {
+        productionMonitor: 'Live production', autoRefresh: 'Auto update · about 3 s', staleSnapshot: 'Observation issue · not current', pollingPaused: 'Updates paused while hidden',
+        lastObserved: 'Last observed', conversationRunning: 'DSH conversation running; tool records below', productionScope: 'Current workspace and session scene jobs',
+        retainedSnapshot: 'Connection failed. Keeping the last successful observation and retrying automatically', partialObservation: 'Some sources could not be read. Available records do not establish that all jobs are healthy.',
+        persistedSteps: 'Persisted completed steps', currentStep: 'Current unfinished step', unrecordedStep: 'No execution receipt yet', sceneJobs: 'Session scene jobs',
+        completedTasks: 'Completed tasks', phase: 'Production phase', workerStage: 'Last worker report', workerAge: 'Since worker report', transfer: 'Artifacts received',
+        capturedViews: 'Recorded images', actionTraces: 'Action traces', publication: 'Publication status', canceled: 'Canceled',
+        taskLimit: 'Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.',
+        noProduction: 'No session scene job or workspace pipeline receipt found. Chat prose is not production completion.',
+        recentOperations: 'Recent tool operations', observerNotConfigured: 'Scene observer is not configured; only workspace pipelines are observed.',
+        stageStateSource: 'Step status source', workspacePipeline: 'Workspace pipeline', sessionProduction: 'Session scene job',
         panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
         subtitle: 'From evaluation goals to dataset delivery: actions and artifacts at every step.', refresh: 'Refresh', loading: 'Loading…',
         scope: 'Recent indexed records in registered workspaces. Unmeasured values are shown as —.', snapshot: 'Snapshot',
@@ -124,6 +144,7 @@ window.__ModuleLoader__.load({
       '.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:6px 10px;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
       '@media(max-width:760px){.bfw-root{padding:18px 14px}.bfw-header{display:block}.bfw-header>.bfw-button{margin-top:12px}.bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bfw-details{grid-template-columns:1fr}.bfw-table{min-width:560px}.bfw-tabs{flex-wrap:nowrap;overflow:auto}.bfw-tab{white-space:nowrap}.bfw-items{grid-template-columns:1fr}.bfw-select{width:100%}.bfw-toolbar>.bfw-label{width:100%}}',
       '.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:16px 0}.bfw-stage{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:inherit;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:12px 10px;cursor:pointer;min-width:0;font:inherit}.bfw-stage[aria-current=step]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-stage-index{font:12px ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}.bfw-stage strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.bfw-stage-heading{display:flex;gap:12px;align-items:flex-start;margin:18px 0}.bfw-stage-number{font:24px ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}.bfw-stage-heading h2{font-size:20px;margin:0 0 5px}.bfw-stage-heading p{margin:0}.bfw-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:96px;resize:vertical;line-height:1.6}.bfw-callout{padding:14px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);margin:12px 0;overflow-wrap:anywhere}.bfw-callout p{margin:5px 0}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent;white-space:normal;text-align:left}.bfw-catalog{display:grid;gap:8px;margin:12px 0}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:12px;border-radius:8px;min-width:0}.bfw-template header{display:flex;justify-content:space-between;align-items:center;gap:8px}.bfw-template p{margin:7px 0}.bfw-template[aria-selected=true]{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}.bfw-selected{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-stage-footer{display:flex;justify-content:space-between;gap:8px;margin:18px 0}.bfw-notice{padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:9px 5px;gap:4px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:12px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:auto}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:wrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:0;width:100%}.bfw-stage:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
+      '.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:14px;margin:12px 0;overflow-wrap:anywhere}.bfw-production p{margin:6px 0}.bfw-production progress{width:100%;accent-color:var(--dsw-alias-brand-primary)}.bfw-live-task,.bfw-live-line{padding:10px 0;border-top:1px solid var(--dsw-alias-border-l3);margin-top:8px}.bfw-stage-state{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:#ef6a6a}.bfw-stage-state[data-stage-state=completed]{color:#42aa83}',
     ].join('\n');
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -150,24 +171,127 @@ window.__ModuleLoader__.load({
       }
       return fallback;
     }
-    function useRecord(params, revision) {
+    function useRecord(params, revision, interval = 0, active = true) {
       const key = params ? new URLSearchParams(params).toString() : '';
       const [record, setRecord] = React.useState({key: '', value: null, error: null, loading: false});
       React.useEffect(() => {
         if (!key) return;
-        const controller = new AbortController();
-        setRecord({key, value: null, error: null, loading: true});
-        fetch('api/benchforge/workbench?' + key, {cache: 'no-store', signal: controller.signal})
-          .then(async (response) => {
+        let stopped = false, timer, controller, inFlight = false;
+        const load = async () => {
+          if (stopped || inFlight) return;
+          inFlight = true;
+          controller = new AbortController();
+          const deadline = setTimeout(() => controller.abort(), 16000);
+          setRecord((old) => old.key === key ? {...old, loading: !old.value, refreshing: true} :
+            {key, value: null, error: null, loading: true, refreshing: true});
+          try {
+            const response = await fetch('api/benchforge/workbench?' + key, {cache: 'no-store', signal: controller.signal});
             const value = await response.json();
             if (!response.ok) throw new Error(value.error || 'HTTP ' + response.status);
-            if (!controller.signal.aborted) setRecord({key, value, error: null, loading: false});
-          }).catch((error) => {
-            if (!controller.signal.aborted) setRecord({key, value: null, error: error.message, loading: false});
-          });
-        return () => controller.abort();
-      }, [key, revision]);
+            if (!stopped) setRecord((old) => {
+              if (value.scenes && old.key === key && old.value?.scenes) {
+                const prior = old.value.scenes.runs || [];
+                if (value.scenes.status === 'unavailable') value.scenes.runs = prior;
+                else value.scenes.runs = (value.scenes.runs || []).map((row) => row.error
+                  ? {...(prior.find((previous) => previous.run_id === row.run_id) || row), error: row.error} : row);
+              }
+              return {key, value, error: null, loading: false, refreshing: false, updatedAt: new Date().toISOString()};
+            });
+          } catch (error) {
+            if (!stopped) setRecord((old) => ({...old, key, error: error.message, loading: false, refreshing: false}));
+          } finally {
+            clearTimeout(deadline); inFlight = false;
+            if (!stopped && interval && active && document.visibilityState !== 'hidden') timer = setTimeout(load, interval);
+          }
+        };
+        const resume = () => {
+          clearTimeout(timer);
+          if (active && document.visibilityState !== 'hidden') load();
+        };
+        load();
+        if (interval) document.addEventListener('visibilitychange', resume);
+        return () => {stopped = true; clearTimeout(timer); controller?.abort(); document.removeEventListener('visibilitychange', resume);};
+      }, [key, revision, interval, active]);
       return record.key === key ? record : {value: null, error: null, loading: Boolean(key)};
+    }
+
+    function usePanelVisible(ref) {
+      const [visible, setVisible] = React.useState(false);
+      React.useEffect(() => {
+        const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+        observer.observe(ref.current);
+        return () => observer.disconnect();
+      }, []);
+      return visible;
+    }
+    const lifecycle = (value) => ({SUCCEEDED: 'completed', FAILED_FINAL: 'failed', CANCELED: 'canceled',
+      READY: 'waiting', PENDING: 'waiting', RUNNING: 'running'}[value] || value || 'unknown');
+    const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
+      ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
+    function stageState(id, pipeline, scene) {
+      const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
+      if (current.length) {
+        if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
+        if (current.some((row) => row.queue)) return 'waiting';
+        if (current.every((row) => row.state === 'SUCCEEDED')) return 'completed';
+        if (current.some((row) => row.state === 'RUNNING')) return 'running';
+        return lifecycle(scene.state);
+      }
+      const steps = (pipeline?.steps || []).filter((row) => row.stage === id);
+      if (!steps.length) return 'unknown';
+      if (steps.every((row) => row.state === 'completed')) return 'completed';
+      return steps.find((row) => row.state !== 'completed' && row.state !== 'unknown')?.state ||
+        (pipeline.current?.stage === id && pipeline.state !== 'completed' ? pipeline.state : 'unknown');
+    }
+    function Production({record, pipeline, scene, selected, selectScene, visible, conversationRunning, t}) {
+      const value = record.value, jobs = value?.scenes?.runs || [];
+      const unavailable = record.error || ['unavailable', 'partial'].includes(value?.scenes?.status) ||
+        value?.sources?.some((source) => ['index_error', 'record_error'].includes(source.status));
+      return h('section', {className: 'bfw-production', 'data-production-monitor': true, 'aria-label': t('productionMonitor')},
+        h('div', {className: 'bfw-toolbar'}, h('strong', null, t('productionMonitor')),
+          h('span', {className: 'bfw-pill ' + (unavailable ? 'failed' : 'running'), 'data-live-state': unavailable ? 'stale' : record.loading ? 'loading' : 'live'},
+            t(unavailable ? 'staleSnapshot' : record.loading ? 'loading' : visible ? 'autoRefresh' : 'pollingPaused'))),
+        h('p', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—') +
+          ' · ' + t(conversationRunning ? 'conversationRunning' : 'productionScope')),
+        record.error && h('p', {className: 'bfw-error', role: 'alert'}, t('retainedSnapshot') + ' · ' + record.error),
+        unavailable && !record.error && h('p', {className: 'bfw-error'}, t('partialObservation')),
+        pipeline && h('div', {className: 'bfw-live-line'}, h('div', {className: 'bfw-muted'}, t('workspacePipeline')),
+          h('span', {className: 'bfw-code'}, pipeline.label), ' ', status(pipeline.state, t),
+          h('p', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
+          pipeline.total !== null && pipeline.total > 0 && h('progress', {max: pipeline.total, value: pipeline.completed, 'aria-label': t('persistedSteps')}),
+          pipeline.current && h('p', null, t('currentStep') + ': ' + pipeline.current.id + ' · ' + (pipeline.current.uses || '') +
+            (pipeline.current.state === 'unknown' ? ' · ' + t('unrecordedStep') : '')),
+          (pipeline.missing_binding || pipeline.current?.error || pipeline.next) && h('p', {className: 'bfw-muted'},
+            t('reason') + ': ' + (pipeline.missing_binding || pipeline.current?.error || pipeline.next))),
+        jobs.length > 0 && select(t('sceneJobs'), selected, selectScene,
+          jobs.map((row) => [row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))])),
+        scene && h(React.Fragment, null,
+          h('p', null, status(lifecycle(scene.state), t), ' · ' + t('completedTasks') + ': ' +
+            scene.tasks.filter((row) => row.state === 'SUCCEEDED').length + ' / ' + scene.tasks.length),
+          scene.error && h('p', {className: 'bfw-error'}, scene.error),
+          scene.tasks.slice(0, 12).map((row) => {
+            const progress = row.progress || {}, revisions = row.evidence?.captured_revisions || [];
+            return h('div', {className: 'bfw-live-task', key: row.id, 'data-production-task': row.id},
+              h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ', status(lifecycle(row.state), t)),
+              h('p', null, t('phase') + ': ' + (row.phase || '—') +
+                (progress.stage ? ' · ' + t('workerStage') + ': ' + progress.stage : '') + ' · r' + row.revision),
+              progress.age_seconds !== undefined && h('p', {className: 'bfw-muted'}, t('workerAge') + ': ' + progress.age_seconds + ' s'),
+              progress.total_bytes > 0 && h('p', null, t('transfer') + ': ' +
+                ((progress.bytes_received || 0) / 1048576).toFixed(1) + ' / ' + (progress.total_bytes / 1048576).toFixed(1) + ' MB'),
+              row.queue && h('p', {className: 'bfw-warning'}, t('waiting') + ': ' + row.queue.reason + (row.queue.blocking_task_id ? ' · ' + row.queue.blocking_task_id : '')),
+              (row.failure || progress.error) && h('pre', {className: 'bfw-json bfw-error'}, JSON.stringify(row.failure || progress.error, null, 2)),
+              h('p', {className: 'bfw-muted'}, t('capturedViews') + ': ' + revisions.reduce((n, r) => n + r.views, 0) +
+                ' · ' + t('actionTraces') + ': ' + revisions.reduce((n, r) => n + r.action_traces, 0)),
+              row.summary && h('p', null, t('accepted') + ': ' + (row.summary.accepted ?? '—') + ' / ' + (row.summary.target_items ?? '—')),
+              row.quality && h('p', {className: 'bfw-muted'}, t('publication') + ': ' + row.quality.publication_status + ' · ' +
+                t('approval') + ': ' + t(row.quality.benchmark_approved ? 'yes' : 'no')),
+              row.downloads?.length > 0 && h('p', {className: 'bfw-code'}, row.downloads.join(' · ')));
+          }), scene.tasks.length > 12 && h('p', {className: 'bfw-muted'}, t('taskLimit'))),
+        !scene && !pipeline && !record.loading && empty(t('noProduction')),
+        value?.operations?.length > 0 && h('details', null, h('summary', null, t('recentOperations')),
+          table([t('operator'), t('state'), t('updated')], value.operations.slice(0, 8).map((row) =>
+            [row.tool, status(row.state, t), row.started_at || '—']))),
+        value?.scenes?.status === 'not_configured' && h('p', {className: 'bfw-muted'}, t('observerNotConfigured')));
     }
 
     function blueprintState(sessionId) {
@@ -275,6 +399,8 @@ window.__ModuleLoader__.load({
     }
 
     function Workbench({t, sessionId, useSessions, inputActions}) {
+      const panelRef = React.useRef(null);
+      const visible = usePanelVisible(panelRef);
       const [route, setRoute] = React.useState(() => initialState(sessionId));
       const [revision, setRevision] = React.useState(0);
       const [sample, setSample] = React.useState(null);
@@ -286,13 +412,15 @@ window.__ModuleLoader__.load({
       const [capability, setCapability] = React.useState('');
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
       const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
-      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath} : null, revision);
+      const conversationRunning = useSessions((state) => Boolean(state.byId[sessionId]?.running));
+      const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
+      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath} : null, revision, 30000, visible);
       const selectedRunId = route.run || summary.value?.runs?.[0]?.id || '';
-      const run = useRecord(workspacePath && ['workflow', 'runs'].includes(route.tab) && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath} : null, revision);
+      const run = useRecord(workspacePath && ['workflow', 'runs'].includes(route.tab) && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath} : null, revision, 10000, visible);
       const catalog = useRecord(route.tab === 'workflow' && route.stage === 'S1'
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
       const dataset = useRecord(workspacePath && ['datasets', 'quality'].includes(route.tab) && route.dataset ?
-        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision);
+        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision, 30000, visible);
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.template, route.split, route.q]);
       const rows = summary.value?.runs || [];
@@ -300,6 +428,10 @@ window.__ModuleLoader__.load({
       const selectedDataset = summary.value?.datasets?.find((row) => row.id === route.dataset);
       const stage = STAGES.find((step) => step.id === route.stage) || STAGES[0];
       const activeRun = rows.find((row) => row.id === selectedRunId);
+      const pipeline = progress.value?.pipelines?.find((row) => row.id === selectedRunId) ||
+        (!route.run ? progress.value?.pipelines?.find((row) => row.state !== 'completed') || progress.value?.pipelines?.[0] : null);
+      const sceneJobs = progress.value?.scenes?.runs || [];
+      const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
       const stepArtifacts = (run.value?.artifacts || []).filter((row) => stage.artifact.test(row.artifact_type + ' ' + JSON.stringify(row.producer)));
       const saveBlueprint = () => {
         const next = {...blueprint, savedAt: new Date().toISOString()};
@@ -399,7 +531,7 @@ window.__ModuleLoader__.load({
               h('span', null, t('page') + ' ' + route.page + ' / ' + (data?.pages || 1)),
               button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})))));
       }
-      return h('div', {className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
+      return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
         h('header', {className: 'bfw-header'}, h('div', null,
           h('div', {className: 'bfw-kicker'}, 'BENCHFORGEV2 / SPATIALFORGE'), h('h1', {className: 'bfw-title'}, t('panel')),
           h('div', {className: 'bfw-muted'}, t('subtitle'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
@@ -407,7 +539,13 @@ window.__ModuleLoader__.load({
           className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
           'aria-current': route.tab === 'workflow' && stage.id === step.id ? 'step' : undefined,
           onClick: () => {update({tab: 'workflow', stage: step.id}); setNotice('');}},
-          h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key))))),
+          h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key)),
+          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)},
+            t(stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)))))),
+        h('p', {className: 'bfw-muted'}, t('stageStateSource') + ': ' +
+          (route.run ? pipeline?.label || t('unknown') : scene?.run_id || pipeline?.label || t('unknown'))),
+        workspacePath && h(Production, {record: progress, pipeline, scene, selected: scene?.run_id || '',
+          selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t}),
         h('nav', {className: 'bfw-tabs', role: 'tablist', 'aria-label': t('panel')}, ['workflow', 'overview', 'runs', 'datasets', 'quality'].map((key) =>
           h('button', {type: 'button', key, className: 'bfw-tab', role: 'tab', 'aria-selected': route.tab === key, onClick: () => update({tab: key})}, t(key)))),
         h('p', {className: 'bfw-muted'}, route.tab === 'workflow' ? t('workflowNote') : t('scope')),

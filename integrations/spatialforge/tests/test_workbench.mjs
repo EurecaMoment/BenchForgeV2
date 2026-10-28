@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {DatabaseSync} from 'node:sqlite';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -107,6 +108,52 @@ test('missing manifest counts remain unknown and an empty index is not invented 
     assert.deepEqual(summary.runs, []);
     assert.equal(summary.sources[0].status, 'no_index');
   } finally { await fs.rm(directory, {recursive: true, force: true}); }
+});
+
+test('production observations follow persisted running/waiting/failed/completed transitions without changing records', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-progress-'));
+  const operation = path.join(directory, 'operations', 'progress-fixture');
+  const run = path.join(operation, 'pipeline_run');
+  await fs.mkdir(run, {recursive: true});
+  const db = new DatabaseSync(path.join(directory, 'runs.sqlite'));
+  try {
+    db.exec('CREATE TABLE operations (id TEXT PRIMARY KEY,tool TEXT,state TEXT,artifact TEXT,error TEXT)');
+    db.prepare('INSERT INTO operations VALUES (?,?,?,?,?)').run('progress-fixture', 'pipeline_run', 'running', operation, null);
+    await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({time: '2026-10-28T10:00:00Z', arguments: {}}));
+    await fs.writeFile(path.join(run, 'plan.json'), JSON.stringify({steps: [
+      {id: 'scene', uses: 'spatialforge.capture'}, {id: 'items', uses: 'templates.produce'}, {id: 'report', uses: 'templates.package'},
+    ]}));
+    const handler = createWorkbenchHandler({}, () => [{id: 'progress-workspace', path: directory}]);
+    const request = () => handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({view: 'progress', workspace_path: directory})));
+    const snapshot = async (state, steps) => {
+      const file = path.join(run, 'state.json');
+      await fs.writeFile(file, JSON.stringify({state, steps}));
+      const before = (await fs.stat(file)).mtimeMs;
+      const response = await request();
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal((await fs.stat(file)).mtimeMs, before);
+      assert.equal(result.pipelines[0].state, state);
+      assert.equal(result.pipelines[0].total, 3);
+      return result.pipelines[0];
+    };
+    const running = await snapshot('running', {});
+    assert.equal(running.completed, 0);
+    assert.equal(running.current.stage, 'S2');
+    assert.equal(running.current.state, 'unknown'); // No invented per-step execution status.
+    const steps = {scene: {state: 'completed'}};
+    const waiting = await snapshot('needs_evidence', {...steps, items: {state: 'needs_evidence'}});
+    assert.equal(waiting.completed, 1);
+    assert.equal(waiting.current.stage, 'S4');
+    const failed = await snapshot('failed', {...steps, items: {state: 'failed', error: 'fixture missing camera'}});
+    assert.equal(failed.current.error, 'fixture missing camera');
+    const complete = await snapshot('completed', {...steps, items: {state: 'completed'}, report: {state: 'completed'}});
+    assert.equal(complete.completed, 3);
+    assert.equal(complete.current, undefined);
+    assert.equal(db.prepare('SELECT state FROM operations').get().state, 'running');
+    const unscoped = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=progress'));
+    assert.deepEqual((await unscoped.json()).operations, []);
+  } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}
 });
 
 test('evaluation launcher is gated to SpatialForge and opens its right-side session panel', async () => {

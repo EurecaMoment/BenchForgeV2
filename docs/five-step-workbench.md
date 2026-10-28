@@ -51,3 +51,49 @@ node --test integrations/spatialforge/tests/test_workbench.mjs
 
 Browser acceptance additionally checks all five steps, template selection,
 blueprint persistence and native draft insertion without submitting inference.
+
+
+Live production
+---------------
+
+The production panel reads `view=progress` automatically, scheduling its next
+request three seconds after the previous request completes. It shows the last
+observation time, pipeline completed/total steps and unfinished step, actual
+SpatialForge lifecycle/phase, desktop-device queue reason, failures, capture
+and action-trace counts, reported transfer bytes and release counts/status.
+The five navigation steps display observed execution states independently of
+which step the user is viewing. Execution success never implies benchmark approval.
+
+The lightweight progress route reads at most `maxRuns` workspace operation
+rows plus their small persisted plans/state files. It does not scan datasets or
+artifact manifests every three seconds. Full summaries and selected dataset
+pages refresh every 30 seconds; selected run artifacts every 10 seconds. Requests
+do not overlap within a feed. Hidden panels and background documents pause
+scheduled polling and resume when visible. Navigation, selected version, filters,
+page and public detail remain in place. Read failures retain the last successful
+snapshot and visibly mark the observation as stale until recovery.
+
+Direct `spatialforge_run/capture/asset/...` submissions are also observed:
+`production_observer.py` queries existing PostgreSQL request keys matching the
+current `dsh:<session_id>:` prefix, then calls the existing read-only `/observe`
+API. Explicit `sf_` run IDs in persisted pipeline results are also included.
+The most recent 12 jobs are bounded, with active jobs prioritized; this is not
+a global production count. The observer constructs no Store/Repository, creates
+no schema, starts no jobs and exposes no task result/answer payload. Its local
+service configuration and credentials stay on the server.
+
+Configure the UI plugin with `productionConfig` pointing to the existing
+SpatialForge server config (containing harness DB config path and operator token)
+and `productionPython` pointing to the existing Python with SQLAlchemy. Without
+this configuration the UI explicitly reports that only workspace pipelines are
+observed. Custom request keys without the DSH session prefix are discoverable
+only through persisted pipeline references. Ad-hoc shell jobs without either
+record are not claimed as tracked. A worker that does not report intermediate
+progress remains at its last reported phase; no synthetic percentage is shown.
+
+For an already cached UI backend, `ui/production.js` is a distinct backend entry;
+`ui/index.js` remains the public package export. Use official plugin management
+to disable and enable **only** the existing root workbench plugin when replacing
+its module. Changing its entry/config alone may leave the previous handler active.
+Do not restart DSH while a session is running. Preserve the root placement,
+SpatialForge preset gate, model services, simulator services and other plugins.
