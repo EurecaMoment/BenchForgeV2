@@ -147,3 +147,24 @@ test('evaluation launcher is gated to SpatialForge and opens its right-side sess
   assert.ok(disposed.includes('locale'));
 });
 
+test('template selector pages the real catalog and filters by capability without exposing oracle fields', async () => {
+  const handler = createWorkbenchHandler({});
+  const query = async (params) => {
+    const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({view: 'catalog', ...params})));
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const first = await query({});
+  const second = await query({page: '2'});
+  assert.equal(first.task_count, 89);
+  assert.equal(first.template_count, 267);
+  assert.equal(first.items.length, 12);
+  assert.notEqual(first.items[0].id, second.items[0].id);
+  const selected = await query({q: 'C01-T01', capability: 'N01'});
+  assert.equal(selected.total, 1);
+  assert.equal(selected.items[0].id, 'C01-T01');
+  assert.ok(!('effective_oracle' in selected.items[0]));
+  const mismatch = await query({q: 'C01-T01', capability: 'N27'});
+  assert.equal(mismatch.total, 0);
+});
+

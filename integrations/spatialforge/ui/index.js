@@ -3,6 +3,7 @@ import {createReadStream} from 'node:fs';
 import {createInterface} from 'node:readline';
 import {DatabaseSync} from 'node:sqlite';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import z from '@deepseek-ai/schemastery';
 
 export const name = 'benchforge-spatialforge-ui';
@@ -11,6 +12,7 @@ export const Config = z.object({
   workspacePaths: z.array(z.string()).default([]),
   maxRuns: z.natural().min(1).max(200).default(60),
   maxArtifacts: z.natural().min(1).max(1000).default(300),
+  uiRevision: z.string().default('five-step-v1'),
 });
 
 const STATUSES = ['draft', 'candidate', 'verified', 'rejected', 'superseded'];
@@ -26,6 +28,27 @@ class ApiError extends Error {
 const pick = (row, fields) => Object.fromEntries(fields.filter((key) => key in row).map((key) => [key, row[key]]));
 const token = (root, relative) => Buffer.from(JSON.stringify([root.id, relative])).toString('base64url');
 const counts = () => Object.fromEntries(STATUSES.map((key) => [key, 0]));
+
+async function templateCatalog(url) {
+  const file = fileURLToPath(new URL('../../../src/benchforge_core/pipelines/task_templates.json', import.meta.url));
+  const catalog = await readJson(file);
+  const query = (url.searchParams.get('q') || '').trim().toLocaleLowerCase();
+  const capability = url.searchParams.get('capability') || '';
+  const page = integer(url.searchParams.get('page'), 1, 1000000);
+  const size = integer(url.searchParams.get('page_size'), 12, 48);
+  const templates = catalog.tasks.flatMap((task) => task.templates.map((template) => ({
+    ...pick(template, ['id', 'task_id', 'title', 'prompt_template', 'measurement_variant', 'output_kind',
+      'effective_measurement_conditions', 'status']),
+    task_name: task.name, family: task.family,
+    capabilities: task.catalog_capability_links.map((node) => node.id),
+  })));
+  const filtered = templates.filter((row) => (!capability || row.capabilities.includes(capability)) &&
+    (!query || [row.id, row.title, row.task_name, row.family, ...row.capabilities].join(' ').toLocaleLowerCase().includes(query)));
+  return {source: catalog.meta.version, task_count: catalog.tasks.length, template_count: templates.length,
+    capabilities: [...new Set(templates.flatMap((row) => row.capabilities))].sort(),
+    total: filtered.length, page, pages: Math.max(1, Math.ceil(filtered.length / size)),
+    items: filtered.slice((page - 1) * size, page * size), execution_status: 'catalog_design; check adapters before production'};
+}
 
 async function readJson(file) {
   try { return JSON.parse(await fs.readFile(file, 'utf8')); }
@@ -265,7 +288,8 @@ export function createWorkbenchHandler(config, registered = () => []) {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       let value;
-      if (view === 'summary') value = await discover(roots, limits, request.signal);
+      if (view === 'catalog') value = await templateCatalog(url);
+      else if (view === 'summary') value = await discover(roots, limits, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal);
       else if (view === 'dataset') value = await readDataset(url, roots, request.signal);
       else if (view === 'media') return await readMedia(url, roots, request.signal);
