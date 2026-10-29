@@ -4,7 +4,10 @@ node_modules/
 .venv/
 build/
 dist/
-config.local.json
+# Local configuration and secrets live in config/; only *.example.json is tracked.
+config/*.local.json
+config/*.local.yml
+config/*.env
 *.local.json
 *.local.yml
 runs/

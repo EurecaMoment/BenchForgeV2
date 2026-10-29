@@ -1,6 +1,5 @@
 """Batch access to the original VLM→YOLOE→SAM3→DA3 annotation chain."""
 from __future__ import annotations
-import os
 import subprocess
 import urllib.parse
 from pathlib import Path
@@ -19,8 +18,8 @@ def annotate(args,directory,config):
     # URLs are configured on every original client, including non-default schemes/ports.
     for name,prefix in [('sam3','SAM3'),('yoloe','YOLOE'),('depthanything3','DEPTHANYTHING3')]:
         env[prefix+'_BASE_URL']=services[name]['url']
-    if services['llm_local'].get('token_env'):
-        env['BENCHFORGE_ANNOTATION_TOKEN']=os.environ[services['llm_local']['token_env']]
+    if services['llm_local'].get('token'):
+        env['BENCHFORGE_ANNOTATION_TOKEN']=services['llm_local']['token']
     records=rows(args['input']);output=[];review=[]
     script=VENDOR/'annotation-tool/default-annotation/run_image_to_semantic_depth.py'
     for i,row in enumerate(records):

@@ -1,6 +1,5 @@
 """Persisted recipe execution; durable remote submissions and local artifacts resume."""
 import json
-import os
 import urllib.request
 from pathlib import Path
 from ..runtime import read, write
@@ -44,7 +43,9 @@ def bind(value, environment):
 def service_call(route, arguments, config_path):
     config = read(config_path)
     url = config.get('service_url') or f"http://127.0.0.1:{config.get('port', 3841)}"
-    token = config.get('operator_token') or os.environ[config.get('operator_token_env', 'SPATIALFORGE_OPERATOR_TOKEN')]
+    token = config.get('operator_token')
+    if not token:
+        raise ValueError('Configure operator_token in the SpatialForge service configuration')
     request = urllib.request.Request(url.rstrip('/')+route, data=json.dumps(arguments).encode(), method='POST',
                                      headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
     with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=60) as response:

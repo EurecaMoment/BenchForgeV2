@@ -3,7 +3,6 @@ import path from 'node:path';
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
-import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
 // An operator-issued revision refreshes this plugin and its local helpers while
 // the official Harness keeps already-bound agent revisions alive.
 const revision = new URL(import.meta.url).search;
@@ -24,11 +23,8 @@ export const Config=z.object({
 });
 export async function apply(ctx, config) {
   const cfg = JSON.parse(await fs.promises.readFile(config.serviceConfig, 'utf8'));
-  const tokenName = cfg.operator_token_env || 'SPATIALFORGE_OPERATOR_TOKEN';
-  // Keep the existing launch precedence explicit, including trusted project
-  // and user defaults. Later process.env mutation cannot change this token.
-  const token = launchEnvironmentOf(ctx).getFrom(tokenName, ['process','project-env','user-env'])?.value;
-  if (!token) throw new Error(`Set ${tokenName} before starting the SpatialForge mode`);
+  const token = cfg.operator_token;
+  if (!token) throw new Error(`Configure operator_token in ${config.serviceConfig}`);
   const serviceUrl = (cfg.service_url || `http://127.0.0.1:${cfg.port || 3841}`).replace(/\/$/, '');
 const output=objectOutput;
 async function api(path,args,signal){

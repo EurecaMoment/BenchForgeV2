@@ -25,7 +25,7 @@ class HotUpdate(unittest.TestCase):
         ]}]
         original = deepcopy(profile)
         result = hot.update_profile(profile, ROOT, ROOT / ".deployment/python-development",
-                                    ROOT / ".deployment/model-services.json", ROOT / ".deployment/spatialforge.local.json", "123")
+                                    ROOT / "config/benchforge.local.json", ROOT / "config/spatialforge.local.json", "123")
         self.assertEqual(profile, original)
         self.assertEqual(result[0]["insert"][:3], original[0]["insert"][:3])
         plugins = result[0]["insert"][3]["config"]["plugins"]

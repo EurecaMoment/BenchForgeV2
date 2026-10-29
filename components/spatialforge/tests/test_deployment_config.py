@@ -21,11 +21,11 @@ class DeploymentConfig(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Configure models.flux'):
                 config.model('flux')
 
-    def test_private_config_and_environment_credentials(self):
-        with tempfile.TemporaryDirectory() as folder, patch.dict(os.environ, {'SF_OPERATOR':'operator','SF_WORKER':'worker'}, clear=True):
+    def test_private_config_credentials_and_derived_environment(self):
+        with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
             path = root / 'server.json'
-            path.write_text(json.dumps({'operator_token_env':'SF_OPERATOR','worker_token_env':'SF_WORKER',
+            path.write_text(json.dumps({'operator_token':'operator','worker_token':'worker',
                                         'artifacts':'artifacts','harness':'harness','models_config':'models.json',
                                         'model_id':'my-vision-model','gpu_candidates':'2'}))
             config = load_service_config(path)

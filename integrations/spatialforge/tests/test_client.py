@@ -25,10 +25,9 @@ class ClientTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever)
         thread.start()
         try:
-            with patch.dict('os.environ', {'SF_TEST_TOKEN': 'test-only'}):
-                config = {'service_url': f'http://127.0.0.1:{server.server_port}/', 'operator_token_env': 'SF_TEST_TOKEN'}
-                self.assertEqual(client.status(config), {'state': 'PENDING'})
-                self.assertEqual(client.status(config, 'sf_example'), {'state': 'PENDING'})
+            config = {'service_url': f'http://127.0.0.1:{server.server_port}/', 'operator_token': 'test-only'}
+            self.assertEqual(client.status(config), {'state': 'PENDING'})
+            self.assertEqual(client.status(config, 'sf_example'), {'state': 'PENDING'})
             self.assertEqual(requests, [('/catalog', 'Bearer test-only', {}), ('/observe', 'Bearer test-only', {'run_id': 'sf_example'})])
         finally:
             server.shutdown()
@@ -37,5 +36,5 @@ class ClientTests(unittest.TestCase):
 
     def test_missing_credentials_does_not_claim_offline_success(self):
         with patch.dict('os.environ', {}, clear=True):
-            with self.assertRaisesRegex(ValueError, 'SPATIALFORGE_OPERATOR_TOKEN'):
+            with self.assertRaisesRegex(ValueError, 'operator_token'):
                 client.status({'service_url': 'http://127.0.0.1:1'})

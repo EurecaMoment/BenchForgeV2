@@ -13,13 +13,13 @@ Run DSH on the SpatialForge service machine: returned evidence paths are local
 to that machine. Configure the service's existing Windows desktop worker and use
 its single Isaac queue. This client never starts another worker or simulator.
 
-Copy `config.example.json` to a private `spatialforge.local.json`. Set
-`SPATIALFORGE_OPERATOR_TOKEN` in the environment used to launch DSH, then:
+Copy `config/spatialforge.example.json` to a private `config/spatialforge.local.json` and put the
+service `operator_token` in it, then:
 
 ```bash
-python integrations/spatialforge/cli.py status --config spatialforge.local.json
-python integrations/spatialforge/cli.py status --config spatialforge.local.json --run-id sf_YOUR_RUN
-python benchforge.py setup --spatialforge-config spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json --run-id sf_YOUR_RUN
+python benchforge.py setup --spatialforge-config config/spatialforge.local.json
 python benchforge.py start
 ```
 

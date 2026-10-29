@@ -2,8 +2,8 @@
 
 The core and visual production example run without GPUs. Configure only the
 backends needed by your benchmark; keep SDKs in separate environments. Copy
-`config.example.json` to `config.local.json`. Secrets belong in environment
-variables named by `token_env`, not in committed JSON.
+`config/benchforge.example.json` to `config/benchforge.local.json`. Tokens belong in that
+gitignored local file as `token`, never in the committed example.
 
 | Component | Upstream | Configuration |
 |---|---|---|

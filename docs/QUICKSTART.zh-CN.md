@@ -31,8 +31,8 @@ python examples/production_demo.py --workspace runs/production
 
 ## 接上已部署 Qwen 和数据
 
-复制 `config.example.json` 为 `config.local.json`，填写 `models.qwen` 的 URL、模型名
-以及保存 API key 的环境变量名。DSH 对话模型和 benchmark 答题模型分开配置，可以
+复制 `config/benchforge.example.json` 为 `config/benchforge.local.json`，填写 `models.qwen` 的 URL、模型名
+以及 API key（`token` 字段，留空表示不发送鉴权头）。DSH 对话模型和 benchmark 答题模型分开配置，可以
 使用同一个已部署 Qwen。只配置任务需要的标注服务或仿真 Python 环境。
 
 在 BenchForge 模式输入：

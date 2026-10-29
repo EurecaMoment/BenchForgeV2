@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { createLaunchEnvironmentSnapshot } from '@deepseek-ai/dsh-launch-environment';
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools';
 import { apply, Config } from '../plugin/tools.mjs';
 
@@ -19,18 +18,13 @@ async function fixture(t,{saveImage=async()=>({id:'fixture-image'})}={}){
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});});
   const serviceConfig=path.join(root,'service.json');
-  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token_env:'SPATIALFORGE_TEST_TOKEN'}));
-  const snapshot=createLaunchEnvironmentSnapshot([
-    {source:'process',values:{}},
-    {source:'project-env',values:{SPATIALFORGE_TEST_TOKEN:'snapshot-fixture-token'}},
-    {source:'user-env',values:{SPATIALFORGE_TEST_TOKEN:'lower-priority-fixture'}},
-  ]);
+  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token:'test-token'}));
   const tools=new Map();
   const ctx={
     tools:{register:tool=>tools.set(tool.name,tool)},on(){},
     llm:{resolveModelInfo:async()=>({inputModalities:['image']})},
     attachments:{saveImage},
-    get(name){return name==='launchEnvironment'?snapshot:this[name];},
+    get(name){return this[name];},
   };
   await apply(ctx,Config({serviceConfig,dshRoot:'/ignored/legacy/source/path'}));
   const exec=(signal=new AbortController().signal)=>({signal,callId:'fixture-call',agent:{session:{id:'fixture-session',requestHeader:()=>({config:{provider:'fixture',model:'fixture'}})},options:{}}});
@@ -44,10 +38,7 @@ test('Config rejects missing or mistyped service config and accepts the legacy p
   assert.equal(f.tools.size,21);
 });
 
-test('HTTP routing uses the immutable allowed launch snapshot and stable output families',async(t)=>{
-  const previous=process.env.SPATIALFORGE_TEST_TOKEN;
-  process.env.SPATIALFORGE_TEST_TOKEN='mutable-process-fixture';
-  t.after(()=>{if(previous===undefined)delete process.env.SPATIALFORGE_TEST_TOKEN;else process.env.SPATIALFORGE_TEST_TOKEN=previous;});
+test('HTTP routing uses the configured operator token and stable output families',async(t)=>{
   const f=await fixture(t);
   const cases=[
     ['spatialforge_run','/start',{intents:[{name:'fixture',description:'fixture',split:'train'}]},{run_id:'r',state:'accepted',program_handoff:['planner']}],
@@ -65,7 +56,7 @@ test('HTTP routing uses the immutable allowed launch snapshot and stable output 
     f.replies.set(url,response);
     const tool=f.tools.get(name),value=await tool.execute(args,f.exec());
     assert.deepEqual(validateJsonSchemaValue(tool.output.schema,value,''),[],name);
-    assert.equal(f.requests.at(-1).authorization,'Bearer snapshot-fixture-token');
+    assert.equal(f.requests.at(-1).authorization,'Bearer test-token');
     assert.equal(tool.output.schema.additionalProperties,true);
     if(response.cursor)assert.equal(value.cursor,undefined);
   }

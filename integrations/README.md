@@ -43,8 +43,8 @@ It never edits DSH source or official presets, restarts DSH, or starts model/GPU
 services. Already-bound sessions keep their previous revision; a new SpatialForge
 session uses the update. To use code already deployed, omit `--pull`.
 
-The private files `.deployment/model-services.json`,
-`.deployment/spatialforge.local.json` and `.deployment/python-development`
+The private files `config/benchforge.local.json`,
+`config/spatialforge.local.json` and `.deployment/python-development`
 must already exist. See [independent model clients](../docs/MODEL_SERVICES.md)
 for endpoint configuration and the eight callable interfaces.
 
@@ -73,8 +73,8 @@ dsh plugin --profile web add ./integrations
 dsh --profile web --dump-config
 ```
 
-The portable bundle expects `python3`, `config.local.json` and
-`spatialforge.local.json` in the DSH launch working directory. Copy the appropriate
+The portable bundle expects `python3`, `config/benchforge.local.json` and
+`config/spatialforge.local.json` relative to the DSH launch working directory. Copy the appropriate
 example configs and use the existing service endpoint; credentials belong in
 the DSH launch environment, not this package. To select another Python
 environment or absolute config paths, generate a deployment overlay:

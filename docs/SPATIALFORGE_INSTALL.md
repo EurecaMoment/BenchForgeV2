@@ -23,7 +23,7 @@ Python 需要 venv/ensurepip。Debian/Ubuntu 可安装与所用 Python 版本匹
 API 只绑定本机 3841；端口冲突时首次初始化使用 `--port 3856 --db-port 55546`。
 数据库使用独立 Compose 项目和卷。不要让第二个服务连接已有生产数据库。
 
-配置在 `.spatialforge/server.local.json`。可改为现有 **专用 PostgreSQL** 的
+配置在 `config/spatialforge-server.local.json`。可改为现有 **专用 PostgreSQL** 的
 `database_url`；SQLite 不支持本服务的任务和设备锁。`gpu_candidates` 是获准使用的
 GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 GPU 加入候选列表。
 
@@ -39,7 +39,7 @@ GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 G
 模型与软件/资产按各自条款获取，不随本仓库打包。
 
 在 Windows 克隆同一个仓库到短路径，例如 `D:\BenchForgeV2`，安装普通 Python 3.11。
-把服务机生成的 `.spatialforge/worker.local.json` 安全复制到 Windows 仓库根目录，填写：
+把服务机生成的 `config/worker.local.json` 安全复制到 Windows 仓库的 `config/` 目录，填写：
 
 ```json
 {
@@ -61,7 +61,7 @@ GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 G
 
 ```powershell
 cd D:\BenchForgeV2
-python spatialforge_app.py worker --config worker.local.json
+python spatialforge_app.py worker --config config/worker.local.json
 ```
 
 worker 保留 Windows 单实例互斥锁，按任务用 Isaac 自带 Python 启动执行器。
@@ -113,13 +113,13 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 ## 4. 配置扩散、分割、生成资产和深度
 
 按 [模型安装](SPATIALFORGE_MODELS.md) 安装需要的模型，编辑
-`.spatialforge/models.local.json` 中的解释器、权重、源码路径。
+`config/models.local.json` 中的解释器、权重、源码路径。
 每种工具只需要自己的配置；采集及已有网格导入无需先安装 SAM3D 或全部模型。
 `models.flux` 是 FLUX.2 Klein 图像生成模型；这里不调用旧 Pic2Sim 的图像剥离流水线。
 布局参考图也使用 `models.flux.path`，相对路径按模型配置文件所在目录解析。
 `SPATIALFORGE_DIFFUSION_MODEL` 可显式覆盖权重路径；参考图回执记录实际使用的模型名称。
 
-需要服务端自动规划和视觉修正时，在 `server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
+需要服务端自动规划和视觉修正时，在 `config/spatialforge-server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
 
 ```json
 {
@@ -170,7 +170,7 @@ python3.11 spatialforge_app.py dsh-start
 
 ```bash
 .spatialforge/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
-  --config .spatialforge/server.local.json --output runs/service-roundtrip
+  --config config/spatialforge-server.local.json --output runs/service-roundtrip
 ```
 
 它实际测试 HTTP 认证、PostgreSQL、沙箱写文件、重复请求、重启续接和取消，

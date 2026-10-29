@@ -45,8 +45,8 @@ class PresetBuilderTest(unittest.TestCase):
             if row['id'] in ('persistent-bash','persistent-pwsh'):
                 row['config'].update(backendType='shell',maxOutputChars=8192)
         before=copy.deepcopy(sources)
-        result=builder.build(sources,None,'python3',Path('config.local.json'),
-                             Path('spatialforge.local.json'),package_imports=True)
+        result=builder.build(sources,None,'python3',Path('config/benchforge.local.json'),
+                             Path('config/spatialforge.local.json'),package_imports=True)
         self.assertEqual(sources,before)
         row=result[0]['insert'][0]
         self.assertEqual(row['id'],'preset-benchforgev2')

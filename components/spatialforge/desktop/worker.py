@@ -415,11 +415,10 @@ def run_job(job):
 def main():
     global config,state_root
     parser=argparse.ArgumentParser()
-    parser.add_argument('--config',type=Path,default=root/'worker.local.json')
+    parser.add_argument('--config',type=Path,default=root/'config/worker.local.json')
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
     config=json.loads(args.config.read_text(encoding='utf8'))
-    if 'worker_token_env' in config:config['worker_token']=os.environ[config['worker_token_env']]
     os.environ['SPATIALFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
     state_root=Path(config['runs']);state_root.mkdir(parents=True,exist_ok=True)
     # This supervisor mutex is distinct from durable ownership of an already running Kit.

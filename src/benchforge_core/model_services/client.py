@@ -16,15 +16,15 @@ class ModelUnavailableError(RuntimeError):
 class ModelService:
     def __init__(self, config=None):
         self.config = config or {}
-        self.url = (self.config.get("url") or os.environ.get("BENCHFORGE_INFERENCE_URL", "")).rstrip("/")
+        self.url = (self.config.get("url") or "").rstrip("/")
         if not self.url:
-            raise ValueError("Configure model_services.url or BENCHFORGE_INFERENCE_URL")
+            raise ValueError("Configure model_services.url in config/benchforge.local.json")
         self.opener = build_opener(ProxyHandler({}))
 
     def rpc(self, route, payload=None, method=None, *, base_url=None, timeout_seconds=None):
         headers = {"Content-Type": "application/json"}
-        if self.config.get("token_env"):
-            headers["Authorization"] = "Bearer " + os.environ[self.config["token_env"]]
+        if self.config.get("token"):
+            headers["Authorization"] = "Bearer " + self.config["token"]
         body = None if payload is None else json.dumps(payload).encode()
         request = Request((base_url or self.url) + route, data=body, headers=headers, method=method)
         with self.opener.open(request, timeout=timeout_seconds or self.config.get("http_timeout_seconds", 30)) as response:

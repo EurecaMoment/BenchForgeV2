@@ -100,8 +100,9 @@ BenchForgeV2 不包含其部署/启动实现。检查成功表示当前可受理
 显存检查不预留 GPU；最终分配及运行失败仍以推理服务返回的真实任务状态为准。
 如果接口离线、工具缺失、权重路径错误或 GPU 不够，DSH 必须先解决该原因再继续依赖它的步骤。
 
-复制根目录的 `model-services.example.json` 到
-`.deployment/model-services.json`，设置 `model_services.url`。
+模型服务配置是统一配置文件 `config/benchforge.local.json` 的 `model_services` 段
+（从 `config/benchforge.example.json` 复制），设置 `model_services.url`。
+需要独立文件时，也可用 `BENCHFORGE_MODEL_SERVICES_CONFIG` 指向任意含 `model_services` 的 JSON。
 设置 `model_services.availability_url` 指向部署方的可用性接口；省略时使用同一个推理 API。
 若服务没有逐工具可用性接口，客户端会拒绝提交，不降级为通用在线检查。
 可在 `model_services.tools.<服务端tool>.request_defaults` 保存该工具的
@@ -113,11 +114,11 @@ BenchForgeV2 不包含其部署/启动实现。检查成功表示当前可受理
 ```bash
 export PYTHONPATH=/home/maqiang/GitHub/BenchForgeV2/src
 python -m benchforge_core.model_services.lama \
-  --config /home/maqiang/GitHub/BenchForgeV2/.deployment/model-services.json \
+  --config /home/maqiang/GitHub/BenchForgeV2/config/benchforge.local.json \
   --action submit --input /shared/lama-request.json --work /shared/lama-job
 
 python -m benchforge_core.model_services.lama \
-  --config /home/maqiang/GitHub/BenchForgeV2/.deployment/model-services.json \
+  --config /home/maqiang/GitHub/BenchForgeV2/config/benchforge.local.json \
   --action result --job-id 返回的任务ID
 ```
 
@@ -165,8 +166,8 @@ cd /home/maqiang/GitHub/BenchForgeV2
 本次 FIT 部署的必需文件：
 
 - `.deployment/python-development`：复用已有 Python 环境，业务导入路径指向仓库 src。
-- `.deployment/model-services.json`：外部推理 API 及操作员请求默认值。
-- `.deployment/spatialforge.local.json`：既有 SpatialForge 服务的客户端配置。
+- `config/benchforge.local.json`：外部推理 API 及操作员请求默认值（`model_services` 段）。
+- `config/spatialforge.local.json`：既有 SpatialForge 服务的客户端配置。
 
 脚本通过 DSH 官方 profile 热加载更新定义，并使用带 revision 的插件 URL
 重新导入 SpatialForge 本地辅助模块。不会修改

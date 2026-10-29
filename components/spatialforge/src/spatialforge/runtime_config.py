@@ -31,12 +31,11 @@ def load_service_config(path):
         if key in config:
             config[key] = str((path.parent / Path(config[key]).expanduser()).resolve())
     for name in ('operator', 'worker'):
-        if name + '_token_env' in config:
-            config[name + '_token'] = os.environ[config[name + '_token_env']]
         if not config[name + '_token']:
             raise ValueError(f'{name}_token must not be empty')
-    if 'database_url_env' in config:
-        config['database_url'] = os.environ[config['database_url_env']]
+    # One-way derivation only. The JSON file is the sole source of truth; these
+    # environment variables are internal transport for modules that read them,
+    # and nothing reads them back as a configuration input.
     for key, env in [('models_config', 'SPATIALFORGE_MODELS_CONFIG'),
                      ('task_root', 'SPATIALFORGE_TASK_ROOT'),
                      ('gpu_candidates', 'SPATIALFORGE_GPU_CANDIDATES'),
