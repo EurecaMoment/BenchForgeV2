@@ -1,61 +1,100 @@
 # BenchForgeV2
 
-空间能力图谱、27 项能力模板、程序真值数据、课程训练和实时监控见 [空间学习指南](docs/spatial-learning.md)。可用 `examples/spatial_learning_demo.py` 在 CPU 上验证小 Transformer 的实际训练、开发评分和断点续训。
+BenchForgeV2 is the maintained repository for the second-generation DSH mode,
+SpatialForge integrations, composable benchmark pipelines, and spatial-learning
+tools. New integration work belongs here; the official `deepseek-harness` source
+is an external dependency and is not modified by this repository.
 
-BenchForge 的 DSH 应用、基准构建算法与 SpatialForge 场景生产工具集成。
-八个独立模型 API 客户端及 SpatialForge 运行时热更新见 [服务调用与热更新](docs/MODEL_SERVICES.md)。
-本仓库包含可安装的 Python 核心、DSH 启动器、预设生成器、离线示例及
-SpatialForge 服务端、PostgreSQL 数据引擎、生成 worker、Windows Isaac 执行器、
-工具注册和交付复审实现。
+## Modes and deployment
 
-## 启动应用
+The DSH preset names identify separate modes in the same deployment:
 
-安装 Python 3.10+、Git 和 Node.js 22.19+ 或 24+：
+| Mode | Purpose | DSH profile binding |
+| --- | --- | --- |
+| `BenchForge` | Retained first-generation benchmark mode | Legacy mode |
+| `BenchForgev2` | Second-generation published mode | `.deployment/published` on FIT |
+| `SpatialForge` | Second-generation development mode with scene tools | Repository checkout on FIT |
+
+The maintained FIT checkout is `/home/maqiang/GitHub/BenchForgeV2`, branch
+`SpatialForge`; the public repository is
+[EurecaMoment/BenchForgeV2](https://github.com/EurecaMoment/BenchForgeV2).
+The active production simulation route is DSH on FIT → the FIT SpatialForge
+service and queue → the external `a800-remote-fit` dispatcher → FIT's local
+reverse-SSH endpoint `127.0.0.1:18766` → `thunlp-node1` running Isaac Sim 6.2.0
+on A800 → capture and evidence returned to FIT. `desktop-isaac` is a retained
+database lease name; it does not identify the active remote worker. The A800
+dispatcher and its server-side Isaac deployment are outside this repository.
+
+```mermaid
+flowchart LR
+  DSH[DSH on FIT] -->|BenchForgev2 / SpatialForge preset| Plugin[BenchForgeV2 plugins]
+  Plugin -->|benchmark, pipeline, learning tools| Core[BenchForgeV2 Python package]
+  Plugin -->|scene tools| SF[FIT SpatialForge service and queue]
+  SF --> Dispatcher[External a800-remote-fit dispatcher]
+  Dispatcher -->|FIT 127.0.0.1:18766 reverse SSH| Isaac[thunlp-node1 A800 / Isaac Sim 6.2.0]
+  Isaac -->|capture and evidence| SF
+  Plugin -->|independent model API clients| Models[External model services]
+  Desktop[Optional self-hosted Windows Isaac worker] --> SF
+```
+
+The Windows worker is a supported self-hosted deployment option, not the active
+FIT production route. External model services, weights, simulator installations,
+assets, credentials, and production artifacts remain in their own deployment
+locations. The lightweight clients in this repository do not start or migrate
+those services.
+
+## What is included
+
+- **Composable pipelines:** retrieve 89 user-defined tasks and 267 exact
+  measurement-template variants from the 出题模板; interpret an objective into
+  explicit template selections; run, resume, inspect and deterministically
+  evaluate pipeline artifacts. Only 17 variants currently have built-in
+  program generators. Other variants require official, program, or simulation
+  evidence and task-specific adapters before they become production data.
+- **Spatial learning:** a separate graph of 27 capability nodes, each with 120
+  template specifications, plus program-grounded dataset generation, curriculum
+  training, experiments, checkpointing and live training monitoring. See
+  [Spatial learning](docs/spatial-learning.md).
+- **SpatialForge:** reference/layout tools, scene programs, assets, model-service
+  clients, capture/evidence review and data export. See the
+  [SpatialForge integration guide](integrations/spatialforge/README.md).
+- **DSH integration:** installable Node plugin bundles and preset builders. DSH
+  source, external model startup code, model weights and simulator deployment
+  are not vendored as BenchForgeV2 runtime services.
+
+The capability graph and the 出题模板 catalog are different resources: the
+27-node graph is not a relabeling of the 89-task/267-template catalog. Generated
+records keep public questions separate from authority data; model predictions
+do not become ground truth. Ground truth comes from official sources, task
+programs or simulation.
+
+## Local examples
+
+Python 3.10+ can run the offline benchmark example without a model API or GPU:
 
 ```bash
 git clone https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
-python benchforge.py setup
-python benchforge.py start
+python benchforge.py demo
 ```
 
-setup 下载固定版本的 DSH，安装依赖、构建前端与运行时；需要网络。
-启动后在 DSH 页面配置自己的模型供应商，新建会话选择 **BenchForge**。
-已构建的 DSH 可通过 `setup --dsh-root /path/to/deepseek-harness` 复用。
-配置位于本仓库，官方 DSH 预设与其他安装不会被改写。
-Debian/Ubuntu 需安装与所选 Python 对应的 `python3-venv` 包。
-
-## 无模型运行示例
+For a programmatic production example:
 
 ```bash
-python benchforge.py demo
 python -m pip install -e ".[production,research]"
 python examples/production_demo.py --workspace runs/production
 ```
 
-Windows 请使用较短的工作目录（例如 `C:\\bfv2`）；深层目录可能触发系统路径长度限制。
-
-第一个命令不需要安装、网络、API 密钥或 GPU，生成公开题包、独立答案包和
-真实程序评分。第二个示例画出四张测试图，并实际执行设计、编译、生成、筛选、
-评分控制及打包。这些是程序示例，不是 Isaac 场景或照片还原验收。
-
-## 从零启动 SpatialForge
-
-Linux 服务机安装 Python 3.11、Docker Compose、bubblewrap，执行：
+This draws and scores a small set of controlled examples. It is not an Isaac
+scene-quality, model-training, or benchmark-approval result. The CPU learning
+demo trains only a small controlled Transformer task:
 
 ```bash
-python3.11 spatialforge_app.py setup
-python3.11 spatialforge_app.py init
-python3.11 spatialforge_app.py db
-python3.11 spatialforge_app.py serve
+python examples/spatial_learning_demo.py --workspace runs/cpu-training
 ```
 
-Windows 桌面安装 Isaac Sim，从同一仓库运行 worker。完成连接后，
-`examples/push_box_scene.json` 可直接渲染、执行真实外力推动并导出场景。
-完整的桌面配置、扩散模型、DSH 启动与产物位置见
-[逐步安装说明](docs/SPATIALFORGE_INSTALL.md) 和 [模型安装](docs/SPATIALFORGE_MODELS.md)。
+## DSH setup
 
-## 接入已有 SpatialForge
 
 已有 SpatialForge 后端和桌面 worker 时，复制
 `config/spatialforge.example.json` 为 `config/spatialforge.local.json`，
@@ -64,15 +103,23 @@ Windows 桌面安装 Isaac Sim，从同一仓库运行 worker。完成连接后�
 ```bash
 python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
 python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+=======
+The simple launcher below builds a private DSH runtime and installs the retained
+first-generation `BenchForge` mode for local use. It does not reproduce FIT's
+current SpatialForge/A800 deployment:
+
+```bash
+python benchforge.py setup
+
 python benchforge.py start
 ```
 
-选择 **BenchForgeV2**，即可在同一会话调用扩散参考、SAM3/SAM3D、资产导入、
-SceneProgram、Isaac 采集、证据查看与复审工具。DSH 和 SpatialForge 应部署在
-同一服务机，证据图片使用服务机文件路径；Windows 桌面 worker 负责唯一 Isaac 实例。
+To attach the second-generation bundle to an existing DSH profile, follow
+[integration installation and preset selection](integrations/README.md). To run
+the bundled SpatialForge server and a self-hosted desktop worker, use the
+[self-hosted installation guide](docs/SPATIALFORGE_INSTALL.md); it is an
+alternative deployment, not a migration recipe for FIT's A800 worker.
 
-接入说明见 [SpatialForge](integrations/spatialforge/README.md)。
-后端组件位于 [components](components/README.md)，运行配置均由用户本地生成。
 
 ## 全流程启动（数据库 + SpatialForge + DSH）
 
@@ -221,20 +268,20 @@ docker compose -p benchforgev2-spatialforge --env-file config/database.env \
 - `config/benchforge.local.yml` 是生成物，不要手改；改配置后重新执行第 5 步。
 
 ## 验证与文档
+=======
+## Tests and documentation
 
 ```bash
 python -m unittest discover -s tests -v
 python integrations/spatialforge/smoke.py
 ```
 
-SpatialForge smoke 执行真实 HTTP 客户端及交付复审代码的回归，覆盖实际 POST
-路由、认证、失败交互、不可见演示、图片反馈和损坏引用；不依靠手写的成功布尔值。
-不调用目标模型 API，也不启动 Isaac。
+The SpatialForge smoke test checks its HTTP request contract and delivery-review
+logic without starting Isaac or calling a target-model API. A passing local test
+does not establish current remote service health.
 
-- [本次发布修复](docs/PUBLICATION_REPAIR.md)
-- [生产工具](docs/PRODUCTION.md) · [后端配置](docs/BACKENDS.md)
-- [BenchForge 上游历史验收](docs/VALIDATION.md)（不代表 V2 的新 GPU 验收）
-- [原始能力映射](docs/SKILL_PARITY.md)
-
-GT 来自官方标注、程序或仿真；模型预测不会成为 GT。公开问题与权威答案分开。
-模型权重、Isaac 软件/资产和密钥需要按其授权与安装要求另行提供。
+- [Pipeline catalog and evidence requirements](docs/pipelines.md)
+- [Spatial learning, training and monitoring](docs/spatial-learning.md)
+- [Model-service client boundary](docs/MODEL_SERVICES.md)
+- [Self-hosted SpatialForge install](docs/SPATIALFORGE_INSTALL.md)
+- [Validation scope and history](docs/VALIDATION.md)

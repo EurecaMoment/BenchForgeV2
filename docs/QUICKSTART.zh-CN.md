@@ -1,5 +1,10 @@
 # 下载后快速使用
 
+本仓库是 BenchForgeV2 的统一代码仓库。DSH 官方源码、模型权重、模型启动器、
+Isaac 安装和生产服务仍由各自部署维护，不随仓库复制。FIT 当前 SpatialForge
+场景链路为 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 →
+thunlp-node1 Isaac Sim 6.2.0/A800`；本页的 Windows worker 说明只适用于自托管部署。
+
 准备 Python 3.10+、Git、Node.js 22.19+ 或 24+：
 
 ```bash

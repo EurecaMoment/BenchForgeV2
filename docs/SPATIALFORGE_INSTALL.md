@@ -1,9 +1,13 @@
 # 从仓库部署 SpatialForge
 
-服务、持久任务队列、生成工具、DSH 插件与桌面执行器均在本仓库。
+服务、持久任务队列、生成工具、DSH 插件与桌面执行器均在本仓库；FIT 当前
+生产使用的 A800 dispatcher 和远端 Isaac 安装不在本仓库。
 服务机运行 Linux/Python 3.11、Docker Compose 和 Node.js 22.19+；Windows 桌面运行
 Isaac Sim。DSH 与服务放在同一 Linux 用户下，便于直接查看产物。
-桌面只运行一个 worker/Isaac 实例。生成模型按任务临时加载，不停止机器上的其他服务。
+本指南描述自托管桌面部署，桌面只运行一个 worker/Isaac 实例。FIT 当前生产链路
+是 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
+Isaac Sim 6.2.0/A800`；不要把本指南的 Windows worker 说明当作 FIT 现行路由。
+生成模型按任务临时加载，不停止机器上的其他服务。
 
 ## 1. 安装服务和独立数据库
 
