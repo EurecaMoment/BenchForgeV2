@@ -8,6 +8,8 @@ dist/
 config/*.local.json
 config/*.local.yml
 config/*.env
+# 例外：dsh.env 只保存本机模型 key，允许纳入版本库。
+!config/dsh.env
 *.local.json
 *.local.yml
 runs/
