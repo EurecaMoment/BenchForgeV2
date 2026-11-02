@@ -131,6 +131,18 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 ## 针对性验证
 
+当前对话区默认展开执行反馈：提交时立即显示本次要求，随后显示官方
+`chat.legacy.partial` 的流式可见正文，以及工具准备、执行和实际返回记录。
+反馈按最近的人类要求关联，旧轮回复和错误不混入新要求；不展示 reasoning。
+工具的后台标准输出没有通用 conversation 流接口，此处展示工具生命周期与返回，
+场景和 pipeline 的长期进度继续由五阶段生产回执更新。
+
+同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 SpatialForge 主视图，
+明确切换环境或会话后才移除；输入表单本身不注册或卸载主槽。
+
+- `node --test integrations/spatialforge/tests/test_workbench_feedback.mjs`：
+  流式正文、当前要求、提交回显和 PTC 工具状态的定向验证。
+
 - `node --test integrations/spatialforge/tests/test_workbench.mjs`：
   真实 pipeline 生成的两个数据集、分页/检索/版本隔离、公开媒体、答案隔离、
   candidate/verified 边界、只读数据库、非法路径和官方 slot 注册生命周期。

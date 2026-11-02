@@ -334,7 +334,7 @@ test('production workbench replaces only the active SpatialForge main conversati
       set: (next) => {value = next; for (const fn of [...listeners]) fn();}};
   };
   const preset = observable('standard'), slots = new Map(), seats = [], effects = [];
-  const current = observable({keyedHooks: {projection: () => preset}});
+  const current = observable({key: 'fresh-sf', keyedHooks: {projection: () => preset}});
   let removed = 0;
   plugin.apply({
     locale: {register: (_ns, dictionaries) => {
@@ -354,9 +354,25 @@ test('production workbench replaces only the active SpatialForge main conversati
   assert.equal(typeof main, 'function');
   assert.equal(main({sessionId: 'fresh-sf'}).props.key, 'fresh-sf');
   assert.equal(main({sessionId: 'existing-sf'}).props.key, 'existing-sf');
+  preset.set(undefined);
+  assert.equal(slots.get('main.conversation'), main, 'a transient unresolved preset retains the active main view');
+  current.set({key: 'fresh-sf', keyedHooks: {projection: () => preset}});
+  assert.equal(slots.get('main.conversation'), main, 'rebinding the same session cannot expose the old chat');
+  const rebound = observable(undefined);
+  current.set({key: 'fresh-sf', keyedHooks: {projection: () => rebound}});
+  assert.equal(slots.get('main.conversation'), main, 'a new projection hook for the same session retains component identity');
+  rebound.set('spatialforge-standard-ptc');
+  assert.equal(slots.get('main.conversation'), main);
   preset.set('benchforgev2');
+  assert.equal(slots.get('main.conversation'), main, 'the previous detached preset hook has no effect');
+  rebound.set('benchforgev2');
   assert.equal(slots.size, 0, 'leaving SpatialForge removes the shadow rather than rendering null');
   assert.equal(removed, 1);
+  rebound.set('spatialforge-standard-ptc');
+  current.set({key: 'other-session', keyedHooks: {projection: () => observable(undefined)}});
+  assert.equal(slots.size, 0, 'an unresolved different session must not inherit the SpatialForge workbench');
+  assert.equal(removed, 2);
+  current.set({key: 'fresh-sf', keyedHooks: {projection: () => preset}});
   preset.set('spatialforge-standard-ptc');
   effects.filter((fn) => typeof fn === 'function').reverse().forEach((fn) => fn());
   assert.equal(slots.size, 0);
