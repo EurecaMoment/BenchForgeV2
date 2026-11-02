@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
     const dictionaries = {
       zh: {
         currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
+        toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
         requestNote: '只发送你填写的要求，不会自动附加计划、场景或数据集。',
         productionMonitor: '生产实况', autoRefresh: '自动更新 · 约 3 秒', staleSnapshot: '观测异常 · 非最新状态', pollingPaused: '隐藏时暂停更新',
@@ -67,6 +68,7 @@ window.__ModuleLoader__.load({
         stageProgress: '本阶段生产进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '查看本阶段执行过程',
         keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
         planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
+        selectionTotal: '本组总题数',
         sceneSelection: '选择场景', selectedScenes: '已选场景', preview: '预览', previewClose: '关闭预览', selectArtifact: '选择',
         sceneGallery: '可用场景', annotationGallery: '标注数据', annotationNote: '点击预览查看公开标注与证据；模型候选标注与仿真真值保留各自来源。',
         evaluationConfig: '评测配置', questionTable: '题目表', finalReport: '最终报告', artifactFiles: '产物文件与来源',
@@ -96,6 +98,7 @@ window.__ModuleLoader__.load({
       },
       en: {
         currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
+        toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
         requestNote: 'Only your written request is sent. Plans, scenes and datasets are never added automatically.',
         productionMonitor: 'Live production', autoRefresh: 'Auto update · about 3 s', staleSnapshot: 'Observation issue · not current', pollingPaused: 'Updates paused while hidden',
@@ -147,6 +150,7 @@ window.__ModuleLoader__.load({
         stageProgress: 'Stage production progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
         keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
         planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
+        selectionTotal: 'Total items in this selection',
         sceneSelection: 'Select scenes', selectedScenes: 'Selected scenes', preview: 'Preview', previewClose: 'Close preview', selectArtifact: 'Select',
         sceneGallery: 'Available scenes', annotationGallery: 'Annotations', annotationNote: 'Open public annotations and evidence. Candidate model annotations retain their source separately from simulation truth.',
         evaluationConfig: 'Evaluation configuration', questionTable: 'Questions', finalReport: 'Final report', artifactFiles: 'Artifact files & provenance',
@@ -537,6 +541,8 @@ window.__ModuleLoader__.load({
         h('h3', null, typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint')),
         plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
           h('dt', null, key), h('dd', null, typeof value === 'object' ? JSON.stringify(value) : String(value))))),
+        plan.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
+          plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
         plan.steps?.length ? table([t('steps'), t('operator'), t('details')], plan.steps.map((row) =>
           [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null,
         artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
@@ -576,7 +582,22 @@ window.__ModuleLoader__.load({
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
-    function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions}) {
+    function toolActivity(chat) {
+      const running = new Map(), failed = [];
+      const visit = (call, accept) => {
+        accept(call);
+        call.subCalls.forEach((child) => visit(child, accept));
+      };
+      (chat?.runningCalls || []).forEach((call) => visit(call, (row) => {
+        if (row.phase === 'preparing' || row.phase === 'start') running.set(row.callId, row);
+      }));
+      (chat?.nodes || []).filter((node) => node.kind === 'tool-result').forEach((call) => visit(call, (row) => {
+        if (row.kind === 'tool-result' && row.isError) failed.push(row);
+      }));
+      return {running: [...running.values()], failed: failed.sort((a, b) => b.time - a.time)[0]};
+    }
+
+    function Workbench({t, sessionId, useSessions, useSession, useConversation, useInput, inputActions}) {
       const panelRef = React.useRef(null);
       const sampleHeadingRef = React.useRef(null);
       const sampleTriggerRef = React.useRef(null);
@@ -596,6 +617,8 @@ window.__ModuleLoader__.load({
       const submitLock = React.useRef(false);
       const inputState = useInput((state) => state);
       const sessionState = useSession((state) => state);
+      const chat = useConversation((state) => state.views.get('chat')?.legacy);
+      const tools = toolActivity(chat);
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
       const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
       const conversationRunning = sessionState.running;
@@ -771,9 +794,14 @@ window.__ModuleLoader__.load({
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
           h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
           button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})));
-        const plan = run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
+        const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
+          ? summary.value.plan : null;
+        const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
+        const separatePlan = conversationPlan && JSON.stringify(conversationPlan) !== JSON.stringify(run.value?.plan);
+        const plannedItems = plan?.selections?.length ? plan.selections.reduce((total, row) => total + row.count, 0) : plan?.inputs?.target_items;
         const filesError = sceneArtifacts.error || run.error;
-        const productFiles = stageFiles.filter((row) => row.url || row.data);
+        const productFiles = stageFiles.filter((row) => (row.url || row.data) && !(separatePlan &&
+          (row.title === '评测计划' && row.stage === 'S1' || row.title === '评测配置' && row.stage === 'S4')));
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
@@ -786,14 +814,17 @@ window.__ModuleLoader__.load({
           stage.id === 'S3' && h('p', {className: 'bfw-muted'}, t('annotationNote')),
           filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
           (sceneArtifacts.loading || run.loading) && empty(t('loading')),
-          h(ArtifactGallery, {items: productFiles, preview: setPreview, t}));
+          (productFiles.length > 0 || !(sceneArtifacts.loading || run.loading || filesError)) &&
+            h(ArtifactGallery, {items: productFiles, preview: setPreview, t}));
         else if (stage.id === 'S4') product = h('div', {className: 'bfw-evaluation-grid'},
           h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
             select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
             h('dl', {className: 'bfw-definition'},
               h('div', null, h('dt', null, t('version')), h('dd', null, selectedDataset ? displayRef(selectedDataset.version) : '—')),
-              h('div', null, h('dt', null, t('targetItems')), h('dd', null, dataset.value?.report?.requested ?? plan?.inputs?.target_items ?? '—')),
+              h('div', null, h('dt', null, t('targetItems')), h('dd', null, dataset.value?.report?.requested ?? plannedItems ?? '—')),
               h('div', null, h('dt', null, t('sourceType')), h('dd', null, dataset.value?.report?.source || '—'))),
+            plan?.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
+              plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
             productFiles.length > 0 && h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t}),
             datasetDirectory),
           h('section', {className: 'bfw-evaluation-questions'}, h('h3', null, t('questionTable')),
@@ -826,6 +857,14 @@ window.__ModuleLoader__.load({
           h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('currentConversation')),
             h('span', {className: 'bfw-pill ' + sessionStatus}, t(sessionStatusKey)),
             h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount)),
+          conversationRunning && tools.running.map((call) => h('p', {key: call.callId, className: 'bfw-muted',
+            'data-native-tool': call.callId, 'data-tool-phase': call.phase},
+            t(call.phase === 'preparing' ? 'toolPreparing' : 'toolRunning') + ': ', h('strong', null, call.name))),
+          tools.failed && h('div', {className: 'bfw-muted', 'data-recent-tool-failure': tools.failed.callId},
+            h('p', null, t('recentToolFailure') + ': ', h('strong', null, tools.failed.call?.name || tools.failed.callId),
+              ' · ', tools.failed.error?.code || tools.failed.error?.name || t('toolResultError'),
+              ' · ', new Date(tools.failed.time).toLocaleString()),
+            h('p', null, t('toolFailureHistory'))),
           sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
             typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
         h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
@@ -857,8 +896,8 @@ window.__ModuleLoader__.load({
           'benchforge-spatialforge-ui: SpatialForge-only panel page');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: PANEL, locale: NS,
-        }, ({useProjection, useSessions, useSession, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
-          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useSession, useInput, inputActions}) : null));
+        }, ({useProjection, useSessions, useSession, useConversation, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
+          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useSession, useConversation, useInput, inputActions}) : null));
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities', id: 'spatialforge-evaluation-launcher', order: 80, locale: NS,
         }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET

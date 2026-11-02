@@ -202,7 +202,9 @@ async function productionProgress(roots, config, url, signal) {
         const steps = planned.map((step) => {
           const actual = state.steps?.[step.id];
           if (actual?.result?.run_id?.startsWith('sf_')) remoteIds.add(actual.result.run_id);
-          return {id: step.id, uses: step.uses, stage: stageOf(step.uses), state: actual?.state || 'unknown',
+          const captureWait = step.uses === 'spatialforge.observe' && step.await_terminal && planned.some((producer) =>
+            producer.uses === 'spatialforge.capture' && step.arguments?.run_id === '$' + producer.id + '.run_id');
+          return {id: step.id, uses: step.uses, stage: captureWait ? 'S2' : stageOf(step.uses), state: actual?.state || 'unknown',
             error: actual?.error || null};
         });
         const completed = steps.filter((step) => step.state === 'completed').length;
@@ -369,16 +371,20 @@ async function discover(roots, config, signal, scope) {
         if (!matchesSession(request.context, scope)) { if (!request.context?.session_id) unassociatedRecords++; continue; }
         const result = await readJson(path.join(artifact, 'result.json')) || {};
         if (['pipeline_plan', 'plan'].includes(operation.tool)) {
-          if (!latestPlan && operation.state === 'completed') {
+          if (operation.state === 'completed' && !latestPlan?.selections?.some((row) => row.template_ids?.length)) {
             const declared = operation.tool === 'pipeline_plan' ? result.plan : result.brief;
             const file = typeof declared === 'string' ? await inside(root, declared) : null;
             const saved = file ? await readJson(file) : null;
             if (saved) {
-              latestPlan = operation.tool === 'pipeline_plan' ? publicPlan(saved) :
+              const candidate = operation.tool === 'pipeline_plan' ? publicPlan(saved) :
                 {objective: saved.objective || '', inputs: pick(saved, ['target_items']),
                   sources: saved.sources || [], notes: saved.notes || '', source: 'saved_benchmark_brief'};
-              planSource = {operation_id: operation.id, tool: operation.tool,
-                updated_at: (await fs.stat(file)).mtime.toISOString()};
+              if (!latestPlan || !latestPlan.selections?.some((row) => row.template_ids?.length) &&
+                  candidate.selections?.some((row) => row.template_ids?.length)) {
+                latestPlan = candidate;
+                planSource = {operation_id: operation.id, tool: operation.tool,
+                  updated_at: (await fs.stat(file)).mtime.toISOString()};
+              }
             }
           }
           continue;

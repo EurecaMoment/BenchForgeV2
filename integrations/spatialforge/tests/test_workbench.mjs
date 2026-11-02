@@ -177,6 +177,99 @@ test('the current conversation can inspect a saved plan before any pipeline exec
   } finally {await fs.rm(directory, {recursive: true, force: true});}
 });
 
+test('automatic assessment products retain explicit template intent while a separate capture is waiting', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-multirecipe-'));
+  try {
+    const code = ['import json,sys', 'from benchforge_core.runtime import Runtime',
+      'r=Runtime(sys.argv[1])',
+      'assessment=r.call("pipeline_plan", {"pipeline_id":"data.capability","objective":"Measure object visibility","selections":[{"template_ids":["P002-T01","P002-T02"],"count":6,"reason":"Observe the selected scene from recorded viewpoints"}]})',
+      'capture=r.call("pipeline_plan", {"pipeline_id":"scene.capture","objective":"Capture production views","inputs":{"scene_program_path":"scene.json"}})',
+      'r.close()', 'print(json.dumps({"assessment":assessment,"capture":capture}))'].join('\n');
+    const saved = JSON.parse(execFileSync(python, ['-c', code, directory], {cwd: ROOT, encoding: 'utf8',
+      env: {...process.env, PYTHONPATH: path.join(ROOT, 'src'), BENCHFORGE_DSH_SESSION_ID: 'session-multirecipe'}}));
+    const operation = path.join(directory, 'operations', 'capture-run'), runFolder = path.join(operation, 'pipeline_run');
+    await fs.mkdir(runFolder, {recursive: true});
+    await fs.copyFile(saved.capture.plan, path.join(runFolder, 'plan.json'));
+    await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({arguments: {}, context: {session_id: 'session-multirecipe'}}));
+    await fs.writeFile(path.join(runFolder, 'state.json'), JSON.stringify({state: 'waiting', step: 'capture_ready',
+      context: {session_ids: ['session-multirecipe']}, steps: {
+        capture: {state: 'completed', result: {run_id: 'sf_capturefixture'}},
+        capture_ready: {state: 'waiting', result: {run_id: 'sf_capturefixture'}},
+      }}));
+    const db = new DatabaseSync(path.join(directory, 'runs.sqlite'));
+    try {db.prepare('INSERT INTO operations(id,tool,state,artifact) VALUES (?,?,?,?)').run('capture-run', 'pipeline_run', 'completed', operation);}
+    finally {db.close();}
+    const handler = createWorkbenchHandler({}, () => [{id: 'workspace', path: directory}]);
+    const read = async (params) => {
+      const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' +
+        new URLSearchParams({workspace_path: directory, session_id: 'session-multirecipe', ...params})));
+      assert.equal(response.status, 200, await response.clone().text());
+      return response.json();
+    };
+    const summary = await read({view: 'summary'}), progress = await read({view: 'progress'});
+    assert.equal(summary.plan_source.operation_id, saved.assessment.operation_id);
+    assert.equal(summary.plan.pipeline_id, 'data.capability');
+    assert.equal(summary.plan.selections[0].count, 6);
+    assert.deepEqual(summary.plan.selections[0].template_ids, ['P002-T01', 'P002-T02']);
+    const capture = progress.pipelines[0], selected = await read({view: 'run', run: capture.id});
+    assert.equal(selected.plan.pipeline_id, 'scene.capture');
+    assert.equal(capture.steps.find((step) => step.id === 'capture_ready').stage, 'S2');
+    assert.equal(capture.current.id, 'capture_ready');
+    assert.equal(capture.current.state, 'waiting');
+    assert.equal(capture.completed, 1);
+    assert.equal(capture.total, 2);
+
+    let registration, dictionary, component, records, route;
+    const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
+      useRef: (current) => ({current}), useEffect() {}, useState: (initial) => {
+        const value = typeof initial === 'function' ? initial() : initial;
+        return [value && typeof value === 'object' && 'key' in value && 'loading' in value
+          ? {key: 'fixture', value: records.shift(), loading: false} : value, () => {}];
+      }};
+    class FixtureParams extends URLSearchParams {toString() {return 'fixture';}}
+    vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'), {
+      window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, Date, URLSearchParams: FixtureParams,
+      localStorage: {getItem: () => JSON.stringify(route)},
+    });
+    registration.factory(() => React).apply({effect: (effect) => effect(),
+      locale: {register: (_, values) => {dictionary = values.zh;}, bind: () => (key) => dictionary[key] || key},
+      sidebarRight: {}, sidebarRightTabs: {register() {}},
+      slots: {inject: (_, effect) => effect(), register: (options, view) => {
+        if (options.key === 'benchforge-spatialforge-evaluation') component = view;
+      }},
+    });
+    const expand = (node) => Array.isArray(node) ? node.map(expand) : !node || typeof node !== 'object' ? node :
+      typeof node.type === 'function' ? expand(node.type(node.props)) : {...node, children: expand(node.props.children)};
+    const text = (node) => Array.isArray(node) ? node.map(text).join(' ') : !node || typeof node !== 'object'
+      ? String(node || '') : node.type === 'details' ? '' : text(node.children);
+    const render = (stage, explicitRun = '') => {
+      route = {version: 3, stage, run: explicitRun};
+      records = [progress, summary, selected, {items: []}, {items: [], total: 0, pages: 1, capabilities: []}, null];
+      return expand(component({sessionId: 'session-multirecipe', useProjection: () => 'spatialforge-standard-ptc',
+        useSessions: (select) => select({byId: {'session-multirecipe': {cwd: directory}}}),
+        useSession: (select) => select({running: true, openState: 'open', pendingSubmissions: []}),
+        useConversation: (select) => select({views: {get: () => ({legacy: {runningCalls: [], nodes: []}})}}),
+        useInput: (select) => select({phase: 'plain', queue: [], draft: '', attachmentIds: []}), inputActions: {},
+      }));
+    };
+    assert.match(text(render('S1')), /Measure object visibility/);
+    assert.match(text(render('S1')), /P002-T01, P002-T02/);
+    assert.match(text(render('S1')), /本组总题数.*6/);
+    assert.doesNotMatch(text(render('S1')), /Capture production views/);
+    const scenePage = render('S2');
+    assert.match(text(scenePage), /capture_ready/);
+    const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+      : node && typeof node === 'object' ? predicate(node) ? node : find(node.children, predicate) : null;
+    const sceneTab = find(scenePage, (node) => node.props['data-stage'] === 'S2');
+    assert.equal(find(sceneTab, (node) => 'data-stage-state' in node.props).props['data-stage-state'], 'waiting');
+    assert.match(text(render('S4')), /目标题量.*6/);
+    assert.doesNotMatch(text(render('S4')), /目标题量.*12/);
+    assert.match(text(render('S1', capture.id)), /Capture production views/);
+    assert.doesNotMatch(text(render('S1', capture.id)), /P002-T01/);
+    assert.equal((await read({view: 'summary', session_id: 'session-other'})).plan, null);
+  } finally {await fs.rm(directory, {recursive: true, force: true});}
+});
+
 test('production observations follow persisted running/waiting/failed/completed transitions without changing records', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-progress-'));
   const operation = path.join(directory, 'operations', 'progress-fixture');
