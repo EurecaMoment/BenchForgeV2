@@ -108,8 +108,10 @@ only through persisted pipeline references. Ad-hoc shell jobs without either
 record are not claimed as tracked. A worker that does not report intermediate
 progress remains at its last reported phase; no synthetic percentage is shown.
 
-For an already cached UI backend, `ui/production.js` is a distinct backend entry;
-`ui/index.js` remains the public package export. Use official plugin management
+For the five-product UI backend, `ui/stage_products.js` is the implementation and
+live entry; `ui/production.js` and `ui/index.js` remain compatibility exports.
+The distinct entry also avoids an already cached legacy production module.
+Use official plugin management
 to disable and enable **only** the existing root workbench plugin when replacing
 its module. Changing its entry/config alone may leave the previous handler active.
 Do not restart DSH while a session is running. Preserve the root placement,
