@@ -17,7 +17,7 @@ Issues = "https://github.com/EurecaMoment/BenchForgeV2/issues"
 
 [project.optional-dependencies]
 dsh = ["PyYAML>=6"]
-production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10"]
+production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10", "SQLAlchemy>=2.0"]
 research = ["pypdf>=5"]
 datasets = ["pyarrow>=15"]
 training = ["torch>=2.4", "transformers>=4.49", "tokenizers>=0.21", "peft>=0.14", "Pillow>=10", "numpy>=1.24"]
