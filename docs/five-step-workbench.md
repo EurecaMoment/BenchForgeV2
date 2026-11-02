@@ -1,11 +1,23 @@
 # BenchForge five-step evaluation workbench
 
-Open a **SpatialForge** conversation in DSH and select **评测集** in its header.
-The conversation remains available beside the workbench. Other agent presets
-do not display the launcher or panel.
-An existing empty SpatialForge session has no active conversation header, so its
-launcher appears beside the composer through `conversation.input.right` instead.
-After the first message, the header launcher takes over without a duplicate.
+Open a **SpatialForge** conversation in DSH. The workbench replaces that preset's
+main conversation view through `main.conversation`; the original chat and composer
+are hidden. There is no separate sidebar launcher to find. Other agent presets
+keep their ordinary conversation interface.
+
+Wait for **完全权限已开启**, enter a natural-language request in the persistent
+**数据集生产需求** form, set **目标题量**, and select **开始生产**. The initial target
+is 100 items; it is a request, not a claim of existing or accepted output.
+**能力或模板要求（可选）** may be left blank for DSH to decompose against its existing
+capability graph and templates. The advanced target scene count and storage budget
+are optional. A single submission asks the current DSH agent to execute all five
+stages using its integrated tools, rather than stopping at a written plan.
+
+Opening a SpatialForge session applies the official session command
+`/permission danger-full-access`; this is not sent to the model. Production submission
+is disabled until the permissions projection confirms it. Setup failures offer a
+retry action and remain visible. This document describes the implementation;
+target-deployment and browser acceptance must be recorded separately.
 
 | Step | Page functions | Recorded outputs |
 | --- | --- | --- |
@@ -20,17 +32,27 @@ Navigation is independent of completion. Artifact type/producer labels determine
 which recorded artifacts appear in a step; absence of a matching record is not
 proof that the step was never executed.
 
-Products are previews, not forms or material to send back into chat. Each stage
-has a separate footer action, “提出修改要求”, opening a blank textarea. No default
-quantity, budget, blueprint, scene selection or artifact bundle is inserted.
-“确认发送” sends only the user's written requirement using official session actions
-`captureInsertion/insertText/submit` to submit directly to the current SpatialForge
-conversation. No second composer Send click is needed. Existing composer text
-and attachments are included by native DSH semantics and disclosed in the dialog;
-cancel leaves them unchanged. A busy input or slash command leaves the
-dialog open. A synchronous submission error retains the request for retry without
-inserting it a second time. Submission is not production completion: the native
-conversation owns queueing, execution and failure receipts.
+Products are previews, not forms or material to send back into chat. The persistent
+demand form provides **追加要求** for the current production task; an active session
+queues the request rather than creating a hidden second task. **新建生产任务** changes
+the form mode within this conversation, not the DSH session. Each stage also retains
+**提出修改要求**, opening an independent blank textarea. **确认发送** submits that
+written requirement with official `captureInsertion/insertText/submit` actions;
+no second composer Send click is needed and no artifact bundle is attached.
+
+If the hidden original composer contains text or attachments, their contents are
+shown for review. Submission requires explicitly checking whether to include them;
+otherwise they remain unchanged and are not sent. This rule applies to both the
+persistent demand form and the stage-request dialog. Cancel leaves them unchanged.
+A busy input or slash command prevents submission. A synchronous submission error
+retains the request for retry without inserting it a second time. Submission is
+not production completion: the native conversation owns queueing, execution and
+failure receipts.
+
+**最新执行反馈** shows the most recent assistant text without restoring the original
+chat interface. **停止当前执行** cancels the current assistant turn; it does not claim
+to cancel all submitted background jobs or queued requests. Those retain their own
+status and receipts. Five-stage navigation and Previous/Next only change the view.
 
 The workbench displays only current-conversation records. Every artifact request
 carries `session_id` as well as `workspace_path`. The BenchForge tool adapter
@@ -76,9 +98,12 @@ node --test integrations/spatialforge/tests/test_workbench.mjs
 ```
 
 Browser acceptance checks all five key products, stage progress, previews,
-blank requests, draft/attachment preservation, confirmation and exactly one native
-submission using controlled input actions. These fixtures never submit live
-inference and are not real production acceptance.
+the production demand form, permission gating, target-versus-output semantics,
+stage requests, explicit draft/attachment inclusion, confirmation and exactly one
+native submission using controlled input actions. It must also check preset
+isolation, main-view replacement, latest assistant feedback and current-turn
+cancellation. Controlled fixtures never submit live inference and are not real
+production acceptance; earlier sidebar acceptance does not validate this layout.
 
 
 Live production
@@ -146,8 +171,8 @@ Usability behavior
 
 The live monitor defaults to a compact summary with expandable details. Run and
 dataset-version directories have search and 12/24/48-row pagination. Five-step
-navigation responds to the actual sidebar width, including narrow sidebars on
-wide desktop windows. Stage buttons support native keyboard activation.
+navigation responds to its actual main-view container width. Stage buttons
+support native keyboard activation.
 
 Changing a dataset version clears that version's template, split and query
 filters across workflow, quality and dataset views. Public sample details read

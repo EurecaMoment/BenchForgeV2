@@ -229,17 +229,15 @@ test('automatic assessment products retain explicit template intent while a sepa
           ? {key: 'fixture', value: records.shift(), loading: false} : value, () => {}];
       }};
     class FixtureParams extends URLSearchParams {toString() {return 'fixture';}}
-    vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'), {
+    const clientSource = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
+      .replace(/return \{\s+inject:/, 'return {Workbench, dictionaries}; return {inject:');
+    vm.runInNewContext(clientSource, {
       window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, Date, URLSearchParams: FixtureParams,
       localStorage: {getItem: () => JSON.stringify(route)},
     });
-    registration.factory(() => React).apply({effect: (effect) => effect(),
-      locale: {register: (_, values) => {dictionary = values.zh;}, bind: () => (key) => dictionary[key] || key},
-      sidebarRight: {}, sidebarRightTabs: {register() {}},
-      slots: {inject: (_, effect) => effect(), register: (options, view) => {
-        if (options.key === 'benchforge-spatialforge-evaluation') component = view;
-      }},
-    });
+    const extracted = registration.factory(() => React);
+    component = extracted.Workbench;
+    dictionary = extracted.dictionaries.zh;
     const expand = (node) => Array.isArray(node) ? node.map(expand) : !node || typeof node !== 'object' ? node :
       typeof node.type === 'function' ? expand(node.type(node.props)) : {...node, children: expand(node.props.children)};
     const text = (node) => Array.isArray(node) ? node.map(text).join(' ') : !node || typeof node !== 'object'
@@ -247,7 +245,7 @@ test('automatic assessment products retain explicit template intent while a sepa
     const render = (stage, explicitRun = '') => {
       route = {version: 3, stage, run: explicitRun};
       records = [progress, summary, selected, {items: []}, {items: [], total: 0, pages: 1, capabilities: []}, null];
-      return expand(component({sessionId: 'session-multirecipe', useProjection: () => 'spatialforge-standard-ptc',
+      return expand(component({sessionId: 'session-multirecipe', t: (key) => dictionary[key] || key,
         useSessions: (select) => select({byId: {'session-multirecipe': {cwd: directory}}}),
         useSession: (select) => select({running: true, openState: 'open', pendingSubmissions: []}),
         useConversation: (select) => select({views: {get: () => ({legacy: {runningCalls: [], nodes: []}})}}),
@@ -322,50 +320,46 @@ test('production observations follow persisted running/waiting/failed/completed 
   } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}
 });
 
-test('evaluation launcher is gated to SpatialForge and opens its right-side session panel', async () => {
+test('production workbench replaces only the active SpatialForge main conversation', async () => {
   let registration;
   vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'),
     {window: {__ModuleLoader__: {load: (value) => registration = value}}});
-  assert.equal(registration.id, '@eurecamoment/benchforge-spatialforge-ui');
   const plugin = registration.factory((id) => {
     assert.equal(id, 'react');
-    return {createElement: (type, props, ...children) => ({type, props: props || {}, children})};
+    return {createElement: (type, props) => ({type, props})};
   });
-  const seats = [], disposed = [], opened = [], components = new Map();
-  let definition;
+  const observable = (value) => {
+    const listeners = new Set();
+    return {getSnapshot: () => value, subscribe: (fn) => {listeners.add(fn); return () => listeners.delete(fn);},
+      set: (next) => {value = next; for (const fn of [...listeners]) fn();}};
+  };
+  const preset = observable('standard'), slots = new Map(), seats = [], effects = [];
+  const current = observable({keyedHooks: {projection: () => preset}});
+  let removed = 0;
   plugin.apply({
     locale: {register: (_ns, dictionaries) => {
-      assert.deepEqual(Object.keys(dictionaries.zh), Object.keys(dictionaries.en));
-      return () => disposed.push('locale');
+      assert.deepEqual(Object.keys(dictionaries.zh), Object.keys(dictionaries.en)); return () => {};
     }, bind: () => (key) => key},
-    effect: (effect) => { const cleanup = effect(); disposed.push(cleanup); },
-    sidebarRight: {openTab: (kind) => opened.push(kind)},
-    sidebarRightTabs: {register: (value) => { definition = value; return () => {}; }},
-    slots: {inject: (seat, callback) => { seats.push(seat); callback(); }, register: (options, component) => {
-      components.set(options.id || options.key, component);
-      return () => {};
+    uiSession: {adapter: {current}}, sessions: {},
+    effect: (fn) => effects.push(fn()),
+    slots: {inject: (seat, fn) => {seats.push(seat); effects.push(fn());}, register: (options, component) => {
+      assert.equal(options.name, 'main.conversation'); assert.equal(options.priority, -20);
+      slots.set(options.name, component); return () => {removed++; slots.delete(options.name);};
     }},
   });
-  assert.deepEqual(seats, ['sidebar.right.pane.tab', 'conversation.session.header.utilities', 'conversation.input.right']);
-  assert.equal(definition.kind, 'benchforge-spatialforge-evaluation');
-  assert.equal(definition.guide, undefined);
-  const launcher = components.get('spatialforge-evaluation-launcher');
-  assert.equal(launcher({useProjection: () => 'benchforgev2'}), null);
-  const spatialForgeButton = launcher({useProjection: () => 'spatialforge-standard-ptc'});
-  assert.equal(spatialForgeButton.type, 'button');
-  spatialForgeButton.props.onClick();
-  assert.deepEqual(opened, ['benchforge-spatialforge-evaluation']);
-  const emptyLauncher = components.get('spatialforge-empty-evaluation-launcher');
-  const blank = {useSession: (select) => select({blank: true})};
-  assert.equal(emptyLauncher({...blank, useProjection: () => 'benchforgev2'}), null);
-  assert.equal(emptyLauncher({useSession: (select) => select({blank: false}), useProjection: () => 'spatialforge-standard-ptc'}), null);
-  const emptyButton = emptyLauncher({...blank, useProjection: () => 'spatialforge-standard-ptc'});
-  assert.equal(emptyButton.type, 'button');
-  emptyButton.props.onClick();
-  assert.equal(opened.length, 2);
-  assert.equal(components.get('benchforge-spatialforge-evaluation')({useProjection: () => 'benchforgev2'}), null);
-  disposed.find((entry) => typeof entry === 'function')();
-  assert.ok(disposed.includes('locale'));
+  assert.deepEqual(seats, ['main.conversation']);
+  assert.equal(slots.size, 0, 'ordinary environments retain their original conversation');
+  preset.set('spatialforge-standard-ptc');
+  const main = slots.get('main.conversation');
+  assert.equal(typeof main, 'function');
+  assert.equal(main({sessionId: 'fresh-sf'}).props.key, 'fresh-sf');
+  assert.equal(main({sessionId: 'existing-sf'}).props.key, 'existing-sf');
+  preset.set('benchforgev2');
+  assert.equal(slots.size, 0, 'leaving SpatialForge removes the shadow rather than rendering null');
+  assert.equal(removed, 1);
+  preset.set('spatialforge-standard-ptc');
+  effects.filter((fn) => typeof fn === 'function').reverse().forEach((fn) => fn());
+  assert.equal(slots.size, 0);
 });
 
 test('template selector pages the real catalog and filters by capability without exposing oracle fields', async () => {

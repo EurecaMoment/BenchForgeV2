@@ -3,7 +3,6 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
-    const PANEL = 'benchforge-spatialforge-evaluation';
     const SPATIALFORGE_PRESET = 'spatialforge-standard-ptc';
     const NS = 'benchforgeWorkbench';
     const STAGES = [
@@ -18,7 +17,22 @@ window.__ModuleLoader__.load({
         currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
         toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
-        requestNote: '只发送你填写的要求，不会自动附加计划、场景或数据集。',
+        requestNote: '要求提交到当前工作台会话，由 DSH 执行；实际进度和产物在下方更新。',
+        productionRequest: '数据集生产需求', startProduction: '开始生产', appendRequest: '追加要求', newProduction: '新建生产任务',
+        productionPlaceholder: '例如：生产室内物体相对位置与遮挡推理题，覆盖多种布局，公开观测足以作答。',
+        capabilityRequest: '能力或模板要求（可选）', capabilityPlaceholder: '用自然语言描述能力，或填写已有模板编号；留空由 DSH 拆解。',
+        productionRequirements: '生产要求', changeRequirements: '追加或修改要求', advancedOptions: '高级选项（可选）', sceneCount: '目标场景数',
+        targetQuantityNote: '这里填写的是目标题量，实际生成量以生产回执为准。', optionalAuto: '留空由 DSH 安排',
+        fullWorkflowNote: '一次提交后执行完整五阶段：评测计划 → 场景 → 标注 → 出题 → 质量检查与交付。',
+        appendNote: '追加要求发送到当前会话；执行中会进入消息队列，不会另起一个隐藏任务。',
+        preservedDraft: '当前会话保留的原输入草稿', preservedAttachments: '当前会话保留的附件',
+        includeDraft: '本次一并发送上面已展示的草稿和附件', draftConsentRequired: '原输入中还有草稿或附件。请先查看，并勾选是否随本次要求发送；未勾选不会更改或发送它们。',
+        positiveCount: '目标题量必须是正整数。', positiveSceneCount: '场景数必须是正整数或留空。', positiveBudget: '存储预算必须大于 0 或留空。',
+        previousUnsentRequest: '上次提交未完成，要求仍保留在原输入草稿中。请使用相同要求重试，避免重复插入。',
+        permissionsPending: '正在准备本会话的完全权限，完成后即可提交生产。',
+        fullPermissions: '完全权限已开启', permissionFailed: '权限准备失败', permissionRetry: '重试开启权限',
+        executionFeedback: '最新执行反馈', stopExecution: '停止当前执行', stopping: '正在停止…',
+        stopNote: '停止当前助手执行；已提交的后台任务和排队要求以各自状态为准。',
         productionMonitor: '生产实况', autoRefresh: '自动更新 · 约 3 秒', staleSnapshot: '观测异常 · 非最新状态', pollingPaused: '隐藏时暂停更新',
         lastObserved: '最近观测', conversationRunning: 'DSH 对话执行中；以下为工具记录', productionScope: '仅当前对话的生产记录',
         retainedSnapshot: '连接异常，保留上次成功观测，恢复后自动续更', partialObservation: '部分来源读取失败；显示的是可读取记录，不能据此判断全部任务正常。',
@@ -77,7 +91,7 @@ window.__ModuleLoader__.load({
         knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
         downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', runHistory: '本对话的计划与运行', runDetails: '当前运行明细与产物来源',
         confirmSend: '确认发送', confirmTitle: '向当前对话提出要求', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
-        confirmSendNote: '确认后直接提交，无需再点击对话发送。原输入框已有文字和附件也会一同发送；取消不会更改输入框。',
+        confirmSendNote: '确认后直接提交。原输入中的草稿和附件只有查看并勾选后才会一同发送；取消不会更改它们。',
         sendBusy: '输入框正在处理提交或命令，请完成后重试。', sendFailed: '提交失败，已保留任务内容，请重试。', noSendInterface: '当前 DSH 未提供对话提交接口。',
         existingDraft: '将一同发送的输入框文字', existingAttachments: '将一同发送的附件数',
         blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '先准备场景，再采集图像、视频、轨迹与原生状态。',
@@ -100,7 +114,22 @@ window.__ModuleLoader__.load({
         currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
         toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
-        requestNote: 'Only your written request is sent. Plans, scenes and datasets are never added automatically.',
+        requestNote: 'The current workbench session sends your request to DSH. Progress and real artifacts appear below.',
+        productionRequest: 'Dataset production request', startProduction: 'Start production', appendRequest: 'Add requirements', newProduction: 'New production task',
+        productionPlaceholder: 'For example: produce indoor relative-position and occlusion questions across varied layouts, answerable from public observations.',
+        capabilityRequest: 'Capabilities or templates (optional)', capabilityPlaceholder: 'Describe capabilities or enter template IDs. Leave blank for DSH to decompose.',
+        productionRequirements: 'Production requirements', changeRequirements: 'Additional or revised requirements', advancedOptions: 'Advanced options (optional)', sceneCount: 'Target scenes',
+        targetQuantityNote: 'This is the requested quantity. Actual output is reported by production receipts.', optionalAuto: 'Leave blank for DSH to plan',
+        fullWorkflowNote: 'One submission runs all five stages: plan → scenes → annotations → questions → quality review and delivery.',
+        appendNote: 'Requirements go to this session. While running, they join its message queue.',
+        preservedDraft: 'Existing session composer draft', preservedAttachments: 'Existing session attachments',
+        includeDraft: 'Include the draft and attachments shown above in this submission', draftConsentRequired: 'The original composer contains a draft or attachments. Review and explicitly include them to continue; they remain untouched otherwise.',
+        positiveCount: 'Target quantity must be a positive integer.', positiveSceneCount: 'Scenes must be a positive integer or blank.', positiveBudget: 'Storage budget must be greater than zero or blank.',
+        previousUnsentRequest: 'The last request remains in the composer after an incomplete submission. Retry the same request to avoid inserting it twice.',
+        permissionsPending: 'Preparing full permissions for this session. Production can be submitted when ready.',
+        fullPermissions: 'Full permissions enabled', permissionFailed: 'Permission setup failed', permissionRetry: 'Retry permissions',
+        executionFeedback: 'Latest execution feedback', stopExecution: 'Stop current execution', stopping: 'Stopping…',
+        stopNote: 'Stops the current assistant turn. Submitted background jobs and queued requests retain their own state.',
         productionMonitor: 'Live production', autoRefresh: 'Auto update · about 3 s', staleSnapshot: 'Observation issue · not current', pollingPaused: 'Updates paused while hidden',
         lastObserved: 'Last observed', conversationRunning: 'DSH conversation running; tool records below', productionScope: 'Production records for this conversation only',
         retainedSnapshot: 'Connection failed. Keeping the last successful observation and retrying automatically', partialObservation: 'Some sources could not be read. Available records do not establish that all jobs are healthy.',
@@ -159,7 +188,7 @@ window.__ModuleLoader__.load({
         knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
         downloadArtifact: 'Open artifact', artifactReadFailed: 'Could not read this artifact. Retry.', runHistory: 'Past plans and runs', runDetails: 'Current run details and artifact provenance',
         confirmSend: 'Confirm and send', confirmTitle: 'Confirm stage task', cancel: 'Cancel', sending: 'Submitting…', sent: 'Stage task submitted to this conversation; follow its execution receipt in chat.',
-        confirmSendNote: 'Confirm submits directly. Existing composer text and attachments are submitted too. Cancel leaves the composer unchanged.',
+        confirmSendNote: 'Confirm submits directly. Existing composer drafts and attachments are only included after explicit review and selection. Cancel keeps them unchanged.',
         sendBusy: 'The composer is processing a submission or command. Try again after it finishes.', sendFailed: 'Submission failed. Task retained; please retry.', noSendInterface: 'This DSH session has no submission interface.',
         existingDraft: 'Composer text included in this submission', existingAttachments: 'Attachments included in this submission',
         blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Prepare scenes, then collect images, video, trajectories and native state.',
@@ -199,6 +228,7 @@ window.__ModuleLoader__.load({
 .bfw-annotation-image{position:relative;width:fit-content;max-inline-size:100%;margin-inline:auto}.bfw-annotation-image img{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain}.bfw-annotation-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:1rem;overflow-wrap:anywhere}.bfw-production p{margin-block:.4em}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}.bfw-live-details>summary{padding-block:.4rem;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding-block:.75rem;border-block-start:1px solid var(--dsw-alias-border-l3);margin-block-start:.5rem}.bfw-callout,.bfw-notice{padding:.75rem 1rem;border-radius:.75rem;background:var(--dsw-alias-bg-layer-2);margin-block:.75rem;overflow-wrap:anywhere}.bfw-catalog{display:grid;gap:.75rem;margin-block:1rem}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:.75rem;border-radius:.75rem;min-inline-size:0}.bfw-template header,.bfw-selected{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}.bfw-template[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-selected{padding-block:.5rem;border-block-end:1px solid var(--dsw-alias-border-l3)}
 .bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.4em .7em;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.bfw-demand{border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;padding:clamp(.8rem,2cqi,1.25rem);margin-block:1rem;background:var(--dsw-alias-bg-layer-1)}.bfw-demand h2{font-size:1rem;margin-block:0 .8rem}.bfw-demand .bfw-toolbar{justify-content:space-between}.bfw-demand textarea{min-block-size:5em}.bfw-draft-review{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:.75rem}.bfw-draft-review pre{max-block-size:15em;overflow:auto}.bfw-consent{display:flex;align-items:flex-start;gap:.6em}.bfw-consent input{margin-block-start:.35em}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -231,6 +261,23 @@ window.__ModuleLoader__.load({
           layout: saved.layout === 'grid' ? 'grid' : 'table'};
       }
       return fallback;
+    }
+    function initialDemand(sessionId) {
+      const fallback = {version: 1, objective: '', count: '100', capability: '', sceneCount: '', storageBudget: '', mode: 'new'};
+      const saved = JSON.parse(localStorage.getItem('bfw:production-request:' + sessionId) || 'null');
+      return saved?.version === 1 ? {...fallback, ...saved} : fallback;
+    }
+    function productionRequest(demand) {
+      if (demand.mode === 'append') return '请将以下要求应用于当前会话的生产任务，保留已有产物和失败证据，并继续实际执行至完成：\n' + demand.objective.trim();
+      return [
+        '请实际执行一次 SpatialForge 评测数据集生产任务，完整完成五阶段：评测计划、场景生成或复用与采集、标注、按能力模板出题、质量检查与打包交付；不要只写计划。',
+        '生产需求：' + demand.objective.trim(),
+        '目标题量：' + Number(demand.count) + ' 条。这是请求目标，不代表已有产物；如有缺口如实记录数量和原因。',
+        demand.capability.trim() ? '能力与模板要求：' + demand.capability.trim() : '请根据上述需求从现有能力图谱和出题模板中拆解并选择适用模板。',
+        demand.sceneCount ? '目标场景数：' + Number(demand.sceneCount) + ' 个。' : '',
+        demand.storageBudget ? '存储预算上限：' + Number(demand.storageBudget) + ' GB。' : '',
+        '使用当前已接入工具。场景是出题前提，GT 仅来自官方、程序或仿真，公开题目不泄露答案。请将计划、场景、标注、题目表和最终报告关联到当前会话，使工作台实时展示实际回执和产物。',
+      ].filter(Boolean).join('\n');
     }
     function displayRef(value) {
       const parts = String(value || '').split(/[\\/]/).filter(Boolean);
@@ -522,7 +569,45 @@ window.__ModuleLoader__.load({
           h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
         item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision)))));
     }
-    function SendDialog({payload, change, draft, attachmentCount, sending, error, confirm, close, t}) {
+    function DraftReview({draft, attachments, included, onInclude, t}) {
+      if (!draft && !attachments.length) return null;
+      return h('section', {className: 'bfw-draft-review', 'data-preserved-draft': true},
+        draft && h(React.Fragment, null, h('strong', null, t('preservedDraft')), h('pre', {className: 'bfw-json'}, draft)),
+        attachments.length > 0 && h('details', null, h('summary', null, t('preservedAttachments') + ': ' + attachments.length),
+          h('ul', null, attachments.map((id) => h('li', {key: id, className: 'bfw-code'}, String(id))))),
+        h('label', {className: 'bfw-consent'}, h('input', {type: 'checkbox', checked: included,
+          onChange: (event) => onInclude(event.target.checked)}), t('includeDraft')));
+    }
+    function DemandForm({demand, change, busy, error, send, draft, attachments, included, onInclude, t}) {
+      const append = demand.mode === 'append';
+      return h('section', {className: 'bfw-demand', 'data-production-request': true}, h('h2', null, t('productionRequest')),
+        h('form', {onSubmit: (event) => {event.preventDefault(); send();}},
+          h('div', {className: 'bfw-toolbar'}, select(t('task'), demand.mode, (mode) => change({mode}),
+            [['new', t('newProduction')], ['append', t('appendRequest')]])),
+          h('div', {className: 'bfw-form'},
+            h('label', {className: 'bfw-label bfw-wide'}, t(append ? 'changeRequirements' : 'productionRequirements'),
+              h('textarea', {className: 'bfw-input bfw-textarea', 'data-production-objective': true,
+                value: demand.objective, placeholder: t(append ? 'requestPlaceholder' : 'productionPlaceholder'),
+                onChange: (event) => change({objective: event.target.value}), required: true})),
+            !append && h(React.Fragment, null,
+              h('label', {className: 'bfw-label'}, t('targetItems'), h('input', {className: 'bfw-input', type: 'number', min: 1, step: 1,
+                value: demand.count, 'data-production-count': true, onChange: (event) => change({count: event.target.value}), required: true})),
+              h('label', {className: 'bfw-label'}, t('capabilityRequest'), h('input', {className: 'bfw-input', value: demand.capability,
+                placeholder: t('capabilityPlaceholder'), onChange: (event) => change({capability: event.target.value})})))),
+          !append && h(React.Fragment, null, h('p', {className: 'bfw-muted'}, t('targetQuantityNote')),
+            h('details', null, h('summary', null, t('advancedOptions')), h('div', {className: 'bfw-form'},
+              h('label', {className: 'bfw-label'}, t('sceneCount'), h('input', {className: 'bfw-input', type: 'number', min: 1, step: 1,
+                value: demand.sceneCount, placeholder: t('optionalAuto'), onChange: (event) => change({sceneCount: event.target.value})})),
+              h('label', {className: 'bfw-label'}, t('storageBudget'), h('input', {className: 'bfw-input', type: 'number', min: 0, step: 'any',
+                value: demand.storageBudget, placeholder: t('optionalAuto'), onChange: (event) => change({storageBudget: event.target.value})}))))),
+          h('p', {className: 'bfw-muted'}, t(append ? 'appendNote' : 'fullWorkflowNote')),
+          h(DraftReview, {draft, attachments, included, onInclude, t}),
+          error && h('p', {className: 'bfw-error', role: 'alert'}, error),
+          h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-muted'}, t('requestNote')),
+            h('button', {type: 'submit', className: 'bfw-button bfw-action', disabled: busy || !demand.objective.trim(),
+              'data-start-production': true}, t(busy ? 'sending' : append ? 'appendRequest' : 'startProduction')))));
+    }
+    function SendDialog({payload, change, draft, attachments, included, onInclude, sending, error, confirm, close, t}) {
       const ref = React.useRef(null);
       React.useEffect(() => {
         const trigger = document.activeElement;
@@ -533,8 +618,7 @@ window.__ModuleLoader__.load({
       return h('dialog', {ref, className: 'bfw-preview-dialog', 'data-stage-confirm': true, 'aria-label': t('confirmTitle'),
         onCancel: (event) => {event.preventDefault(); if (!sending) close();}},
         h('h2', null, t('confirmTitle')), h('p', null, t('requestNote')), h('p', null, t('confirmSendNote')),
-        draft && h('details', {open: true}, h('summary', null, t('existingDraft')), h('pre', {className: 'bfw-json'}, draft)),
-        attachmentCount > 0 && h('p', null, t('existingAttachments') + ': ' + attachmentCount),
+        h(DraftReview, {draft, attachments, included, onInclude, t}),
         h('textarea', {className: 'bfw-input bfw-textarea', 'data-request-text': true, 'aria-label': t('requestChange'), autoFocus: true,
           placeholder: t('requestPlaceholder'), value: payload.text, disabled: sending || payload.inserted, onChange: (event) => change(event.target.value)}),
         error && h('p', {className: 'bfw-error', role: 'alert'}, error),
@@ -603,7 +687,8 @@ window.__ModuleLoader__.load({
       return {running: [...running.values()], failed: failed.sort((a, b) => b.time - a.time)[0]};
     }
 
-    function Workbench({t, sessionId, useSessions, useSession, useConversation, useInput, inputActions}) {
+    function Workbench({t, sessionId, useSessions, useSession, useConversation, useInput, inputActions, canSubmit = false,
+      permissionError = '', retryPermission, stopExecution}) {
       const panelRef = React.useRef(null);
       const sampleHeadingRef = React.useRef(null);
       const sampleTriggerRef = React.useRef(null);
@@ -620,14 +705,34 @@ window.__ModuleLoader__.load({
       const [sendPayload, setSendPayload] = React.useState(null);
       const [sending, setSending] = React.useState(false);
       const [sendError, setSendError] = React.useState('');
+      const [demand, setDemand] = React.useState(() => initialDemand(sessionId));
+      const [demandError, setDemandError] = React.useState('');
+      const [draftConsent, setDraftConsent] = React.useState('');
+      const [stopping, setStopping] = React.useState(false);
+      const [stopError, setStopError] = React.useState('');
       const submitLock = React.useRef(false);
+      const pendingSubmission = React.useRef(null);
+      const lastSubmitted = React.useRef('');
       const inputState = useInput((state) => state);
       const sessionState = useSession((state) => state);
       const chat = useConversation((state) => state.views.get('chat')?.legacy);
       const tools = toolActivity(chat);
+      const feedback = [...(chat?.nodes || [])].reverse().find((node) => node.kind === 'assistant' &&
+        node.blocks.some((block) => block.kind === 'text' && block.text.trim()));
+      const feedbackText = feedback?.blocks.filter((block) => block.kind === 'text').map((block) => block.text).join('') || '';
+      const stop = async () => {
+        setStopping(true); setStopError('');
+        try {await stopExecution();} catch (error) {setStopError(error.message);} finally {setStopping(false);}
+      };
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
       const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
       const conversationRunning = sessionState.running;
+      const attachments = inputState.attachmentIds || [];
+      const draftKey = JSON.stringify([inputState.draft || '', attachments]);
+      const includeDraft = draftConsent === draftKey;
+      const hasComposerContent = Boolean(inputState.draft || attachments.length);
+      const allowDraft = (included) => setDraftConsent(included ? draftKey : '');
+      const changeDemand = (patch) => {setDemand((old) => ({...old, ...patch})); setDemandError(''); lastSubmitted.current = '';};
       const queueCount = inputState.queue.length;
       const sessionError = sessionState.openError || sessionState.promptError?.error || sessionState.lastAgentError;
       const sessionStatus = sessionState.openState === 'error' ? 'failed' : conversationRunning ? 'running' :
@@ -665,6 +770,7 @@ window.__ModuleLoader__.load({
       const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
         (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
+      React.useEffect(() => {localStorage.setItem('bfw:production-request:' + sessionId, JSON.stringify(demand));}, [demand, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
       React.useEffect(() => {setPreview(null);}, [selectedRunId, sourceScene?.run_id]);
       React.useEffect(() => {
@@ -707,27 +813,56 @@ window.__ModuleLoader__.load({
       const prepare = () => {
         if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
         setSendError('');
+        setDraftConsent('');
         setSendPayload({text: '', inserted: false});
       };
-      const confirmSend = () => {
-        if (submitLock.current || !sendPayload || sendPayload.submitted) return;
-        if (!sendPayload.text.trim()) {setSendError(t('requestRequired')); return;}
-        if (['adjudicating', 'submitting'].includes(inputState.phase) || inputState.claim) {setSendError(t('sendBusy')); return;}
-        submitLock.current = true; setSending(true); setSendError('');
+      const submitRequest = (payload, setError) => {
+        if (submitLock.current || payload.submitted || lastSubmitted.current === payload.text) return false;
+        if (!canSubmit) {setError(t('permissionsPending')); return false;}
+        if (typeof inputActions?.submit !== 'function') {setError(t('noSendInterface')); return false;}
+        if (!payload.text.trim()) {setError(t('requestRequired')); return false;}
+        if (inputState.phase !== 'plain' || inputState.claim) {setError(t('sendBusy')); return false;}
+        if (pendingSubmission.current?.inserted && pendingSubmission.current.text !== payload.text) {
+          setError(t('previousUnsentRequest')); return false;
+        }
+        if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {
+          setError(t('draftConsentRequired')); return false;
+        }
+        payload = pendingSubmission.current?.inserted ? pendingSubmission.current : payload;
+        submitLock.current = true; setSending(true); setError('');
         try {
-          if (!sendPayload.inserted) {
+          if (!payload.inserted) {
             const span = inputActions.captureInsertion();
-            if (!inputActions.insertText('\n' + sendPayload.text + '\n', {...span, end: span.start})) {
-              setSendError(t('draftBusy')); return;
+            if (!inputActions.insertText('\n' + payload.text + '\n', {...span, end: span.start})) {
+              setError(t('draftBusy')); return false;
             }
-            sendPayload.inserted = true;
+            payload.inserted = true;
+            pendingSubmission.current = payload;
           }
           inputActions.submit();
-          sendPayload.submitted = true;
-          setSendPayload(null); setNotice(t('sent'));
+          payload.submitted = true;
+          lastSubmitted.current = payload.text;
+          pendingSubmission.current = null;
+          setDraftConsent(''); setNotice(t('sent'));
+          return true;
         } catch (error) {
-          setSendError(t('sendFailed') + ' ' + error.message);
+          setError(t('sendFailed') + ' ' + error.message);
+          return false;
         } finally {submitLock.current = false; setSending(false);}
+      };
+      const confirmSend = () => {
+        if (sendPayload && submitRequest(sendPayload, setSendError)) setSendPayload(null);
+      };
+      const submitDemand = () => {
+        if (!demand.objective.trim()) {setDemandError(t('requestRequired')); return;}
+        if (demand.mode !== 'append') {
+          if (!Number.isSafeInteger(Number(demand.count)) || Number(demand.count) <= 0) {setDemandError(t('positiveCount')); return;}
+          if (demand.sceneCount && (!Number.isSafeInteger(Number(demand.sceneCount)) || Number(demand.sceneCount) <= 0)) {setDemandError(t('positiveSceneCount')); return;}
+          if (demand.storageBudget && (!Number.isFinite(Number(demand.storageBudget)) || Number(demand.storageBudget) <= 0)) {setDemandError(t('positiveBudget')); return;}
+        }
+        if (submitRequest({text: productionRequest(demand), inserted: false}, setDemandError)) {
+          setDemand((old) => ({...old, objective: '', mode: 'append'}));
+        }
       };
       const openRun = (id) => update({run: id});
       const changeDataset = (id) => { update({dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
@@ -872,7 +1007,10 @@ window.__ModuleLoader__.load({
           role: 'status', 'aria-live': 'polite'},
           h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('currentConversation')),
             h('span', {className: 'bfw-pill ' + sessionStatus}, t(sessionStatusKey)),
-            h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount)),
+            h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount),
+            h('span', {className: 'bfw-pill', 'data-full-permissions': String(canSubmit)}, t(canSubmit ? 'fullPermissions' : 'permissionsPending')),
+            conversationRunning && button(t(stopping ? 'stopping' : 'stopExecution'), stop,
+              {disabled: stopping, title: t('stopNote'), 'data-stop-execution': true})),
           conversationRunning && tools.running.map((call) => h('p', {key: call.callId, className: 'bfw-muted',
             'data-native-tool': call.callId, 'data-tool-phase': call.phase},
             t(call.phase === 'preparing' ? 'toolPreparing' : 'toolRunning') + ': ', h('strong', null, call.name))),
@@ -883,6 +1021,13 @@ window.__ModuleLoader__.load({
             h('p', null, t('toolFailureHistory'))),
           sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
             typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
+        permissionError && h('div', {className: 'bfw-error', role: 'alert'}, t('permissionFailed') + ': ' + permissionError,
+          button(t('permissionRetry'), retryPermission)),
+        stopError && h('p', {className: 'bfw-error', role: 'alert'}, stopError),
+        feedbackText && h('details', {className: 'bfw-callout', open: !conversationRunning, 'data-execution-feedback': feedback.seq},
+          h('summary', null, t('executionFeedback')), h('div', {className: 'bfw-json'}, feedbackText)),
+        h(DemandForm, {demand, change: changeDemand, busy: sending || inputState.phase !== 'plain' || !canSubmit, error: demandError, send: submitDemand,
+          draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft, t}),
         h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
           className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
           'aria-current': stage.id === step.id ? 'step' : undefined,
@@ -900,34 +1045,62 @@ window.__ModuleLoader__.load({
           h(Production, {record: progress, pipeline: activePipeline, scene: sourceScene, selected: scene?.run_id || '',
             selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t})),
         preview && h(PreviewDialog, {key: preview.url || preview.title, item: preview, close: () => setPreview(null), t}),
-        sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachmentCount: inputState.attachmentIds.length,
+        sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
           sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));
     }
+    function ProductionEnvironment({t, sessions, ...props}) {
+      const permissions = props.useProjection('permissions');
+      const openState = props.useSession((state) => state.openState);
+      const ready = permissions?.currentValue === 'danger-full-access';
+      const attempted = React.useRef(false);
+      const [retry, setRetry] = React.useState(0);
+      const [permissionError, setPermissionError] = React.useState('');
+      React.useEffect(() => {
+        if (ready || attempted.current || openState !== 'open' || !permissions) return;
+        attempted.current = true;
+        let disposed = false;
+        const grant = async () => {
+          try {
+            const result = await sessions.binding(props.sessionId).session.command('/permission danger-full-access');
+            if (!result.ok || !result.value.matched) throw new Error(result.error?.message || 'Permission command was not applied');
+          } catch (error) {if (!disposed) setPermissionError(error.message);}
+        };
+        grant();
+        return () => {disposed = true;};
+      }, [props.sessionId, openState, permissions?.currentValue, retry]);
+      return h(Workbench, {...props, t, canSubmit: ready, permissionError,
+        retryPermission: () => {attempted.current = false; setPermissionError(''); setRetry((value) => value + 1);},
+        stopExecution: async () => {
+          const result = await sessions.binding(props.sessionId).session.cancel();
+          if (!result.ok) throw new Error(result.error?.message || 'Unable to stop the current turn');
+        }});
+    }
     return {
-      inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs'],
+      inject: ['slots', 'locale', 'uiSession', 'sessions'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, dictionaries));
         const t = ctx.locale.bind(NS);
-        ctx.effect(() => ctx.sidebarRightTabs.register({id: PANEL, kind: PANEL, title: () => t('panel'), keepMounted: true}),
-          'benchforge-spatialforge-ui: SpatialForge-only panel page');
-        ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-          name: 'sidebar.right.pane.tab', key: PANEL, locale: NS,
-        }, ({useProjection, useSessions, useSession, useConversation, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
-          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useSession, useConversation, useInput, inputActions}) : null));
-        ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
-          name: 'conversation.session.header.utilities', id: 'spatialforge-evaluation-launcher', order: 80, locale: NS,
-        }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
-          ? h('button', {type: 'button', className: 'bfw-evaluation-launcher', 'aria-label': t('openEvaluation'),
-            title: t('openEvaluation'), onClick: () => ctx.sidebarRight.openTab(PANEL)}, t('openEvaluation')) : null));
-        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
-          name: 'conversation.input.right', id: 'spatialforge-empty-evaluation-launcher', order: 80, locale: NS,
-        }, ({useProjection, useSession}) => {
-          const preset = useProjection('agentPreset');
-          const blank = useSession((state) => state.blank);
-          return preset === SPATIALFORGE_PRESET && blank
-            ? h('button', {type: 'button', className: 'bfw-evaluation-launcher', 'aria-label': t('openEvaluation'),
-              title: t('openEvaluation'), onClick: () => ctx.sidebarRight.openTab(PANEL)}, t('openEvaluation')) : null;
-        }));
+        ctx.slots.inject('main.conversation', () => {
+          let remove = () => {}, mounted = false, face, offFace = () => {};
+          const current = ctx.uiSession.adapter.current;
+          const reconcile = () => {
+            const enabled = face?.getSnapshot() === SPATIALFORGE_PRESET;
+            if (enabled === mounted) return;
+            mounted = enabled;
+            if (enabled) remove = ctx.slots.register({name: 'main.conversation', priority: -20, locale: NS},
+              (props) => h(ProductionEnvironment, {...props, key: props.sessionId, t, sessions: ctx.sessions}));
+            else {remove(); remove = () => {};}
+          };
+          const bind = () => {
+            offFace();
+            face = current.getSnapshot().keyedHooks.projection?.('agentPreset');
+            offFace = face?.subscribe(reconcile) || (() => {});
+            reconcile();
+          };
+          const offCurrent = current.subscribe(bind);
+          bind();
+          return () => {offCurrent(); offFace(); remove();};
+        });
       },
     };
   },

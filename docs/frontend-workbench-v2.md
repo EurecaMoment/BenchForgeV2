@@ -1,19 +1,40 @@
-# BenchForgeV2 / SpatialForge 对话内评测环境
+# BenchForgeV2 / SpatialForge 评测生产工作台
 
 工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
-不改 DSH 源码。UI 不占聊天主区域，也不增加全局导航项。它只在 `SpatialForge`
-preset (`spatialforge-standard-ptc`) 的会话标题栏显示“评测集”入口。用户点击后，
-评测工作台在该会话的右侧边栏打开，原 SpatialForge 对话记录、输入框和工具保持原位。插件沿用既有根 profile 位置，前端入口严格按 SpatialForge preset 隔离。
+不改 DSH 源码。选择 `SpatialForge` preset (`spatialforge-standard-ptc`) 的会话后，
+工作台通过 `main.conversation` 接管该会话主视图，隐藏原聊天记录和 composer，
+直接显示生产需求、执行反馈和五阶段产物。无需先打开右侧“评测集”面板。
+此替换严格限定于 SpatialForge；其他 preset 保持原来的对话界面。
 
-右侧面板是会话上下文的延伸：运行、数据集版本、样本浏览和质量报告都服务于当前
-SpatialForge 会话。面板状态按 Session ID 保存，数据查询按该会话的工作目录限制到
+工作台继续使用当前 DSH 会话执行任务：运行、数据集版本、样本浏览和质量报告都服务于当前
+SpatialForge 会话。界面状态按 Session ID 保存，数据查询按该会话的工作目录限制到
 对应 DSH 工作区，并按真实 `session_id` 精确关联生产记录；相同工作目录下的不同对话也互相隔离。工作区缺失或旧记录没有会话关联时显示空状态，不自动选历史运行。
+
+## 使用流程
+
+1. 在 DSH 中选择或新建 SpatialForge 会话，并选择有写权限的工作区。
+2. 等待“完全权限已开启”。界面通过官方会话命令 `/permission danger-full-access`
+   设置本会话权限，不把该命令发给模型；权限投影就绪前不允许提交生产。
+   失败时显示原因和“重试开启权限”。
+3. 在常驻的“数据集生产需求”表单输入自然语言，填写“目标题量”。默认 `100`
+   只是请求目标，不是已生成数量。能力或模板要求可留空，由 DSH 按现有能力图谱拆解；
+   “高级选项”中的目标场景数和存储上限也可留空。
+4. 点击“开始生产”，一次提交完整五阶段要求，DSH 随后调用已接入的工具实际执行。
+   页面不要求另到聊天输入框发送。若原 composer 留有草稿或附件，先查看展示的内容，
+   必须显式勾选一并发送才可提交；未勾选时它们保持不变。
+5. 在五阶段查看实际计划、场景、标注、题目和报告；顶部跟随当前执行状态，
+   “最新执行反馈”展示最近的助手文字。需要调整时使用“追加要求”或阶段底部的
+   “提出修改要求”。执行中的追加要求进入当前会话消息队列。
+
+“停止当前执行”取消当前助手 turn，不代表取消全部已提交后台任务或排队要求；
+这些任务仍以各自回执为准。“新建生产任务”切换需求表单模式，不创建新 DSH 会话。
+五阶段导航和“上一步／下一步”只切换查看位置，不触发重复生产。
 
 ## 产品取舍
 
 五阶段是唯一页面导航，具体设计见 [五阶段工作台](five-step-workbench.md)：
 
-| 面板内入口 | 实际提供的功能 |
+| 阶段 | 实际提供的功能 |
 | --- | --- |
 | 评测计划 | 当前对话已落盘的计划；本对话运行历史；折叠的只读模板参考 |
 | 场景预览 | 已生成的场景图像和视频预览 |
@@ -22,16 +43,18 @@ SpatialForge 会话。面板状态按 Session ID 保存，数据查询按该会�
 | 最终报告 | 正式报告、集合质量和诊断附件 |
 
 顶部直接订阅 DSH 原生对话状态和消息队列，不用历史 Pipeline 状态替代对话状态。
-新对话没有预填题量、预算或产物。产物区域只用于查看；阶段底部“提出修改要求”打开空输入框，
-用户填写后“确认发送”通过原生接口直接提交，不自动打包产物，也不要求再点一次发送。
+新对话的生产目标默认 `100` 条，场景数和预算留空；没有预填的计划或产物。
+产物区域只用于查看。阶段底部“提出修改要求”打开独立输入框，用户填写后
+“确认发送”通过原生接口直接提交，不自动打包产物，也不要求再点一次发送。
+已有草稿和附件同样需要显式勾选包含。
 
 谱系和修复是运行详情的一部分，样本审阅首先以数据集详情承载，避免创建多个重复、
 空白的导航页。没有真实模型响应矩阵时不展示 IRT；没有发布凭据时不展示“已发布”；
 生成完成、结构合同通过和生成接纳数量都不改写为“已验证”。
 
-当前面板以读取和定位问题为目标。计划生成、启动/恢复运行、创建修复 proposal、
-评分与打包继续使用已集成的 DSH 工具。界面没有伪造可写按钮或后台执行状态，
-也不修改 GT、质量规则或原失败记录。
+工作台将自然语言要求提交给当前 DSH 会话；计划生成、启动/恢复运行、创建修复
+proposal、评分与打包由已集成的 DSH 工具执行。它不是独立调度器，提交成功也不
+代表生产完成。界面从真实回执和产物读取状态，不修改 GT、质量规则或原失败记录。
 
 ## 数据流
 
@@ -42,9 +65,10 @@ flowchart LR
   B --> D[public dataset snapshots]
   C --> E[Authenticated workbench API]
   D --> E
-    E --> F[SpatialForge session header launcher]
-    F --> G[Right sidebar evaluation panel]
-    G --> H[Original chat and composer remain in place]
+  E --> F[SpatialForge main production workbench]
+  F --> G[Natural-language demand form]
+  G --> H[Official current-session submit actions]
+  H --> B
 ```
 
 - 从 DSH `workspaceRegistry.list()` 取得工作区；额外目录通过插件配置 `workspacePaths` 明确加入。
@@ -92,7 +116,7 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 失败恢复原 profile。不会重启 DSH、模型或仿真器。
 
 安装回执 `.deployment/workbench-install.json` 的 `browser_render_verified=false`
-表示脚本只完成主机侧接入检查。真实浏览器的侧栏、渲染和数据浏览需要单独验收，
+表示脚本只完成主机侧接入检查。真实浏览器的主视图、渲染和数据浏览需要单独验收，
 不能把该回执当作页面实际验收。
 
 官方 DSH 源码保持不变；业务 UI、API 和安装脚本全部在 BenchForgeV2 内。
@@ -100,7 +124,7 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 ## 后续增补的条件
 
-- 计划编辑与执行按钮：接入现有工具的写操作和真实 operation receipt 后再开放。
+- 结构化计划编辑：须接入现有工具的写操作和真实 operation receipt；当前通过自然语言要求执行和修改。
 - 人工审阅：先实现持久化 review receipt，不能只在浏览器改变状态徽标。
 - 冻结交付：先绑定实际 manifest、质量门和文件版本，不能仅由 completed 判断。
 - IRT/模型诊断：先取得真实固定题集响应矩阵；与 GT 和发布门分开。
@@ -112,6 +136,7 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
   candidate/verified 边界、只读数据库、非法路径和官方 slot 注册生命周期。
 - `python -m unittest discover -s integrations/tests -p test_workbench_install.py -v`：
   根插件安装幂等、不改其他模式、当前 DSH boot graph 格式。
-- 本次整改后需再做一次 DSH 浏览器验收，确认普通 preset 不显示入口、SpatialForge
-  会话标题栏按钮可打开右侧面板、原聊天与输入框仍在、会话工作区过滤和分页/媒体可用。
-  旧版主区域入口的浏览器结果不能替代本次验收。
+- 本次主视图改造需单独做 DSH 浏览器验收：普通 preset 保持原对话；SpatialForge
+  显示生产表单和五阶段并隐藏原聊天/composer；权限就绪才可提交；一键生产、
+  草稿/附件显式确认、追加要求、停止当前 turn、会话隔离和分页/媒体均符合上述行为。
+  旧版右侧面板验收结果不能替代本次验收。本文件描述实现流程，不表示目标部署已经通过验收。
