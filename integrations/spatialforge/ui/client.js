@@ -1086,7 +1086,8 @@ window.__ModuleLoader__.load({
         sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
           sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));
     }
-    function ProductionEnvironment({t, sessions, ...props}) {
+    function ProductionEnvironment({t, sessions, uiConversation, ...props}) {
+      React.useEffect(() => {uiConversation.binding(props.sessionId).activate('chat');}, [props.sessionId]);
       const permissions = props.useProjection('permissions');
       const openState = props.useSession((state) => state.openState);
       const ready = permissions?.currentValue === 'danger-full-access';
@@ -1114,7 +1115,7 @@ window.__ModuleLoader__.load({
         }});
     }
     return {
-      inject: ['slots', 'locale', 'uiSession', 'sessions'],
+      inject: ['slots', 'locale', 'uiSession', 'sessions', 'uiConversation'],
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, dictionaries));
         const t = ctx.locale.bind(NS);
@@ -1130,7 +1131,7 @@ window.__ModuleLoader__.load({
             if (enabled === mounted) return;
             mounted = enabled;
             if (enabled) remove = ctx.slots.register({name: 'main.conversation', priority: -20, locale: NS},
-              (props) => h(ProductionEnvironment, {...props, key: props.sessionId, t, sessions: ctx.sessions}));
+              (props) => h(ProductionEnvironment, {...props, key: props.sessionId, t, sessions: ctx.sessions, uiConversation: ctx.uiConversation}));
             else {remove(); remove = () => {};}
           };
           const bind = () => {

@@ -133,6 +133,8 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 当前对话区默认展开执行反馈：提交时立即显示本次要求，随后显示官方
 `chat.legacy.partial` 的流式可见正文，以及工具准备、执行和实际返回记录。
+工作台挂载时通过公开 `uiConversation.binding(sessionId).activate('chat')`
+激活此数据源，不依赖用户上次保存的原生 view 标签。
 反馈按最近的人类要求关联，旧轮回复和错误不混入新要求；不展示 reasoning。
 工具的后台标准输出没有通用 conversation 流接口，此处展示工具生命周期与返回，
 场景和 pipeline 的长期进度继续由五阶段生产回执更新。
