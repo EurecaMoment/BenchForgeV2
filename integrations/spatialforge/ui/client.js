@@ -1024,8 +1024,9 @@ window.__ModuleLoader__.load({
         permissionError && h('div', {className: 'bfw-error', role: 'alert'}, t('permissionFailed') + ': ' + permissionError,
           button(t('permissionRetry'), retryPermission)),
         stopError && h('p', {className: 'bfw-error', role: 'alert'}, stopError),
-        feedbackText && h('details', {className: 'bfw-callout', open: !conversationRunning, 'data-execution-feedback': feedback.seq},
-          h('summary', null, t('executionFeedback')), h('div', {className: 'bfw-json'}, feedbackText)),
+        feedbackText && h('details', {className: 'bfw-callout', 'data-execution-feedback': feedback.seq},
+          h('summary', null, t('executionFeedback') + ' · ' + feedbackText.split('\n')[0].slice(0, 100)),
+          h('div', {className: 'bfw-json'}, feedbackText)),
         h(DemandForm, {demand, change: changeDemand, busy: sending || inputState.phase !== 'plain' || !canSubmit, error: demandError, send: submitDemand,
           draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft, t}),
         h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
