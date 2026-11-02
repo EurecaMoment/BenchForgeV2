@@ -331,7 +331,7 @@ test('automatic scenes and paired annotations remain visible behind newer cancel
   const completedScene = {run_id: 'sf_completed', state: 'SUCCEEDED', terminal: true,
     tasks: [{id: 'sf_completed.scene0', state: 'SUCCEEDED', phase: 'capture', workflow: 'scene', revision: 1}]};
   const canceledScene = {run_id: 'sf_canceled', state: 'CANCELED', terminal: true,
-    tasks: [{id: 'sf_canceled.scene0', state: 'CANCELED', phase: 'capture', workflow: 'scene', revision: 1}]};
+    tasks: [{id: 'sf_canceled.scene0', state: 'RUNNING', phase: 'capture', workflow: 'scene', revision: 1}]};
   const pipeline = {id: 'eval-r4', state: 'completed', updated_at: '2026-11-03T00:00:00Z',
     steps: [{stage: 'S4', state: 'completed'}, {stage: 'S5', state: 'completed'}]};
   const plan = {objective: 'Indoor relations', selections: [{template_ids: ['C24-T01'], count: 100, reason: 'Public observations'}]};

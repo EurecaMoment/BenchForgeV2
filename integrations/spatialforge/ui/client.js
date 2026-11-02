@@ -389,6 +389,7 @@ window.__ModuleLoader__.load({
       if (id === 'S1' && planReceipt) return 'completed';
       const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
       if (current.length) {
+        if (scene.state === 'CANCELED' && current.some((row) => row.state !== 'SUCCEEDED')) return 'canceled';
         if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
         if (current.some((row) => row.queue)) return 'waiting';
         if (current.every((row) => row.state === 'SUCCEEDED')) return 'completed';
@@ -442,7 +443,8 @@ window.__ModuleLoader__.load({
         for (const row of tasks.slice(0, 12)) {
           const progress = row.progress || {}, revisions = row.evidence?.captured_revisions || [];
           details.push(h('div', {className: 'bfw-live-task', key: row.id, 'data-production-task': row.id},
-            h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ', status(lifecycle(row.state), t)),
+            h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ',
+              status(scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state), t)),
             h('p', null, t('phase') + ': ' + (row.phase || '—') +
               (progress.stage ? ' · ' + t('workerStage') + ': ' + progress.stage : '') + ' · r' + row.revision),
             progress.age_seconds !== undefined && h('p', {className: 'bfw-muted'}, t('workerAge') + ': ' + progress.age_seconds + ' s'),
@@ -539,7 +541,8 @@ window.__ModuleLoader__.load({
     function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], t}) {
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
-      const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
+      const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
+        state: scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state),
         label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
         queue: row.queue, age: row.progress?.age_seconds})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
         .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
