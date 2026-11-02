@@ -246,6 +246,11 @@ test('automatic assessment products retain explicit template intent while a sepa
       route = {version: 3, stage, run: explicitRun};
       records = [progress, summary, selected, {items: []}, {items: [], total: 0, pages: 1, capabilities: []}, null];
       return expand(component({sessionId: 'session-multirecipe', t: (key) => dictionary[key] || key,
+        renderSlot: (name, owner, options) => {
+          assert.equal(name, 'conversation.view');
+          assert.equal(options.only, 'chat');
+          return {type: 'NativeChatFixture', props: {children: []}};
+        },
         useSessions: (select) => select({byId: {'session-multirecipe': {cwd: directory}}}),
         useSession: (select) => select({running: true, openState: 'open', pendingSubmissions: []}),
         useConversation: (select) => select({views: {get: () => ({legacy: {runningCalls: [], nodes: []}})}}),
