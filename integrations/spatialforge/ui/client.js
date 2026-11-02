@@ -298,7 +298,7 @@ window.__ModuleLoader__.load({
       READY: 'waiting', PENDING: 'waiting', RUNNING: 'running'}[value] || value || 'unknown');
     const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
       ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
-    function stageState(id, pipeline, scene) {
+    function stageState(id, pipeline, scene, operations = []) {
       const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
       if (current.length) {
         if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
@@ -308,7 +308,11 @@ window.__ModuleLoader__.load({
         return lifecycle(scene.state);
       }
       const steps = (pipeline?.steps || []).filter((row) => row.stage === id);
-      if (!steps.length) return 'unknown';
+      if (!steps.length) {
+        if (pipeline || scene) return 'unknown';
+        const recorded = operations.filter((row) => row.stage === id);
+        return recorded.find((row) => row.state === 'running')?.state || recorded[0]?.state || 'unknown';
+      }
       if (steps.every((row) => row.state === 'completed')) return 'completed';
       return steps.find((row) => row.state !== 'completed' && row.state !== 'unknown')?.state ||
         (pipeline.current?.stage === id && pipeline.state !== 'completed' ? pipeline.state : 'unknown');
@@ -437,18 +441,19 @@ window.__ModuleLoader__.load({
     }
     function StageProgress({stage, pipeline, scene, record, t}) {
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
+      const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
       const steps = scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
         label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
         queue: row.queue, age: row.progress?.age_seconds})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
-        .map((row) => ({...row, label: row.uses}));
+        .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
       const completed = steps.filter((row) => row.state === 'completed').length;
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
-      const state = stageState(stage.id, pipeline, scene);
+      const state = stageState(stage.id, pipeline, scene, operations);
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
       return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id, 'aria-label': t('stageProgress')},
         h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('stageProgress')), status(state, t),
-          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t('observedSteps') : t('waitingForReceipt'))),
+          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t(operations.length ? 'recentOperations' : 'observedSteps') : t('waitingForReceipt'))),
         steps.length ? h('progress', {max: steps.length, value: completed, 'aria-label': t('stageProgress')}) :
           h('div', {className: 'bfw-progress-track', 'aria-label': t('unmeasuredProgress')}),
         h('div', {className: 'bfw-progress-caption', role: 'status', 'aria-live': 'polite'},
@@ -602,6 +607,7 @@ window.__ModuleLoader__.load({
       const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
       const receiptsRevision = revision + ':' + sessionStatus + ':' + JSON.stringify([
+        (progress.value?.operations || []).map((row) => [row.id, row.state]),
         (progress.value?.pipelines || []).map((row) => [row.id, row.updated_at]),
         (progress.value?.scenes?.runs || []).map((row) => [row.run_id, row.state,
           row.tasks?.map((task) => [task.id, task.state, task.revision])]),
@@ -827,8 +833,8 @@ window.__ModuleLoader__.load({
           'aria-current': stage.id === step.id ? 'step' : undefined,
           onClick: () => {update({stage: step.id}); setNotice('');}},
           h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key)),
-          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, activePipeline, sourceScene)},
-            t(stageState(step.id, activePipeline, sourceScene)))))),
+          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, activePipeline, sourceScene, progress.value?.operations)},
+            t(stageState(step.id, activePipeline, sourceScene, progress.value?.operations)))))),
         notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
         h('section', {id: 'bfw-content-' + sessionId, 'aria-label': t(stage.key)}, body),
