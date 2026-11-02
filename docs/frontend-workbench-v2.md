@@ -132,6 +132,7 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 ## 针对性验证
 
 当前对话区通过官方 `conversation.view` 槽位、`only: 'chat'` 直接渲染 DSH ChatView。
+它只占工作台原有的执行进展区域，在区域内滚动；五阶段产物继续作为工作台主体。
 主槽显式声明这个 session-scope 子槽，原生组件自行注入消息、思考/工具过程分组、
 Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DSH 偏好，
 本会话已加载的对话历史也由原生组件呈现；不再自行解析、截取和重排消息。
