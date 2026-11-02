@@ -39,7 +39,7 @@ const STAGE_OPERATIONS = [
   ['S2', /^(acquire|collect|capture|scene|asset|reference|spatialforge\.(start|capture|asset|refine))/],
   ['S3', /^(annotat|normaliz|structur|evidence|trajectory|spatialforge\.(observe|evidence|task_code))/],
   ['S4', /^(build|synthesi|templates\.produce|dataset|produce)/],
-  ['S5', /^(score|screen|evaluat|verif|quality|report|package|templates\.package)/],
+  ['S5', /^(score|screen|evaluat|verif|quality|report|package|(?:templates|data)\.package)/],
 ];
 const stageOf = (operation) => STAGE_OPERATIONS.find(([, pattern]) => pattern.test(operation || ''))?.[0] || null;
 const scopeOf = (url) => ({session_id: url.searchParams.get('session_id') || '', history: url.searchParams.get('scope') === 'workspace'});

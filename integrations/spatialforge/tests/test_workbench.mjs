@@ -46,6 +46,8 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     assert.deepEqual(summary.sources.map((source) => source.workspace), ['Actual fixture']);
     assert.equal(summary.runs.length, 2);
     assert.equal(summary.datasets.length, 2);
+    const progress = await request({view: 'progress'});
+    assert.ok(progress.pipelines.some((run) => run.steps.some((step) => step.uses === 'data.package' && step.stage === 'S5')));
     const fresh = await request({view: 'summary', session_id: 'session-fresh'});
     assert.deepEqual(fresh.runs, []);
     assert.deepEqual(fresh.datasets, []);

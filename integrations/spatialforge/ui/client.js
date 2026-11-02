@@ -302,7 +302,13 @@ window.__ModuleLoader__.load({
       READY: 'waiting', PENDING: 'waiting', RUNNING: 'running'}[value] || value || 'unknown');
     const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
       ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
-    function stageState(id, pipeline, scene, operations = []) {
+    function pipelineForStage(id, pipelines) {
+      const latest = (stage) => pipelines.filter((row) => row.steps?.some((step) => step.stage === stage))
+        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
+      return latest(id) || (id === 'S3' ? latest('S2') : null);
+    }
+    function stageState(id, pipeline, scene, operations = [], planReceipt = null) {
+      if (id === 'S1' && planReceipt) return 'completed';
       const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
       if (current.length) {
         if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
@@ -443,17 +449,17 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
-    function StageProgress({stage, pipeline, scene, record, t}) {
+    function StageProgress({stage, pipeline, scene, record, planReceipt, t}) {
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
-      const steps = scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
+      const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
         label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
         queue: row.queue, age: row.progress?.age_seconds})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
         .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
       const completed = steps.filter((row) => row.state === 'completed').length;
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
-      const state = stageState(stage.id, pipeline, scene, operations);
+      const state = stageState(stage.id, pipeline, scene, operations, planReceipt);
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
       return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id, 'aria-label': t('stageProgress')},
         h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('stageProgress')), status(state, t),
@@ -637,9 +643,12 @@ window.__ModuleLoader__.load({
       ]);
       const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
       const rows = summary.value?.runs || [];
-      const selectedRunId = route.production && !route.run ? '' : rows.find((row) => row.id === route.run)?.id ||
-        progress.value?.pipelines?.find((row) => row.state !== 'completed')?.id || rows[0]?.id || progress.value?.pipelines?.[0]?.id || '';
-      const datasets = (summary.value?.datasets || []).filter((row) => selectedRunId ? row.run_id === selectedRunId : !row.run_id);
+      const pipelines = progress.value?.pipelines || [];
+      const explicitRunId = rows.find((row) => row.id === route.run)?.id || pipelines.find((row) => row.id === route.run)?.id;
+      const selectedRunId = route.production && !route.run ? '' : explicitRunId ||
+        pipelineForStage(route.stage, pipelines)?.id || rows[0]?.id || pipelines[0]?.id || '';
+      const datasetRunId = route.production && !route.run ? '' : explicitRunId || pipelineForStage('S4', pipelines)?.id || selectedRunId;
+      const datasets = (summary.value?.datasets || []).filter((row) => datasetRunId ? row.run_id === datasetRunId : !row.run_id);
       const selectedDataset = datasets.find((row) => row.id === route.dataset);
       const sceneJobs = progress.value?.scenes?.runs || [];
       const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
@@ -693,6 +702,8 @@ window.__ModuleLoader__.load({
         image_url: row.stage === 'S3' && row.kind === 'json' ? allStageFiles.find((image) => image.kind === 'image' &&
           image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, '.png'))?.url : undefined}));
       const activePipeline = sourceScene ? null : pipeline;
+      const navigationPipeline = (id) => !route.run && !route.production
+        ? pipelineForStage(id, pipelines) || activePipeline : activePipeline;
       const prepare = () => {
         if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
         setSendError('');
@@ -725,7 +736,7 @@ window.__ModuleLoader__.load({
       const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
-      const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) =>
+      const versionOptions = [['', t('chooseDataset')], ...datasets.map((row) =>
         [row.id, row.workspace + ' / ' + displayRef(row.version)])];
       const chooseProduction = (value) => {
         setPreview(null);
@@ -797,6 +808,9 @@ window.__ModuleLoader__.load({
         const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
           ? summary.value.plan : null;
         const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
+        const planReceipt = plan ? {id: conversationPlan || !selectedRunId
+          ? summary.value?.plan_source?.operation_id || 'saved-plan' : selectedRunId,
+          state: 'completed', label: t('persistedPlan')} : null;
         const separatePlan = conversationPlan && JSON.stringify(conversationPlan) !== JSON.stringify(run.value?.plan);
         const plannedItems = plan?.selections?.length ? plan.selections.reduce((total, row) => total + row.count, 0) : plan?.inputs?.target_items;
         const filesError = sceneArtifacts.error || run.error;
@@ -833,11 +847,13 @@ window.__ModuleLoader__.load({
           select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
           dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
           (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report, t}),
-          h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
+          !finalReport && (sceneArtifacts.loading || run.loading) ? empty(t('loading')) :
+            !finalReport && filesError ? h('p', {className: 'bfw-error'}, t('artifactReadFailed') + ' ' + filesError) :
+              h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
           productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
             h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
       const body = h(React.Fragment, null,
-          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, t}),
+          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, t}),
           h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
             h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
           productionOptions.length > 2 && h('div', {className: 'bfw-production-source'},
@@ -872,8 +888,8 @@ window.__ModuleLoader__.load({
           'aria-current': stage.id === step.id ? 'step' : undefined,
           onClick: () => {update({stage: step.id}); setNotice('');}},
           h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key)),
-          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, activePipeline, sourceScene, progress.value?.operations)},
-            t(stageState(step.id, activePipeline, sourceScene, progress.value?.operations)))))),
+          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt)},
+            t(stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt)))))),
         notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
         h('section', {id: 'bfw-content-' + sessionId, 'aria-label': t(stage.key)}, body),
