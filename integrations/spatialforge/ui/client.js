@@ -1090,7 +1090,9 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {uiConversation.binding(props.sessionId).activate('chat');}, [props.sessionId]);
       const permissions = props.useProjection('permissions');
       const openState = props.useSession((state) => state.openState);
-      const ready = permissions?.currentValue === 'danger-full-access';
+      const confirmedPermission = React.useRef();
+      if (permissions?.currentValue !== undefined) confirmedPermission.current = permissions.currentValue;
+      const ready = confirmedPermission.current === 'danger-full-access';
       const attempted = React.useRef(false);
       const [retry, setRetry] = React.useState(0);
       const [permissionError, setPermissionError] = React.useState('');

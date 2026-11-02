@@ -28,6 +28,26 @@ const all = (node, predicate) => Array.isArray(node) ? node.flatMap((value) => a
   : node && typeof node === 'object' ? [...(predicate(node) ? [node] : []), ...all(node.props?.children, predicate)] : [];
 const render = (feedback, sessionStatus = 'running') => ExecutionFeedback({feedback, sessionStatus, t: (key) => key});
 
+test('a confirmed session permission survives a missing projection but an explicit permission change takes effect', async () => {
+  let loaded, index = 0;
+  const hooks = [];
+  const React = {createElement: (type, props) => ({type, props}), useEffect() {},
+    useRef: (initial) => hooks[index++] ||= {current: initial},
+    useState: (initial) => {const slot = index++; if (!(slot in hooks)) hooks[slot] = initial; return [hooks[slot], () => {}];}};
+  const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {ProductionEnvironment}; return {inject:');
+  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}});
+  const {ProductionEnvironment} = loaded.factory(() => React);
+  let permission = {currentValue: 'danger-full-access'};
+  const props = {sessionId: 'permission-fixture', useProjection: () => permission, useSession: (read) => read({openState: 'open'})};
+  const renderPermission = () => {index = 0; return ProductionEnvironment(props).props.canSubmit;};
+  assert.equal(renderPermission(), true);
+  permission = undefined;
+  assert.equal(renderPermission(), true, 'a temporary missing projection must not disable an already authorized session');
+  permission = {currentValue: 'workspace-write'};
+  assert.equal(renderPermission(), false, 'an explicit change must not be hidden by retained permissions');
+});
+
 test('current live text is visible in a conversation log and never exposes model reasoning', () => {
   const chat = {nodes: [request(1, '制作六道题'), assistant(2, '正在读取场景')], runningCalls: [],
     partial: {turn: 1, step: 2, blocks: [{kind: 'reasoning', text: 'PRIVATE_STREAM_REASONING'},

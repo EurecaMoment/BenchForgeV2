@@ -141,6 +141,8 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 SpatialForge 主视图，
 明确切换环境或会话后才移除；输入表单本身不注册或卸载主槽。
+同一工作台保留已确认的权限值，临时缺失投影不会禁用已授权输入；
+收到明确的新权限值时立即更新，首次尚未确认权限时仍等待授权。
 
 - `node --test integrations/spatialforge/tests/test_workbench_feedback.mjs`：
   流式正文、当前要求、提交回显和 PTC 工具状态的定向验证。
