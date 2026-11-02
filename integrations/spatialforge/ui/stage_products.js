@@ -479,6 +479,8 @@ function integer(value, fallback, maximum) {
   if (!Number.isSafeInteger(number) || number < 1 || number > maximum) throw new ApiError('Invalid pagination');
   return number;
 }
+const PUBLIC_MEDIA_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
+  '.svg': 'image/svg+xml', '.gif': 'image/gif', '.json': 'application/json'};
 function mediaReferences(row, id, index, workspacePath, scope) {
   return (Array.isArray(row.media) ? row.media : []).map((_, media) => {
     const params = new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media), ...scopeParams(scope)});
@@ -504,7 +506,9 @@ async function readDataset(url, roots, signal) {
     if (template && row.template_id !== template || split && row.split !== split) continue;
     if (query && ![row.item_id, row.id, row.question, row.task_id, row.template_id].some((value) => String(value || '').toLocaleLowerCase().includes(query))) continue;
     if (total >= (page - 1) * pageSize && items.length < pageSize) {
-      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath, scope)});
+      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath, scope),
+        media_types: (Array.isArray(row.media) ? row.media : []).map((reference) => typeof reference === 'string'
+          ? PUBLIC_MEDIA_TYPES[path.extname(reference).toLowerCase()] || 'application/octet-stream' : 'application/octet-stream')});
     }
     total++;
   }
@@ -527,9 +531,8 @@ async function readMedia(url, roots, signal) {
   const mediaRoot = await fs.realpath(path.join(publicRoot, 'media'));
   const relative = path.relative(mediaRoot, file);
   if (relative.startsWith('..' + path.sep) || relative === '..' || path.isAbsolute(relative)) throw new ApiError('Media escapes public media directory', 403);
-  const types = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.gif': 'image/gif'};
-  const type = types[path.extname(file).toLowerCase()];
-  if (!type) throw new ApiError('Preview supports public images only', 415);
+  const type = PUBLIC_MEDIA_TYPES[path.extname(file).toLowerCase()];
+  if (!type) throw new ApiError('Preview supports declared public images and JSON only', 415);
   return new Response(await fs.readFile(file, {signal}), {headers: {'content-type': type, 'cache-control': 'private, max-age=60',
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
 }

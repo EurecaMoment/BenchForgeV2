@@ -16,6 +16,8 @@ window.__ModuleLoader__.load({
       zh: {
         executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。',
         blueprintNav: '计划', collectionNav: '场景', structureNav: '标注', synthesisNav: '题目', verificationNav: '报告', stageDone: '已完成',
+        previewable: '可预览', savedStageProducts: '已保存产物', observationReadFailed: '公开观测加载失败，请重试。', unsupportedObservation: '暂不支持预览这种公开观测。',
+        sceneProject: '场景项目', sceneTour: '视角巡览视频', recordedViews: '已采集视角', prepareSceneVideo: '正在准备场景视频…', sceneVideoFailed: '场景视频准备失败，请重试。', pairedAnnotations: '场景图与标注已配对',
         currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
         toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
@@ -98,7 +100,7 @@ window.__ModuleLoader__.load({
         confirmSendNote: '确认后直接提交。原输入中的草稿和附件只有查看并勾选后才会一同发送；取消不会更改它们。',
         sendBusy: '输入框正在处理提交或命令，请完成后重试。', sendFailed: '提交失败，已保留任务内容，请重试。', noSendInterface: '当前 DSH 未提供对话提交接口。',
         existingDraft: '将一同发送的输入框文字', existingAttachments: '将一同发送的附件数',
-        blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '先准备场景，再采集图像、视频、轨迹与原生状态。',
+        blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '一个项目对应一个场景，打开项目播放场景巡览视频。',
         structureDesc: '整理公开观测、标定和对象关系，绑定程序或仿真证据。', synthesisDesc: '按模板批量出题，查看数据集全集和样本。', verificationDesc: '审查有效性、分区与覆盖，生成报告和交付版本。',
         objective: '评测目标', objectivePlaceholder: '例如：测试室内遮挡条件下的距离估计和相对位置推理，生成 300 道评测题。',
         targetItems: '目标题量', storageBudget: '存储上限（GB）', sourceType: '数据来源', simulator: '仿真场景', program: '程序生成', official: '官方数据',
@@ -117,6 +119,8 @@ window.__ModuleLoader__.load({
       en: {
         executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.',
         blueprintNav: 'Plan', collectionNav: 'Scenes', structureNav: 'Labels', synthesisNav: 'Items', verificationNav: 'Report', stageDone: 'Done',
+        previewable: 'Preview available', savedStageProducts: 'Saved products', observationReadFailed: 'Public observation failed to load. Please retry.', unsupportedObservation: 'This public observation type cannot be previewed yet.',
+        sceneProject: 'Scene project', sceneTour: 'Recorded viewpoint video', recordedViews: 'Recorded views', prepareSceneVideo: 'Preparing scene video…', sceneVideoFailed: 'Scene video could not be prepared. Please retry.', pairedAnnotations: 'Scene images and annotations are paired',
         currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
         toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
@@ -199,7 +203,7 @@ window.__ModuleLoader__.load({
         confirmSendNote: 'Confirm submits directly. Existing composer drafts and attachments are only included after explicit review and selection. Cancel keeps them unchanged.',
         sendBusy: 'The composer is processing a submission or command. Try again after it finishes.', sendFailed: 'Submission failed. Task retained; please retry.', noSendInterface: 'This DSH session has no submission interface.',
         existingDraft: 'Composer text included in this submission', existingAttachments: 'Attachments included in this submission',
-        blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Prepare scenes, then collect images, video, trajectories and native state.',
+        blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Each project represents one scene. Open it to play the recorded scene video.',
         structureDesc: 'Organize public observations, calibration and source evidence.', synthesisDesc: 'Produce questions and inspect dataset versions and samples.', verificationDesc: 'Inspect validity, splits and coverage; prepare reports and releases.',
         objective: 'Evaluation goal', objectivePlaceholder: 'For example: 300 indoor distance and relative-position questions with varied occlusion.',
         targetItems: 'Target items', storageBudget: 'Storage limit (GB)', sourceType: 'Source', simulator: 'Simulation scenes', program: 'Program generation', official: 'Official data',
@@ -242,7 +246,8 @@ window.__ModuleLoader__.load({
 .bfw-context-heading,.bfw-demand-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-block-end:.75rem;min-inline-size:0}.bfw-context-heading>strong{font-size:.9rem;font-weight:600}.bfw-context-heading>.bfw-button{margin-inline-start:auto;padding:.3em .65em;font-size:.75rem}.bfw-context-heading .bfw-pill{font-size:.68rem}.bfw-context-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem 1rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.65rem;margin-block-start:.65rem;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions]::before{content:'';display:inline-block;inline-size:.35rem;block-size:.35rem;margin-inline-end:.45rem;border-radius:50%;background:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions=true]::before{background:var(--dsw-alias-state-success-primary)}
 .bfw-stage-copy{flex:1 1 5.5ch;min-inline-size:0}.bfw-stage[aria-current=step] .bfw-stage-index{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff)}.bfw-product>.bfw-empty:only-child{display:grid;place-items:center;min-block-size:10rem;max-inline-size:45ch;margin-inline:auto;text-align:center}
 .bfw-demand-heading{justify-content:space-between}.bfw-demand-heading>.bfw-label{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-heading .bfw-select{inline-size:auto;padding:.25em .55em;font-size:.75rem;color:var(--dsw-alias-label-primary)}.bfw-demand form{display:grid;gap:.75rem}.bfw-demand-fields{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,2.5fr);gap:.75rem;min-inline-size:0}.bfw-demand .bfw-label{font-size:.75rem;gap:.3rem}.bfw-demand .bfw-input{font-size:.8rem}.bfw-demand-footer{display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:space-between;gap:.75rem}.bfw-demand-options{flex:1 1 20ch;min-inline-size:0;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-options p{margin:.35rem 0 0}.bfw-demand-options summary{width:fit-content;color:var(--dsw-alias-label-primary)}.bfw-demand-options .bfw-form{margin-block:.65rem;gap:.65rem}.bfw-demand-footer>.bfw-button{flex:0 0 auto;padding:.5em 1em;font-size:.8rem}.bfw-demand .bfw-draft-review{margin:0}
-
+.bfw-public-observation{min-inline-size:0;margin:1rem 0}.bfw-public-observation>figcaption{font-size:.75rem;color:var(--dsw-alias-label-secondary)}.bfw-public-observation[data-compact=true]{margin:0}.bfw-public-observation[data-compact=true] .bfw-observation{margin:0 0 .75rem;aspect-ratio:16/10}
+.bfw-scene-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,42ch),1fr));gap:1rem}.bfw-scene-project{max-inline-size:72ch}.bfw-scene-poster{position:relative;display:grid;place-items:center;background:var(--dsw-alias-bg-layer-2);aspect-ratio:16/10;overflow:hidden}.bfw-scene-poster img{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-play{position:absolute;display:grid;place-items:center;inline-size:3rem;block-size:3rem;border-radius:50%;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 .2rem 1rem #0002}.bfw-scene-video{display:grid;gap:.75rem;min-inline-size:0}.bfw-scene-video video,.bfw-scene-video canvas{display:block;inline-size:auto;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin-inline:auto}.bfw-scene-video progress{inline-size:100%}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -368,7 +373,19 @@ window.__ModuleLoader__.load({
         .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
       return latest(id) || (id === 'S3' ? latest('S2') : null);
     }
-    function stageState(id, pipeline, scene, operations = [], planReceipt = null) {
+    function sceneForStage(id, scenes) {
+      const candidates = scenes.filter((scene) => scene.tasks?.some((task) => sceneStage(task) === id ||
+        id === 'S3' && sceneStage(task) === 'S2'));
+      const usable = candidates.filter((scene) => scene.state !== 'CANCELED');
+      return usable.find((scene) => !scene.terminal && scene.state !== 'FAILED_FINAL') ||
+        usable.find((scene) => scene.state === 'SUCCEEDED') || usable[0] || candidates[0];
+    }
+    function annotationProducts(artifacts) {
+      return artifacts.filter((row) => row.stage === 'S3' && row.kind === 'json' && artifacts.some((image) =>
+        image.kind === 'image' && image.task_id === row.task_id && image.revision === row.revision &&
+        image.file === row.file?.replace(/\.json$/, '.png')));
+    }
+    function stageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = []) {
       if (id === 'S1' && planReceipt) return 'completed';
       const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
       if (current.length) {
@@ -380,6 +397,15 @@ window.__ModuleLoader__.load({
       }
       const steps = (pipeline?.steps || []).filter((row) => row.stage === id);
       if (!steps.length) {
+        if (id === 'S3' && annotationProducts(artifacts).length) {
+          const capture = (pipeline?.steps || []).filter((row) => row.stage === 'S2');
+          const views = artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' && /^capture\/view_\d+\.png$/.test(row.file || ''));
+          const labels = annotationProducts(artifacts);
+          const paired = views.length && views.every((view) => labels.some((label) => label.task_id === view.task_id &&
+            label.revision === view.revision && label.file === view.file.replace(/\.png$/, '.json')));
+          const settled = scene?.state === 'SUCCEEDED' || capture.length && capture.every((row) => row.state === 'completed');
+          return paired && settled ? 'completed' : 'previewable';
+        }
         if (pipeline || scene) return 'unknown';
         const recorded = operations.filter((row) => row.stage === id);
         return recorded.find((row) => row.state === 'running')?.state || recorded[0]?.state || 'unknown';
@@ -510,7 +536,7 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
-    function StageProgress({stage, pipeline, scene, record, planReceipt, t}) {
+    function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], t}) {
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
       const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
@@ -520,21 +546,162 @@ window.__ModuleLoader__.load({
       const completed = steps.filter((row) => row.state === 'completed').length;
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
-      const state = stageState(stage.id, pipeline, scene, operations, planReceipt);
+      const state = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
+      const products = stage.id === 'S3' && !steps.length ? annotationProducts(artifacts) : [];
+      const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
+        /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
       return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id, 'aria-label': t('stageProgress')},
         h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('stageProgress')), status(state, t),
-          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t(operations.length ? 'recentOperations' : 'observedSteps') : t('waitingForReceipt'))),
+          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t(operations.length ? 'recentOperations' : 'observedSteps') :
+            products.length ? products.length + ' / ' + productTotal + ' · ' + t('savedStageProducts') : t('waitingForReceipt'))),
         steps.length ? h('progress', {max: steps.length, value: completed, 'aria-label': t('stageProgress')}) :
-          h('div', {className: 'bfw-progress-track', 'aria-label': t('unmeasuredProgress')}),
+          products.length ? h('progress', {max: productTotal, value: products.length, 'aria-label': t('savedStageProducts')}) :
+            h('div', {className: 'bfw-progress-track', 'aria-label': t('unmeasuredProgress')}),
         h('div', {className: 'bfw-progress-caption', role: 'status', 'aria-live': 'polite'},
-          h('span', null, current ? current.id + (current.label ? ' · ' + current.label : '') : t(steps.length ? 'knownProgress' : 'noStageSteps')),
+          h('span', null, current ? current.id + (current.label ? ' · ' + current.label : '') :
+            t(steps.length ? 'knownProgress' : products.length ? 'pairedAnnotations' : 'noStageSteps')),
           h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
         stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
         current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
         current?.queue && h('p', null, t('waiting') + ': ' + current.queue.reason),
         steps.length > 0 && h('details', null, h('summary', null, t('stageProcess')),
           table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))));
+    }
+    function PublicObservation({src, type = 'image/*', label, compact = false, t}) {
+      const [record, setRecord] = React.useState({loading: type === 'application/json', data: null, error: ''});
+      const [attempt, setAttempt] = React.useState(0);
+      React.useEffect(() => {
+        setRecord({loading: type === 'application/json', data: null, error: ''});
+        if (type !== 'application/json') return;
+        const controller = new AbortController();
+        fetch(src, {signal: controller.signal}).then(async (response) => {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return response.json();
+        }).then((data) => {if (!controller.signal.aborted) setRecord({loading: false, data, error: ''});})
+          .catch((error) => {if (!controller.signal.aborted) setRecord({loading: false, data: null, error: error.message});});
+        return () => controller.abort();
+      }, [src, type, attempt]);
+      return h('figure', {className: 'bfw-public-observation', 'data-observation-type': type, 'data-compact': compact},
+        !compact && h('figcaption', null, label),
+        record.error ? h('div', {className: 'bfw-error', role: 'alert'}, t('observationReadFailed'), ' ' + record.error,
+          button(t('retry'), () => setAttempt((value) => value + 1))) : type === 'application/json' ?
+          record.loading ? empty(t('loading')) : json(record.data) : type.startsWith('image/') ?
+            h('img', {className: 'bfw-observation', key: attempt, src, alt: label, loading: compact ? 'lazy' : undefined,
+              onError: () => setRecord({loading: false, data: null, error: t('readFailed')})}) :
+            h('p', {className: 'bfw-muted'}, t('unsupportedObservation')));
+    }
+    function firstImage(item) {
+      const index = item.media_types ? item.media_types.findIndex((type) => type.startsWith('image/')) : 0;
+      return item.media?.[index];
+    }
+    function sceneProjects(items) {
+      const groups = new Map();
+      for (const item of items.filter((row) => ['image', 'video'].includes(row.kind))) {
+        const id = item.task_id || item.scene_id || 'scene';
+        if (!groups.has(id)) groups.set(id, {id, title: item.scene_name || id, frames: [], video: null, kind: 'scene'});
+        const project = groups.get(id);
+        if (item.kind === 'video') project.video ||= item;
+        else project.frames.push(item);
+      }
+      for (const project of groups.values()) project.frames.sort((a, b) => (a.file || a.title || '').localeCompare(b.file || b.title || '', undefined, {numeric: true}));
+      return [...groups.values()];
+    }
+    function SceneGallery({items, preview, t}) {
+      const projects = sceneProjects(items);
+      if (!projects.length) return empty(t('artifactPending'));
+      return h('div', {className: 'bfw-scene-projects'}, projects.map((project, index) => h('article', {
+        className: 'bfw-preview-card bfw-scene-project', key: project.id, 'data-scene-project': project.id},
+        h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(project),
+          'aria-label': t('preview') + ' ' + t('sceneProject') + ' ' + (index + 1)},
+          h('span', {className: 'bfw-scene-poster'}, project.frames[0] ? h('img', {src: project.frames[0].url, alt: project.title}) :
+            h('video', {src: project.video.url, preload: 'metadata', muted: true}), h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, '▶')),
+          h('strong', null, t('sceneProject') + ' ' + (index + 1)),
+          h('span', {className: 'bfw-muted'}, t('sceneTour') + ' · ' + t('recordedViews') + ': ' + project.frames.length)),
+        h('p', {className: 'bfw-code'}, displayRef(project.title)))));
+    }
+    function SceneVideo({project, t}) {
+      const canvasRef = React.useRef(null);
+      const [record, setRecord] = React.useState({url: project.video?.url || '', progress: 0, error: ''});
+      const [attempt, setAttempt] = React.useState(0);
+      React.useEffect(() => {
+        if (project.video) {setRecord({url: project.video.url, progress: 0, error: ''}); return;}
+        let stopped = false, stream, recorder, objectUrl;
+        const images = [];
+        const prepare = async () => {
+          setRecord({url: '', progress: 0, error: ''});
+          if (typeof MediaRecorder === 'undefined' || !canvasRef.current?.captureStream) throw new Error(t('sceneVideoFailed'));
+          const frames = await Promise.all(project.frames.map((frame) => new Promise((resolve, reject) => {
+            const image = new Image(); images.push(image);
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error(t('artifactReadFailed')));
+            image.src = frame.url;
+          })));
+          if (stopped) return;
+          const canvas = canvasRef.current;
+          canvas.width = frames[0].naturalWidth; canvas.height = frames[0].naturalHeight;
+          const context = canvas.getContext('2d');
+          const draw = (image, alpha = 1) => {
+            const scale = Math.min(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
+            context.globalAlpha = alpha;
+            context.drawImage(image, (canvas.width - image.naturalWidth * scale) / 2,
+              (canvas.height - image.naturalHeight * scale) / 2, image.naturalWidth * scale, image.naturalHeight * scale);
+            context.globalAlpha = 1;
+          };
+          draw(frames[0]);
+          const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
+          stream = canvas.captureStream(24);
+          recorder = new MediaRecorder(stream, mimeType ? {mimeType} : undefined);
+          const chunks = [];
+          const finished = new Promise((resolve, reject) => {
+            recorder.ondataavailable = (event) => {if (event.data.size) chunks.push(event.data);};
+            recorder.onerror = () => reject(new Error(t('sceneVideoFailed')));
+            recorder.onstop = () => resolve(new Blob(chunks, {type: recorder.mimeType}));
+          });
+          recorder.start();
+          for (let index = 0; index < frames.length && !stopped; index++) {
+            for (let fade = 1; fade <= 8 && !stopped; fade++) {
+              draw(frames[Math.max(0, index - 1)]); draw(frames[index], fade / 8);
+              await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+            await new Promise((resolve) => setTimeout(resolve, 800));
+            if (!stopped) setRecord({url: '', progress: index + 1, error: ''});
+          }
+          if (recorder.state !== 'inactive') recorder.stop();
+          const blob = await finished;
+          stream.getTracks().forEach((track) => track.stop());
+          if (stopped) return;
+          objectUrl = URL.createObjectURL(blob);
+          setRecord({url: objectUrl, progress: frames.length, error: ''});
+        };
+        prepare().catch((error) => {
+          if (recorder && recorder.state !== 'inactive') recorder.stop();
+          stream?.getTracks().forEach((track) => track.stop());
+          if (!stopped) setRecord({url: '', progress: 0, error: error.message});
+        });
+        return () => {
+          stopped = true;
+          if (recorder && recorder.state !== 'inactive') recorder.stop();
+          stream?.getTracks().forEach((track) => track.stop());
+          images.forEach((image) => {image.onload = image.onerror = null; image.src = '';});
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+      }, [project, attempt]);
+      return h('div', {className: 'bfw-scene-video'}, record.error ? h('div', {className: 'bfw-error', role: 'alert'},
+        t('sceneVideoFailed'), ' ' + record.error, button(t('retry'), () => {
+          setRecord({url: '', progress: 0, error: ''}); setAttempt((value) => value + 1);
+        })) : record.url ?
+        h('video', {src: record.url, controls: true, autoPlay: true, loop: true, muted: true, playsInline: true,
+          'aria-label': t('sceneTour'), onLoadedMetadata: (event) => {
+            const video = event.currentTarget;
+            if (video.duration !== Infinity) return;
+            video.addEventListener('durationchange', () => {video.currentTime = 0;}, {once: true});
+            video.currentTime = 1e10;
+          }, onError: () => setRecord({url: '', progress: 0, error: t('artifactReadFailed')})}) :
+        h(React.Fragment, null, h('canvas', {ref: canvasRef, role: 'img', 'aria-label': t('sceneTour')}),
+          h('p', {className: 'bfw-muted', role: 'status'}, t('prepareSceneVideo') + ' ' + record.progress + ' / ' + project.frames.length),
+          h('progress', {max: project.frames.length, value: record.progress, 'aria-label': t('prepareSceneVideo')})),
+        h('p', {className: 'bfw-muted'}, t('sceneTour') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
     }
     function PreviewDialog({item, close, t}) {
       const ref = React.useRef(null);
@@ -559,7 +726,7 @@ window.__ModuleLoader__.load({
       return h('dialog', {ref, className: 'bfw-preview-dialog', 'aria-label': t('preview') + ' · ' + item.title,
         onCancel: (event) => {event.preventDefault(); close();}, onClick: (event) => {if (event.target === ref.current) close();}},
         h('div', {className: 'bfw-preview-header'}, h('h2', null, item.title), button(t('previewClose'), close)),
-        item.kind === 'image' ? h('img', {src: item.url, alt: item.title}) : item.kind === 'video' ?
+        item.kind === 'scene' ? h(SceneVideo, {project: item, t}) : item.kind === 'image' ? h('img', {src: item.url, alt: item.title}) : item.kind === 'video' ?
           h('video', {src: item.url, controls: true, preload: 'metadata'}) : error ? h('p', {role: 'alert'}, t('artifactReadFailed') + ' ' + error) :
           data ? h(React.Fragment, null,
             item.image_url && h('div', {className: 'bfw-annotation-image'}, h('img', {src: item.image_url, alt: item.title}),
@@ -751,17 +918,20 @@ window.__ModuleLoader__.load({
       const pipelines = progress.value?.pipelines || [];
       const explicitRunId = rows.find((row) => row.id === route.run)?.id || pipelines.find((row) => row.id === route.run)?.id;
       const selectedRunId = route.production && !route.run ? '' : explicitRunId ||
-        pipelineForStage(route.stage, pipelines)?.id || rows[0]?.id || pipelines[0]?.id || '';
+        pipelineForStage(route.stage, pipelines)?.id || (['S2', 'S3'].includes(route.stage) ? '' : rows[0]?.id || pipelines[0]?.id || '');
       const datasetRunId = route.production && !route.run ? '' : explicitRunId || pipelineForStage('S4', pipelines)?.id || selectedRunId;
       const datasets = (summary.value?.datasets || []).filter((row) => datasetRunId ? row.run_id === datasetRunId : !row.run_id);
       const selectedDataset = datasets.find((row) => row.id === route.dataset);
       const sceneJobs = progress.value?.scenes?.runs || [];
-      const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
+      const scene = route.production ? sceneJobs.find((row) => row.run_id === route.production) :
+        sceneForStage(route.stage, sceneJobs) || sceneForStage('S2', sceneJobs);
       const sourceScene = selectedRunId ? null : scene;
       const run = useRecord(workspacePath && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 10000, visible);
-      const artifactScene = sourceScene?.run_id || run.value?.scene_ids?.[0];
+      const automaticScene = !route.run && !route.production ? sceneForStage('S2', sceneJobs) : null;
+      const artifactScene = sourceScene?.run_id || automaticScene?.run_id || run.value?.scene_ids?.[0];
+      const artifactRunId = sourceScene || automaticScene ? '' : selectedRunId;
       const sceneArtifacts = useRecord(workspacePath && artifactScene ?
-        {view: 'stage_artifacts', scene: artifactScene, run: selectedRunId, session_id: sessionId, workspace_path: workspacePath} : null, receiptsRevision, 10000, visible);
+        {view: 'stage_artifacts', scene: artifactScene, run: artifactRunId, session_id: sessionId, workspace_path: workspacePath} : null, receiptsRevision, 10000, visible);
       const catalog = useRecord(route.stage === 'S1'
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
       const dataset = useRecord(workspacePath && ['S4', 'S5'].includes(route.stage) && selectedDataset ?
@@ -801,15 +971,16 @@ window.__ModuleLoader__.load({
       const versionListing = filteredPage(datasets, route.versionFilter, route.versionListPage, route.versionListSize,
         (row) => [row.workspace, row.version, row.run_id, row.state].join(' '));
       const stage = STAGES.find((step) => step.id === route.stage) || STAGES[0];
-      const pipeline = progress.value?.pipelines?.find((row) => row.id === selectedRunId) ||
-        (!route.run ? progress.value?.pipelines?.find((row) => row.state !== 'completed') || progress.value?.pipelines?.[0] : null);
+      const pipeline = pipelines.find((row) => row.id === selectedRunId);
       const allStageFiles = [...(sourceScene ? [] : run.value?.stage_artifacts || []), ...(sceneArtifacts.value?.items || [])];
       const stageFiles = allStageFiles.filter((row) => row.stage === stage.id).map((row) => ({...row,
         image_url: row.stage === 'S3' && row.kind === 'json' ? allStageFiles.find((image) => image.kind === 'image' &&
           image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, '.png'))?.url : undefined}));
       const activePipeline = sourceScene ? null : pipeline;
       const navigationPipeline = (id) => !route.run && !route.production
-        ? pipelineForStage(id, pipelines) || activePipeline : activePipeline;
+        ? pipelineForStage(id, pipelines) || (['S2', 'S3'].includes(id) ? null : activePipeline) : activePipeline;
+      const navigationScene = (id) => route.run || route.production ? sourceScene :
+        navigationPipeline(id) ? null : sceneForStage(id, sceneJobs);
       const prepare = () => {
         if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
         setSendError('');
@@ -924,8 +1095,9 @@ window.__ModuleLoader__.load({
         dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : currentSample ? h(React.Fragment, null,
           button(t('close'), () => setSample(null)), h('h3', {className: 'bfw-code', ref: sampleHeadingRef, tabIndex: -1}, currentSample.item_id || currentSample.id),
           h('p', {className: 'bfw-question'}, currentSample.question), h('h3', null, t('media')),
-          currentSample.media?.length ? currentSample.media.map((src, i) => h('img', {className: 'bfw-observation', key: src, src, alt: t('media') + ' ' + (i + 1)})) : empty(t('noMedia')),
-          h('details', null, h('summary', null, t('details')), json({...currentSample, media: undefined}))) :
+          currentSample.media?.length ? currentSample.media.map((src, i) => h(PublicObservation,
+            {key: src, src, type: currentSample.media_types?.[i], label: t('media') + ' ' + (i + 1), t})) : empty(t('noMedia')),
+          h('details', null, h('summary', null, t('details')), json({...currentSample, media: undefined, media_types: undefined}))) :
           !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
             (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
             table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
@@ -933,7 +1105,7 @@ window.__ModuleLoader__.load({
                 button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
             h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
               'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
-              item.media?.[0] && h('img', {src: item.media[0], loading: 'lazy', alt: t('media')}),
+              firstImage(item) && h(PublicObservation, {src: firstImage(item), compact: true, label: t('media'), t}),
               h('span', {className: 'bfw-code'}, item.item_id || item.id), h('p', {className: 'bfw-question-preview'}, item.question),
               h('span', {className: 'bfw-muted'}, (item.template_id || '') + ' · ' + (item.split || ''))))),
         !currentSample && h('div', {className: 'bfw-pagination'},
@@ -951,6 +1123,9 @@ window.__ModuleLoader__.load({
         const filesError = sceneArtifacts.error || run.error;
         const productFiles = stageFiles.filter((row) => (row.url || row.data) && !(separatePlan &&
           (row.title === '评测计划' && row.stage === 'S1' || row.title === '评测配置' && row.stage === 'S4')));
+        const navigationState = (id) => stageState(id, navigationPipeline(id), navigationScene(id), progress.value?.operations,
+          planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
+            navigationPipeline(id)?.id === selectedRunId ? allStageFiles : []);
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
@@ -964,7 +1139,7 @@ window.__ModuleLoader__.load({
           filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
           (sceneArtifacts.loading || run.loading) && empty(t('loading')),
           (productFiles.length > 0 || !(sceneArtifacts.loading || run.loading || filesError)) &&
-            h(ArtifactGallery, {items: productFiles, preview: setPreview, t}));
+            h(stage.id === 'S2' ? SceneGallery : ArtifactGallery, {items: productFiles, preview: setPreview, t}));
         else if (stage.id === 'S4') product = h('div', {className: 'bfw-evaluation-grid'},
           h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
             select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
@@ -988,7 +1163,7 @@ window.__ModuleLoader__.load({
           productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
             h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
       const body = h(React.Fragment, null,
-          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, t}),
+          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, artifacts: allStageFiles, t}),
           h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
             h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
           productionOptions.length > 2 && h('div', {className: 'bfw-production-source'},
@@ -1009,9 +1184,8 @@ window.__ModuleLoader__.load({
           onClick: () => {update({stage: step.id}); setNotice('');}},
           h('span', {className: 'bfw-stage-index', 'aria-hidden': true}, step.id.slice(1).padStart(2, '0')),
           h('span', {className: 'bfw-stage-copy'}, h('strong', {title: t(step.key)}, t(step.key + 'Nav')),
-          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt)},
-            t(stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt) === 'completed' ? 'stageDone' :
-              stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt))))))),
+          h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
+            t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
         h('div', {className: 'bfw-command-deck'},
           h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
             h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),

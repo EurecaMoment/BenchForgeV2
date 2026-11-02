@@ -80,6 +80,39 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     const media = await handler(new Request('http://dsh.test/' + filtered.items[0].media[0]));
     assert.equal(media.status, 200);
     assert.match(media.headers.get('content-type'), /^image\//);
+    let publicDirectory = path.join(directory, JSON.parse(Buffer.from(version.id, 'base64url').toString())[1]);
+    let questionsFile = path.join(publicDirectory, 'questions.jsonl');
+    if (!await fs.stat(questionsFile).catch(() => null)) {
+      publicDirectory = path.join(publicDirectory, 'public');
+      questionsFile = path.join(publicDirectory, 'items.jsonl');
+    }
+    const questionLines = (await fs.readFile(questionsFile, 'utf8')).trim().split('\n');
+    const publicItem = JSON.parse(questionLines[24]);
+    const conditions = {tol: {pixel_sep_min_frac: 0.08}, variant: 'Public coordinate convention'};
+    const conditionsPath = path.join(publicDirectory, 'media', 'conditions.json');
+    await fs.writeFile(conditionsPath, JSON.stringify(conditions));
+    const conditionsIndex = publicItem.media.length;
+    publicItem.media.push('media/conditions.json');
+    questionLines[24] = JSON.stringify(publicItem);
+    await fs.writeFile(questionsFile, questionLines.join('\n') + '\n');
+    const withConditions = await request({view: 'dataset', dataset: version.id, q: 'item_00000024'});
+    assert.ok(withConditions.items[0].media_types.slice(0, -1).every((type) => type === 'image/png'));
+    assert.equal(withConditions.items[0].media_types[conditionsIndex], 'application/json');
+    const conditionsUrl = new URL(withConditions.items[0].media[conditionsIndex], 'http://dsh.test/');
+    const conditionsResponse = await handler(new Request(conditionsUrl));
+    assert.equal(conditionsResponse.status, 200);
+    assert.equal(conditionsResponse.headers.get('content-type'), 'application/json');
+    assert.deepEqual(await conditionsResponse.json(), conditions);
+    conditionsUrl.searchParams.set('session_id', 'session-fresh');
+    assert.equal((await handler(new Request(conditionsUrl))).status, 403);
+    await fs.writeFile(path.join(publicDirectory, 'private-conditions.json'), JSON.stringify({answer: 'PRIVATE_MEDIA_SENTINEL'}));
+    publicItem.media.push('media/../private-conditions.json');
+    questionLines[24] = JSON.stringify(publicItem);
+    await fs.writeFile(questionsFile, questionLines.join('\n') + '\n');
+    const outsideMedia = await request({view: 'dataset', dataset: version.id, q: 'item_00000024'});
+    const outsideResponse = await handler(new Request('http://dsh.test/' + outsideMedia.items[0].media[conditionsIndex + 1]));
+    assert.equal(outsideResponse.status, 403);
+    assert.ok(!(await outsideResponse.text()).includes('PRIVATE_MEDIA_SENTINEL'));
     const details = await request({view: 'run', run: version.run_id});
     const unrelatedRun = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({
       workspace_path: directory, session_id: 'session-fresh', view: 'run', run: version.run_id,
@@ -273,6 +306,121 @@ test('automatic assessment products retain explicit template intent while a sepa
     assert.doesNotMatch(text(render('S1', capture.id)), /P002-T01/);
     assert.equal((await read({view: 'summary', session_id: 'session-other'})).plan, null);
   } finally {await fs.rm(directory, {recursive: true, force: true});}
+});
+
+test('automatic scenes and paired annotations remain visible behind newer canceled and assessment runs', async () => {
+  let registration, route, records, requests;
+  const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
+    useRef: (current) => ({current}), useEffect() {}, useState: (initial) => {
+      const value = typeof initial === 'function' ? initial() : initial;
+      if (value && typeof value === 'object' && 'key' in value && 'loading' in value) {
+        const record = records.shift();
+        return [{key: 'fixture', value: record, loading: false}, () => {}];
+      }
+      return [value, () => {}];
+    }};
+  class FixtureParams extends URLSearchParams {
+    constructor(value) {super(value); requests.push(Object.fromEntries(this));}
+    toString() {return 'fixture';}
+  }
+  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {Workbench, dictionaries, stageState, sceneProjects}; return {inject:');
+  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, Date,
+    URLSearchParams: FixtureParams, localStorage: {getItem: () => JSON.stringify(route)}});
+  const {Workbench, dictionaries, stageState, sceneProjects} = registration.factory(() => React);
+  const completedScene = {run_id: 'sf_completed', state: 'SUCCEEDED', terminal: true,
+    tasks: [{id: 'sf_completed.scene0', state: 'SUCCEEDED', phase: 'capture', workflow: 'scene', revision: 1}]};
+  const canceledScene = {run_id: 'sf_canceled', state: 'CANCELED', terminal: true,
+    tasks: [{id: 'sf_canceled.scene0', state: 'CANCELED', phase: 'capture', workflow: 'scene', revision: 1}]};
+  const pipeline = {id: 'eval-r4', state: 'completed', updated_at: '2026-11-03T00:00:00Z',
+    steps: [{stage: 'S4', state: 'completed'}, {stage: 'S5', state: 'completed'}]};
+  const plan = {objective: 'Indoor relations', selections: [{template_ids: ['C24-T01'], count: 100, reason: 'Public observations'}]};
+  const artifacts = Array.from({length: 7}, (_, index) => ['png', 'json'].map((extension) => ({
+    stage: extension === 'png' ? 'S2' : 'S3', kind: extension === 'png' ? 'image' : 'json',
+    task_id: 'sf_completed.scene0', revision: 1, file: 'capture/view_' + index + '.' + extension,
+    title: 'view_' + index + '.' + extension, url: 'preview/view_' + index + '.' + extension,
+  }))).flat();
+  const projects = sceneProjects([...artifacts, {kind: 'video', task_id: 'sf_other.scene0', url: 'capture/tour.mp4'}]);
+  assert.equal(projects.length, 2);
+  assert.equal(projects[0].frames.length, 7);
+  assert.equal(projects[1].video.url, 'capture/tour.mp4');
+  const expand = (node) => Array.isArray(node) ? node.map(expand) : !node || typeof node !== 'object' ? node :
+    typeof node.type === 'function' ? expand(node.type(node.props)) : {...node, children: expand(node.props.children)};
+  const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+    : node && typeof node === 'object' ? predicate(node) ? node : find(node.children, predicate) : null;
+  const count = (node, predicate) => Array.isArray(node) ? node.reduce((total, child) => total + count(child, predicate), 0)
+    : node && typeof node === 'object' ? Number(predicate(node)) + count(node.children, predicate) : 0;
+  const render = (stage, production = '') => {
+    route = {version: 3, stage, production, dataset: 'dataset-r4'};
+    requests = [];
+    records = [{pipelines: [pipeline], scenes: {runs: [canceledScene, completedScene]}},
+      {runs: [{id: pipeline.id, label: pipeline.id, state: 'completed'}], plan,
+        datasets: [{id: 'dataset-r4', run_id: pipeline.id, version: 'eval-r4'}]},
+      {plan, state: {state: 'completed'}, steps: [], repairs: [], scene_ids: [canceledScene.run_id], stage_artifacts: []}, {items: production ? [] : artifacts},
+      {items: [], capabilities: []}, {items: [], total: 100, all: 100, pages: 5, facets: {templates: [], splits: []}}];
+    return expand(Workbench({sessionId: 'session-target', t: (key) => dictionaries.zh[key] || key,
+      renderFactorySlot: () => null, useSessions: (select) => select({byId: {'session-target': {cwd: ROOT}}}),
+      useSession: (select) => select({running: false, openState: 'open', pendingSubmissions: []}),
+      useInput: (select) => select({phase: 'plain', queue: [], draft: '', attachmentIds: []}), inputActions: {}}));
+  };
+  for (const stage of ['S2', 'S3', 'S4', 'S5']) {
+    const page = render(stage);
+    for (const id of ['S1', 'S2', 'S3', 'S4', 'S5']) {
+      const tab = find(page, (node) => node.props['data-stage'] === id);
+      assert.equal(find(tab, (node) => 'data-stage-state' in node.props).props['data-stage-state'], 'completed', stage + '/' + id);
+    }
+    assert.equal(requests.find((request) => request.view === 'stage_artifacts').scene, completedScene.run_id);
+    assert.equal(requests.find((request) => request.view === 'stage_artifacts').run, '');
+    if (['S2', 'S3'].includes(stage)) {
+      assert.ok(!requests.some((request) => request.view === 'run'));
+      assert.equal(count(page, (node) => stage === 'S2' ? 'data-scene-project' in node.props : node.props['data-preview-kind'] === 'json'), stage === 'S2' ? 1 : 7);
+      if (stage === 'S3') {
+        const productProgress = find(page, (node) => node.type === 'progress' && node.props['aria-label'] === '已保存产物');
+        assert.equal(productProgress.props.max, 7);
+        assert.equal(productProgress.props.value, 7);
+      }
+    }
+  }
+  const explicit = render('S2', canceledScene.run_id);
+  assert.equal(requests.find((request) => request.view === 'stage_artifacts').scene, canceledScene.run_id);
+  const explicitTab = find(explicit, (node) => node.props['data-stage'] === 'S2');
+  assert.equal(find(explicitTab, (node) => 'data-stage-state' in node.props).props['data-stage-state'], 'canceled');
+  assert.equal(stageState('S3', null, completedScene, [], null, []), 'unknown');
+  assert.equal(stageState('S3', null, completedScene, [], null, artifacts.slice(0, -1)), 'previewable');
+  assert.equal(stageState('S3', null, {...completedScene, state: 'RUNNING'}, [], null, artifacts), 'previewable');
+});
+
+test('public JSON observations render as text and loading failures remain visible', async () => {
+  let registration, states, cursor, effects, responseOk = true;
+  const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
+    useEffect: (effect) => effects.push(effect), useState: (initial) => {
+      const index = cursor++;
+      if (!(index in states)) states[index] = initial;
+      return [states[index], (value) => {states[index] = typeof value === 'function' ? value(states[index]) : value;}];
+    }};
+  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {PublicObservation}; return {inject:');
+  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, AbortController,
+    fetch: async () => ({ok: responseOk, status: 415, json: async () => ({tol: {pixel_sep_min_frac: 0.08}, variant: '<plain text>'})})});
+  const {PublicObservation} = registration.factory(() => React);
+  const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+    : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
+  const render = (type) => {cursor = 0; return PublicObservation({src: 'public-observation', type, label: 'Observation 2', t: (key) => key});};
+  states = []; effects = [];
+  assert.ok(!find(render('application/json'), (node) => node.type === 'img'));
+  const cleanup = effects.shift()();
+  await new Promise(setImmediate);
+  const loaded = render('application/json');
+  assert.match(find(loaded, (node) => node.type === 'pre').props.children[0], /pixel_sep_min_frac/);
+  assert.ok(!find(loaded, (node) => 'dangerouslySetInnerHTML' in node.props));
+  cleanup();
+  states = []; effects = []; responseOk = false;
+  render('application/json'); effects.shift()();
+  await new Promise(setImmediate);
+  assert.ok(find(render('application/json'), (node) => node.props.role === 'alert'));
+  states = []; effects = [];
+  find(render('image/png'), (node) => node.type === 'img').props.onError();
+  assert.ok(find(render('image/png'), (node) => node.props.role === 'alert'));
 });
 
 test('production observations follow persisted running/waiting/failed/completed transitions without changing records', async () => {
