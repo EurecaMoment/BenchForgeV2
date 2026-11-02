@@ -38,9 +38,16 @@ text filtering and 12-item pagination. Catalog designs and executable adapters
 remain separate; selecting a template does not assert that it has a working
 generator. The endpoint exposes no oracle fields.
 
-Existing overview, run/artifact, dataset and quality tabs remain available.
-Dataset versions are isolated, samples are paginated and filterable, and sample
-details expose public observations only. Missing verification stays unknown;
+The five stages are the only page navigation. Previous overview, run/artifact,
+dataset and quality tabs are merged into their stage: S1 has searchable and
+paginated past plans/runs; current-run provenance and repair details expand
+within the active stage; S4 includes the dataset-version directory plus the full
+filtered/paginated table or grid and public sample detail; S5 contains quality
+results and the final report. Saved legacy dataset/quality page selections migrate
+to S4/S5. Snapshot/source metadata stays inside production details instead of
+adding a second header between the five stages and their content.
+Dataset versions are isolated, and sample details expose public observations only.
+Missing verification stays unknown;
 generation acceptance does not become benchmark approval. Model response data
 is required before IRT diagnostics can be reported.
 
@@ -123,7 +130,7 @@ Usability behavior
 The live monitor defaults to a compact summary with expandable details. Run and
 dataset-version directories have search and 12/24/48-row pagination. Five-step
 navigation responds to the actual sidebar width, including narrow sidebars on
-wide desktop windows. Tabs support arrow keys, Home and End.
+wide desktop windows. Stage buttons support native keyboard activation.
 
 Changing a dataset version clears that version's template, split and query
 filters across workflow, quality and dataset views. Public sample details read
