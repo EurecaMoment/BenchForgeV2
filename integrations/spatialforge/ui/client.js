@@ -14,7 +14,8 @@ window.__ModuleLoader__.load({
     ];
     const dictionaries = {
       zh: {
-        executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。', synthesisNav: '题目配置',
+        executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。',
+        blueprintNav: '计划', collectionNav: '场景', structureNav: '标注', synthesisNav: '题目', verificationNav: '报告', stageDone: '已完成',
         currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
         toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
@@ -114,7 +115,8 @@ window.__ModuleLoader__.load({
         savedAt: '草稿保存于', navigation: 'BenchForge 五步', liveRecords: '当前会话的实际产物', requiredGoal: '先填写评测目标。', perTemplate: '题 / 模板',
       },
       en: {
-        executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.', synthesisNav: 'Questions',
+        executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.',
+        blueprintNav: 'Plan', collectionNav: 'Scenes', structureNav: 'Labels', synthesisNav: 'Items', verificationNav: 'Report', stageDone: 'Done',
         currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
         toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
@@ -1006,9 +1008,10 @@ window.__ModuleLoader__.load({
           'aria-current': stage.id === step.id ? 'step' : undefined,
           onClick: () => {update({stage: step.id}); setNotice('');}},
           h('span', {className: 'bfw-stage-index', 'aria-hidden': true}, step.id.slice(1).padStart(2, '0')),
-          h('span', {className: 'bfw-stage-copy'}, h('strong', null, t(step.id === 'S4' ? 'synthesisNav' : step.key)),
+          h('span', {className: 'bfw-stage-copy'}, h('strong', {title: t(step.key)}, t(step.key + 'Nav')),
           h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt)},
-            t(stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt))))))),
+            t(stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt) === 'completed' ? 'stageDone' :
+              stageState(step.id, navigationPipeline(step.id), sourceScene, progress.value?.operations, planReceipt))))))),
         h('div', {className: 'bfw-command-deck'},
           h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
             h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),
