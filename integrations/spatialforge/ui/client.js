@@ -864,6 +864,15 @@ window.__ModuleLoader__.load({
         }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
           ? h('button', {type: 'button', className: 'bfw-evaluation-launcher', 'aria-label': t('openEvaluation'),
             title: t('openEvaluation'), onClick: () => ctx.sidebarRight.openTab(PANEL)}, t('openEvaluation')) : null));
+        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({
+          name: 'conversation.input.right', id: 'spatialforge-empty-evaluation-launcher', order: 80, locale: NS,
+        }, ({useProjection, useSession}) => {
+          const preset = useProjection('agentPreset');
+          const blank = useSession((state) => state.blank);
+          return preset === SPATIALFORGE_PRESET && blank
+            ? h('button', {type: 'button', className: 'bfw-evaluation-launcher', 'aria-label': t('openEvaluation'),
+              title: t('openEvaluation'), onClick: () => ctx.sidebarRight.openTab(PANEL)}, t('openEvaluation')) : null;
+        }));
       },
     };
   },

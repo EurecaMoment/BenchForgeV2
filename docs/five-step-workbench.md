@@ -3,6 +3,9 @@
 Open a **SpatialForge** conversation in DSH and select **评测集** in its header.
 The conversation remains available beside the workbench. Other agent presets
 do not display the launcher or panel.
+An existing empty SpatialForge session has no active conversation header, so its
+launcher appears beside the composer through `conversation.input.right` instead.
+After the first message, the header launcher takes over without a duplicate.
 
 | Step | Page functions | Recorded outputs |
 | --- | --- | --- |

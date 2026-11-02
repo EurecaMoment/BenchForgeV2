@@ -251,7 +251,7 @@ test('evaluation launcher is gated to SpatialForge and opens its right-side sess
       return () => {};
     }},
   });
-  assert.deepEqual(seats, ['sidebar.right.pane.tab', 'conversation.session.header.utilities']);
+  assert.deepEqual(seats, ['sidebar.right.pane.tab', 'conversation.session.header.utilities', 'conversation.input.right']);
   assert.equal(definition.kind, 'benchforge-spatialforge-evaluation');
   assert.equal(definition.guide, undefined);
   const launcher = components.get('spatialforge-evaluation-launcher');
@@ -260,6 +260,14 @@ test('evaluation launcher is gated to SpatialForge and opens its right-side sess
   assert.equal(spatialForgeButton.type, 'button');
   spatialForgeButton.props.onClick();
   assert.deepEqual(opened, ['benchforge-spatialforge-evaluation']);
+  const emptyLauncher = components.get('spatialforge-empty-evaluation-launcher');
+  const blank = {useSession: (select) => select({blank: true})};
+  assert.equal(emptyLauncher({...blank, useProjection: () => 'benchforgev2'}), null);
+  assert.equal(emptyLauncher({useSession: (select) => select({blank: false}), useProjection: () => 'spatialforge-standard-ptc'}), null);
+  const emptyButton = emptyLauncher({...blank, useProjection: () => 'spatialforge-standard-ptc'});
+  assert.equal(emptyButton.type, 'button');
+  emptyButton.props.onClick();
+  assert.equal(opened.length, 2);
   assert.equal(components.get('benchforge-spatialforge-evaluation')({useProjection: () => 'benchforgev2'}), null);
   disposed.find((entry) => typeof entry === 'function')();
   assert.ok(disposed.includes('locale'));
