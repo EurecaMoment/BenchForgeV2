@@ -6,22 +6,28 @@ do not display the launcher or panel.
 
 | Step | Page functions | Recorded outputs |
 | --- | --- | --- |
-| S1 · 需求蓝图 / Intent blueprinting | Goal, item quantity, storage limit, source, capability search, template selection and quantity allocation | Session-local blueprint draft; production plan after it is submitted in chat |
-| S2 · 数据采集 / Data collection | Scene-first collection instructions and selection of an existing production run | Scene, reference, asset and capture artifacts |
-| S3 · 证据与状态结构化 / Evidence & state structuring | Evidence/state instructions; inspect artifact parents, evidence references and contract results | Evidence, calibration, annotation and trajectory artifacts |
-| S4 · 评测题合成 / Benchmark synthesis | Template-based synthesis instructions; dataset version selection and full dataset browser | Public questions, media, splits and dataset versions |
-| S5 · 验证与报告 / Verification & reporting | Verification/report/package instructions; quality results and saved repair proposals | Quality, evaluation, report and package artifacts |
+| S1 · 评测计划 | Persisted production plan; goal, capability/template selection and quantity allocation editor | Saved plan, distinct from the browser draft |
+| S2 · 场景预览 | Scene gallery, multiple selection and full-size image/video preview | Actual scene, reference, asset and capture artifacts |
+| S3 · 标注预览 | Public annotation preview; declared matching image with recorded boxes when available | Evidence, calibration, annotations and trajectories |
+| S4 · 评测配置与题目表 | Actual configuration and explicitly selected dataset's searchable, paginated questions | Public questions, media, splits and dataset versions |
+| S5 · 最终报告 | Saved report and selected dataset quality results | Quality, evaluation, report and package artifacts |
 
 The five steps organize work; they do not introduce a compulsory scheduler.
 Navigation is independent of completion. Artifact type/producer labels determine
 which recorded artifacts appear in a step; absence of a matching record is not
 proof that the step was never executed.
 
-“填入对话” inserts the selected step and blueprint into the current session's
-native DSH composer using `inputActions.captureInsertion/insertText`. It does not
-submit a model request. The user reviews and sends it through the normal DSH
-conversation. Existing tools execute the operation and retain its artifacts.
-This keeps failures and follow-up changes in the same conversation.
+Every stage retains “填入对话”. It opens a review dialog with a task package
+containing the stage, blueprint, persisted plan, selected scenes, dataset version
+and artifact references. “确认发送” uses the official session input actions
+`captureInsertion/insertText/submit` to submit directly to the current SpatialForge
+conversation. No second composer Send click is needed. Existing composer text
+and attachments are included by native DSH semantics and disclosed in the dialog;
+cancel leaves them unchanged. The task package references assets instead of
+uploading large binary artifacts again. A busy input or slash command leaves the
+dialog open. A synchronous submission error retains the package for retry without
+inserting it a second time. Submission is not production completion: the native
+conversation owns queueing, execution and failure receipts.
 
 “保存蓝图草稿” saves in this browser, keyed by session. It is not a server-side
 pipeline plan. Once sent, DSH must persist its actual plan/run in the workspace.
@@ -49,8 +55,10 @@ Validation:
 node --test integrations/spatialforge/tests/test_workbench.mjs
 ```
 
-Browser acceptance additionally checks all five steps, template selection,
-blueprint persistence and native draft insertion without submitting inference.
+Browser acceptance checks all five key products, stage progress, previews,
+selection, draft/attachment preservation, confirmation and exactly one native
+submission using controlled input actions. These fixtures never submit live
+inference and are not real production acceptance.
 
 
 Live production
@@ -63,6 +71,15 @@ SpatialForge lifecycle/phase, desktop-device queue reason, failures, capture
 and action-trace counts, reported transfer bytes and release counts/status.
 The five navigation steps display observed execution states independently of
 which step the user is viewing. Execution success never implies benchmark approval.
+Each page also shows its own recorded stage steps and progress. Missing totals
+remain unmeasured; a saved final report is required to show report contents.
+
+`view=stage_artifacts` lists bounded files for a scene belonging to this session,
+or for a scene explicitly referenced by the selected workspace pipeline's saved
+state. `view=stage_media` streams authenticated same-origin previews, supports
+video byte ranges and projects only public annotation data. Model/operator
+credentials stay server-side. Missing output directories do not discard an
+already saved plan; authentication or network failures remain visible.
 
 The lightweight progress route reads at most `maxRuns` workspace operation
 rows plus their small persisted plans/state files. It does not scan datasets or

@@ -60,7 +60,21 @@ window.__ModuleLoader__.load({
         local_field_repair: '局部字段修复', template_rebinding: '模板重绑定', candidate_resynthesis: '候选重合成',
         skill_reexecution: '重新执行步骤', upstream_rollback: '上游回滚', final_rejection: '最终拒绝',
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
-        workflow: '五步工作流', blueprint: '需求蓝图', collection: '数据采集', structure: '证据与状态结构化', synthesis: '评测题合成', verification: '验证与报告',
+        workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
+        stageProgress: '本阶段生产进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '查看本阶段执行过程',
+        keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '生产计划尚未落盘。在下方填写目标，使用“填入对话”制定计划。',
+        planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
+        sceneSelection: '选择场景', selectedScenes: '已选场景', preview: '预览', previewClose: '关闭预览', selectArtifact: '选择',
+        sceneGallery: '可用场景', annotationGallery: '标注数据', annotationNote: '点击预览查看公开标注与证据；模型候选标注与仿真真值保留各自来源。',
+        evaluationConfig: '评测配置', questionTable: '题目表', finalReport: '最终报告', artifactFiles: '产物文件与来源',
+        insertStage: '填入对话', stepInstruction: '查看本步指令', chooseSceneHint: '可多选，所选场景会随本步指令填入对话。',
+        persistedPlan: '已落盘评测计划', planSteps: '计划步骤', reportPending: '最终报告尚未生成；执行完成不等于评测通过。',
+        knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
+        downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', moreTools: '数据与运行工具',
+        confirmSend: '确认发送', confirmTitle: '确认发送本步任务', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
+        confirmSendNote: '将本步计划、所选场景、数据集版本和产物引用打包，直接提交到当前 SpatialForge 对话。输入框现有文字和附件也会一同发送；取消不会更改输入框。',
+        sendBusy: '输入框正在处理提交或命令，请完成后重试。', sendFailed: '提交失败，已保留任务内容，请重试。', noSendInterface: '当前 DSH 未提供对话提交接口。',
+        existingDraft: '将一同发送的输入框文字', existingAttachments: '将一同发送的附件数',
         blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '先准备场景，再采集图像、视频、轨迹与原生状态。',
         structureDesc: '整理公开观测、标定和对象关系，绑定程序或仿真证据。', synthesisDesc: '按模板批量出题，查看数据集全集和样本。', verificationDesc: '审查有效性、分区与覆盖，生成报告和交付版本。',
         objective: '评测目标', objectivePlaceholder: '例如：测试室内遮挡条件下的距离估计和相对位置推理，生成 300 道评测题。',
@@ -123,7 +137,21 @@ window.__ModuleLoader__.load({
         local_field_repair: 'Local field repair', template_rebinding: 'Template rebinding', candidate_resynthesis: 'Candidate resynthesis',
         skill_reexecution: 'Step re-execution', upstream_rollback: 'Upstream rollback', final_rejection: 'Final rejection',
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
-        workflow: 'Five-step workflow', blueprint: 'Intent blueprinting', collection: 'Data collection', structure: 'Evidence & state structuring', synthesis: 'Benchmark synthesis', verification: 'Verification & reporting',
+        workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
+        stageProgress: 'Stage production progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
+        keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'No persisted plan. Set the goal below and draft a planning request in chat.',
+        planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
+        sceneSelection: 'Select scenes', selectedScenes: 'Selected scenes', preview: 'Preview', previewClose: 'Close preview', selectArtifact: 'Select',
+        sceneGallery: 'Available scenes', annotationGallery: 'Annotations', annotationNote: 'Open public annotations and evidence. Candidate model annotations retain their source separately from simulation truth.',
+        evaluationConfig: 'Evaluation configuration', questionTable: 'Questions', finalReport: 'Final report', artifactFiles: 'Artifact files & provenance',
+        insertStage: 'Draft in chat', stepInstruction: 'View stage instruction', chooseSceneHint: 'Select multiple scenes to include in the stage instruction.',
+        persistedPlan: 'Persisted evaluation plan', planSteps: 'Planned steps', reportPending: 'No final report yet. Execution completion is not benchmark approval.',
+        knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
+        downloadArtifact: 'Open artifact', artifactReadFailed: 'Could not read this artifact. Retry.', moreTools: 'Data & run tools',
+        confirmSend: 'Confirm and send', confirmTitle: 'Confirm stage task', cancel: 'Cancel', sending: 'Submitting…', sent: 'Stage task submitted to this conversation; follow its execution receipt in chat.',
+        confirmSendNote: 'Package this stage, plan, selected scenes, dataset version and artifact references and submit directly to this SpatialForge conversation. Existing composer text and attachments will also be sent. Cancel leaves them unchanged.',
+        sendBusy: 'The composer is processing a submission or command. Try again after it finishes.', sendFailed: 'Submission failed. Task retained; please retry.', noSendInterface: 'This DSH session has no submission interface.',
+        existingDraft: 'Composer text included in this submission', existingAttachments: 'Attachments included in this submission',
         blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Prepare scenes, then collect images, video, trajectories and native state.',
         structureDesc: 'Organize public observations, calibration and source evidence.', synthesisDesc: 'Produce questions and inspect dataset versions and samples.', verificationDesc: 'Inspect validity, splits and coverage; prepare reports and releases.',
         objective: 'Evaluation goal', objectivePlaceholder: 'For example: 300 indoor distance and relative-position questions with varied occlusion.',
@@ -141,25 +169,27 @@ window.__ModuleLoader__.load({
         savedAt: 'Draft saved at', navigation: 'BenchForge five steps', liveRecords: 'Actual artifacts in this session', requiredGoal: 'Enter an evaluation goal first.', perTemplate: 'items / template',
       },
     };
-    const styles = [
-      '.bfw-root{height:100%;overflow:auto;box-sizing:border-box;padding:28px 32px;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:14px/1.5 system-ui,sans-serif}',
-      '.bfw-shell{max-width:1180px;margin:auto;min-width:0}.bfw-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:20px}.bfw-title{font-size:24px;margin:3px 0 8px}.bfw-kicker{font-size:11px;letter-spacing:.08em}.bfw-muted,.bfw-kicker{color:var(--dsw-alias-label-secondary)}',
-      '.bfw-toolbar,.bfw-pagination,.bfw-tabs{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.bfw-toolbar{margin:14px 0}.bfw-tabs{border-bottom:1px solid var(--dsw-alias-border-l3);margin-bottom:20px;gap:2px}.bfw-tab{padding:10px 14px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}.bfw-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);border-bottom-color:var(--dsw-alias-brand-primary)}',
-      '.bfw-button,.bfw-input,.bfw-select{font:inherit;color:inherit;border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:7px 10px;background:var(--dsw-alias-button-elevated-fill);max-width:100%;box-sizing:border-box}.bfw-button{cursor:pointer;white-space:nowrap}.bfw-button:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-button:disabled{opacity:.5;cursor:default}.bfw-input{min-width:150px;flex:1}.bfw-button:focus-visible,.bfw-select:focus-visible,.bfw-input:focus-visible,.bfw-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
-      '.bfw-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:18px 0}.bfw-stat,.bfw-card{border:1px solid var(--dsw-alias-border-l3);border-radius:9px;background:var(--dsw-alias-bg-layer-1)}.bfw-stat{padding:14px}.bfw-stat strong{display:block;font-size:25px;margin-top:8px}.bfw-card{margin:14px 0;min-width:0}.bfw-card h2{font-size:15px;font-weight:600;margin:0;padding:13px 16px;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-body{padding:16px}.bfw-scroll{overflow:auto}.bfw-table{width:100%;border-collapse:collapse}.bfw-table td,.bfw-table th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--dsw-alias-border-l3);vertical-align:top}.bfw-table th{font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}.bfw-table tr:last-child td{border-bottom:0}',
-      '.bfw-code,.bfw-json{font:12px/1.55 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}.bfw-json{padding:12px;background:var(--dsw-alias-bg-layer-2);border-radius:6px;max-height:380px;overflow:auto}.bfw-pill{display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;background:var(--dsw-alias-bg-layer-2);white-space:nowrap}.bfw-pill.verified{color:var(--dsw-alias-state-success-primary)}.bfw-pill.failed,.bfw-pill.rejected{color:var(--dsw-alias-state-error-primary)}.bfw-empty{padding:24px 16px;color:var(--dsw-alias-label-secondary)}.bfw-error{padding:12px;border-left:3px solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;margin:12px 0}',
-      '.bfw-details{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-width:0}.bfw-artifact{padding:14px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin:8px 0;overflow-wrap:anywhere}.bfw-artifact summary{cursor:pointer}.bfw-version{display:block;max-width:540px;overflow-wrap:anywhere}.bfw-pagination{justify-content:flex-end;margin-top:16px}.bfw-label{display:grid;gap:5px;font-size:12px;max-width:100%}',
-      '.bfw-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.bfw-item{display:flex;flex-direction:column;text-align:left;cursor:pointer;min-width:0;border:1px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:inherit;padding:12px;font:inherit}.bfw-item img{width:100%;height:145px;object-fit:contain;background:var(--dsw-alias-bg-layer-2);margin-bottom:10px}.bfw-item p{white-space:pre-wrap;margin:8px 0;overflow-wrap:anywhere}.bfw-item .bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-width:100%;max-height:560px;object-fit:contain;margin:12px auto}.bfw-question{white-space:pre-wrap;font-size:16px;overflow-wrap:anywhere}.bfw-counts{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px}',
-      '.bfw-root[data-spatialforge-panel=true]{padding:12px 12px;container-name:spatialforge-panel;container-type:inline-size}.bfw-root[data-spatialforge-panel=true] .bfw-shell{max-width:none}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:block;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:8px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:nowrap;overflow:auto;margin-bottom:12px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:8px 9px;white-space:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:20px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:1fr;gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:8px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:10px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label,.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:100%;min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:500px}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:space-between}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{min-height:66px;padding:9px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:18px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:1fr}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:auto}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:wrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:0;width:100%}',
-      '.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:7px;padding:6px 10px;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
-      '@media(max-width:760px){.bfw-root{padding:18px 14px}.bfw-header{display:block}.bfw-header>.bfw-button{margin-top:12px}.bfw-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.bfw-details{grid-template-columns:1fr}.bfw-table{min-width:560px}.bfw-tabs{flex-wrap:nowrap;overflow:auto}.bfw-tab{white-space:nowrap}.bfw-items{grid-template-columns:1fr}.bfw-select{width:100%}.bfw-toolbar>.bfw-label{width:100%}}',
-      '.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:16px 0}.bfw-stage{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;color:inherit;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l3);border-radius:10px;padding:12px 10px;cursor:pointer;min-width:0;font:inherit}.bfw-stage[aria-current=step]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-stage-index{font:12px ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}.bfw-stage strong{font-size:13px;font-weight:600;overflow-wrap:anywhere}.bfw-stage-heading{display:flex;gap:12px;align-items:flex-start;margin:18px 0}.bfw-stage-number{font:24px ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}.bfw-stage-heading h2{font-size:20px;margin:0 0 5px}.bfw-stage-heading p{margin:0}.bfw-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:96px;resize:vertical;line-height:1.6}.bfw-callout{padding:14px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);margin:12px 0;overflow-wrap:anywhere}.bfw-callout p{margin:5px 0}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent;white-space:normal;text-align:left}.bfw-catalog{display:grid;gap:8px;margin:12px 0}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:12px;border-radius:8px;min-width:0}.bfw-template header{display:flex;justify-content:space-between;align-items:center;gap:8px}.bfw-template p{margin:7px 0}.bfw-template[data-selected=true]{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-brand-primary)}.bfw-selected{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l3)}.bfw-stage-footer{display:flex;justify-content:space-between;gap:8px;margin:18px 0}.bfw-notice{padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;margin:10px 0}.bfw-stage:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}',
-      '.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:8px;padding:10px;margin:12px 0;overflow-wrap:anywhere}.bfw-production p{margin:6px 0}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.bfw-production progress{width:100%;accent-color:var(--dsw-alias-brand-primary)}.bfw-live-details>summary{cursor:pointer;padding:7px 0;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding:10px 0;border-top:1px solid var(--dsw-alias-border-l3);margin-top:8px}.bfw-stage-state{font-size:11px;line-height:1.4;color:var(--dsw-alias-label-secondary)}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:#ef6a6a}.bfw-stage-state[data-stage-state=completed]{color:#42aa83}',
-      '.bfw-list-controls{display:grid;gap:6px;margin:10px 0}.bfw-list-controls .bfw-toolbar{margin:0}.bfw-list-controls .bfw-input{min-width:0}.bfw-list-controls .bfw-pagination{margin:0;justify-content:space-between}',
-      '@container spatialforge-panel (min-width:440px) and (max-width:679px){.bfw-root[data-spatialforge-panel=true]{padding:16px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:22px}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:12px}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:10px 8px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:13px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:20px}}',
-      '@container spatialforge-panel (min-width:680px){.bfw-root[data-spatialforge-panel=true]{padding:18px 20px}.bfw-root[data-spatialforge-panel=true] .bfw-header{display:flex;align-items:flex-start;gap:20px;margin-bottom:20px}.bfw-root[data-spatialforge-panel=true] .bfw-header>.bfw-button{margin-top:0}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:24px}.bfw-root[data-spatialforge-panel=true] .bfw-tabs{flex-wrap:wrap;overflow:visible;margin-bottom:20px}.bfw-root[data-spatialforge-panel=true] .bfw-tab{padding:10px 14px}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.bfw-root[data-spatialforge-panel=true] .bfw-stat{padding:14px}.bfw-root[data-spatialforge-panel=true] .bfw-stat strong{font-size:24px}.bfw-root[data-spatialforge-panel=true] .bfw-details{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.bfw-root[data-spatialforge-panel=true] .bfw-card{margin:14px 0}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:16px}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-label{width:auto}.bfw-root[data-spatialforge-panel=true] .bfw-toolbar>.bfw-input{width:auto;min-width:150px}.bfw-root[data-spatialforge-panel=true] .bfw-select{width:auto}.bfw-root[data-spatialforge-panel=true] .bfw-table{min-width:0}.bfw-root[data-spatialforge-panel=true] .bfw-items{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.bfw-root[data-spatialforge-panel=true] .bfw-pagination{justify-content:flex-end}.bfw-root[data-spatialforge-panel=true] .bfw-flow{grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:12px 10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:13px}.bfw-root[data-spatialforge-panel=true] .bfw-stage-heading h2{font-size:21px}.bfw-root[data-spatialforge-panel=true] .bfw-form{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.bfw-root[data-spatialforge-panel=true] .bfw-form .bfw-wide{grid-column:1/-1}.bfw-root[data-spatialforge-panel=true] .bfw-selected{flex-wrap:nowrap}.bfw-root[data-spatialforge-panel=true] .bfw-input{min-width:150px;width:auto}}',
-      '@container spatialforge-panel (min-width:1000px){.bfw-root[data-spatialforge-panel=true]{padding:24px 28px}.bfw-root[data-spatialforge-panel=true] .bfw-title{font-size:26px}.bfw-root[data-spatialforge-panel=true] .bfw-stats{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.bfw-root[data-spatialforge-panel=true] .bfw-body{padding:20px}.bfw-root[data-spatialforge-panel=true] .bfw-flow{gap:10px}.bfw-root[data-spatialforge-panel=true] .bfw-stage{padding:14px}.bfw-root[data-spatialforge-panel=true] .bfw-stage strong{font-size:14px}.bfw-root[data-spatialforge-panel=true] .bfw-details{gap:20px}.bfw-root[data-spatialforge-panel=true] .bfw-form{gap:16px}}',
-    ].join('\n');
+    const styles = `
+.bfw-root{height:100%;overflow:auto;box-sizing:border-box;container-type:inline-size;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:.875rem/1.55 system-ui,sans-serif}
+.bfw-root *{box-sizing:border-box}.bfw-shell{min-width:0;max-width:100%;padding:clamp(.75rem,2.5cqi,1.75rem)}
+.bfw-header,.bfw-toolbar,.bfw-pagination,.bfw-counts,.bfw-preview-header,.bfw-progress-caption{display:flex;align-items:center;flex-wrap:wrap;gap:clamp(.5rem,1.5cqi,1rem)}
+.bfw-header{justify-content:space-between;margin-block-end:1rem}.bfw-title{font-size:clamp(1.1rem,2.5cqi,1.5rem);margin:0}.bfw-kicker{font-size:.7rem;letter-spacing:.09em}.bfw-muted,.bfw-kicker{color:var(--dsw-alias-label-secondary)}
+.bfw-toolbar{margin-block:.75rem}.bfw-label{display:grid;gap:.35em;font-size:.8rem;min-inline-size:0;max-inline-size:100%}.bfw-button,.bfw-input,.bfw-select{font:inherit;color:inherit;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.5em .8em;background:var(--dsw-alias-button-elevated-fill);max-inline-size:100%;min-inline-size:0}.bfw-input{flex:1 1 16ch;width:100%}.bfw-select{width:100%;text-overflow:ellipsis}.bfw-button{cursor:pointer}.bfw-button:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-button:disabled{opacity:.5;cursor:default}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent}.bfw-button:focus-visible,.bfw-input:focus-visible,.bfw-select:focus-visible,.bfw-stage:focus-visible,.bfw-tab:focus-visible,.bfw-preview-open:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.bfw-flow{display:flex;flex-wrap:wrap;gap:.4em;padding:.4em;background:var(--dsw-alias-bg-layer-2);border-radius:1.5rem;margin-block:1rem}.bfw-stage{flex:1 1 12ch;min-inline-size:0;display:flex;align-items:center;flex-wrap:wrap;gap:.4em .65em;cursor:pointer;text-align:start;border:1px solid transparent;border-radius:1.1rem;padding:clamp(.6em,1.6cqi,1em);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit}.bfw-stage[aria-current=step]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);box-shadow:0 .15em .5em #00000009}.bfw-stage-index{font:.75rem ui-monospace,monospace}.bfw-stage strong{font-size:.85rem;font-weight:600;overflow-wrap:anywhere}.bfw-stage-state{font-size:.7rem}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:var(--dsw-alias-state-error-primary)}.bfw-stage-state[data-stage-state=completed]{color:var(--dsw-alias-state-success-primary)}
+.bfw-stage-progress{margin-block:1rem 1.5rem}.bfw-progress-caption{justify-content:space-between;font-size:.8rem;margin-block:.4em;overflow-wrap:anywhere}.bfw-stage-progress progress,.bfw-production progress,.bfw-progress-track{display:block;width:100%;height:.55rem;border:0;border-radius:1rem;overflow:hidden;background:var(--dsw-alias-bg-layer-2);accent-color:var(--dsw-alias-brand-primary)}.bfw-stage-progress progress::-webkit-progress-bar{background:var(--dsw-alias-bg-layer-2);border-radius:1rem}.bfw-stage-progress progress::-webkit-progress-value{background:var(--dsw-alias-brand-primary);border-radius:1rem}
+.bfw-stage-heading{display:flex;align-items:flex-start;gap:.75rem;margin-block:1rem}.bfw-stage-heading h2{font-size:clamp(1.15rem,3cqi,1.6rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{font:1.35rem ui-monospace,monospace;color:var(--dsw-alias-brand-primary)}
+.bfw-product{min-inline-size:0;min-block-size:20rem;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(1rem,3cqi,2rem);margin-block:1rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-production-source{flex:1 1 26ch}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
+.bfw-card{min-width:0;margin-block:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;background:var(--dsw-alias-bg-layer-1)}.bfw-card h2{font-size:.95rem;font-weight:600;margin:0;padding:.8rem 1rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-body{padding:clamp(.75rem,2cqi,1.25rem)}
+.bfw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12ch),1fr));gap:.75rem;margin-block:1rem}.bfw-stat{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.9rem;min-inline-size:0}.bfw-stat strong{display:block;font-size:clamp(1.25rem,3cqi,1.75rem);margin-block-start:.4rem}.bfw-details,.bfw-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,30ch),1fr));gap:1rem;min-inline-size:0}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:7em;resize:vertical;line-height:1.6}.bfw-evaluation-grid{display:flex;flex-wrap:wrap;gap:1.5rem;min-inline-size:0}.bfw-evaluation-config{flex:1 1 24ch;min-inline-size:0}.bfw-evaluation-questions{flex:3 1 40ch;min-inline-size:0}
+.bfw-scroll{overflow:auto;max-inline-size:100%}.bfw-table{width:100%;border-collapse:collapse}.bfw-table td,.bfw-table th{text-align:start;padding:.65rem .75rem;border-block-end:1px solid var(--dsw-alias-border-l3);vertical-align:top;overflow-wrap:anywhere}.bfw-table th{font-size:.8rem;font-weight:500;color:var(--dsw-alias-label-secondary)}.bfw-table tr:last-child td{border:0}.bfw-table td>button{max-inline-size:100%}
+.bfw-code,.bfw-json{font:.8rem/1.55 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}.bfw-json{padding:.75rem;background:var(--dsw-alias-bg-layer-2);border-radius:.5rem;max-block-size:50vh;overflow:auto}.bfw-pill{display:inline-block;padding:.15em .6em;border-radius:2em;font-size:.75rem;background:var(--dsw-alias-bg-layer-2)}.bfw-pill.verified,.bfw-pill.completed{color:var(--dsw-alias-state-success-primary)}.bfw-pill.failed,.bfw-pill.rejected{color:var(--dsw-alias-state-error-primary)}.bfw-empty{padding:clamp(1rem,3cqi,2rem);color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.bfw-error{padding:.75rem;border-inline-start:.2rem solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;overflow-wrap:anywhere;margin-block:.75rem}
+.bfw-artifact{padding-block:.75rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin-block:.5rem;overflow-wrap:anywhere}.bfw-root summary{cursor:pointer}.bfw-version{display:block;max-inline-size:100%;overflow-wrap:anywhere}.bfw-pagination{justify-content:space-between;margin-block:1rem}.bfw-list-controls{display:grid;gap:.5rem;margin-block:.75rem}.bfw-list-controls .bfw-toolbar,.bfw-list-controls .bfw-pagination{margin:0}.bfw-tabs{display:flex;flex-wrap:wrap;gap:.25rem;border-block-end:1px solid var(--dsw-alias-border-l3);margin-block:.75rem}.bfw-tab{font:inherit;padding:.6em .8em;border:0;border-block-end:2px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}.bfw-tab[aria-selected=true]{color:var(--dsw-alias-label-primary);border-block-end-color:var(--dsw-alias-brand-primary)}
+.bfw-items,.bfw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:1rem}.bfw-item,.bfw-preview-card{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;text-align:start;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.bfw-item{padding:.75rem;cursor:pointer}.bfw-preview-card[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open{border:0;padding:0;display:flex;flex-direction:column;gap:.6rem;text-align:start;background:transparent;color:inherit;cursor:pointer;font:inherit}.bfw-preview-open img,.bfw-preview-open video,.bfw-document-thumb{width:100%;aspect-ratio:16/10;object-fit:contain;background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open>strong,.bfw-preview-open>.bfw-muted,.bfw-preview-card>.bfw-code{padding-inline:.8rem;overflow-wrap:anywhere}.bfw-preview-open>.bfw-muted{padding-block-end:.6rem}.bfw-scene-check{display:flex;align-items:center;gap:.5em;padding:.8rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-document-thumb{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5em;padding:1rem;overflow:hidden}.bfw-document-thumb>span:first-child{font:2rem ui-monospace,monospace}.bfw-item img{width:100%;aspect-ratio:16/10;object-fit:contain;margin-block-end:.75rem}.bfw-item p{white-space:pre-wrap;overflow-wrap:anywhere}.bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin:1rem auto}.bfw-question{white-space:pre-wrap;font-size:1rem;overflow-wrap:anywhere}
+.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:16rem;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
+.bfw-annotation-image{position:relative;width:fit-content;max-inline-size:100%;margin-inline:auto}.bfw-annotation-image img{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain}.bfw-annotation-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:1rem;overflow-wrap:anywhere}.bfw-production p{margin-block:.4em}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}.bfw-live-details>summary{padding-block:.4rem;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding-block:.75rem;border-block-start:1px solid var(--dsw-alias-border-l3);margin-block-start:.5rem}.bfw-callout,.bfw-notice{padding:.75rem 1rem;border-radius:.75rem;background:var(--dsw-alias-bg-layer-2);margin-block:.75rem;overflow-wrap:anywhere}.bfw-catalog{display:grid;gap:.75rem;margin-block:1rem}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:.75rem;border-radius:.75rem;min-inline-size:0}.bfw-template header,.bfw-selected{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}.bfw-template[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-selected{padding-block:.5rem;border-block-end:1px solid var(--dsw-alias-border-l3)}
+.bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.4em .7em;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+`;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
     function button(label, onClick, props = {}) { return h('button', {type: 'button', className: 'bfw-button', onClick, ...props}, label); }
@@ -442,6 +472,137 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
+    function StageProgress({stage, pipeline, scene, record, t}) {
+      const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
+      const steps = scene ? tasks.map((row) => ({id: row.id, state: lifecycle(row.state),
+        label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
+        queue: row.queue, age: row.progress?.age_seconds})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
+        .map((row) => ({...row, label: row.uses}));
+      const completed = steps.filter((row) => row.state === 'completed').length;
+      const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
+        steps.find((row) => row.state !== 'completed');
+      const state = stageState(stage.id, pipeline, scene);
+      const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
+      return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id, 'aria-label': t('stageProgress')},
+        h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('stageProgress')), status(state, t),
+          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t('observedSteps') : t('waitingForReceipt'))),
+        steps.length ? h('progress', {max: steps.length, value: completed, 'aria-label': t('stageProgress')}) :
+          h('div', {className: 'bfw-progress-track', 'aria-label': t('unmeasuredProgress')}),
+        h('div', {className: 'bfw-progress-caption', role: 'status', 'aria-live': 'polite'},
+          h('span', null, current ? current.id + (current.label ? ' · ' + current.label : '') : t(steps.length ? 'knownProgress' : 'noStageSteps')),
+          h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
+        stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
+        current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
+        current?.queue && h('p', null, t('waiting') + ': ' + current.queue.reason),
+        steps.length > 0 && h('details', null, h('summary', null, t('stageProcess')),
+          table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))));
+    }
+    function PreviewDialog({item, close, t}) {
+      const ref = React.useRef(null);
+      const [content, setContent] = React.useState(null);
+      const [error, setError] = React.useState('');
+      React.useEffect(() => {
+        const dialog = ref.current;
+        const trigger = document.activeElement;
+        dialog.showModal();
+        return () => {dialog.close(); trigger?.focus();};
+      }, []);
+      React.useEffect(() => {
+        if (item.data || !item.url || ['image', 'video'].includes(item.kind)) return;
+        const controller = new AbortController();
+        fetch(item.url, {signal: controller.signal}).then(async (response) => {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return item.kind === 'json' ? response.json() : response.text();
+        }).then(setContent).catch((reason) => {if (reason.name !== 'AbortError') setError(reason.message);});
+        return () => controller.abort();
+      }, [item]);
+      const data = item.data || content;
+      return h('dialog', {ref, className: 'bfw-preview-dialog', 'aria-label': t('preview') + ' · ' + item.title,
+        onCancel: (event) => {event.preventDefault(); close();}, onClick: (event) => {if (event.target === ref.current) close();}},
+        h('div', {className: 'bfw-preview-header'}, h('h2', null, item.title), button(t('previewClose'), close)),
+        item.kind === 'image' ? h('img', {src: item.url, alt: item.title}) : item.kind === 'video' ?
+          h('video', {src: item.url, controls: true, preload: 'metadata'}) : error ? h('p', {role: 'alert'}, t('artifactReadFailed') + ' ' + error) :
+          data ? h(React.Fragment, null,
+            item.image_url && h('div', {className: 'bfw-annotation-image'}, h('img', {src: item.image_url, alt: item.title}),
+              data.image_size?.width > 0 && h('svg', {viewBox: '0 0 ' + data.image_size.width + ' ' + data.image_size.height,
+                role: 'img', 'aria-label': t('annotationGallery')}, (data.visible_objects || []).filter((row) => row.bbox_2d?.xyxy?.length === 4).map((row, index) => {
+                  const [x1, y1, x2, y2] = row.bbox_2d.xyxy;
+                  return h('g', {key: row.object_id || index}, h('rect', {x: x1, y: y1, width: x2 - x1, height: y2 - y1, fill: 'none', stroke: '#4ade80', strokeWidth: 2}),
+                    h('text', {x: x1 + 4, y: Math.max(18, y1 - 5), fill: '#4ade80', stroke: '#102020', strokeWidth: .5,
+                      fontSize: Math.max(14, data.image_size.width / 65)}, row.label || row.object_id));
+                }))),
+            typeof data === 'string' ? h('pre', {className: 'bfw-json'}, data) : json(data)) : empty(t('loading')));
+    }
+    function ArtifactGallery({items, selectable, selected, toggle, preview, t}) {
+      if (!items.length) return empty(t('artifactPending'));
+      return h(React.Fragment, null,
+        selectable && h('p', {className: 'bfw-muted'}, t('chooseSceneHint') + ' · ' + t('selectedScenes') + ': ' + selected.length),
+        h('div', {className: 'bfw-gallery'}, items.map((item) => h('article', {className: 'bfw-preview-card', key: item.url || item.title,
+          'data-preview-kind': item.kind, 'data-selected': selected.some((row) => row.url === item.url)},
+          h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(item), 'aria-label': t('preview') + ' ' + item.title},
+            item.kind === 'image' || item.image_url ? h('img', {src: item.image_url || item.url, loading: 'lazy', alt: item.title}) : item.kind === 'video' ?
+              h('video', {src: item.url, preload: 'metadata', muted: true, 'aria-label': item.title}) :
+              h('div', {className: 'bfw-document-thumb'}, h('span', null, item.kind === 'json' ? '{ }' : '≡'), h('span', null, item.title)),
+            h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
+          selectable && h('label', {className: 'bfw-scene-check'}, h('input', {type: 'checkbox', checked: selected.some((row) => row.url === item.url),
+            'aria-label': t('selectArtifact') + ' ' + item.title, onChange: () => toggle(item)}), t('selectArtifact')),
+          item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision))))));
+    }
+    function SendDialog({payload, draft, attachmentCount, sending, error, confirm, close, t}) {
+      const ref = React.useRef(null);
+      React.useEffect(() => {
+        const trigger = document.activeElement;
+        const dialog = ref.current;
+        dialog.showModal();
+        return () => {dialog.close(); trigger?.focus();};
+      }, []);
+      return h('dialog', {ref, className: 'bfw-preview-dialog', 'data-stage-confirm': true, 'aria-label': t('confirmTitle'),
+        onCancel: (event) => {event.preventDefault(); if (!sending) close();}},
+        h('h2', null, t('confirmTitle')), h('p', null, t('confirmSendNote')),
+        draft && h('details', {open: true}, h('summary', null, t('existingDraft')), h('pre', {className: 'bfw-json'}, draft)),
+        attachmentCount > 0 && h('p', null, t('existingAttachments') + ': ' + attachmentCount),
+        h('pre', {className: 'bfw-json'}, payload.text),
+        error && h('p', {className: 'bfw-error', role: 'alert'}, error),
+        h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
+          button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending})));
+    }
+    function PlanProduct({plan, blueprint, artifacts, preview, t}) {
+      if (!plan) return h(React.Fragment, null, empty(t('planPending')),
+        blueprint.objective && h('article', {className: 'bfw-plan-document'}, h('span', {className: 'bfw-pill'}, t('draftOnly')),
+          h('h3', null, blueprint.objective), h('p', null, t('targetItems') + ': ' + blueprint.target + ' · ' + t('sourceType') + ': ' + t(blueprint.source)),
+          table([t('template'), t('allocate')], allocations(blueprint).map((row) => [row.template_id, row.target_items]))));
+      return h('article', {className: 'bfw-plan-document'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
+        h('h3', null, typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint')),
+        plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
+          h('dt', null, key), h('dd', null, typeof value === 'object' ? JSON.stringify(value) : String(value))))),
+        plan.steps?.length ? table([t('steps'), t('operator'), t('details')], plan.steps.map((row) =>
+          [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null,
+        artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
+        h('details', null, h('summary', null, t('plan')), json(plan)));
+    }
+    function ReportProduct({item, observedAt, t}) {
+      const [data, setData] = React.useState(item?.data || null);
+      const [error, setError] = React.useState('');
+      React.useEffect(() => {
+        setError('');
+        if (!item) {setData(null); return;}
+        if (item.data) {setData(item.data); return;}
+        const controller = new AbortController();
+        setData(null);
+        fetch(item.url, {signal: controller.signal}).then(async (response) => {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return response.json();
+        }).then(setData).catch((reason) => {if (reason.name !== 'AbortError') setError(reason.message);});
+        return () => controller.abort();
+      }, [item?.url, observedAt]);
+      if (!item) return empty(t('reportPending'));
+      if (error) return h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + error);
+      if (!data) return empty(t('loading'));
+      return h('article', {className: 'bfw-plan-document'}, h('h3', null, item.title),
+        h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([, value]) => value === null || typeof value !== 'object').map(([key, value]) =>
+          h('div', {key}, h('dt', null, t(key)), h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : String(value ?? '—'))))),
+        h('details', null, h('summary', null, t('details')), json(data)));
+    }
     function Quality({report, t}) {
       if (!report) return empty(t('noReport'));
       return h(React.Fragment, null,
@@ -453,7 +614,7 @@ window.__ModuleLoader__.load({
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
-    function Workbench({t, sessionId, useSessions, inputActions}) {
+    function Workbench({t, sessionId, useSessions, useInput, inputActions}) {
       const panelRef = React.useRef(null);
       const sampleHeadingRef = React.useRef(null);
       const sampleTriggerRef = React.useRef(null);
@@ -467,22 +628,36 @@ window.__ModuleLoader__.load({
       const [catalogQuery, setCatalogQuery] = React.useState('');
       const [catalogPage, setCatalogPage] = React.useState(1);
       const [capability, setCapability] = React.useState('');
+      const [preview, setPreview] = React.useState(null);
+      const [selectedScenes, setSelectedScenes] = React.useState([]);
+      const [sendPayload, setSendPayload] = React.useState(null);
+      const [sending, setSending] = React.useState(false);
+      const [sendError, setSendError] = React.useState('');
+      const submitLock = React.useRef(false);
+      const inputState = useInput((state) => state);
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
       const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
       const conversationRunning = useSessions((state) => Boolean(state.byId[sessionId]?.running));
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
       const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath} : null, revision, 30000, visible);
       const selectedRunId = route.run || summary.value?.runs?.[0]?.id || '';
+      const sceneJobs = progress.value?.scenes?.runs || [];
+      const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
+      const sourceScene = route.run ? null : scene;
       const run = useRecord(workspacePath && ['workflow', 'runs'].includes(route.tab) && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath} : null, revision, 10000, visible);
+      const artifactScene = sourceScene?.run_id || (route.run ? run.value?.scene_ids?.[0] : '');
+      const sceneArtifacts = useRecord(workspacePath && route.tab === 'workflow' && artifactScene ?
+        {view: 'stage_artifacts', scene: artifactScene, run: route.run || '', session_id: sessionId, workspace_path: workspacePath} : null, revision, 10000, visible);
       const catalog = useRecord(route.tab === 'workflow' && route.stage === 'S1'
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
-      const dataset = useRecord(workspacePath && ['datasets', 'quality'].includes(route.tab) && route.dataset ?
+      const dataset = useRecord(workspacePath && (['datasets', 'quality'].includes(route.tab) || route.tab === 'workflow' && ['S4', 'S5'].includes(route.stage)) && route.dataset ?
         {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision, 30000, visible);
       const sampleId = sample?.row_index;
       const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
         (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
+      React.useEffect(() => {setSelectedScenes([]); setPreview(null);}, [route.run, sourceScene?.run_id]);
       React.useEffect(() => {
         if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({page: Math.max(1, dataset.value.pages)});
       }, [dataset.value, route.page]);
@@ -510,21 +685,54 @@ window.__ModuleLoader__.load({
       const activeRun = rows.find((row) => row.id === selectedRunId);
       const pipeline = progress.value?.pipelines?.find((row) => row.id === selectedRunId) ||
         (!route.run ? progress.value?.pipelines?.find((row) => row.state !== 'completed') || progress.value?.pipelines?.[0] : null);
-      const sceneJobs = progress.value?.scenes?.runs || [];
-      const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
       const stepArtifacts = (run.value?.artifacts || []).filter((row) => stage.artifact.test(row.artifact_type + ' ' + JSON.stringify(row.producer)));
+      const allStageFiles = [...(sourceScene ? [] : run.value?.stage_artifacts || []), ...(sceneArtifacts.value?.items || [])];
+      const stageFiles = allStageFiles.filter((row) => row.stage === stage.id).map((row) => ({...row,
+        image_url: row.stage === 'S3' && row.kind === 'json' ? allStageFiles.find((image) => image.kind === 'image' &&
+          image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, '.png'))?.url : undefined}));
+      const activePipeline = sourceScene ? null : pipeline;
+      const persistedPlan = sourceScene ? sceneArtifacts.value?.plan : run.value?.plan;
       const saveBlueprint = () => {
         const next = {...blueprint, savedAt: new Date().toISOString()};
         localStorage.setItem('bfw:blueprint:' + sessionId, JSON.stringify(next));
         setBlueprint(next); setNotice(t('blueprintSaved'));
       };
-      const stepInstruction = instruction(stage.id, blueprint, activeRun?.label, selectedDataset?.version);
+      const stepInstruction = instruction(stage.id, blueprint, route.run ? activeRun?.label : sourceScene?.run_id || activeRun?.label, selectedDataset?.version) +
+        (persistedPlan ? '\n\n当前已落盘计划（与浏览器草稿区分）：\n' + JSON.stringify(persistedPlan, null, 2) : '') +
+        (selectedScenes.length ? '\n\n已选场景产物（请复用）：\n' + JSON.stringify(selectedScenes.map((row) =>
+          ({task_id: row.task_id, revision: row.revision, file: row.file, title: row.title})), null, 2) : '');
       const prepare = () => {
-        if (stage.id === 'S1' && !blueprint.objective.trim()) {setNotice(t('requiredGoal')); return;}
+        if (stage.id === 'S1' && !blueprint.objective.trim() && !persistedPlan) {setNotice(t('requiredGoal')); return;}
+        if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
         saveBlueprint();
-        if (!inputActions) {setNotice(t('nativeInputMissing')); return;}
-        const inserted = inputActions.insertText('\n' + stepInstruction + '\n', inputActions.captureInsertion());
-        setNotice(t(inserted ? 'draftReady' : 'draftBusy'));
+        const bundle = {schema: 'benchforge.stage_request/v1', stage: stage.id, session_id: sessionId,
+          workspace_path: workspacePath, pipeline_run: route.run || null, scene_run: sourceScene?.run_id || null,
+          dataset: selectedDataset ? {id: selectedDataset.id, version: selectedDataset.version} : null,
+          blueprint, saved_plan: persistedPlan || null,
+          selected_scenes: selectedScenes.map(({task_id, revision, file, title}) => ({task_id, revision, file, title})),
+          artifacts: stageFiles.map(({task_id, revision, file, title, kind, url}) => ({task_id, revision, file, title, kind, url}))};
+        setSendError('');
+        setSendPayload({text: instruction(stage.id, blueprint, route.run ? activeRun?.label : sourceScene?.run_id || activeRun?.label,
+          selectedDataset?.version) + '\n\nSpatialForge 任务包：\n```json\n' + JSON.stringify(bundle, null, 2) + '\n```', inserted: false});
+      };
+      const confirmSend = () => {
+        if (submitLock.current || !sendPayload || sendPayload.submitted) return;
+        if (['adjudicating', 'submitting'].includes(inputState.phase) || inputState.claim) {setSendError(t('sendBusy')); return;}
+        submitLock.current = true; setSending(true); setSendError('');
+        try {
+          if (!sendPayload.inserted) {
+            const span = inputActions.captureInsertion();
+            if (!inputActions.insertText('\n' + sendPayload.text + '\n', {...span, end: span.start})) {
+              setSendError(t('draftBusy')); return;
+            }
+            sendPayload.inserted = true;
+          }
+          inputActions.submit();
+          sendPayload.submitted = true;
+          setSendPayload(null); setNotice(t('sent'));
+        } catch (error) {
+          setSendError(t('sendFailed') + ' ' + error.message);
+        } finally {submitLock.current = false; setSending(false);}
       };
       const openRun = (id) => update({tab: 'runs', run: id});
       const changeDataset = (id, tab = route.tab) => { update({tab, dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
@@ -535,6 +743,16 @@ window.__ModuleLoader__.load({
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
       const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) =>
         [row.id, row.workspace + ' / ' + displayRef(row.version)])];
+      const toggleScene = (item) => setSelectedScenes((old) => old.some((row) => row.url === item.url)
+        ? old.filter((row) => row.url !== item.url) : [...old, item]);
+      const chooseProduction = (value) => {
+        setPreview(null);
+        if (value.startsWith('scene:')) update({production: value.slice(6), run: ''});
+        else update({run: value});
+      };
+      const productionOptions = [[sourceScene ? 'scene:' + sourceScene.run_id : '', t('automaticRecord')],
+        ...sceneJobs.filter((row) => row.run_id !== sourceScene?.run_id).map((row) => ['scene:' + row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))]),
+        ...rows.map((row) => [row.id, displayRef(row.label) + ' · ' + t(row.state)])];
       const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h('div', {className: 'bfw-list-controls'},
         h('div', {className: 'bfw-toolbar'},
           h('input', {className: 'bfw-input', type: 'search', 'aria-label': label, placeholder: label, value: query, onChange: (e) => onQuery(e.target.value)}),
@@ -546,28 +764,64 @@ window.__ModuleLoader__.load({
           button(t('nextPage'), () => onPage(listing.page + 1), {disabled: listing.page >= listing.pages})));
       let body;
       if (route.tab === 'workflow') {
+        const plan = sourceScene ? sceneArtifacts.value?.plan : run.value?.plan;
+        const filesError = sceneArtifacts.error || run.error;
+        const productFiles = stageFiles.filter((row) => row.url || row.data);
+        let product;
+        if (stage.id === 'S1') product = h(React.Fragment, null,
+          h(PlanProduct, {plan, blueprint, artifacts: productFiles, preview: setPreview, t}),
+          h('details', {className: 'bfw-plan-editor', open: !plan && !blueprint.objective}, h('summary', null, t('planEditor')),
+            h(Blueprint, {blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
+              capability, setCapability, save: saveBlueprint, prepare, retry: () => setRevision((value) => value + 1), t})));
+        else if (['S2', 'S3'].includes(stage.id)) product = h(React.Fragment, null,
+          stage.id === 'S3' && h('p', {className: 'bfw-muted'}, t('annotationNote')),
+          filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
+          (sceneArtifacts.loading || run.loading) && empty(t('loading')),
+          h(ArtifactGallery, {items: productFiles, selectable: stage.id === 'S2', selected: selectedScenes,
+            toggle: toggleScene, preview: setPreview, t}));
+        else if (stage.id === 'S4') product = h('div', {className: 'bfw-evaluation-grid'},
+          h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
+            select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
+            h('dl', {className: 'bfw-definition'},
+              h('div', null, h('dt', null, t('version')), h('dd', null, selectedDataset ? displayRef(selectedDataset.version) : '—')),
+              h('div', null, h('dt', null, t('targetItems')), h('dd', null, dataset.value?.report?.requested ?? plan?.inputs?.target_items ?? '—')),
+              h('div', null, h('dt', null, t('sourceType')), h('dd', null, dataset.value?.report?.source || '—'))),
+            h('p', {className: 'bfw-muted'}, route.dataset ? t('publicNote') : t('chooseDataset')),
+            productFiles.length > 0 && h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})),
+          h('section', {className: 'bfw-evaluation-questions'}, h('h3', null, t('questionTable')),
+            route.dataset ? h(React.Fragment, null,
+              h('form', {className: 'bfw-toolbar', onSubmit: (event) => {event.preventDefault(); update({q: search, page: 1});}},
+                h('input', {className: 'bfw-input', type: 'search', value: search, placeholder: t('search'), 'aria-label': t('search'), onChange: (event) => setSearch(event.target.value)}),
+                h('button', {type: 'submit', className: 'bfw-button'}, t('apply'))),
+              dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : dataset.value?.items.length ?
+                table([t('item'), t('template'), t('question'), t('open')], dataset.value.items.map((item) =>
+                  [item.item_id || item.id, item.template_id || '—', item.question, button(t('preview'), () => setPreview({title: item.item_id || item.id,
+                    kind: 'json', data: item}))])) : empty(t('noItems')),
+              h('div', {className: 'bfw-pagination'}, button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1}),
+                h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, dataset.value?.pages || 1)),
+                button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !dataset.value || route.page >= dataset.value.pages}))) : empty(t('chooseDataset'))));
+        else product = h(React.Fragment, null,
+          select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
+          dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
+          (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report, t}),
+          h(ReportProduct, {item: productFiles[0], observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
+          productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
+            h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
         body = h(React.Fragment, null,
+          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, t}),
           h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
             h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
-          stage.id === 'S1' ? h(Blueprint, {blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-            capability, setCapability, save: saveBlueprint, prepare, retry: () => setRevision((value) => value + 1), t}) : h(React.Fragment, null,
-            h('div', {className: 'bfw-callout'}, h('strong', null, t('stepOutput') + ' · ' + t(stage.key + 'Output')),
-              h('p', null, t(stage.id === 'S2' ? 'sceneFirstNote' : stage.id === 'S5' ? 'qualityPolicy' : 'evidencePolicy'))),
-            h('div', {className: 'bfw-toolbar'}, button(t('prepareStage'), prepare, {className: 'bfw-button bfw-action'}),
-              button(t('copyInstruction'), async () => {try {await navigator.clipboard.writeText(stepInstruction); setNotice(t('copied'));} catch (error) {setNotice(error.message);}})),
-            h('p', {className: 'bfw-muted'}, t('chatNote')),
-            select(t('chooseProduction'), selectedRunId, (id) => update({run: id}), [['', t('chooseRun')], ...rows.map((row) => [row.id, row.label])]),
-            card(t('stageEvidence'), h(React.Fragment, null,
-              run.loading ? empty(t('loading')) : stepArtifacts.length ? stepArtifacts.map((artifact) => h('details', {className: 'bfw-artifact', key: artifact.artifact_id},
-                h('summary', null, status(artifact.status, t), ' ', artifact.artifact_type),
-                h('p', {className: 'bfw-code'}, artifact.artifact_id), h('p', null, t('producer') + ': ' + JSON.stringify(artifact.producer)),
-                json({parents: artifact.parents, evidence_refs: artifact.evidence_refs, contract_results: artifact.contract_results}))) : empty(t('noStepArtifacts')),
-              activeRun && button(t('openRun'), () => openRun(selectedRunId)))),
-            ['S4', 'S5'].includes(stage.id) && card(t('directory'), datasets.length ? h(React.Fragment, null,
-              select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
-              h('div', {className: 'bfw-toolbar'}, button(t('openData'), () => route.dataset ? openDataset(route.dataset) : update({tab: 'datasets'})),
-                button(t('openQuality'), () => update({tab: 'quality'}))),
-              stage.id === 'S5' && selectedDataset && h(Quality, {report: selectedDataset.report, t})) : empty(t('noDatasets')))),
+          h('div', {className: 'bfw-stage-actions'},
+            h('div', {className: 'bfw-production-source'}, select(t('productionRecord'), route.run || (sourceScene ? 'scene:' + sourceScene.run_id : ''), chooseProduction, productionOptions)),
+            button(t('insertStage'), prepare, {className: 'bfw-button bfw-action', 'data-insert-stage': stage.id})),
+          h('section', {className: 'bfw-product', 'data-stage-product': stage.id, 'aria-label': t('keyProduct') + ' · ' + t(stage.key)}, product),
+          h('details', null, h('summary', null, t('stepInstruction')),
+            h('p', {className: 'bfw-muted'}, t('chatNote')), h('pre', {className: 'bfw-json'}, stepInstruction),
+            button(t('copyInstruction'), async () => {try {await navigator.clipboard.writeText(stepInstruction); setNotice(t('copied'));} catch (error) {setNotice(error.message);}})),
+          stepArtifacts.length > 0 && !sourceScene && h('details', null, h('summary', null, t('artifactFiles')),
+            stepArtifacts.map((artifact) => h('div', {className: 'bfw-artifact', key: artifact.artifact_id},
+              h('strong', null, artifact.artifact_type), ' ', status(artifact.status, t), h('div', {className: 'bfw-code'}, artifact.artifact_id))),
+            activeRun && button(t('openRun'), () => openRun(selectedRunId))),
           h('div', {className: 'bfw-stage-footer'}, button(t('previousStep'), () => update({stage: STAGES[STAGES.indexOf(stage) - 1].id}), {disabled: stage.id === 'S1'}),
             button(t('nextStep'), () => update({stage: STAGES[STAGES.indexOf(stage) + 1].id}), {disabled: stage.id === 'S5'})));
       } else if (route.tab === 'overview') {
@@ -652,10 +906,6 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key)),
           h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)},
             t(stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)))))),
-        h('p', {className: 'bfw-muted'}, t('stageStateSource') + ': ' +
-          (route.run ? pipeline?.label || t('unknown') : scene?.run_id || pipeline?.label || t('unknown'))),
-        workspacePath && h(Production, {record: progress, pipeline, scene, selected: scene?.run_id || '',
-          selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t}),
         h('nav', {className: 'bfw-tabs', role: 'tablist', 'aria-label': t('panel')}, ['workflow', 'overview', 'runs', 'datasets', 'quality'].map((key) =>
           h('button', {type: 'button', key, className: 'bfw-tab', role: 'tab', id: 'bfw-tab-' + sessionId + '-' + key,
             'aria-selected': route.tab === key, 'aria-controls': 'bfw-content-' + sessionId, tabIndex: route.tab === key ? 0 : -1,
@@ -671,7 +921,13 @@ window.__ModuleLoader__.load({
         summary.value && h('div', {className: 'bfw-kicker'}, t('snapshot') + ': ' + summary.value.snapshot_at),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
         summary.loading && route.tab !== 'workflow' && empty(t('loading')),
-        h('div', {role: 'tabpanel', id: 'bfw-content-' + sessionId, 'aria-labelledby': 'bfw-tab-' + sessionId + '-' + route.tab, tabIndex: 0}, body)));
+        h('div', {role: 'tabpanel', id: 'bfw-content-' + sessionId, 'aria-labelledby': 'bfw-tab-' + sessionId + '-' + route.tab, tabIndex: 0}, body),
+        workspacePath && h('details', {className: 'bfw-tools'}, h('summary', null, t('productionMonitor')),
+          h(Production, {record: progress, pipeline: activePipeline, scene: sourceScene, selected: scene?.run_id || '',
+            selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t})),
+        preview && h(PreviewDialog, {key: preview.url || preview.title, item: preview, close: () => setPreview(null), t}),
+        sendPayload && h(SendDialog, {payload: sendPayload, draft: inputState.draft, attachmentCount: inputState.attachmentIds.length,
+          sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));
     }
     return {
       inject: ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs'],
@@ -682,8 +938,8 @@ window.__ModuleLoader__.load({
           'benchforge-spatialforge-ui: SpatialForge-only panel page');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: PANEL, locale: NS,
-        }, ({useProjection, useSessions, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
-          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, inputActions}) : null));
+        }, ({useProjection, useSessions, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
+          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useInput, inputActions}) : null));
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities', id: 'spatialforge-evaluation-launcher', order: 80, locale: NS,
         }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET

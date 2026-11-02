@@ -75,7 +75,34 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     const details = await request({view: 'run', run: version.run_id});
     assert.ok(details.artifacts.every((x) => x.status === 'candidate'));
     assert.equal(details.plan.steps[0].uses, 'templates.produce');
+    assert.equal(details.plan.selections[0].count, 30);
+    assert.equal(details.plan.template_contracts[0].id, 'C01-T01');
+    assert.ok(details.stage_artifacts.some((row) => row.stage === 'S1'));
+    assert.ok(details.stage_artifacts.some((row) => row.stage === 'S4'));
+    const qualityProduct = details.stage_artifacts.find((row) => row.stage === 'S5');
+    assert.equal(qualityProduct.data.accepted, 30);
+    const productResponse = await handler(new Request('http://dsh.test/' + qualityProduct.url));
+    assert.equal(productResponse.status, 200);
+    assert.equal((await productResponse.json()).accepted, 30);
     assert.equal((await fs.stat(path.join(directory, 'runs.sqlite'))).mtimeMs, dbStat.mtimeMs);
+
+    const runFolder = path.join(directory, JSON.parse(Buffer.from(version.run_id, 'base64url').toString())[1]);
+    const savedPlanFile = path.join(runFolder, 'plan.json');
+    const savedPlan = JSON.parse(await fs.readFile(savedPlanFile, 'utf8'));
+    savedPlan.authority = 'PRIVATE_PLAN_SENTINEL';
+    savedPlan.inputs.operator_token = 'PRIVATE_PLAN_SENTINEL';
+    savedPlan.selections[0].oracle = 'PRIVATE_PLAN_SENTINEL';
+    savedPlan.template_contracts[0].answer = 'PRIVATE_PLAN_SENTINEL';
+    await fs.writeFile(savedPlanFile, JSON.stringify(savedPlan));
+    const projected = await request({view: 'run', run: version.run_id});
+    assert.ok(!JSON.stringify(projected.plan).includes('PRIVATE_PLAN_SENTINEL'));
+    const savedStateFile = path.join(runFolder, 'state.json');
+    const savedState = JSON.parse(await fs.readFile(savedStateFile, 'utf8'));
+    savedState.steps.scene = {state: 'completed', result: {run_id: 'sf_savedscene'}};
+    savedState.steps.nested = {state: 'completed', result: {steps: {capture: {result: {run_id: 'sf_nestedscene'}}}}};
+    await fs.writeFile(savedStateFile, JSON.stringify(savedState));
+    const sceneReferences = await request({view: 'run', run: version.run_id});
+    assert.deepEqual(sceneReferences.scene_ids, ['sf_savedscene', 'sf_nestedscene']);
 
     // A public allowlist still removes accidentally added authority fields.
     const questions = path.join(outputs[0].outputs.questions.dataset, 'questions.jsonl');

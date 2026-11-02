@@ -6,6 +6,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
+import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
 
 export const name = 'benchforge-spatialforge-ui';
@@ -41,6 +42,104 @@ const STAGE_OPERATIONS = [
   ['S5', /^(score|screen|evaluat|verif|quality|report|package|templates\.package)/],
 ];
 const stageOf = (operation) => STAGE_OPERATIONS.find(([, pattern]) => pattern.test(operation || ''))?.[0] || null;
+
+function workbenchUrl(params, workspacePath) {
+  const query = new URLSearchParams(params);
+  if (workspacePath) query.set('workspace_path', workspacePath);
+  return 'api/benchforge/workbench?' + query;
+}
+
+function publicPlan(plan) {
+  if (!plan) return null;
+  return {...pick(plan, ['pipeline_id', 'version', 'objective']),
+    selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
+    inputs: pick(plan.inputs || {}, ['seed', 'split', 'target_items']),
+    template_contracts: (plan.template_contracts || []).map((row) => pick(row, ['id', 'task_id', 'task_name',
+      'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links', 'execution'])),
+    steps: (plan.steps || []).map((step) => pick(step, ['id', 'uses', 'pipeline_id', 'artifact_type', 'await_terminal']))};
+}
+
+const REPORT_FIELDS = [...QUALITY_FIELDS, 'per_template', 'model_api_calls', 'scope', 'metrics',
+  'total', 'count', 'success_rate', 'missing', 'status', 'capabilities', 'limitations'];
+
+function publicReport(report) {
+  const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).filter(([key]) => !/^(?:answer|answers|authority|gold|oracle|token|password|api_key)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
+  return clean(pick(report, REPORT_FIELDS));
+}
+
+async function runProducts(id, root, directory, state, plan) {
+  const items = [], saved = publicPlan(plan);
+  const link = (product, step = '') => workbenchUrl({view: 'run_product', run: id, product, step}, root.path);
+  if (saved) {
+    items.push({stage: 'S1', title: '评测计划', kind: 'json', data: saved, url: link('plan')});
+    items.push({stage: 'S4', title: '评测配置', kind: 'json',
+      data: {pipeline_id: saved.pipeline_id, inputs: saved.inputs, selections: saved.selections,
+        template_contracts: saved.template_contracts}, url: link('config')});
+  }
+  for (const [stepId, step] of Object.entries(state.steps || {})) {
+    const result = step.result || {};
+    const candidates = [result.report, result.quality_report,
+      typeof result.dataset === 'string' ? path.join(result.dataset, 'quality_report.json') : null];
+    for (const candidate of candidates) {
+      if (typeof candidate !== 'string' || !candidate.endsWith('.json')) continue;
+      try {
+        const file = await inside(root, path.resolve(directory, candidate));
+        const report = await readJson(file);
+        if (!report || typeof report !== 'object') continue;
+        items.push({stage: 'S5', title: path.basename(file) === 'quality_report.json' ? '数据质量报告' : '评测报告',
+          kind: 'json', step_id: stepId, artifact_id: step.artifact?.artifact_id,
+          data: publicReport(report), url: link('report', stepId)});
+        break;
+      } catch (error) { if (!['ENOENT'].includes(error.code) && !(error instanceof ApiError)) throw error; }
+    }
+  }
+  return items;
+}
+
+async function sceneArtifacts(config, roots, url, signal, media = false) {
+  const session = url.searchParams.get('session_id') || '', scene = url.searchParams.get('scene') || '';
+  if (!roots.length || !config.productionConfig || !/^session-[a-zA-Z0-9-]+$/.test(session) || !/^sf_[a-zA-Z0-9_-]+$/.test(scene)) {
+    throw new ApiError('A registered workspace and session-owned scene are required', 403);
+  }
+  const helper = fileURLToPath(new URL('./production_observer.py', import.meta.url));
+  const args = ['-B', helper, '--config', config.productionConfig, '--session', session,
+    '--action', media ? 'file' : 'artifacts', '--scene', scene];
+  const run = url.searchParams.get('run');
+  if (run) {
+    const {directory} = await resolveToken(run, roots);
+    const state = await readJson(path.join(directory, 'state.json'));
+    const sceneIds = pipelineSceneIds(state);
+    if (!sceneIds.includes(scene)) throw new ApiError('Scene is not referenced by this pipeline', 403);
+    args.push('--run-ids', JSON.stringify(sceneIds));
+  }
+  if (media) args.push('--task', url.searchParams.get('task') || '', '--revision', url.searchParams.get('revision') || '', '--file', url.searchParams.get('file') || '');
+  const {stdout} = await execute(config.productionPython, args, {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
+  const result = JSON.parse(stdout);
+  if (result.error) throw new ApiError(result.error, result.status_code || 503);
+  if (media) return result;
+  return {...result, items: (result.items || []).map(({source_path, ...row}) => ({...row,
+    url: workbenchUrl({view: 'stage_media', scene, session_id: session, ...(run ? {run} : {}), task: row.task_id,
+      revision: String(row.revision), file: row.file}, roots[0].path)})), snapshot_at: new Date().toISOString()};
+}
+
+async function sceneMedia(config, roots, url, request) {
+  const file = await sceneArtifacts(config, roots, url, request.signal, true);
+  if (file.data !== undefined) return Response.json(file.data, {headers: {'cache-control': 'no-store'}});
+  const stat = await fs.stat(file.source_path), headers = {'content-type': file.content_type,
+    'cache-control': 'private, max-age=30', 'x-content-type-options': 'nosniff', 'accept-ranges': 'bytes'};
+  let start = 0, end = stat.size - 1, status = 200;
+  const range = request.headers.get('range');
+  if (range) {
+    const match = /^bytes=(\d+)-(\d*)$/.exec(range);
+    if (!match) throw new ApiError('Invalid media range', 416);
+    start = Number(match[1]); end = match[2] ? Math.min(Number(match[2]), end) : end;
+    if (start > end || start >= stat.size) throw new ApiError('Media range is outside the file', 416);
+    headers['content-range'] = `bytes ${start}-${end}/${stat.size}`; status = 206;
+  }
+  headers['content-length'] = String(end - start + 1);
+  return new Response(Readable.toWeb(createReadStream(file.source_path, {start, end, signal: request.signal})), {status, headers});
+}
 
 // Frequent reads use only bounded index rows and small state files, never scan datasets/manifests.
 async function productionProgress(roots, config, url, signal) {
@@ -288,9 +387,20 @@ async function readRun(id, roots, config, signal) {
     state: pick(state, ['state', 'run_id', 'next', 'missing_binding', 'step']),
     steps: Object.entries(state.steps || {}).map(([key, value]) => ({id: key, state: value.state,
       error: value.error, artifact_id: value.artifact?.artifact_id})),
-    plan: plan ? {pipeline_id: plan.pipeline_id, version: plan.version, steps: (plan.steps || []).map((step) => pick(step, ['id', 'uses', 'pipeline_id', 'artifact_type', 'await_terminal']))} : null,
+    plan: publicPlan(plan), scene_ids: pipelineSceneIds(state), stage_artifacts: await runProducts(id, root, directory, state, plan),
     artifacts: artifacts.artifacts, artifact_total: artifacts.total, artifact_counts: artifacts.counts,
     artifacts_truncated: artifacts.truncated, repairs: repairs.rows, repair_total: repairs.total};
+}
+
+function pipelineSceneIds(state) {
+  const ids = new Set();
+  const collect = (result) => {
+    if (!result || ids.size >= 12) return;
+    if (typeof result.run_id === 'string' && /^sf_[a-zA-Z0-9_-]+$/.test(result.run_id)) ids.add(result.run_id);
+    for (const step of Object.values(result.steps || {})) collect(step.result);
+  };
+  for (const step of Object.values(state?.steps || {})) collect(step.result);
+  return [...ids];
 }
 
 async function datasetFiles(id, roots) {
@@ -372,6 +482,15 @@ export function createWorkbenchHandler(config, registered = () => []) {
       else if (view === 'summary') value = await discover(roots, limits, request.signal);
       else if (view === 'progress') value = await productionProgress(roots, limits, url, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal);
+      else if (view === 'run_product') {
+        const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal);
+        const product = url.searchParams.get('product'), step = url.searchParams.get('step');
+        value = product === 'plan' ? run.plan : product === 'config' ? run.stage_artifacts.find((row) => row.stage === 'S4')?.data
+          : product === 'report' ? run.stage_artifacts.find((row) => row.stage === 'S5' && row.step_id === step)?.data : null;
+        if (!value) throw new ApiError('Stage product was not found', 404);
+      }
+      else if (view === 'stage_artifacts') value = await sceneArtifacts(limits, roots, url, request.signal);
+      else if (view === 'stage_media') return await sceneMedia(limits, roots, url, request);
       else if (view === 'dataset') value = await readDataset(url, roots, request.signal);
       else if (view === 'media') return await readMedia(url, roots, request.signal);
       else throw new ApiError('Unsupported workbench view');
