@@ -3,7 +3,7 @@
 工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
 不改 DSH 源码。选择 `SpatialForge` preset (`spatialforge-standard-ptc`) 的会话后，
 工作台通过 `main.conversation` 接管该会话主视图，显示生产需求、原生对话过程和五阶段产物，
-原 composer 不挂载。无需先打开右侧“评测集”面板。
+原 composer 仅在嵌入区域内隐藏，工作台生产表单是唯一可见输入。无需先打开右侧“评测集”面板。
 此替换严格限定于 SpatialForge；其他 preset 保持原来的对话界面。
 
 工作台继续使用当前 DSH 会话执行任务：运行、数据集版本、样本浏览和质量报告都服务于当前
@@ -131,15 +131,15 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 ## 针对性验证
 
-当前对话区通过官方 `conversation.view` 槽位、`only: 'chat'` 直接渲染 DSH ChatView。
+当前对话区通过官方 `renderFactorySlot('conversation.content', {variant: 'embedded', phase: 'active', hero: false})` 渲染 DSH 原生对话。
 它只占工作台原有的执行进展区域，在区域内滚动；五阶段产物继续作为工作台主体。
-主槽显式声明这个 session-scope 子槽，原生组件自行注入消息、思考/工具过程分组、
+官方 Factory 自行管理 `conversation.session → conversation.view → chat` 的授权和当前会话绑定，注入消息、思考/工具过程分组、
 Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DSH 偏好，
 本会话已加载的对话历史也由原生组件呈现；不再自行解析、截取和重排消息。
 工作台挂载时通过公开 `uiConversation.binding(sessionId).activate('chat')`
 激活此数据源，不依赖用户上次保存的原生 view 标签。
-原生组件拥有内部滚动、尾部跟随和历史加载；外层仅提供响应式高度和布局 token，
-不复制 DSH CSS 或挂载原输入框。场景和 pipeline 的长期进度仍由五阶段回执显示。
+原生组件拥有滚动、尾部跟随和历史加载；外层仅提供响应式高度和布局 token，
+不复制 DSH CSS。官方 Factory 没有隐藏输入框参数，因此仅在 `.bfw-native-chat` 内隐藏稳定的 `[data-composer-seat]`；其他环境保留原输入框。场景和 pipeline 的长期进度仍由五阶段回执显示。
 
 同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 SpatialForge 主视图，
 明确切换环境或会话后才移除；输入表单本身不注册或卸载主槽。
@@ -147,7 +147,7 @@ Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DS
 收到明确的新权限值时立即更新，首次尚未确认权限时仍等待授权。
 
 - `node --test integrations/spatialforge/tests/test_workbench_feedback.mjs`：
-  原生 Chat 槽位复用、避免重复主界面/输入框和会话权限投影保持的定向验证。
+  原生 Conversation Factory 复用和会话权限投影保持的定向验证。
 
 - `node --test integrations/spatialforge/tests/test_workbench.mjs`：
   真实 pipeline 生成的两个数据集、分页/检索/版本隔离、公开媒体、答案隔离、

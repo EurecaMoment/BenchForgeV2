@@ -30,21 +30,21 @@ test('a confirmed session permission survives a missing projection but an explic
   assert.equal(renderPermission(), false, 'an explicit change must not be hidden by retained permissions');
 });
 
-test('workbench embeds the native chat view without replacing its content or mounting a composer', () => {
+test('workbench embeds the native conversation through its authorized factory without replacing its content', () => {
   const calls = [];
   const nativeChat = {type: 'NativeChatView', props: {children: [
     {type: 'NativeMarkdown', props: {text: '## Actual reply\n**Scene saved**'}},
     {type: 'NativeProcessDisclosure', props: {expanded: true, tool: 'scene_capture', live: true}},
   ]}};
-  const element = ExecutionFeedback({t: (key) => key, renderSlot: (name, owner, options) => {
-    calls.push({name, owner, options});
+  const element = ExecutionFeedback({t: (key) => key, renderFactorySlot: (name, owner) => {
+    calls.push({name, owner});
     return nativeChat;
   }});
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].name, 'conversation.view');
-  assert.equal(calls[0].options.only, 'chat', 'the process panel must not mount the full main conversation or composer');
-  assert.equal(calls[0].owner.viewRequest, null);
-  assert.equal(calls[0].owner.inspectCall, undefined);
+  assert.equal(calls[0].name, 'conversation.content');
+  assert.equal(calls[0].owner.variant, 'embedded');
+  assert.equal(calls[0].owner.phase, 'active');
+  assert.equal(calls[0].owner.hero, false);
   assert.equal(element.props['data-native-chat-view'], true);
   assert.equal(element.props.children[0], nativeChat, 'Markdown, live tool cards and disclosures remain owned by DSH');
   assert.equal(nativeChat.props.children[1].props.live, true);

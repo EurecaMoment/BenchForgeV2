@@ -246,9 +246,9 @@ test('automatic assessment products retain explicit template intent while a sepa
       route = {version: 3, stage, run: explicitRun};
       records = [progress, summary, selected, {items: []}, {items: [], total: 0, pages: 1, capabilities: []}, null];
       return expand(component({sessionId: 'session-multirecipe', t: (key) => dictionary[key] || key,
-        renderSlot: (name, owner, options) => {
-          assert.equal(name, 'conversation.view');
-          assert.equal(options.only, 'chat');
+        renderFactorySlot: (name, owner) => {
+          assert.equal(name, 'conversation.content');
+          assert.equal(owner.variant, 'embedded');
           return {type: 'NativeChatFixture', props: {children: []}};
         },
         useSessions: (select) => select({byId: {'session-multirecipe': {cwd: directory}}}),
@@ -349,8 +349,7 @@ test('production workbench replaces only the active SpatialForge main conversati
     effect: (fn) => effects.push(fn()),
     slots: {inject: (seat, fn) => {seats.push(seat); effects.push(fn());}, register: (options, component) => {
       assert.equal(options.name, 'main.conversation'); assert.equal(options.priority, -20);
-      assert.equal(options.children['conversation.view'].kind, 'list');
-      assert.equal(options.children['conversation.view'].scope, 'session', 'native Chat must inherit the active conversation scope');
+      assert.equal(options.children?.['conversation.view'], undefined, 'the native conversation.view is already declared by DSH and must not be registered twice');
       slots.set(options.name, component); return () => {removed++; slots.delete(options.name);};
     }},
   });
