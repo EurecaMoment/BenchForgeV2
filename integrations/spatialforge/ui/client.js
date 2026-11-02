@@ -15,14 +15,17 @@ window.__ModuleLoader__.load({
     ];
     const dictionaries = {
       zh: {
+        currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
+        queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
+        requestNote: '只发送你填写的要求，不会自动附加计划、场景或数据集。',
         productionMonitor: '生产实况', autoRefresh: '自动更新 · 约 3 秒', staleSnapshot: '观测异常 · 非最新状态', pollingPaused: '隐藏时暂停更新',
-        lastObserved: '最近观测', conversationRunning: 'DSH 对话执行中；以下为工具记录', productionScope: '当前工作区与本会话场景任务',
+        lastObserved: '最近观测', conversationRunning: 'DSH 对话执行中；以下为工具记录', productionScope: '仅当前对话的生产记录',
         retainedSnapshot: '连接异常，保留上次成功观测，恢复后自动续更', partialObservation: '部分来源读取失败；显示的是可读取记录，不能据此判断全部任务正常。',
         persistedSteps: '已落盘完成步骤', currentStep: '当前待完成步骤', unrecordedStep: '尚无执行回执', sceneJobs: '本会话场景任务',
         completedTasks: '执行完成任务', phase: '生产阶段', workerStage: 'worker 最近上报', workerAge: '距 worker 上报', transfer: '已接收产物',
         capturedViews: '已记录图像', actionTraces: '交互轨迹', publication: '发布状态', canceled: '已取消',
         taskLimit: '本页显示前 12 项任务；完整状态可在对话使用 spatialforge_status 查看。',
-        noProduction: '尚未找到本会话场景任务或工作区 pipeline 回执；聊天生成中的文字不计为生产完成。',
+        noProduction: '当前对话尚无生产回执；任务开始后将在这里更新。',
         recentOperations: '最近工具操作', observerNotConfigured: '场景队列观察器未配置；当前仅读取工作区 pipeline。',
         productionDetails: '查看生产明细', runFilter: '筛选运行名称、ID 或状态', versionFilter: '筛选版本、运行或任务',
         noMatchingRuns: '没有符合筛选条件的运行。', noMatchingVersions: '没有符合筛选条件的数据集版本。',
@@ -31,8 +34,8 @@ window.__ModuleLoader__.load({
         readFailed: '读取失败，请重试。', retry: '重试', sampleRemoved: '该样本已不在当前结果中，已返回列表。',
         stageStateSource: '步骤状态来源', workspacePipeline: '工作区流水线', sessionProduction: '本会话场景任务',
         panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
-        subtitle: '从评测目标到数据集交付，组织每一步操作与产物。', refresh: '刷新', loading: '读取中…',
-        scope: '显示已登记工作区中的最近索引记录；未统计的数据以“—”表示。', snapshot: '快照时间',
+        subtitle: '实时跟随当前对话，展示五阶段的生产进度和实际产物。', refresh: '刷新', loading: '读取中…',
+        scope: '仅展示与当前对话明确关联的生产记录和产物。', snapshot: '快照时间',
         draft: '草稿', candidate: '候选', verified: '已验证', rejected: '已拒绝', superseded: '已替代',
         failed: '失败', completed: '执行完成', waiting: '等待', needs_input: '缺输入', needs_evidence: '缺证据',
         running: '运行中', proposed: '待审阅', unknown: '未记录', unassessed: '未评估',
@@ -62,7 +65,7 @@ window.__ModuleLoader__.load({
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
         workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
         stageProgress: '本阶段生产进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '查看本阶段执行过程',
-        keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '生产计划尚未落盘。在下方填写目标，使用“填入对话”制定计划。',
+        keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
         planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
         sceneSelection: '选择场景', selectedScenes: '已选场景', preview: '预览', previewClose: '关闭预览', selectArtifact: '选择',
         sceneGallery: '可用场景', annotationGallery: '标注数据', annotationNote: '点击预览查看公开标注与证据；模型候选标注与仿真真值保留各自来源。',
@@ -70,9 +73,9 @@ window.__ModuleLoader__.load({
         insertStage: '填入对话', stepInstruction: '查看本步指令', chooseSceneHint: '可多选，所选场景会随本步指令填入对话。',
         persistedPlan: '已落盘评测计划', planSteps: '计划步骤', reportPending: '最终报告尚未生成；执行完成不等于评测通过。',
         knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
-        downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', runHistory: '历史计划与运行', runDetails: '当前运行明细与产物来源',
-        confirmSend: '确认发送', confirmTitle: '确认发送本步任务', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
-        confirmSendNote: '将本步计划、所选场景、数据集版本和产物引用打包，直接提交到当前 SpatialForge 对话。输入框现有文字和附件也会一同发送；取消不会更改输入框。',
+        downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', runHistory: '本对话的计划与运行', runDetails: '当前运行明细与产物来源',
+        confirmSend: '确认发送', confirmTitle: '向当前对话提出要求', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
+        confirmSendNote: '确认后直接提交，无需再点击对话发送。原输入框已有文字和附件也会一同发送；取消不会更改输入框。',
         sendBusy: '输入框正在处理提交或命令，请完成后重试。', sendFailed: '提交失败，已保留任务内容，请重试。', noSendInterface: '当前 DSH 未提供对话提交接口。',
         existingDraft: '将一同发送的输入框文字', existingAttachments: '将一同发送的附件数',
         blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '先准备场景，再采集图像、视频、轨迹与原生状态。',
@@ -92,14 +95,17 @@ window.__ModuleLoader__.load({
         savedAt: '草稿保存于', navigation: 'BenchForge 五步', liveRecords: '当前会话的实际产物', requiredGoal: '先填写评测目标。', perTemplate: '题 / 模板',
       },
       en: {
+        currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
+        queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
+        requestNote: 'Only your written request is sent. Plans, scenes and datasets are never added automatically.',
         productionMonitor: 'Live production', autoRefresh: 'Auto update · about 3 s', staleSnapshot: 'Observation issue · not current', pollingPaused: 'Updates paused while hidden',
-        lastObserved: 'Last observed', conversationRunning: 'DSH conversation running; tool records below', productionScope: 'Current workspace and session scene jobs',
+        lastObserved: 'Last observed', conversationRunning: 'DSH conversation running; tool records below', productionScope: 'Production records for this conversation only',
         retainedSnapshot: 'Connection failed. Keeping the last successful observation and retrying automatically', partialObservation: 'Some sources could not be read. Available records do not establish that all jobs are healthy.',
         persistedSteps: 'Persisted completed steps', currentStep: 'Current unfinished step', unrecordedStep: 'No execution receipt yet', sceneJobs: 'Session scene jobs',
         completedTasks: 'Completed tasks', phase: 'Production phase', workerStage: 'Last worker report', workerAge: 'Since worker report', transfer: 'Artifacts received',
         capturedViews: 'Recorded images', actionTraces: 'Action traces', publication: 'Publication status', canceled: 'Canceled',
         taskLimit: 'Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.',
-        noProduction: 'No session scene job or workspace pipeline receipt found. Chat prose is not production completion.',
+        noProduction: 'This conversation has no production receipts yet. They will appear when a task starts.',
         recentOperations: 'Recent tool operations', observerNotConfigured: 'Scene observer is not configured; only workspace pipelines are observed.',
         productionDetails: 'View production details', runFilter: 'Filter runs by name, ID or state', versionFilter: 'Filter versions, runs or tasks',
         noMatchingRuns: 'No runs match this filter.', noMatchingVersions: 'No dataset versions match this filter.',
@@ -109,7 +115,7 @@ window.__ModuleLoader__.load({
         stageStateSource: 'Step status source', workspacePipeline: 'Workspace pipeline', sessionProduction: 'Session scene job',
         panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
         subtitle: 'From evaluation goals to dataset delivery: actions and artifacts at every step.', refresh: 'Refresh', loading: 'Loading…',
-        scope: 'Recent indexed records in registered workspaces. Unmeasured values are shown as —.', snapshot: 'Snapshot',
+        scope: 'Only records and artifacts explicitly associated with this conversation.', snapshot: 'Snapshot',
         draft: 'Draft', candidate: 'Candidate', verified: 'Verified', rejected: 'Rejected', superseded: 'Superseded',
         failed: 'Failed', completed: 'Execution completed', waiting: 'Waiting', needs_input: 'Needs input', needs_evidence: 'Needs evidence',
         running: 'Running', proposed: 'Proposed', unknown: 'Not recorded', unassessed: 'Unassessed',
@@ -139,7 +145,7 @@ window.__ModuleLoader__.load({
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
         workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
         stageProgress: 'Stage production progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
-        keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'No persisted plan. Set the goal below and draft a planning request in chat.',
+        keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
         planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
         sceneSelection: 'Select scenes', selectedScenes: 'Selected scenes', preview: 'Preview', previewClose: 'Close preview', selectArtifact: 'Select',
         sceneGallery: 'Available scenes', annotationGallery: 'Annotations', annotationNote: 'Open public annotations and evidence. Candidate model annotations retain their source separately from simulation truth.',
@@ -149,7 +155,7 @@ window.__ModuleLoader__.load({
         knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
         downloadArtifact: 'Open artifact', artifactReadFailed: 'Could not read this artifact. Retry.', runHistory: 'Past plans and runs', runDetails: 'Current run details and artifact provenance',
         confirmSend: 'Confirm and send', confirmTitle: 'Confirm stage task', cancel: 'Cancel', sending: 'Submitting…', sent: 'Stage task submitted to this conversation; follow its execution receipt in chat.',
-        confirmSendNote: 'Package this stage, plan, selected scenes, dataset version and artifact references and submit directly to this SpatialForge conversation. Existing composer text and attachments will also be sent. Cancel leaves them unchanged.',
+        confirmSendNote: 'Confirm submits directly. Existing composer text and attachments are submitted too. Cancel leaves the composer unchanged.',
         sendBusy: 'The composer is processing a submission or command. Try again after it finishes.', sendFailed: 'Submission failed. Task retained; please retry.', noSendInterface: 'This DSH session has no submission interface.',
         existingDraft: 'Composer text included in this submission', existingAttachments: 'Attachments included in this submission',
         blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Prepare scenes, then collect images, video, trajectories and native state.',
@@ -206,10 +212,10 @@ window.__ModuleLoader__.load({
         options.map(([id, text]) => h('option', {key: id, value: id}, text))));
     }
     function initialState(sessionId) {
-      const fallback = {stage: 'S1', run: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'table',
+      const fallback = {version: 3, stage: 'S1', run: '', production: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'table',
         runFilter: '', runListPage: 1, runListSize: 12, versionFilter: '', versionListPage: 1, versionListSize: 12};
       const saved = JSON.parse(localStorage.getItem('bfw:spatialforge:' + sessionId) || 'null');
-      if (saved) {
+      if (saved?.version === 3) {
         const {tab, ...route} = saved;
         const stage = ({overview: 'S1', runs: 'S1', datasets: 'S4', quality: 'S5'})[tab] || saved.stage;
         return {...fallback, ...route, stage: STAGES.some((row) => row.id === stage) ? stage : 'S1', size: [24, 48, 96].includes(saved.size) ? saved.size : 24,
@@ -378,71 +384,26 @@ window.__ModuleLoader__.load({
           ...details));
     }
 
-    function blueprintState(sessionId) {
-      return JSON.parse(localStorage.getItem('bfw:blueprint:' + sessionId) || 'null') ||
-        {objective: '', target: 300, budget: 100, source: 'simulator', templates: [], savedAt: null};
-    }
-    function allocations(blueprint) {
-      const count = blueprint.templates.length;
-      return blueprint.templates.map((template, i) => ({template_id: template.id,
-        target_items: Math.floor(blueprint.target / count) + (i < blueprint.target % count ? 1 : 0)}));
-    }
-    function instruction(stage, blueprint, runLabel, version) {
-      const actions = {
-        S1: '请根据目标检索能力与出题模板，检查所选模板的实际适配器，制定可组合的生产计划，列出输入、数量、来源和预期产物；本轮只规划。',
-        S2: '请基于已保存的需求和计划准备数据来源。场景任务先复用或生成场景，再采集公开观测与原生状态；检查本步实际需要的外部工具。保留参考、场景和采集回执。',
-        S3: '请读取现有采集产物，整理证据、公开标定、对象和时序状态，绑定来源。区分模型候选标注和官方/程序/仿真 GT，保留产物父子关系和缺失证据。',
-        S4: '请基于现有场景和已结构化证据，按所选模板与数量合成评测题。使用既有 pipeline 工具保存公开问题、媒体、分区和版本；信息不足时修复来源，不编造真值。',
-        S5: '请对选定运行与数据集执行既有确定性验证，汇总公开信息充分性、GT来源、分区、覆盖和失败项，记录局部修复建议并生成报告和交付包。没有真实模型响应时不要拟合 IRT。',
-      };
-      return ['BenchForge ' + stage + ' / SpatialForge', actions[stage],
-        JSON.stringify({objective: blueprint.objective, target_items: blueprint.target, storage_limit_gb: blueprint.budget,
-          source: blueprint.source, template_allocations: allocations(blueprint), run: runLabel || null, dataset_version: version || null}, null, 2),
-        '复用本会话工作区和现有工具；不修改 DSH 源码、模型部署、仿真器配置、验收规则或 GT。执行状态必须以实际产物回执为准。'].join('\n\n');
-    }
-
-    function Blueprint({blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-      capability, setCapability, save, prepare, retry, t}) {
-      const update = (key, value) => setBlueprint((old) => ({...old, [key]: value, savedAt: null,
-        ...(key === 'templates' ? {target: Math.max(old.target, value.length)} : {}),
-        ...(key === 'target' ? {target: Math.max(value, old.templates.length)} : {})}));
-      const selected = new Set(blueprint.templates.map((row) => row.id));
-      const toggle = (row) => update('templates', selected.has(row.id)
-        ? blueprint.templates.filter((item) => item.id !== row.id) : [...blueprint.templates, {id: row.id, title: row.title}]);
-      return h(React.Fragment, null,
-        card(t('blueprint'), h('div', {className: 'bfw-form'},
-          h('label', {className: 'bfw-label bfw-wide'}, t('objective'), h('textarea', {className: 'bfw-input bfw-textarea',
-            value: blueprint.objective, placeholder: t('objectivePlaceholder'), onChange: (e) => update('objective', e.target.value)})),
-          h('label', {className: 'bfw-label'}, t('targetItems'), h('input', {className: 'bfw-input', type: 'number', min: 1, step: 1,
-            value: blueprint.target, onChange: (e) => update('target', Math.max(1, Math.floor(Number(e.target.value) || 1)))})),
-          h('label', {className: 'bfw-label'}, t('storageBudget'), h('input', {className: 'bfw-input', type: 'number', min: 1,
-            value: blueprint.budget, onChange: (e) => update('budget', Math.max(1, Number(e.target.value) || 1))})),
-          select(t('sourceType'), blueprint.source, (value) => update('source', value), ['simulator', 'program', 'official'].map((id) => [id, t(id)])))),
-        card(t('selectedTemplates'), h(React.Fragment, null,
-          blueprint.templates.length ? blueprint.templates.map((row, i) => h('div', {className: 'bfw-selected', key: row.id},
-            h('span', null, h('span', {className: 'bfw-code'}, row.id), ' · ', row.title),
-            h('span', null, allocations(blueprint)[i].target_items + ' ' + t('item')), button(t('removeTemplate'), () => toggle(row), {'aria-label': t('removeTemplate') + ' ' + row.id}))) : empty(t('noSelection')),
-          h('div', {className: 'bfw-toolbar'}, button(t('saveBlueprint'), save), button(t('preparePlan'), prepare, {className: 'bfw-button bfw-action'})),
-          blueprint.savedAt && h('p', {className: 'bfw-muted'}, t('savedAt') + ': ' + new Date(blueprint.savedAt).toLocaleString()))),
-        card(t('templateCatalog'), h(React.Fragment, null,
-          h('p', {className: 'bfw-muted'}, t('catalogDesign')),
-          catalog.value && h('div', {className: 'bfw-counts'}, h('span', null, catalog.value.task_count + ' ' + t('task')), h('span', null, catalog.value.template_count + ' ' + t('template'))),
-          h('div', {className: 'bfw-toolbar'}, h('input', {className: 'bfw-input', 'aria-label': t('searchTemplates'), value: catalogQuery,
-            placeholder: t('search'), onChange: (e) => {setCatalogQuery(e.target.value); setCatalogPage(1);}}),
-          select(t('capability'), capability, (id) => {setCapability(id); setCatalogPage(1);}, [['', t('all')], ...(catalog.value?.capabilities || []).map((id) => [id, id])])),
-          catalog.error && h('p', {className: 'bfw-error', role: 'alert'}, catalog.error),
-          catalog.loading ? empty(t('loading')) : catalog.error && !catalog.value ? button(t('retry'), retry) :
-            !catalog.value?.items.length ? h('div', {className: 'bfw-empty', role: 'status'}, t('noMatchingTemplates'), ' ',
-              button(t('clearFilters'), () => {setCatalogQuery(''); setCapability(''); setCatalogPage(1);})) :
-            h('div', {className: 'bfw-catalog'}, (catalog.value?.items || []).map((row) =>
-            h('article', {className: 'bfw-template', key: row.id, 'data-selected': selected.has(row.id)},
-              h('header', null, h('strong', null, row.title), button(t(selected.has(row.id) ? 'removeTemplate' : 'selectTemplate'), () => toggle(row), {'aria-pressed': selected.has(row.id)})),
-              h('p', {className: 'bfw-code'}, row.id + ' · ' + row.capabilities.join(' / ')),
-              h('p', {className: 'bfw-muted'}, row.task_name),
-              h('details', null, h('summary', null, t('details')), h('p', null, row.effective_measurement_conditions), h('p', null, row.prompt_template))))),
-          h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setCatalogPage(catalogPage - 1), {disabled: catalogPage <= 1}),
-            h('span', null, catalogPage + ' / ' + (catalog.value?.pages || 1)),
-            button(t('nextPage'), () => setCatalogPage(catalogPage + 1), {disabled: catalog.loading || !catalog.value || catalogPage >= catalog.value.pages})))));
+    function TemplateCatalog({catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
+      capability, setCapability, retry, t}) {
+      return h('details', {'data-template-reference': true}, h('summary', null, t('templateCatalog')),
+        h('p', {className: 'bfw-muted'}, t('catalogDesign')),
+        h('div', {className: 'bfw-toolbar'},
+          h('input', {className: 'bfw-input', 'aria-label': t('searchTemplates'), value: catalogQuery,
+            placeholder: t('searchTemplates'), onChange: (e) => {setCatalogQuery(e.target.value); setCatalogPage(1);}}),
+          select(t('capability'), capability, (id) => {setCapability(id); setCatalogPage(1);},
+            [['', t('all')], ...(catalog.value?.capabilities || []).map((id) => [id, id])])),
+        catalog.loading ? empty(t('loading')) : catalog.error ? h('div', null,
+          h('p', {className: 'bfw-error'}, catalog.error), button(t('retry'), retry)) :
+          !catalog.value?.items.length ? empty(t('noMatchingTemplates')) :
+            h('div', {className: 'bfw-catalog'}, catalog.value.items.map((row) =>
+              h('article', {className: 'bfw-template', key: row.id}, h('strong', null, row.title),
+                h('p', {className: 'bfw-code'}, row.id + ' · ' + row.capabilities.join(' / ')),
+                h('details', null, h('summary', null, t('details')),
+                  h('p', null, row.effective_measurement_conditions), h('p', null, row.prompt_template))))),
+        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setCatalogPage(catalogPage - 1), {disabled: catalogPage <= 1}),
+          h('span', null, catalogPage + ' / ' + (catalog.value?.pages || 1)),
+          button(t('nextPage'), () => setCatalogPage(catalogPage + 1), {disabled: catalog.loading || !catalog.value || catalogPage >= catalog.value.pages})));
     }
     function RunDetails({record, t}) {
       if (!record) return empty(t('chooseRun'));
@@ -535,22 +496,18 @@ window.__ModuleLoader__.load({
                 }))),
             typeof data === 'string' ? h('pre', {className: 'bfw-json'}, data) : json(data)) : empty(t('loading')));
     }
-    function ArtifactGallery({items, selectable, selected, toggle, preview, t}) {
+    function ArtifactGallery({items, preview, t}) {
       if (!items.length) return empty(t('artifactPending'));
-      return h(React.Fragment, null,
-        selectable && h('p', {className: 'bfw-muted'}, t('chooseSceneHint') + ' · ' + t('selectedScenes') + ': ' + selected.length),
-        h('div', {className: 'bfw-gallery'}, items.map((item) => h('article', {className: 'bfw-preview-card', key: item.url || item.title,
-          'data-preview-kind': item.kind, 'data-selected': selected.some((row) => row.url === item.url)},
-          h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(item), 'aria-label': t('preview') + ' ' + item.title},
-            item.kind === 'image' || item.image_url ? h('img', {src: item.image_url || item.url, loading: 'lazy', alt: item.title}) : item.kind === 'video' ?
-              h('video', {src: item.url, preload: 'metadata', muted: true, 'aria-label': item.title}) :
-              h('div', {className: 'bfw-document-thumb'}, h('span', null, item.kind === 'json' ? '{ }' : '≡'), h('span', null, item.title)),
-            h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
-          selectable && h('label', {className: 'bfw-scene-check'}, h('input', {type: 'checkbox', checked: selected.some((row) => row.url === item.url),
-            'aria-label': t('selectArtifact') + ' ' + item.title, onChange: () => toggle(item)}), t('selectArtifact')),
-          item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision))))));
+      return h('div', {className: 'bfw-gallery'}, items.map((item) => h('article', {className: 'bfw-preview-card', key: item.url || item.title,
+        'data-preview-kind': item.kind},
+        h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(item), 'aria-label': t('preview') + ' ' + item.title},
+          item.kind === 'image' || item.image_url ? h('img', {src: item.image_url || item.url, loading: 'lazy', alt: item.title}) : item.kind === 'video' ?
+            h('video', {src: item.url, preload: 'metadata', muted: true, 'aria-label': item.title}) :
+            h('div', {className: 'bfw-document-thumb'}, h('span', null, item.kind === 'json' ? '{ }' : '≡'), h('span', null, item.title)),
+          h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
+        item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision)))));
     }
-    function SendDialog({payload, draft, attachmentCount, sending, error, confirm, close, t}) {
+    function SendDialog({payload, change, draft, attachmentCount, sending, error, confirm, close, t}) {
       const ref = React.useRef(null);
       React.useEffect(() => {
         const trigger = document.activeElement;
@@ -560,19 +517,17 @@ window.__ModuleLoader__.load({
       }, []);
       return h('dialog', {ref, className: 'bfw-preview-dialog', 'data-stage-confirm': true, 'aria-label': t('confirmTitle'),
         onCancel: (event) => {event.preventDefault(); if (!sending) close();}},
-        h('h2', null, t('confirmTitle')), h('p', null, t('confirmSendNote')),
+        h('h2', null, t('confirmTitle')), h('p', null, t('requestNote')), h('p', null, t('confirmSendNote')),
         draft && h('details', {open: true}, h('summary', null, t('existingDraft')), h('pre', {className: 'bfw-json'}, draft)),
         attachmentCount > 0 && h('p', null, t('existingAttachments') + ': ' + attachmentCount),
-        h('pre', {className: 'bfw-json'}, payload.text),
+        h('textarea', {className: 'bfw-input bfw-textarea', 'data-request-text': true, 'aria-label': t('requestChange'), autoFocus: true,
+          placeholder: t('requestPlaceholder'), value: payload.text, disabled: sending || payload.inserted, onChange: (event) => change(event.target.value)}),
         error && h('p', {className: 'bfw-error', role: 'alert'}, error),
         h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
-          button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending})));
+          button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending || !payload.text.trim()})));
     }
-    function PlanProduct({plan, blueprint, artifacts, preview, t}) {
-      if (!plan) return h(React.Fragment, null, empty(t('planPending')),
-        blueprint.objective && h('article', {className: 'bfw-plan-document'}, h('span', {className: 'bfw-pill'}, t('draftOnly')),
-          h('h3', null, blueprint.objective), h('p', null, t('targetItems') + ': ' + blueprint.target + ' · ' + t('sourceType') + ': ' + t(blueprint.source)),
-          table([t('template'), t('allocate')], allocations(blueprint).map((row) => [row.template_id, row.target_items]))));
+    function PlanProduct({plan, artifacts, preview, t}) {
+      if (!plan) return empty(t('planPending'));
       return h('article', {className: 'bfw-plan-document'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
         h('h3', null, typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint')),
         plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
@@ -616,7 +571,7 @@ window.__ModuleLoader__.load({
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
-    function Workbench({t, sessionId, useSessions, useInput, inputActions}) {
+    function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions}) {
       const panelRef = React.useRef(null);
       const sampleHeadingRef = React.useRef(null);
       const sampleTriggerRef = React.useRef(null);
@@ -625,41 +580,55 @@ window.__ModuleLoader__.load({
       const [revision, setRevision] = React.useState(0);
       const [sample, setSample] = React.useState(null);
       const [search, setSearch] = React.useState(route.q);
-      const [blueprint, setBlueprint] = React.useState(() => blueprintState(sessionId));
       const [notice, setNotice] = React.useState('');
       const [catalogQuery, setCatalogQuery] = React.useState('');
       const [catalogPage, setCatalogPage] = React.useState(1);
       const [capability, setCapability] = React.useState('');
       const [preview, setPreview] = React.useState(null);
-      const [selectedScenes, setSelectedScenes] = React.useState([]);
       const [sendPayload, setSendPayload] = React.useState(null);
       const [sending, setSending] = React.useState(false);
       const [sendError, setSendError] = React.useState('');
       const submitLock = React.useRef(false);
       const inputState = useInput((state) => state);
+      const sessionState = useSession((state) => state);
       const update = (patch) => setRoute((old) => ({...old, ...patch}));
       const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
-      const conversationRunning = useSessions((state) => Boolean(state.byId[sessionId]?.running));
+      const conversationRunning = sessionState.running;
+      const queueCount = inputState.queue.length;
+      const sessionError = sessionState.openError || sessionState.promptError?.error || sessionState.lastAgentError;
+      const sessionStatus = sessionState.openState === 'error' ? 'failed' : conversationRunning ? 'running' :
+        ['adjudicating', 'submitting'].includes(inputState.phase) || sessionState.pendingSubmissions.length || sessionState.awaitingFirstTurn ? 'submitting' :
+        sessionError ? 'failed' : sessionState.openState === 'loading' ? 'loading' : 'idle';
+      const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
-      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath} : null, revision, 30000, visible);
-      const selectedRunId = route.run || summary.value?.runs?.[0]?.id || '';
+      const receiptsRevision = revision + ':' + sessionStatus + ':' + JSON.stringify([
+        (progress.value?.pipelines || []).map((row) => [row.id, row.updated_at]),
+        (progress.value?.scenes?.runs || []).map((row) => [row.run_id, row.state,
+          row.tasks?.map((task) => [task.id, task.state, task.revision])]),
+      ]);
+      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
+      const rows = summary.value?.runs || [];
+      const selectedRunId = route.production && !route.run ? '' : rows.find((row) => row.id === route.run)?.id ||
+        progress.value?.pipelines?.find((row) => row.state !== 'completed')?.id || rows[0]?.id || progress.value?.pipelines?.[0]?.id || '';
+      const datasets = (summary.value?.datasets || []).filter((row) => selectedRunId ? row.run_id === selectedRunId : !row.run_id);
+      const selectedDataset = datasets.find((row) => row.id === route.dataset);
       const sceneJobs = progress.value?.scenes?.runs || [];
       const scene = sceneJobs.find((row) => row.run_id === route.production) || sceneJobs.find((row) => !row.terminal) || sceneJobs[0];
-      const sourceScene = route.run ? null : scene;
-      const run = useRecord(workspacePath && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath} : null, revision, 10000, visible);
-      const artifactScene = sourceScene?.run_id || (route.run ? run.value?.scene_ids?.[0] : '');
+      const sourceScene = selectedRunId ? null : scene;
+      const run = useRecord(workspacePath && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 10000, visible);
+      const artifactScene = sourceScene?.run_id || run.value?.scene_ids?.[0];
       const sceneArtifacts = useRecord(workspacePath && artifactScene ?
-        {view: 'stage_artifacts', scene: artifactScene, run: route.run || '', session_id: sessionId, workspace_path: workspacePath} : null, revision, 10000, visible);
+        {view: 'stage_artifacts', scene: artifactScene, run: selectedRunId, session_id: sessionId, workspace_path: workspacePath} : null, receiptsRevision, 10000, visible);
       const catalog = useRecord(route.stage === 'S1'
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
-      const dataset = useRecord(workspacePath && ['S4', 'S5'].includes(route.stage) && route.dataset ?
-        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath} : null, revision, 30000, visible);
+      const dataset = useRecord(workspacePath && ['S4', 'S5'].includes(route.stage) && selectedDataset ?
+        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
       const sampleId = sample?.row_index;
       const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
         (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
-      React.useEffect(() => {setSelectedScenes([]); setPreview(null);}, [route.run, sourceScene?.run_id]);
+      React.useEffect(() => {setPreview(null);}, [selectedRunId, sourceScene?.run_id]);
       React.useEffect(() => {
         if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({page: Math.max(1, dataset.value.pages)});
       }, [dataset.value, route.page]);
@@ -676,15 +645,18 @@ window.__ModuleLoader__.load({
           sampleTriggerRef.current = null;
         }
       }, [sampleId, route.stage]);
-      const rows = summary.value?.runs || [];
-      const datasets = summary.value?.datasets || [];
-      const selectedDataset = summary.value?.datasets?.find((row) => row.id === route.dataset);
+      React.useEffect(() => {
+        if (!summary.value) return;
+        const patch = {};
+        if (route.run && !rows.some((row) => row.id === route.run)) patch.run = '';
+        if (!selectedDataset && (route.dataset || datasets.length)) Object.assign(patch, {dataset: datasets[0]?.id || '', template: '', split: '', q: '', page: 1});
+        if (Object.keys(patch).length) update(patch);
+      }, [summary.value, selectedRunId, route.run, route.dataset]);
       const runListing = filteredPage(rows, route.runFilter, route.runListPage, route.runListSize,
         (row) => [row.label, row.id, row.state].join(' '));
       const versionListing = filteredPage(datasets, route.versionFilter, route.versionListPage, route.versionListSize,
         (row) => [row.workspace, row.version, row.run_id, row.state].join(' '));
       const stage = STAGES.find((step) => step.id === route.stage) || STAGES[0];
-      const activeRun = rows.find((row) => row.id === selectedRunId);
       const pipeline = progress.value?.pipelines?.find((row) => row.id === selectedRunId) ||
         (!route.run ? progress.value?.pipelines?.find((row) => row.state !== 'completed') || progress.value?.pipelines?.[0] : null);
       const allStageFiles = [...(sourceScene ? [] : run.value?.stage_artifacts || []), ...(sceneArtifacts.value?.items || [])];
@@ -692,32 +664,14 @@ window.__ModuleLoader__.load({
         image_url: row.stage === 'S3' && row.kind === 'json' ? allStageFiles.find((image) => image.kind === 'image' &&
           image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, '.png'))?.url : undefined}));
       const activePipeline = sourceScene ? null : pipeline;
-      const persistedPlan = sourceScene ? sceneArtifacts.value?.plan : run.value?.plan;
-      const saveBlueprint = () => {
-        const next = {...blueprint, savedAt: new Date().toISOString()};
-        localStorage.setItem('bfw:blueprint:' + sessionId, JSON.stringify(next));
-        setBlueprint(next); setNotice(t('blueprintSaved'));
-      };
-      const stepInstruction = instruction(stage.id, blueprint, route.run ? activeRun?.label : sourceScene?.run_id || activeRun?.label, selectedDataset?.version) +
-        (persistedPlan ? '\n\n当前已落盘计划（与浏览器草稿区分）：\n' + JSON.stringify(persistedPlan, null, 2) : '') +
-        (selectedScenes.length ? '\n\n已选场景产物（请复用）：\n' + JSON.stringify(selectedScenes.map((row) =>
-          ({task_id: row.task_id, revision: row.revision, file: row.file, title: row.title})), null, 2) : '');
       const prepare = () => {
-        if (stage.id === 'S1' && !blueprint.objective.trim() && !persistedPlan) {setNotice(t('requiredGoal')); return;}
         if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
-        saveBlueprint();
-        const bundle = {schema: 'benchforge.stage_request/v1', stage: stage.id, session_id: sessionId,
-          workspace_path: workspacePath, pipeline_run: route.run || null, scene_run: sourceScene?.run_id || null,
-          dataset: selectedDataset ? {id: selectedDataset.id, version: selectedDataset.version} : null,
-          blueprint, saved_plan: persistedPlan || null,
-          selected_scenes: selectedScenes.map(({task_id, revision, file, title}) => ({task_id, revision, file, title})),
-          artifacts: stageFiles.map(({task_id, revision, file, title, kind, url}) => ({task_id, revision, file, title, kind, url}))};
         setSendError('');
-        setSendPayload({text: instruction(stage.id, blueprint, route.run ? activeRun?.label : sourceScene?.run_id || activeRun?.label,
-          selectedDataset?.version) + '\n\nSpatialForge 任务包：\n```json\n' + JSON.stringify(bundle, null, 2) + '\n```', inserted: false});
+        setSendPayload({text: '', inserted: false});
       };
       const confirmSend = () => {
         if (submitLock.current || !sendPayload || sendPayload.submitted) return;
+        if (!sendPayload.text.trim()) {setSendError(t('requestRequired')); return;}
         if (['adjudicating', 'submitting'].includes(inputState.phase) || inputState.claim) {setSendError(t('sendBusy')); return;}
         submitLock.current = true; setSending(true); setSendError('');
         try {
@@ -744,15 +698,13 @@ window.__ModuleLoader__.load({
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
       const versionOptions = [['', t('chooseDataset')], ...(summary.value?.datasets || []).map((row) =>
         [row.id, row.workspace + ' / ' + displayRef(row.version)])];
-      const toggleScene = (item) => setSelectedScenes((old) => old.some((row) => row.url === item.url)
-        ? old.filter((row) => row.url !== item.url) : [...old, item]);
       const chooseProduction = (value) => {
         setPreview(null);
-        if (value.startsWith('scene:')) update({production: value.slice(6), run: ''});
-        else update({run: value});
+        if (value.startsWith('scene:')) update({production: value.slice(6), run: '', dataset: '', template: '', split: '', q: '', page: 1});
+        else update({run: value, production: '', dataset: '', template: '', split: '', q: '', page: 1});
       };
-      const productionOptions = [[sourceScene ? 'scene:' + sourceScene.run_id : '', t('automaticRecord')],
-        ...sceneJobs.filter((row) => row.run_id !== sourceScene?.run_id).map((row) => ['scene:' + row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))]),
+      const productionOptions = [['', t('automaticRecord')],
+        ...sceneJobs.map((row) => ['scene:' + row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))]),
         ...rows.map((row) => [row.id, displayRef(row.label) + ' · ' + t(row.state)])];
       const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h('div', {className: 'bfw-list-controls'},
         h('div', {className: 'bfw-toolbar'},
@@ -813,22 +765,22 @@ window.__ModuleLoader__.load({
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
           h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
           button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})));
-        const plan = sourceScene ? sceneArtifacts.value?.plan : run.value?.plan;
+        const plan = run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
         const filesError = sceneArtifacts.error || run.error;
         const productFiles = stageFiles.filter((row) => row.url || row.data);
+        const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
+          productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
         if (stage.id === 'S1') product = h(React.Fragment, null,
-          h(PlanProduct, {plan, blueprint, artifacts: productFiles, preview: setPreview, t}),
-          h('details', {className: 'bfw-plan-editor', open: !plan && !blueprint.objective}, h('summary', null, t('planEditor')),
-            h(Blueprint, {blueprint, setBlueprint, catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-              capability, setCapability, save: saveBlueprint, prepare, retry: () => setRevision((value) => value + 1), t})),
+          h(PlanProduct, {plan, artifacts: productFiles, preview: setPreview, t}),
+          h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
+            capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);
         else if (['S2', 'S3'].includes(stage.id)) product = h(React.Fragment, null,
           stage.id === 'S3' && h('p', {className: 'bfw-muted'}, t('annotationNote')),
           filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
           (sceneArtifacts.loading || run.loading) && empty(t('loading')),
-          h(ArtifactGallery, {items: productFiles, selectable: stage.id === 'S2', selected: selectedScenes,
-            toggle: toggleScene, preview: setPreview, t}));
+          h(ArtifactGallery, {items: productFiles, preview: setPreview, t}));
         else if (stage.id === 'S4') product = h('div', {className: 'bfw-evaluation-grid'},
           h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
             select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
@@ -844,35 +796,39 @@ window.__ModuleLoader__.load({
           select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
           dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
           (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report, t}),
-          h(ReportProduct, {item: productFiles[0], observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
+          h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
           productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
             h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
       const body = h(React.Fragment, null,
           h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, t}),
           h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
             h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
-          h('div', {className: 'bfw-stage-actions'},
-            h('div', {className: 'bfw-production-source'}, select(t('productionRecord'), route.run || (sourceScene ? 'scene:' + sourceScene.run_id : ''), chooseProduction, productionOptions)),
-            button(t('insertStage'), prepare, {className: 'bfw-button bfw-action', 'data-insert-stage': stage.id})),
+          productionOptions.length > 2 && h('div', {className: 'bfw-production-source'},
+            select(t('productionRecord'), route.run || (route.production ? 'scene:' + route.production : ''), chooseProduction, productionOptions)),
           h('section', {className: 'bfw-product', 'data-stage-product': stage.id, 'aria-label': t('keyProduct') + ' · ' + t(stage.key)}, product),
-          h('details', null, h('summary', null, t('stepInstruction')),
-            h('p', {className: 'bfw-muted'}, t('chatNote')), h('pre', {className: 'bfw-json'}, stepInstruction),
-            button(t('copyInstruction'), async () => {try {await navigator.clipboard.writeText(stepInstruction); setNotice(t('copied'));} catch (error) {setNotice(error.message);}})),
           !sourceScene && run.value && h('details', {'data-run-details': true}, h('summary', null, t('runDetails')),
             h(RunDetails, {record: run.value, t})),
-          h('div', {className: 'bfw-stage-footer'}, button(t('previousStep'), () => update({stage: STAGES[STAGES.indexOf(stage) - 1].id}), {disabled: stage.id === 'S1'}),
+          h('div', {className: 'bfw-stage-footer'},
+            button(t('requestChange'), prepare, {className: 'bfw-button bfw-action', 'data-request-stage': stage.id}), button(t('previousStep'), () => update({stage: STAGES[STAGES.indexOf(stage) - 1].id}), {disabled: stage.id === 'S1'}),
             button(t('nextStep'), () => update({stage: STAGES[STAGES.indexOf(stage) + 1].id}), {disabled: stage.id === 'S5'})));
       return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
         h('header', {className: 'bfw-header'}, h('div', null,
           h('div', {className: 'bfw-kicker'}, 'BENCHFORGEV2 / SPATIALFORGE'), h('h1', {className: 'bfw-title'}, t('panel')),
           h('div', {className: 'bfw-muted'}, t('subtitle'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
+        h('section', {className: 'bfw-stage-progress', 'data-current-session': sessionId, 'data-session-state': sessionStatus,
+          role: 'status', 'aria-live': 'polite'},
+          h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('currentConversation')),
+            h('span', {className: 'bfw-pill ' + sessionStatus}, t(sessionStatusKey)),
+            h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount)),
+          sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
+            typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
         h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
           className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
           'aria-current': stage.id === step.id ? 'step' : undefined,
           onClick: () => {update({stage: step.id}); setNotice('');}},
           h('span', {className: 'bfw-stage-index'}, step.id + ' / 05'), h('strong', null, t(step.key)),
-          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)},
-            t(stageState(step.id, route.run || !scene ? pipeline : null, route.run ? null : scene)))))),
+          h('span', {className: 'bfw-stage-state', 'data-stage-state': stageState(step.id, activePipeline, sourceScene)},
+            t(stageState(step.id, activePipeline, sourceScene)))))),
         notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
         h('section', {id: 'bfw-content-' + sessionId, 'aria-label': t(stage.key)}, body),
@@ -883,7 +839,7 @@ window.__ModuleLoader__.load({
           h(Production, {record: progress, pipeline: activePipeline, scene: sourceScene, selected: scene?.run_id || '',
             selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t})),
         preview && h(PreviewDialog, {key: preview.url || preview.title, item: preview, close: () => setPreview(null), t}),
-        sendPayload && h(SendDialog, {payload: sendPayload, draft: inputState.draft, attachmentCount: inputState.attachmentIds.length,
+        sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachmentCount: inputState.attachmentIds.length,
           sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));
     }
     return {
@@ -895,8 +851,8 @@ window.__ModuleLoader__.load({
           'benchforge-spatialforge-ui: SpatialForge-only panel page');
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: PANEL, locale: NS,
-        }, ({useProjection, useSessions, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
-          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useInput, inputActions}) : null));
+        }, ({useProjection, useSessions, useSession, useInput, sessionId, inputActions}) => useProjection('agentPreset') === SPATIALFORGE_PRESET
+          ? h(Workbench, {key: sessionId, t, sessionId, useSessions, useSession, useInput, inputActions}) : null));
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities', id: 'spatialforge-evaluation-launcher', order: 80, locale: NS,
         }, ({useProjection}) => useProjection('agentPreset') === SPATIALFORGE_PRESET

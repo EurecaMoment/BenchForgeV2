@@ -42,6 +42,25 @@ const STAGE_OPERATIONS = [
   ['S5', /^(score|screen|evaluat|verif|quality|report|package|templates\.package)/],
 ];
 const stageOf = (operation) => STAGE_OPERATIONS.find(([, pattern]) => pattern.test(operation || ''))?.[0] || null;
+const scopeOf = (url) => ({session_id: url.searchParams.get('session_id') || '', history: url.searchParams.get('scope') === 'workspace'});
+const scopeParams = (scope) => scope.history ? {scope: 'workspace'} : {session_id: scope.session_id};
+const matchesSession = (context, scope) => scope.history || !!scope.session_id &&
+  (context?.session_id === scope.session_id || context?.session_ids?.includes(scope.session_id));
+
+async function assertSessionDirectory(root, directory, scope) {
+  if (scope.history) return;
+  let current = directory;
+  while (current !== root.path) {
+    const request = await readJson(path.join(current, 'request.json'));
+    if (matchesSession(request?.context, scope)) return;
+    const state = await readJson(path.join(current, 'state.json'));
+    if (matchesSession(state?.context, scope)) return;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  throw new ApiError('This artifact is not associated with the current conversation', 403);
+}
 
 function workbenchUrl(params, workspacePath) {
   const query = new URLSearchParams(params);
@@ -68,9 +87,9 @@ function publicReport(report) {
   return clean(pick(report, REPORT_FIELDS));
 }
 
-async function runProducts(id, root, directory, state, plan) {
+async function runProducts(id, root, directory, state, plan, scope) {
   const items = [], saved = publicPlan(plan);
-  const link = (product, step = '') => workbenchUrl({view: 'run_product', run: id, product, step}, root.path);
+  const link = (product, step = '') => workbenchUrl({view: 'run_product', run: id, product, step, ...scopeParams(scope)}, root.path);
   if (saved) {
     items.push({stage: 'S1', title: '评测计划', kind: 'json', data: saved, url: link('plan')});
     items.push({stage: 'S4', title: '评测配置', kind: 'json',
@@ -107,7 +126,8 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
     '--action', media ? 'file' : 'artifacts', '--scene', scene];
   const run = url.searchParams.get('run');
   if (run) {
-    const {directory} = await resolveToken(run, roots);
+    const {root, directory} = await resolveToken(run, roots);
+    await assertSessionDirectory(root, directory, scopeOf(url));
     const state = await readJson(path.join(directory, 'state.json'));
     const sceneIds = pipelineSceneIds(state);
     if (!sceneIds.includes(scene)) throw new ApiError('Scene is not referenced by this pipeline', 403);
@@ -144,6 +164,8 @@ async function sceneMedia(config, roots, url, request) {
 // Frequent reads use only bounded index rows and small state files, never scan datasets/manifests.
 async function productionProgress(roots, config, url, signal) {
   const operations = [], pipelines = [], sources = [], remoteIds = new Set();
+  let unassociatedRecords = 0;
+  const scope = scopeOf(url);
   const seen = new Set();
   for (const root of roots) {
     const database = path.join(root.path, 'runs.sqlite');
@@ -160,6 +182,7 @@ async function productionProgress(roots, config, url, signal) {
       try {
         const directory = await inside(root, row.artifact);
         const request = await readJson(path.join(directory, 'request.json')) || {};
+        if (!matchesSession(request.context, scope)) { if (!request.context?.session_id) unassociatedRecords++; continue; }
         operations.push({...pick(row, ['id', 'tool', 'state', 'error']), stage: stageOf(row.tool),
           workspace: root.title, started_at: request.time || null});
         if (!['pipeline_run', 'pipeline_status', 'pipeline_artifacts', 'pipeline_repair_plan'].includes(row.tool)) continue;
@@ -167,6 +190,10 @@ async function productionProgress(roots, config, url, signal) {
         const requested = request.arguments?.run || result.run || path.join(directory, 'pipeline_run');
         if (!await exists(path.resolve(root.path, requested, 'state.json'))) continue;
         const folder = await inside(root, requested), id = token(root, path.relative(root.path, folder));
+        if (!scope.history) {
+          try { await assertSessionDirectory(root, folder, scope); }
+          catch (error) { if (error.status === 403) continue; throw error; }
+        }
         if (seen.has(id)) continue;
         seen.add(id);
         const state = await readJson(path.join(folder, 'state.json'));
@@ -205,7 +232,9 @@ async function productionProgress(roots, config, url, signal) {
       scenes = {status: 'unavailable', error: 'Production observer could not read the service (' + (error.code || error.name) + ')', runs: []};
     }
   }
-  return {operations, pipelines, scenes, sources, snapshot_at: new Date().toISOString(), scope: 'workspace_index_and_session_scene_jobs'};
+  return {operations, pipelines, scenes, sources, snapshot_at: new Date().toISOString(),
+    scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only', association: scope.session_id ? 'exact_session_context' : 'no_session',
+    unassociated_records: unassociatedRecords};
 }
 
 async function templateCatalog(url) {
@@ -304,8 +333,10 @@ async function workspaceRoots(config, registered, requestedPath) {
   return values.filter((root) => root.path === resolved);
 }
 
-async function discover(roots, config, signal) {
+async function discover(roots, config, signal, scope) {
   const runs = new Map(), datasets = new Map(), sources = [];
+  let latestPlan = null, planSource = null;
+  let unassociatedRecords = 0;
   const addDataset = async (root, directory, producer, runId) => {
     if (!directory) return;
     const resolved = await inside(root, directory);
@@ -326,7 +357,7 @@ async function discover(roots, config, signal) {
     let db, operations;
     try {
       db = new DatabaseSync(database, {readOnly: true});
-      operations = db.prepare("SELECT id,tool,state,artifact,error FROM operations WHERE tool IN ('pipeline_run','pipeline_status','pipeline_artifacts','pipeline_repair_plan','build') ORDER BY rowid DESC LIMIT ?").all(config.maxRuns + 1);
+      operations = db.prepare("SELECT id,tool,state,artifact,error FROM operations WHERE tool IN ('pipeline_plan','plan','pipeline_run','pipeline_status','pipeline_artifacts','pipeline_repair_plan','build') ORDER BY rowid DESC LIMIT ?").all(config.maxRuns + 1);
     } catch (error) {
       sources.push({workspace: root.title, status: 'index_error', error: error.message}); continue;
     } finally { db?.close(); }
@@ -335,13 +366,33 @@ async function discover(roots, config, signal) {
       try {
         const artifact = await inside(root, operation.artifact);
         const request = await readJson(path.join(artifact, 'request.json')) || {};
+        if (!matchesSession(request.context, scope)) { if (!request.context?.session_id) unassociatedRecords++; continue; }
         const result = await readJson(path.join(artifact, 'result.json')) || {};
+        if (['pipeline_plan', 'plan'].includes(operation.tool)) {
+          if (!latestPlan && operation.state === 'completed') {
+            const declared = operation.tool === 'pipeline_plan' ? result.plan : result.brief;
+            const file = typeof declared === 'string' ? await inside(root, declared) : null;
+            const saved = file ? await readJson(file) : null;
+            if (saved) {
+              latestPlan = operation.tool === 'pipeline_plan' ? publicPlan(saved) :
+                {objective: saved.objective || '', inputs: pick(saved, ['target_items']),
+                  sources: saved.sources || [], notes: saved.notes || '', source: 'saved_benchmark_brief'};
+              planSource = {operation_id: operation.id, tool: operation.tool,
+                updated_at: (await fs.stat(file)).mtime.toISOString()};
+            }
+          }
+          continue;
+        }
         if (operation.tool === 'build') {
           await addDataset(root, artifact, operation.id, null); continue;
         }
         const requested = request.arguments?.run || result.run || path.join(artifact, 'pipeline_run');
         if (!await exists(path.resolve(root.path, requested, 'state.json'))) continue;
         const directory = await inside(root, requested);
+        if (!scope.history) {
+          try { await assertSessionDirectory(root, directory, scope); }
+          catch (error) { if (error.status === 403) continue; throw error; }
+        }
         const id = token(root, path.relative(root.path, directory));
         if (runs.has(id)) continue;
         const state = await readJson(path.join(directory, 'state.json'));
@@ -370,12 +421,16 @@ async function discover(roots, config, signal) {
   }
   return {runs: [...runs.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
     datasets: [...datasets.values()].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    plan: latestPlan, plan_source: planSource,
     counts: manifests ? byStatus : null, manifest_runs: manifests, sources,
-    scope: 'indexed_operations_only', snapshot_at: new Date().toISOString()};
+    scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only',
+    association: scope.session_id ? 'exact_session_context' : 'no_session', unassociated_records: unassociatedRecords,
+    snapshot_at: new Date().toISOString()};
 }
 
-async function readRun(id, roots, config, signal) {
+async function readRun(id, roots, config, signal, scope) {
   const {root, directory} = await resolveToken(id, roots);
+  await assertSessionDirectory(root, directory, scope);
   const state = await readJson(path.join(directory, 'state.json'));
   if (!state) throw new ApiError('Pipeline state was not found', 404);
   const [artifacts, repairs, plan] = await Promise.all([
@@ -387,7 +442,7 @@ async function readRun(id, roots, config, signal) {
     state: pick(state, ['state', 'run_id', 'next', 'missing_binding', 'step']),
     steps: Object.entries(state.steps || {}).map(([key, value]) => ({id: key, state: value.state,
       error: value.error, artifact_id: value.artifact?.artifact_id})),
-    plan: publicPlan(plan), scene_ids: pipelineSceneIds(state), stage_artifacts: await runProducts(id, root, directory, state, plan),
+    plan: publicPlan(plan), scene_ids: pipelineSceneIds(state), stage_artifacts: await runProducts(id, root, directory, state, plan, scope),
     artifacts: artifacts.artifacts, artifact_total: artifacts.total, artifact_counts: artifacts.counts,
     artifacts_truncated: artifacts.truncated, repairs: repairs.rows, repair_total: repairs.total};
 }
@@ -403,8 +458,9 @@ function pipelineSceneIds(state) {
   return [...ids];
 }
 
-async function datasetFiles(id, roots) {
+async function datasetFiles(id, roots, scope) {
   const {root, directory} = await resolveToken(id, roots);
+  await assertSessionDirectory(root, directory, scope);
   let publicRoot = directory, questions = path.join(directory, 'questions.jsonl');
   if (!await exists(questions)) { publicRoot = path.join(directory, 'public'); questions = path.join(publicRoot, 'items.jsonl'); }
   if (!await exists(questions)) throw new ApiError('Public questions were not found', 404);
@@ -417,16 +473,17 @@ function integer(value, fallback, maximum) {
   if (!Number.isSafeInteger(number) || number < 1 || number > maximum) throw new ApiError('Invalid pagination');
   return number;
 }
-function mediaReferences(row, id, index, workspacePath) {
+function mediaReferences(row, id, index, workspacePath, scope) {
   return (Array.isArray(row.media) ? row.media : []).map((_, media) => {
-    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media)});
+    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media), ...scopeParams(scope)});
     if (workspacePath) params.set('workspace_path', workspacePath);
     return 'api/benchforge/workbench?' + params;
   });
 }
 async function readDataset(url, roots, signal) {
   const id = url.searchParams.get('dataset');
-  const {directory, questions} = await datasetFiles(id, roots);
+  const scope = scopeOf(url);
+  const {directory, questions} = await datasetFiles(id, roots, scope);
   const page = integer(url.searchParams.get('page'), 1, 1000000);
   const pageSize = integer(url.searchParams.get('page_size'), 24, 96);
   const template = url.searchParams.get('template') || '', split = url.searchParams.get('split') || '';
@@ -441,7 +498,7 @@ async function readDataset(url, roots, signal) {
     if (template && row.template_id !== template || split && row.split !== split) continue;
     if (query && ![row.item_id, row.id, row.question, row.task_id, row.template_id].some((value) => String(value || '').toLocaleLowerCase().includes(query))) continue;
     if (total >= (page - 1) * pageSize && items.length < pageSize) {
-      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath)});
+      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath, scope)});
     }
     total++;
   }
@@ -452,7 +509,7 @@ async function readDataset(url, roots, signal) {
 }
 async function readMedia(url, roots, signal) {
   const id = url.searchParams.get('dataset');
-  const {root, publicRoot, questions} = await datasetFiles(id, roots);
+  const {root, publicRoot, questions} = await datasetFiles(id, roots, scopeOf(url));
   const item = Number(url.searchParams.get('item')), media = Number(url.searchParams.get('media'));
   if (![item, media].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new ApiError('Invalid media reference');
   let reference;
@@ -477,13 +534,14 @@ export function createWorkbenchHandler(config, registered = () => []) {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
+      const scope = scopeOf(url);
       let value;
       if (view === 'catalog') value = await templateCatalog(url);
-      else if (view === 'summary') value = await discover(roots, limits, request.signal);
+      else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
       else if (view === 'progress') value = await productionProgress(roots, limits, url, request.signal);
-      else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal);
+      else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
       else if (view === 'run_product') {
-        const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal);
+        const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
         const product = url.searchParams.get('product'), step = url.searchParams.get('step');
         value = product === 'plan' ? run.plan : product === 'config' ? run.stage_artifacts.find((row) => row.stage === 'S4')?.data
           : product === 'report' ? run.stage_artifacts.find((row) => row.stage === 'S5' && row.step_id === step)?.data : null;

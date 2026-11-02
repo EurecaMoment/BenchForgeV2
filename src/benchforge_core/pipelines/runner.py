@@ -68,7 +68,8 @@ def execute_step(step, arguments, directory, environment, client):
         saved = nested_root/'plan.json'
         if saved.exists():
             write(nested_path, read(saved))
-        return run({'plan': str(nested_path), 'run': str(nested_root), '_workspace': environment['_workspace'], 'bindings': inputs}, directory, client=client)
+        return run({'plan': str(nested_path), 'run': str(nested_root), '_workspace': environment['_workspace'], 'bindings': inputs,
+                    '_dsh_context': environment.get('_dsh_context', {})}, directory, client=client)
     if operation == 'templates.produce':
         return produce({**arguments, '_workspace': environment['_workspace']}, directory)
     if operation == 'data.package':
@@ -97,11 +98,17 @@ def run(args, directory, config=None, client=service_call):
     state_path = run_root/'state.json'
     state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
     state.setdefault('run_id', f'run-{run_root.name}')
+    context = args.get('_dsh_context', {})
+    if context.get('session_id'):
+        sessions = state.setdefault('context', {}).setdefault('session_ids', [])
+        if context['session_id'] not in sessions:
+            sessions.append(context['session_id'])
+        write(state_path, state)
     graph = ArtifactGraph(run_root)
     artifact_ids = {}
     # The full persisted run path distinguishes nested recipes in separate plans
     # and stays the same when an interrupted submission is resumed.
-    environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'],
+    environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_dsh_context': context,
                    '_run_key': 'pipeline:'+run_root.as_posix()}
     for step in plan['steps']:
         prior = state['steps'].get(step['id'])

@@ -3,22 +3,27 @@
 工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
 不改 DSH 源码。UI 不占聊天主区域，也不增加全局导航项。它只在 `SpatialForge`
 preset (`spatialforge-standard-ptc`) 的会话标题栏显示“评测集”入口。用户点击后，
-评测工作台在该会话的右侧边栏打开，原 SpatialForge 对话记录、输入框和工具保持原位。UI 插件和读取 API 作为 SpatialForge preset 的子插件加载，不挂到 DSH 根 profile。
+评测工作台在该会话的右侧边栏打开，原 SpatialForge 对话记录、输入框和工具保持原位。插件沿用既有根 profile 位置，前端入口严格按 SpatialForge preset 隔离。
 
 右侧面板是会话上下文的延伸：运行、数据集版本、样本浏览和质量报告都服务于当前
 SpatialForge 会话。面板状态按 Session ID 保存，数据查询按该会话的工作目录限制到
-对应 DSH 工作区；其他 preset 不会加载评测工作台，也没有入口。工作区缺失时 API 返回空结果，其他工作区数据不会混入列表。
+对应 DSH 工作区，并按真实 `session_id` 精确关联生产记录；相同工作目录下的不同对话也互相隔离。工作区缺失或旧记录没有会话关联时显示空状态，不自动选历史运行。
 
 ## 产品取舍
 
-保留直接帮助制造评测集的四个入口：
+五阶段是唯一页面导航，具体设计见 [五阶段工作台](five-step-workbench.md)：
 
 | 面板内入口 | 实际提供的功能 |
 | --- | --- |
-| 总览 | 最近运行、数据集目录、已记录 artifact 状态、索引来源和读取失败 |
-| 运行与产物 | 步骤状态、冻结计划摘要、父产物、证据引用、合同结果和已保存修复建议 |
-| 数据集 | 工作区与产物版本目录、服务端分页、模板/split/题目/ID 检索、网格与表格、公开样本和媒体 |
-| 质量报告 | 所选版本的请求数、生成接纳数、缺口、场景组、模板覆盖和拒绝原因 |
+| 评测计划 | 当前对话已落盘的计划；本对话运行历史；折叠的只读模板参考 |
+| 场景预览 | 已生成的场景图像和视频预览 |
+| 标注预览 | 公开标注、标定和对应图像 |
+| 评测配置与题目表 | 当前生产运行的数据集版本、筛选分页、样本和媒体 |
+| 最终报告 | 正式报告、集合质量和诊断附件 |
+
+顶部直接订阅 DSH 原生对话状态和消息队列，不用历史 Pipeline 状态替代对话状态。
+新对话没有预填题量、预算或产物。产物区域只用于查看；阶段底部“提出修改要求”打开空输入框，
+用户填写后“确认发送”通过原生接口直接提交，不自动打包产物，也不要求再点一次发送。
 
 谱系和修复是运行详情的一部分，样本审阅首先以数据集详情承载，避免创建多个重复、
 空白的导航页。没有真实模型响应矩阵时不展示 IRT；没有发布凭据时不展示“已发布”；
@@ -55,8 +60,8 @@ flowchart LR
 - 模型预测仍是候选证据，GT 来自官方、程序或仿真。结构合同不证明场景或题目质量。
 - 选中版本、筛选、页码和显示方式保存在 `localStorage` 中的 Session 专属键；不会写入
   页面 URL，也不会串到另一个会话。切换请求和组件卸载会取消未完成的读取。
-- 每次面板请求都带当前 Session 的 `cwd`。服务端只返回工作目录与已登记 DSH 工作区
-  根目录完全匹配的数据；没有匹配工作区时显示提示，不回退到全局数据列表。
+- 每次产物请求都带当前 Session 的 `cwd` 和 `session_id`。工具桥接层保存实际 DSH
+  会话关联；服务端同时限制工作区与会话，包含运行、数据集和媒体直链。没有匹配时不回退全局数据。
 
 ## 接口
 
@@ -64,10 +69,10 @@ flowchart LR
 
 | GET `/api/benchforge/workbench` 参数 | 返回 |
 | --- | --- |
-| `view=summary&workspace_path=<cwd>` | 当前会话工作区内的运行、数据集目录、artifact 统计和索引状态 |
-| `view=run&run=<id>&workspace_path=<cwd>` | 当前工作区内的步骤、计划摘要、artifact manifest 和修复建议 |
-| `view=dataset&dataset=<id>&workspace_path=<cwd>&page=1&page_size=24` | 当前版本公开样本和分页，可加 template/split/q |
-| `view=media&dataset=<id>&workspace_path=<cwd>&item=<row>&media=<index>` | 当前工作区内题目声明的公开图片 |
+| `view=summary&workspace_path=<cwd>&session_id=<sid>` | 当前对话计划、运行、数据集和索引状态 |
+| `view=run&run=<id>&workspace_path=<cwd>&session_id=<sid>` | 当前对话步骤、计划、artifact 和修复建议 |
+| `view=dataset&dataset=<id>&workspace_path=<cwd>&session_id=<sid>&page=1&page_size=24` | 当前版本公开样本和分页，可加 template/split/q |
+| `view=media&dataset=<id>&workspace_path=<cwd>&session_id=<sid>&item=<row>&media=<index>` | 当前对话题目声明的公开图片 |
 
 浏览器不接收 SpatialForge operator token。DSH 认证 cookie 不保存进部署回执。
 运行接口提供操作者使用的来源路径和合同信息；它不是对外考生评测服务。

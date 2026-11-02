@@ -6,8 +6,8 @@ do not display the launcher or panel.
 
 | Step | Page functions | Recorded outputs |
 | --- | --- | --- |
-| S1 · 评测计划 | Persisted production plan; goal, capability/template selection and quantity allocation editor | Saved plan, distinct from the browser draft |
-| S2 · 场景预览 | Scene gallery, multiple selection and full-size image/video preview | Actual scene, reference, asset and capture artifacts |
+| S1 · 评测计划 | Persisted production plan and collapsible read-only template reference | Actual plan produced in this conversation |
+| S2 · 场景预览 | Scene gallery and full-size image/video preview | Actual scene, reference, asset and capture artifacts |
 | S3 · 标注预览 | Public annotation preview; declared matching image with recorded boxes when available | Evidence, calibration, annotations and trajectories |
 | S4 · 评测配置与题目表 | Actual configuration and explicitly selected dataset's searchable, paginated questions | Public questions, media, splits and dataset versions |
 | S5 · 最终报告 | Saved report and selected dataset quality results | Quality, evaluation, report and package artifacts |
@@ -17,25 +17,36 @@ Navigation is independent of completion. Artifact type/producer labels determine
 which recorded artifacts appear in a step; absence of a matching record is not
 proof that the step was never executed.
 
-Every stage retains “填入对话”. It opens a review dialog with a task package
-containing the stage, blueprint, persisted plan, selected scenes, dataset version
-and artifact references. “确认发送” uses the official session input actions
+Products are previews, not forms or material to send back into chat. Each stage
+has a separate footer action, “提出修改要求”, opening a blank textarea. No default
+quantity, budget, blueprint, scene selection or artifact bundle is inserted.
+“确认发送” sends only the user's written requirement using official session actions
 `captureInsertion/insertText/submit` to submit directly to the current SpatialForge
 conversation. No second composer Send click is needed. Existing composer text
 and attachments are included by native DSH semantics and disclosed in the dialog;
-cancel leaves them unchanged. The task package references assets instead of
-uploading large binary artifacts again. A busy input or slash command leaves the
-dialog open. A synchronous submission error retains the package for retry without
+cancel leaves them unchanged. A busy input or slash command leaves the
+dialog open. A synchronous submission error retains the request for retry without
 inserting it a second time. Submission is not production completion: the native
 conversation owns queueing, execution and failure receipts.
 
-“保存蓝图草稿” saves in this browser, keyed by session. It is not a server-side
-pipeline plan. Once sent, DSH must persist its actual plan/run in the workspace.
+The workbench displays only current-conversation records. Every artifact request
+carries `session_id` as well as `workspace_path`. The BenchForge tool adapter
+passes the actual DSH session/call IDs to Runtime; `request.json` stores them in
+`context`, and pipeline state retains its associated `context.session_ids`.
+Missing historical associations are excluded rather than guessed. An explicitly
+requested `scope=workspace` supports history access; the live panel never uses it.
+Old browser state without route version 3 no longer selects a workspace run.
+
+The visible current-conversation status subscribes directly to native `useSession`
+and `useInput` state: idle, submitting, running, load/prompt/agent error, and queue
+length. It does not infer chat activity from an old pipeline's completion state.
+An empty new chat has no plan, scene, annotation, dataset or report until it produces
+one. Switching to another conversation remounts the session-bound panel.
 
 The template picker reads `task_templates.json` through the authenticated
 `GET /api/benchforge/workbench?view=catalog` endpoint. It supports capability and
 text filtering and 12-item pagination. Catalog designs and executable adapters
-remain separate; selecting a template does not assert that it has a working
+remain separate; viewing a template does not assert that it has a working
 generator. The endpoint exposes no oracle fields.
 
 The five stages are the only page navigation. Previous overview, run/artifact,
@@ -43,8 +54,7 @@ dataset and quality tabs are merged into their stage: S1 has searchable and
 paginated past plans/runs; current-run provenance and repair details expand
 within the active stage; S4 includes the dataset-version directory plus the full
 filtered/paginated table or grid and public sample detail; S5 contains quality
-results and the final report. Saved legacy dataset/quality page selections migrate
-to S4/S5. Snapshot/source metadata stays inside production details instead of
+results and the final report. Snapshot/source metadata stays inside production details instead of
 adding a second header between the five stages and their content.
 Dataset versions are isolated, and sample details expose public observations only.
 Missing verification stays unknown;
@@ -63,7 +73,7 @@ node --test integrations/spatialforge/tests/test_workbench.mjs
 ```
 
 Browser acceptance checks all five key products, stage progress, previews,
-selection, draft/attachment preservation, confirmation and exactly one native
+blank requests, draft/attachment preservation, confirmation and exactly one native
 submission using controlled input actions. These fixtures never submit live
 inference and are not real production acceptance.
 
@@ -91,7 +101,9 @@ already saved plan; authentication or network failures remain visible.
 The lightweight progress route reads at most `maxRuns` workspace operation
 rows plus their small persisted plans/state files. It does not scan datasets or
 artifact manifests every three seconds. Full summaries and selected dataset
-pages refresh every 30 seconds; selected run artifacts every 10 seconds. Requests
+pages refresh every 30 seconds; selected run artifacts every 10 seconds. A native
+conversation-status change or changed pipeline receipt refreshes products promptly.
+Requests
 do not overlap within a feed. Hidden panels and background documents pause
 scheduled polling and resume when visible. Navigation, selected version, filters,
 page and public detail remain in place. Read failures retain the last successful
@@ -118,9 +130,11 @@ progress remains at its last reported phase; no synthetic percentage is shown.
 For the five-product UI backend, `ui/stage_products.js` is the implementation and
 live entry; `ui/production.js` and `ui/index.js` remain compatibility exports.
 The distinct entry also avoids an already cached legacy production module.
-Use official plugin management
-to disable and enable **only** the existing root workbench plugin when replacing
-its module. Changing its entry/config alone may leave the previous handler active.
+Official server HMR must watch the owned integration directories to invalidate
+ESM modules. For example, `hmr` can set `base` to the BenchForgeV2 checkout and
+`root` to `['integrations/spatialforge/ui', 'integrations/dsh']`. Plain plugin
+disable/enable does not clear Node's ESM module cache. Preserve any existing roots.
+Do not duplicate the backend into versioned implementation files to bypass it.
 Do not restart DSH while a session is running. Preserve the root placement,
 SpatialForge preset gate, model services, simulator services and other plugins.
 

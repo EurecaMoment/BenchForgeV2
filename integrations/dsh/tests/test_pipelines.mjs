@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {apply} from '../tools.mjs';
 import {validateJsonSchemaValue} from '@deepseek-ai/dsh-tools';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
 test('pipeline tools expose exact template selection and composable recipe schemas',async()=>{
   const tools=new Map();
@@ -16,4 +19,23 @@ test('pipeline tools expose exact template selection and composable recipe schem
   assert.ok(tools.get('benchforge_pipeline_catalog').parameters.properties.capability);
   assert.ok(tools.get('benchforge_pipeline_artifacts').parameters.properties.status);
   assert.ok(tools.get('benchforge_pipeline_repair_plan').parameters.properties.failure_code);
+});
+
+test('pipeline invocation forwards the actual DSH execution session without model-controlled arguments', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-session-'));
+  let spawned;
+  const tools = new Map();
+  const subprocess = {resolveExecutable: async () => 'python', spawn: (options) => {
+    spawned = options;
+    return {done: Promise.resolve({exitCode: 0}), terminate() {}, waitForExit: async () => {},
+      collected: {stdout: {readFrom: () => ({text: JSON.stringify({operation_id: 'op', artifact_dir: workspace}), lossy: false})},
+        stderr: {readFrom: () => ({text: ''})}}};
+  }};
+  try {
+    await apply({subprocess, tools: {register: (tool) => tools.set(tool.name, tool)}, effect() {}, get() {}}, {includeTools: ['pipeline_plan']});
+    await tools.get('benchforge_pipeline_plan').execute({workspace, objective: 'Current work'},
+      {agent: {session: {id: 'session-current'}}, callId: 'call-current', signal: new AbortController().signal});
+    assert.equal(spawned.env.BENCHFORGE_DSH_SESSION_ID, 'session-current');
+    assert.equal(spawned.env.BENCHFORGE_DSH_CALL_ID, 'call-current');
+  } finally {await fs.rm(workspace, {recursive: true, force: true});}
 });

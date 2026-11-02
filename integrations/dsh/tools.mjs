@@ -524,7 +524,9 @@ export async function apply(ctx, config) {
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output:tool==='catalog'?output:tool==='status'?statusOutput:operationOutput,
-      execute:(args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal; return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment,active});}}));
+      execute:(args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal;
+        const sessionEnvironment = {...environment, BENCHFORGE_DSH_SESSION_ID: exec.agent?.session?.id || '', BENCHFORGE_DSH_CALL_ID: exec.callId || ''};
+        return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment:sessionEnvironment,active});}}));
   }
   if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
     parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...schemas.collaboration}, output,

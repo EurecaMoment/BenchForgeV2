@@ -30,7 +30,7 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
   const otherDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-other-'));
   try {
     const outputs = JSON.parse(execFileSync(python, ['-c', fixtureCode, directory], {
-      cwd: ROOT, env: {...process.env, PYTHONPATH: path.join(ROOT, 'src')}, encoding: 'utf8',
+      cwd: ROOT, env: {...process.env, PYTHONPATH: path.join(ROOT, 'src'), BENCHFORGE_DSH_SESSION_ID: 'session-fixture'}, encoding: 'utf8',
     }));
     const dbStat = await fs.stat(path.join(directory, 'runs.sqlite'));
     const handler = createWorkbenchHandler({}, () => [
@@ -38,7 +38,7 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
       {id: 'other-workspace', path: otherDirectory, title: 'Other environment'},
     ]);
     const request = async (params) => {
-      const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({workspace_path: directory, ...params})));
+      const response = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({workspace_path: directory, session_id: 'session-fixture', ...params})));
       assert.equal(response.status, 200, await response.clone().text());
       return response.json();
     };
@@ -46,6 +46,12 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     assert.deepEqual(summary.sources.map((source) => source.workspace), ['Actual fixture']);
     assert.equal(summary.runs.length, 2);
     assert.equal(summary.datasets.length, 2);
+    const fresh = await request({view: 'summary', session_id: 'session-fresh'});
+    assert.deepEqual(fresh.runs, []);
+    assert.deepEqual(fresh.datasets, []);
+    assert.deepEqual((await request({view: 'progress', session_id: 'session-fresh'})).pipelines, []);
+    const missingSession = await request({view: 'summary', session_id: ''});
+    assert.deepEqual(missingSession.runs, []);
     assert.equal(summary.counts.verified, 0);
     assert.ok(summary.counts.candidate > 0);
     const version = summary.datasets.find((x) => x.report.accepted === 30);
@@ -73,6 +79,14 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     assert.equal(media.status, 200);
     assert.match(media.headers.get('content-type'), /^image\//);
     const details = await request({view: 'run', run: version.run_id});
+    const unrelatedRun = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({
+      workspace_path: directory, session_id: 'session-fresh', view: 'run', run: version.run_id,
+    })));
+    assert.equal(unrelatedRun.status, 403);
+    const unrelatedDataset = await handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({
+      workspace_path: directory, session_id: 'session-fresh', view: 'dataset', dataset: version.id,
+    })));
+    assert.equal(unrelatedDataset.status, 403);
     assert.ok(details.artifacts.every((x) => x.status === 'candidate'));
     assert.equal(details.plan.steps[0].uses, 'templates.produce');
     assert.equal(details.plan.selections[0].count, 30);
@@ -115,7 +129,7 @@ test('real persisted pipelines: session-workspace isolation, public pagination, 
     const response = await request({view: 'dataset', dataset: version.id});
     assert.ok(!JSON.stringify(response).includes('PRIVATE_ORACLE_SENTINEL'));
     const escape = Buffer.from(JSON.stringify(['registered-workspace', '..'])).toString('base64url');
-    const workspaceParam = 'workspace_path=' + encodeURIComponent(directory);
+    const workspaceParam = 'workspace_path=' + encodeURIComponent(directory) + '&session_id=session-fixture';
     assert.equal((await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + escape + '&' + workspaceParam))).status, 403);
     const invalidPage = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=dataset&dataset=' + version.id + '&page=-1&' + workspaceParam));
     assert.equal(invalidPage.status, 400);
@@ -137,6 +151,32 @@ test('missing manifest counts remain unknown and an empty index is not invented 
   } finally { await fs.rm(directory, {recursive: true, force: true}); }
 });
 
+test('the current conversation can inspect a saved plan before any pipeline execution', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-plan-'));
+  try {
+    const code = ['import json,sys', 'from benchforge_core.runtime import Runtime',
+      'r=Runtime(sys.argv[1])',
+      'print(json.dumps(r.call("pipeline_plan", {"objective":"Measure distances", "template_ids":["C01-T01"], "target_items":12})))',
+      'r.close()'].join('\n');
+    const saved = JSON.parse(execFileSync(python, ['-c', code, directory], {cwd: ROOT, encoding: 'utf8',
+      env: {...process.env, PYTHONPATH: path.join(ROOT, 'src'), BENCHFORGE_DSH_SESSION_ID: 'session-planning'}}));
+    const raw = JSON.parse(await fs.readFile(saved.plan, 'utf8'));
+    raw.inputs.operator_token = 'PRIVATE_PLAN_SENTINEL';
+    raw.authority = 'PRIVATE_PLAN_SENTINEL';
+    await fs.writeFile(saved.plan, JSON.stringify(raw));
+    const handler = createWorkbenchHandler({}, () => [{id: 'workspace', path: directory}]);
+    const read = async (session_id) => (await handler(new Request('http://dsh.test/api/benchforge/workbench?' +
+      new URLSearchParams({view: 'summary', workspace_path: directory, session_id})))).json();
+    const current = await read('session-planning');
+    assert.deepEqual(current.runs, []);
+    assert.equal(current.plan.objective, 'Measure distances');
+    assert.equal(current.plan.selections[0].count, 12);
+    assert.equal(current.plan_source.operation_id, saved.operation_id);
+    assert.ok(!JSON.stringify(current.plan).includes('PRIVATE_PLAN_SENTINEL'));
+    assert.equal((await read('session-fresh')).plan, null);
+  } finally {await fs.rm(directory, {recursive: true, force: true});}
+});
+
 test('production observations follow persisted running/waiting/failed/completed transitions without changing records', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-progress-'));
   const operation = path.join(directory, 'operations', 'progress-fixture');
@@ -146,12 +186,12 @@ test('production observations follow persisted running/waiting/failed/completed 
   try {
     db.exec('CREATE TABLE operations (id TEXT PRIMARY KEY,tool TEXT,state TEXT,artifact TEXT,error TEXT)');
     db.prepare('INSERT INTO operations VALUES (?,?,?,?,?)').run('progress-fixture', 'pipeline_run', 'running', operation, null);
-    await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({time: '2026-10-28T10:00:00Z', arguments: {}}));
+    await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({time: '2026-10-28T10:00:00Z', arguments: {}, context: {session_id: 'session-progress'}}));
     await fs.writeFile(path.join(run, 'plan.json'), JSON.stringify({steps: [
       {id: 'scene', uses: 'spatialforge.capture'}, {id: 'items', uses: 'templates.produce'}, {id: 'report', uses: 'templates.package'},
     ]}));
     const handler = createWorkbenchHandler({}, () => [{id: 'progress-workspace', path: directory}]);
-    const request = () => handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({view: 'progress', workspace_path: directory})));
+    const request = () => handler(new Request('http://dsh.test/api/benchforge/workbench?' + new URLSearchParams({view: 'progress', workspace_path: directory, session_id: 'session-progress'})));
     const snapshot = async (state, steps) => {
       const file = path.join(run, 'state.json');
       await fs.writeFile(file, JSON.stringify({state, steps}));
@@ -178,6 +218,10 @@ test('production observations follow persisted running/waiting/failed/completed 
     assert.equal(complete.completed, 3);
     assert.equal(complete.current, undefined);
     assert.equal(db.prepare('SELECT state FROM operations').get().state, 'running');
+    await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({arguments: {}}));
+    const unassociated = await (await request()).json();
+    assert.deepEqual(unassociated.pipelines, []);
+    assert.equal(unassociated.unassociated_records, 1);
     const unscoped = await handler(new Request('http://dsh.test/api/benchforge/workbench?view=progress'));
     assert.deepEqual((await unscoped.json()).operations, []);
   } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}

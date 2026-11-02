@@ -46,6 +46,8 @@ class Runtime:
         self.root = Path(workspace).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.config = config or {}
+        self.dsh_context = {'session_id': os.environ['BENCHFORGE_DSH_SESSION_ID'],
+                            'call_id': os.environ.get('BENCHFORGE_DSH_CALL_ID', '')} if os.environ.get('BENCHFORGE_DSH_SESSION_ID') else {}
         self.db = sqlite3.connect(self.root / "runs.sqlite", timeout=30)
         self.db.execute("CREATE TABLE IF NOT EXISTS operations (id TEXT PRIMARY KEY, tool TEXT, state TEXT, artifact TEXT, error TEXT)")
         self.db.commit()
@@ -82,9 +84,9 @@ class Runtime:
         directory.mkdir(parents=True)
         self.db.execute("INSERT INTO operations VALUES (?,?,?,?,?)", (operation, tool, "running", str(directory), None))
         self.db.commit()
-        write(directory / "request.json", {"tool": tool, "arguments": args, "time": datetime.now(timezone.utc).isoformat()})
+        write(directory / "request.json", {"tool": tool, "arguments": args, "time": datetime.now(timezone.utc).isoformat(), "context": self.dsh_context})
         try:
-            value = self.execute(tool, args, directory)
+            value = self.execute(tool, {**args, '_dsh_context': self.dsh_context} if self.dsh_context else args, directory)
             write(directory / "result.json", value)
             self.db.execute("UPDATE operations SET state='completed' WHERE id=?", (operation,))
             self.db.commit()
