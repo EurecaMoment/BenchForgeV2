@@ -2,8 +2,8 @@
 
 工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
 不改 DSH 源码。选择 `SpatialForge` preset (`spatialforge-standard-ptc`) 的会话后，
-工作台通过 `main.conversation` 接管该会话主视图，隐藏原聊天记录和 composer，
-直接显示生产需求、执行反馈和五阶段产物。无需先打开右侧“评测集”面板。
+工作台通过 `main.conversation` 接管该会话主视图，显示生产需求、原生对话过程和五阶段产物，
+原 composer 不挂载。无需先打开右侧“评测集”面板。
 此替换严格限定于 SpatialForge；其他 preset 保持原来的对话界面。
 
 工作台继续使用当前 DSH 会话执行任务：运行、数据集版本、样本浏览和质量报告都服务于当前
@@ -23,7 +23,7 @@ SpatialForge 会话。界面状态按 Session ID 保存，数据查询按该会�
    页面不要求另到聊天输入框发送。若原 composer 留有草稿或附件，先查看展示的内容，
    必须显式勾选一并发送才可提交；未勾选时它们保持不变。
 5. 在五阶段查看实际计划、场景、标注、题目和报告；顶部跟随当前执行状态，
-   “最新执行反馈”展示最近的助手文字。需要调整时使用“追加要求”或阶段底部的
+   当前对话区直接复用 DSH 的思考折叠、工具卡片和 Markdown 回复。需要调整时使用“追加要求”或阶段底部的
    “提出修改要求”。执行中的追加要求进入当前会话消息队列。
 
 “停止当前执行”取消当前助手 turn，不代表取消全部已提交后台任务或排队要求；
@@ -131,13 +131,14 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 
 ## 针对性验证
 
-当前对话区默认展开执行反馈：提交时立即显示本次要求，随后显示官方
-`chat.legacy.partial` 的流式可见正文，以及工具准备、执行和实际返回记录。
+当前对话区通过官方 `conversation.view` 槽位、`only: 'chat'` 直接渲染 DSH ChatView。
+主槽显式声明这个 session-scope 子槽，原生组件自行注入消息、思考/工具过程分组、
+Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DSH 偏好，
+本会话已加载的对话历史也由原生组件呈现；不再自行解析、截取和重排消息。
 工作台挂载时通过公开 `uiConversation.binding(sessionId).activate('chat')`
 激活此数据源，不依赖用户上次保存的原生 view 标签。
-反馈按最近的人类要求关联，旧轮回复和错误不混入新要求；不展示 reasoning。
-工具的后台标准输出没有通用 conversation 流接口，此处展示工具生命周期与返回，
-场景和 pipeline 的长期进度继续由五阶段生产回执更新。
+原生组件拥有内部滚动、尾部跟随和历史加载；外层仅提供响应式高度和布局 token，
+不复制 DSH CSS 或挂载原输入框。场景和 pipeline 的长期进度仍由五阶段回执显示。
 
 同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 SpatialForge 主视图，
 明确切换环境或会话后才移除；输入表单本身不注册或卸载主槽。
@@ -145,7 +146,7 @@ python integrations/spatialforge/install_workbench.py --workspace /absolute/task
 收到明确的新权限值时立即更新，首次尚未确认权限时仍等待授权。
 
 - `node --test integrations/spatialforge/tests/test_workbench_feedback.mjs`：
-  流式正文、当前要求、提交回显和 PTC 工具状态的定向验证。
+  原生 Chat 槽位复用、避免重复主界面/输入框和会话权限投影保持的定向验证。
 
 - `node --test integrations/spatialforge/tests/test_workbench.mjs`：
   真实 pipeline 生成的两个数据集、分页/检索/版本隔离、公开媒体、答案隔离、

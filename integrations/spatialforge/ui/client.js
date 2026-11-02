@@ -226,7 +226,7 @@ window.__ModuleLoader__.load({
 .bfw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12ch),1fr));gap:.75rem;margin-block:1rem}.bfw-stat{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.9rem;min-inline-size:0}.bfw-stat strong{display:block;font-size:clamp(1.25rem,3cqi,1.75rem);margin-block-start:.4rem}.bfw-details,.bfw-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,30ch),1fr));gap:1rem;min-inline-size:0}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:7em;resize:vertical;line-height:1.6}.bfw-evaluation-grid{display:flex;flex-wrap:wrap;gap:1.5rem;min-inline-size:0}.bfw-evaluation-config{flex:1 1 24ch;min-inline-size:0}.bfw-evaluation-questions{flex:3 1 40ch;min-inline-size:0}
 .bfw-scroll{overflow:auto;max-inline-size:100%}.bfw-table{width:100%;border-collapse:collapse}.bfw-table td,.bfw-table th{text-align:start;padding:.65rem .75rem;border-block-end:1px solid var(--dsw-alias-border-l3);vertical-align:top;overflow-wrap:anywhere}.bfw-table th{font-size:.8rem;font-weight:500;color:var(--dsw-alias-label-secondary)}.bfw-table tr:last-child td{border:0}.bfw-table td>button{max-inline-size:100%}
 .bfw-code,.bfw-json{font:.8rem/1.55 ui-monospace,monospace;overflow-wrap:anywhere;white-space:pre-wrap}.bfw-json{padding:.75rem;background:var(--dsw-alias-bg-layer-2);border-radius:.5rem;max-block-size:50vh;overflow:auto}.bfw-pill{display:inline-block;padding:.15em .6em;border-radius:2em;font-size:.75rem;background:var(--dsw-alias-bg-layer-2)}.bfw-pill.verified,.bfw-pill.completed{color:var(--dsw-alias-state-success-primary)}.bfw-pill.failed,.bfw-pill.rejected{color:var(--dsw-alias-state-error-primary)}.bfw-empty{padding:clamp(1rem,3cqi,2rem);color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}.bfw-error{padding:.75rem;border-inline-start:.2rem solid var(--dsw-alias-state-error-primary);background:var(--dsw-alias-bg-layer-2);white-space:pre-wrap;overflow-wrap:anywhere;margin-block:.75rem}
-.bfw-context{padding:clamp(.75rem,2cqi,1.25rem);border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem}.bfw-context h2{font-size:1rem;margin:0}.bfw-context-request{white-space:pre-wrap;overflow-wrap:anywhere;margin-block:.75rem;padding-inline-start:.75rem;border-inline-start:.2rem solid var(--dsw-alias-brand-primary)}.bfw-feedback-flow{max-block-size:clamp(10rem,32vh,26rem);overflow:auto;overscroll-behavior:contain;overflow-wrap:anywhere}.bfw-feedback-entry{padding-block:.6rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-feedback-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-block:.4rem}.bfw-feedback-entry summary{cursor:pointer}.bfw-feedback-flow .bfw-json{max-block-size:20vh}
+.bfw-context{padding:clamp(.75rem,2cqi,1.25rem);border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem}.bfw-native-chat{display:flex;flex-direction:column;min-inline-size:0;min-block-size:0;block-size:clamp(20rem,54dvh,42rem);--dsh-chat-content-width:min(100%,var(--dsh-chat-user-width,84ch));--dsh-composer-side-clearance:0rem}.bfw-native-chat>*{flex:1;min-inline-size:0;min-block-size:0}
 .bfw-artifact{padding-block:.75rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin-block:.5rem;overflow-wrap:anywhere}.bfw-root summary{cursor:pointer}.bfw-version{display:block;max-inline-size:100%;overflow-wrap:anywhere}.bfw-pagination{justify-content:space-between;margin-block:1rem}.bfw-list-controls{display:grid;gap:.5rem;margin-block:.75rem}.bfw-list-controls .bfw-toolbar,.bfw-list-controls .bfw-pagination{margin:0}
 .bfw-items,.bfw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:1rem}.bfw-item,.bfw-preview-card{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;text-align:start;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.bfw-item{padding:.75rem;cursor:pointer}.bfw-preview-card[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open{border:0;padding:0;display:flex;flex-direction:column;gap:.6rem;text-align:start;background:transparent;color:inherit;cursor:pointer;font:inherit}.bfw-preview-open img,.bfw-preview-open video,.bfw-document-thumb{width:100%;aspect-ratio:16/10;object-fit:contain;background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open>strong,.bfw-preview-open>.bfw-muted,.bfw-preview-card>.bfw-code{padding-inline:.8rem;overflow-wrap:anywhere}.bfw-preview-open>.bfw-muted{padding-block-end:.6rem}.bfw-scene-check{display:flex;align-items:center;gap:.5em;padding:.8rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-document-thumb{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5em;padding:1rem;overflow:hidden}.bfw-document-thumb>span:first-child{font:2rem ui-monospace,monospace}.bfw-item img{width:100%;aspect-ratio:16/10;object-fit:contain;margin-block-end:.75rem}.bfw-item p{white-space:pre-wrap;overflow-wrap:anywhere}.bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin:1rem auto}.bfw-question{white-space:pre-wrap;font-size:1rem;overflow-wrap:anywhere}
 .bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:16rem;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
@@ -677,68 +677,13 @@ window.__ModuleLoader__.load({
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
-    function conversationFeedback(chat, session) {
-      const nodes = chat?.nodes || [];
-      const request = [...nodes].reverse().find((node) => (node.kind === 'user' || node.kind === 'steering') && node.source?.kind === 'user');
-      const echo = session.pendingSubmissions.filter((row) => row.placement === 'transcript').at(-1);
-      const text = (content, field) => content.filter((block) => block[field] === 'text').map((block) => block.text).join('');
-      const entries = [], calls = new Map();
-      const visit = (call) => {
-        calls.set(call.callId, call);
-        call.subCalls.forEach(visit);
-      };
-      // A local submission echo belongs to the new request, before its durable user node arrives.
-      if (!echo && request) {
-        for (const node of nodes.filter((row) => row.seq > request.seq)) {
-          if (node.kind === 'assistant') {
-            const body = text(node.blocks, 'kind');
-            if (body.trim()) entries.push({id: 'assistant:' + node.seq, kind: 'assistant', text: body, time: node.time, interrupted: node.interrupted});
-          } else if (node.kind === 'tool-result') visit(node);
-          else if (node.kind === 'turn-error') entries.push({id: 'error:' + node.seq, kind: 'error', text: node.message || node.code, time: node.time});
-          else if (node.kind === 'model-retry') entries.push({id: 'retry:' + node.seq, kind: 'retry', text: node.failure.message, time: node.time, state: node.retryState});
-        }
-      }
-      (chat?.runningCalls || []).forEach(visit);
-      for (const call of calls.values()) {
-        const settled = call.kind === 'tool-result';
-        entries.push({id: call.callId, kind: 'tool', name: settled ? call.call?.name || call.callId : call.name,
-          state: settled ? call.isError ? 'failed' : 'completed' : call.phase === 'preparing' ? 'preparing' : 'running',
-          text: settled ? text(call.content, 'type') : '', time: call.time,
-          args: settled ? call.call?.argsRaw : call.phase === 'start' ? call.argsRaw : '',
-          error: settled && call.isError ? call.error?.reason || call.error?.code || '' : ''});
-      }
-      entries.sort((a, b) => a.time - b.time);
-      const partial = !echo && session.running ? chat?.partial : null;
-      const body = partial ? text(partial.blocks, 'kind') : '';
-      if (body.trim()) entries.push({id: 'partial:' + partial.turn + ':' + partial.step, kind: 'assistant', text: body, live: true});
-      return {request: echo ? echo.text : request ? text(request.content, 'type') : '', pending: Boolean(echo), entries: entries.slice(-12)};
+    function ExecutionFeedback({renderSlot, t}) {
+      return h('div', {className: 'bfw-native-chat', 'data-execution-feedback': true,
+        'data-native-chat-view': true, 'aria-label': t('executionFeedback')},
+        renderSlot('conversation.view', {viewRequest: null, inspectCall: undefined}, {only: 'chat'}));
     }
 
-    function ExecutionFeedback({feedback, sessionStatus, t}) {
-      const flow = React.useRef(null), follow = React.useRef(true);
-      React.useEffect(() => {if (flow.current && follow.current) flow.current.scrollTop = flow.current.scrollHeight;}, [feedback]);
-      return h('div', {'data-execution-feedback': true},
-        h('h2', null, t('executionFeedback')),
-        feedback.request && h('div', {className: 'bfw-context-request', 'data-current-request': true},
-          h('strong', null, t(feedback.pending ? 'submissionEcho' : 'currentRequest')), h('p', {className: 'bfw-feedback-text'}, feedback.request)),
-        h('div', {className: 'bfw-feedback-flow', ref: flow, role: 'log', 'aria-live': 'polite', 'aria-relevant': 'additions text',
-          onScroll: () => {follow.current = flow.current.scrollHeight - flow.current.scrollTop - flow.current.clientHeight < 24;}},
-          feedback.entries.map((entry) => h('article', {key: entry.id, className: 'bfw-feedback-entry', 'data-feedback-kind': entry.kind,
-            'data-feedback-live': String(Boolean(entry.live)), 'data-native-tool': entry.kind === 'tool' ? entry.id : undefined, 'data-tool-phase': entry.state},
-            h('div', {className: 'bfw-progress-caption'}, h('strong', null, entry.kind === 'tool' ? entry.name : t(entry.live ? 'liveReply' : 'assistantFeedback')),
-              entry.state && h('span', {className: 'bfw-pill ' + entry.state}, t(entry.state === 'preparing' ? 'toolPreparing' : entry.state)),
-              entry.time && h('time', {dateTime: new Date(entry.time).toISOString()}, new Date(entry.time).toLocaleTimeString()),
-              entry.interrupted && h('span', null, t('stoppedReply'))),
-            entry.kind === 'tool' ? h(React.Fragment, null,
-              entry.args && h('details', null, h('summary', null, t('details')), h('pre', {className: 'bfw-json'}, entry.args)),
-              entry.text && h(React.Fragment, null, h('p', {className: 'bfw-feedback-text'}, entry.text.slice(0, 240)),
-                entry.text.length > 240 && h('details', null, h('summary', null, t('toolOutput')), h('pre', {className: 'bfw-json'}, entry.text))),
-              entry.error && h('p', {className: 'bfw-error'}, entry.error)) : h('p', {className: 'bfw-feedback-text ' + (entry.kind === 'error' ? 'bfw-error' : '')}, entry.text)))),
-        ['running', 'submitting'].includes(sessionStatus) && !feedback.entries.some((entry) => entry.live) && h('p', {className: 'bfw-muted', 'data-awaiting-feedback': true}, t('awaitingFeedback')),
-        !feedback.request && !feedback.entries.length && h('p', {className: 'bfw-muted'}, t('noConversationFeedback')));
-    }
-
-    function Workbench({t, sessionId, useSessions, useSession, useConversation, useInput, inputActions, canSubmit = false,
+    function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions, renderSlot, canSubmit = false,
       permissionError = '', retryPermission, stopExecution}) {
       const panelRef = React.useRef(null);
       const sampleHeadingRef = React.useRef(null);
@@ -766,8 +711,6 @@ window.__ModuleLoader__.load({
       const lastSubmitted = React.useRef('');
       const inputState = useInput((state) => state);
       const sessionState = useSession((state) => state);
-      const chat = useConversation((state) => state.views.get('chat')?.legacy);
-      const feedback = conversationFeedback(chat, sessionState);
       const stop = async () => {
         setStopping(true); setStopError('');
         try {await stopExecution();} catch (error) {setStopError(error.message);} finally {setStopping(false);}
@@ -1058,7 +1001,7 @@ window.__ModuleLoader__.load({
             h('span', {className: 'bfw-pill', 'data-full-permissions': String(canSubmit)}, t(canSubmit ? 'fullPermissions' : 'permissionsPending')),
             conversationRunning && button(t(stopping ? 'stopping' : 'stopExecution'), stop,
               {disabled: stopping, title: t('stopNote'), 'data-stop-execution': true})),
-          h(ExecutionFeedback, {feedback, sessionStatus, t}),
+          h(ExecutionFeedback, {renderSlot, t}),
           sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
             typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
         permissionError && h('div', {className: 'bfw-error', role: 'alert'}, t('permissionFailed') + ': ' + permissionError,
@@ -1132,7 +1075,8 @@ window.__ModuleLoader__.load({
             if (enabled) confirmedSpatialforgeSession = key;
             if (enabled === mounted) return;
             mounted = enabled;
-            if (enabled) remove = ctx.slots.register({name: 'main.conversation', priority: -20, locale: NS},
+            if (enabled) remove = ctx.slots.register({name: 'main.conversation', priority: -20, locale: NS,
+              children: {'conversation.view': {kind: 'list', scope: 'session'}}},
               (props) => h(ProductionEnvironment, {...props, key: props.sessionId, t, sessions: ctx.sessions, uiConversation: ctx.uiConversation}));
             else {remove(); remove = () => {};}
           };

@@ -344,6 +344,8 @@ test('production workbench replaces only the active SpatialForge main conversati
     effect: (fn) => effects.push(fn()),
     slots: {inject: (seat, fn) => {seats.push(seat); effects.push(fn());}, register: (options, component) => {
       assert.equal(options.name, 'main.conversation'); assert.equal(options.priority, -20);
+      assert.equal(options.children['conversation.view'].kind, 'list');
+      assert.equal(options.children['conversation.view'].scope, 'session', 'native Chat must inherit the active conversation scope');
       slots.set(options.name, component); return () => {removed++; slots.delete(options.name);};
     }},
   });
