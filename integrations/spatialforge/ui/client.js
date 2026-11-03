@@ -1302,6 +1302,9 @@ window.__ModuleLoader__.load({
       const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
+      const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
+        ? summary.value.plan : null;
+      const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
       const templateName=(id)=>plan?.template_contracts?.find(row=>row.id===id)?.title || '题型';
       const versionOptions = [['', t('chooseDataset')], ...datasets.map((row,index) =>
         [row.id,'数据集 '+(index+1)+' · '+(row.report?.accepted ?? '—')+' 题 · '+(row.updated_at || '').slice(0,10)])];
@@ -1354,20 +1357,17 @@ window.__ModuleLoader__.load({
           !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
             (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
             table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
-              [item.row_index+1, plan?.template_contracts?.find(row=>row.id===item.template_id)?.title || '题型', item.split || '—', item.question,
+              [item.row_index+1,templateName(item.template_id), item.split || '—', item.question,
                 button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
             h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
               'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
               firstImage(item) && h(PublicObservation, {src: firstImage(item), compact: true, label: t('media'), t}),
               h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, item.question),
-              h('span', {className: 'bfw-muted'}, (item.template_id || '') + ' · ' + (item.split || ''))))),
+              h('span', {className: 'bfw-muted'}, templateName(item.template_id) + ' · ' + (item.split || ''))))),
         !currentSample && h('div', {className: 'bfw-pagination'},
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
           h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
           button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})));
-        const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
-          ? summary.value.plan : null;
-        const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
         const planReceipt = plan ? {id: conversationPlan || !selectedRunId
           ? summary.value?.plan_source?.operation_id || 'saved-plan' : selectedRunId,
           state: 'completed', label: t('persistedPlan')} : null;

@@ -113,3 +113,33 @@ test('plan view displays saved model content, exports it and sends changes only 
   assert.match(text(legacy), /legacyPlan/);
   assert.equal(find(legacy, (node) => node.props?.['data-plan-continue']), undefined);
 });
+
+test('reopening a populated question page renders both table and gallery with readable template names', async () => {
+  let registration,layout='table';
+  let script=await fs.readFile(new URL('../ui/client.js',import.meta.url),'utf8');
+  const start=script.indexOf('    function useRecord('),end=script.indexOf('    function usePanelVisible(',start);
+  script=script.slice(0,start)+'    function useRecord(params) {return {value:params ? window.records[params.view] || null : null,loading:false};}\n'+script.slice(end);
+  script=script.replace(/return \{\s+inject:/,'return {Workbench}; return {inject:');
+  const records={summary:{runs:[],datasets:[{id:'dataset-existing',report:{accepted:1}}],
+    plan:{selections:[{template_ids:['C24-T01'],count:1,reason:'Direction'}],template_contracts:[{id:'C24-T01',title:'固定方向判断'}]}},
+    progress:{pipelines:[],scenes:{runs:[]}},dataset:{items:[{row_index:0,item_id:'private-looking-id',template_id:'C24-T01',split:'test',question:'图中椅子相对桌子在哪侧？',media:[]}],
+      facets:{templates:['C24-T01'],splits:['test']},total:1,all:1,pages:1}};
+  const state=[];let index=0;
+  const react={createElement:React.createElement,useEffect(){},useState(initial){const slot=index++;
+    if(!(slot in state))state[slot]=typeof initial==='function' ? initial() : initial;return [state[slot],()=>{}];},
+    useRef(value){return state[index++] ||= {current:value};}};
+  vm.runInNewContext(script,{window:{records,__ModuleLoader__:{load:value=>registration=value}},
+    localStorage:{getItem:key=>key.startsWith('bfw:spatialforge:') ? JSON.stringify({version:3,stage:'S4',dataset:'dataset-existing',layout}) : null},
+    URLSearchParams,encodeURIComponent,Date});
+  const {Workbench}=registration.factory(()=>react);
+  const props={t:key=>key,sessionId:'existing',canSubmit:true,renderFactorySlot(){},inputActions:{},
+    useSessions:read=>read({byId:{existing:{cwd:'/fixture'}}}),
+    useSession:read=>read({running:false,openState:'open',pendingSubmissions:[]}),
+    useInput:read=>read({draft:'',attachmentIds:[],queue:[],phase:'plain'})};
+  for(layout of ['table','grid']){
+    state.length=0;index=0;const view=Workbench(props);
+    const browser=find(view,node=>node.props?.['data-dataset-browser']);
+    assert.match(text(browser),/固定方向判断/);
+    assert.match(text(browser),/图中椅子相对桌子在哪侧/);
+  }
+});
