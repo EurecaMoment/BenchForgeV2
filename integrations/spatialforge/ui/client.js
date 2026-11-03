@@ -23,10 +23,10 @@ window.__ModuleLoader__.load({
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
         requestNote: '要求提交到当前工作台会话，由 DSH 执行；实际进度和产物在下方更新。',
         productionRequest: '数据集生产需求', startProduction: '开始生产', appendRequest: '追加要求', newProduction: '新建生产任务',
-        sceneLibrary: '场景库', sceneLibraryHelp: '历史与本次生成的场景统一归档。先预览，再勾选本次要使用的场景。',
+        sceneLibrary: '场景库', sceneLibraryHelp: '历史与本次场景统一归档，可预览、多选。',
         sceneSelected: '已选场景', useScene: '使用此场景', sceneSearch: '搜索场景名称或编号', sceneOrigin: '场景来源',
         currentScenes: '当前会话', historyScenes: '历史及其他', selectScenePage: '选择本页', clearScenePage: '取消本页',
-        allowNewScenes: '允许生成新场景', sceneSelectionHelp: '未勾选的已有场景不会用于后续请求；新增场景也会进入此场景库。',
+        allowNewScenes: '允许生成新场景', sceneSelectionHelp: '仅使用勾选场景；新场景自动归档。',
         sceneSaving: '正在保存选择…', sceneSaved: '选择已保存', sceneLibraryLoading: '正在更新场景列表…', sceneSaveFailed: '场景选择保存失败，请重试。',
         sceneUnavailable: '采集文件不可用', sceneStorage: '统一存放位置', chooseSceneRequired: '请在场景页勾选场景，或允许生成新场景。',
         sceneChanged: '场景选择已在其他窗口更新，请确认最新选择后再次提交。', sceneSelectionReadFailed: '读取场景约束失败，尚未发送生产请求。',
@@ -92,7 +92,7 @@ window.__ModuleLoader__.load({
         skill_reexecution: '重新执行步骤', upstream_rollback: '上游回滚', final_rejection: '最终拒绝',
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
         workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
-        stageProgress: '本阶段生产进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '查看本阶段执行过程',
+        progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '进行中', progressWaiting: '等待开始', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
         keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
         planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
         selectionTotal: '本组总题数',
@@ -202,7 +202,7 @@ window.__ModuleLoader__.load({
         skill_reexecution: 'Step re-execution', upstream_rollback: 'Upstream rollback', final_rejection: 'Final rejection',
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
         workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
-        stageProgress: 'Stage production progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
+        progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Not started', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
         keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
         planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
         selectionTotal: 'Total items in this selection',
@@ -238,12 +238,18 @@ window.__ModuleLoader__.load({
 .bfw-root{height:100%;overflow:auto;box-sizing:border-box;container-type:inline-size;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:.875rem/1.55 system-ui,sans-serif}
 .bfw-root *{box-sizing:border-box}.bfw-shell{min-width:0;max-inline-size:100rem;margin-inline:auto;padding:clamp(.85rem,2cqi,1.5rem)}
 .bfw-header,.bfw-toolbar,.bfw-pagination,.bfw-counts,.bfw-preview-header,.bfw-progress-caption{display:flex;align-items:center;flex-wrap:wrap;gap:clamp(.5rem,1.5cqi,1rem)}
-.bfw-header{justify-content:space-between;margin-block-end:1.15rem;gap:.75rem}.bfw-title{font-size:clamp(1.15rem,2.5cqi,1.45rem);font-weight:650;letter-spacing:-.02em;margin:.1rem 0}.bfw-kicker{font-size:.72rem;letter-spacing:.025em}.bfw-muted,.bfw-kicker{color:var(--dsw-alias-label-secondary)}
-.bfw-toolbar{margin-block:.75rem}.bfw-label{display:grid;gap:.35em;font-size:.8rem;min-inline-size:0;max-inline-size:100%}.bfw-button,.bfw-input,.bfw-select{font:inherit;color:inherit;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.5em .8em;background:var(--dsw-alias-button-elevated-fill);max-inline-size:100%;min-inline-size:0}.bfw-input{flex:1 1 16ch;width:100%}.bfw-select{width:100%;text-overflow:ellipsis}.bfw-button{cursor:pointer}.bfw-button:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-button:disabled{opacity:.5;cursor:default}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent}.bfw-button:focus-visible,.bfw-input:focus-visible,.bfw-select:focus-visible,.bfw-stage:focus-visible,.bfw-preview-open:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
-.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(.15rem,.5cqi,.4rem);padding:.35rem;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;margin-block:0 1rem;position:sticky;inset-block-start:.5rem;z-index:2}.bfw-stage{min-inline-size:0;display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .6rem;cursor:pointer;text-align:start;border:1px solid transparent;border-radius:.6rem;padding:clamp(.45rem,1cqi,.7rem);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit}.bfw-stage[aria-current=step]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);box-shadow:0 .1rem .3rem #00000006}.bfw-stage-index{display:grid;place-items:center;flex:0 0 auto;inline-size:1.7rem;block-size:1.7rem;border-radius:.5rem;background:var(--dsw-alias-bg-base);font:.72rem ui-monospace,monospace}.bfw-stage strong{display:block;font-size:clamp(.72rem,1.25cqi,.84rem);font-weight:600;line-height:1.35;overflow-wrap:anywhere}.bfw-stage-state{display:block;font-size:.65rem;margin-block-start:.15rem;line-height:1.25}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:var(--dsw-alias-state-error-primary)}.bfw-stage-state[data-stage-state=completed]{color:var(--dsw-alias-state-success-primary)}
-.bfw-stage-progress{margin-block:.9rem 1rem}.bfw-progress-caption{justify-content:space-between;font-size:.8rem;margin-block:.4em;overflow-wrap:anywhere}.bfw-stage-progress progress,.bfw-production progress,.bfw-progress-track{display:block;width:100%;height:.55rem;border:0;border-radius:1rem;overflow:hidden;background:var(--dsw-alias-bg-layer-2);accent-color:var(--dsw-alias-brand-primary)}.bfw-stage-progress progress::-webkit-progress-bar{background:var(--dsw-alias-bg-layer-2);border-radius:1rem}.bfw-stage-progress progress::-webkit-progress-value{background:var(--dsw-alias-brand-primary);border-radius:1rem}
+.bfw-header{justify-content:space-between;margin-block-end:.65rem;gap:.75rem}.bfw-title{font-size:clamp(1.15rem,2.5cqi,1.45rem);font-weight:650;letter-spacing:-.02em;margin:.1rem 0}.bfw-kicker{font-size:.72rem;letter-spacing:.025em}.bfw-muted,.bfw-kicker{color:var(--dsw-alias-label-secondary)}
+.bfw-toolbar{margin-block:.5rem}.bfw-label{display:grid;gap:.35em;font-size:.8rem;min-inline-size:0;max-inline-size:100%}.bfw-button,.bfw-input,.bfw-select{font:inherit;color:inherit;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.5em .8em;background:var(--dsw-alias-button-elevated-fill);max-inline-size:100%;min-inline-size:0}.bfw-input{flex:1 1 16ch;width:100%}.bfw-select{width:100%;text-overflow:ellipsis}.bfw-button{cursor:pointer}.bfw-button:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-button:disabled{opacity:.5;cursor:default}.bfw-action{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff);border-color:transparent}.bfw-button:focus-visible,.bfw-input:focus-visible,.bfw-select:focus-visible,.bfw-stage:focus-visible,.bfw-preview-open:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
+.bfw-flow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(.15rem,.5cqi,.4rem);padding:.35rem;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;margin-block:0 .65rem;position:sticky;inset-block-start:.5rem;z-index:2}.bfw-stage{min-inline-size:0;display:flex;align-items:center;flex-wrap:wrap;gap:.4rem .6rem;cursor:pointer;text-align:start;border:1px solid transparent;border-radius:.6rem;padding:clamp(.45rem,1cqi,.7rem);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit}.bfw-stage[aria-current=step]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);color:var(--dsw-alias-label-primary);box-shadow:0 .1rem .3rem #00000006}.bfw-stage-index{display:grid;place-items:center;flex:0 0 auto;inline-size:1.7rem;block-size:1.7rem;border-radius:.5rem;background:var(--dsw-alias-bg-base);font:.72rem ui-monospace,monospace}.bfw-stage strong{display:block;font-size:clamp(.72rem,1.25cqi,.84rem);font-weight:600;line-height:1.35;overflow-wrap:anywhere}.bfw-stage-state{display:block;font-size:.65rem;margin-block-start:.15rem;line-height:1.25}.bfw-stage-state[data-stage-state=running]{color:var(--dsw-alias-brand-primary)}.bfw-stage-state[data-stage-state=failed]{color:var(--dsw-alias-state-error-primary)}.bfw-stage-state[data-stage-state=completed]{color:var(--dsw-alias-state-success-primary)}
+.bfw-stage-progress{margin:0 0 .75rem;padding:.75rem 1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;background:var(--dsw-alias-bg-layer-1);--bfw-progress-fill:var(--dsw-alias-brand-primary,#20252c)}
+.bfw-stage-progress[data-progress-state=completed]{--bfw-progress-fill:var(--dsw-alias-state-success-primary,#238461)}.bfw-stage-progress[data-progress-state=failed]{--bfw-progress-fill:var(--dsw-alias-state-error-primary,#c94842)}.bfw-stage-progress[data-progress-state=stale],.bfw-stage-progress[data-progress-state=canceled]{--bfw-progress-fill:var(--dsw-alias-label-secondary,#6c7480)}
+.bfw-progress-caption{justify-content:space-between;gap:.5rem;margin:0 0 .5rem}.bfw-progress-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem}.bfw-progress-heading h2{margin:0;font-size:.9rem;font-weight:600}.bfw-progress-metric{font-size:1.25rem;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--bfw-progress-fill)}
+.bfw-progress-rail{position:relative;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:color-mix(in srgb,var(--dsw-alias-label-primary,#20252c) 12%,var(--dsw-alias-bg-base,#fff));overflow:hidden}.bfw-stage-progress progress,.bfw-progress-track{display:block;width:100%;height:.75rem;border:0;border-radius:1rem;overflow:hidden;background:transparent;accent-color:var(--bfw-progress-fill)}.bfw-stage-progress progress::-webkit-progress-bar{background:transparent}.bfw-stage-progress progress::-webkit-progress-value{background:var(--bfw-progress-fill);border-radius:1rem;transition:width .3s ease}.bfw-stage-progress progress::-moz-progress-bar{background:var(--bfw-progress-fill);border-radius:1rem}
+.bfw-progress-activity{position:absolute;inset-block:0;inset-inline-start:0;inline-size:30%;border-radius:1rem;background:var(--bfw-progress-fill);opacity:.22;animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate;pointer-events:none}.bfw-progress-sweep{display:block;width:30%;height:100%;border-radius:1rem;background:var(--bfw-progress-fill);animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate}@keyframes bfw-progress-sweep{from{transform:translateX(0)}to{transform:translateX(233%)}}@media(prefers-reduced-motion:reduce){.bfw-progress-sweep,.bfw-progress-activity{animation:none}}
+.bfw-progress-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .75rem;margin-top:.4rem;font-size:.72rem;font-variant-numeric:tabular-nums}.bfw-progress-current{max-inline-size:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}.bfw-progress-details{margin-inline-start:auto}.bfw-progress-details summary{color:var(--dsw-alias-label-secondary)}.bfw-progress-details[open]{flex-basis:100%;margin:0}.bfw-progress-detail-body{padding-top:.5rem}.bfw-hint{display:block;color:var(--dsw-alias-label-secondary);font-size:.72rem;line-height:1.4;margin:.2rem 0;overflow-wrap:anywhere}
+
 .bfw-stage-heading{display:flex;align-items:flex-start;gap:.7rem;margin-block:.85rem}.bfw-stage-heading h2{font-size:clamp(1.05rem,2cqi,1.3rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{display:grid;place-items:center;inline-size:2rem;block-size:2rem;flex:0 0 auto;border-radius:.55rem;background:var(--dsw-alias-bg-layer-2);font:.8rem ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}
-.bfw-product{min-inline-size:0;min-block-size:14rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(.9rem,2cqi,1.5rem);margin-block:1rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-production-source{flex:1 1 26ch}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
+.bfw-product{min-inline-size:0;min-block-size:0;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(.75rem,1.4cqi,1rem);margin-block:.65rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-production-source{flex:1 1 26ch}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
 .bfw-card{min-width:0;margin-block:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;background:var(--dsw-alias-bg-layer-1)}.bfw-card h2{font-size:.95rem;font-weight:600;margin:0;padding:.8rem 1rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-body{padding:clamp(.75rem,2cqi,1.25rem)}
 .bfw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12ch),1fr));gap:.75rem;margin-block:1rem}.bfw-stat{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.9rem;min-inline-size:0}.bfw-stat strong{display:block;font-size:clamp(1.25rem,3cqi,1.75rem);margin-block-start:.4rem}.bfw-details,.bfw-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,30ch),1fr));gap:1rem;min-inline-size:0}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:7em;resize:vertical;line-height:1.6}.bfw-evaluation-grid{display:flex;flex-wrap:wrap;gap:1.5rem;min-inline-size:0}.bfw-evaluation-config{flex:1 1 24ch;min-inline-size:0}.bfw-evaluation-questions{flex:3 1 40ch;min-inline-size:0}
 .bfw-scroll{overflow:auto;max-inline-size:100%}.bfw-table{width:100%;border-collapse:collapse}.bfw-table td,.bfw-table th{text-align:start;padding:.65rem .75rem;border-block-end:1px solid var(--dsw-alias-border-l3);vertical-align:top;overflow-wrap:anywhere}.bfw-table th{font-size:.8rem;font-weight:500;color:var(--dsw-alias-label-secondary)}.bfw-table tr:last-child td{border:0}.bfw-table td>button{max-inline-size:100%}
@@ -251,18 +257,18 @@ window.__ModuleLoader__.load({
 .bfw-context{min-inline-size:0;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1)}.bfw-native-chat{display:flex;flex-direction:column;min-inline-size:0;min-block-size:0;block-size:clamp(10rem,23dvh,18rem);--dsh-chat-content-width:min(100%,var(--dsh-chat-user-width,84ch));--dsh-composer-side-clearance:0rem}.bfw-native-chat>*{flex:1;min-inline-size:0;min-block-size:0}.bfw-native-chat [data-composer-seat]{display:none}
 .bfw-artifact{padding-block:.75rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin-block:.5rem;overflow-wrap:anywhere}.bfw-root summary{cursor:pointer}.bfw-version{display:block;max-inline-size:100%;overflow-wrap:anywhere}.bfw-pagination{justify-content:space-between;margin-block:1rem}.bfw-list-controls{display:grid;gap:.5rem;margin-block:.75rem}.bfw-list-controls .bfw-toolbar,.bfw-list-controls .bfw-pagination{margin:0}
 .bfw-items,.bfw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:1rem}.bfw-item,.bfw-preview-card{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;text-align:start;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.bfw-item{padding:.75rem;cursor:pointer}.bfw-preview-card[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open{border:0;padding:0;display:flex;flex-direction:column;gap:.6rem;text-align:start;background:transparent;color:inherit;cursor:pointer;font:inherit}.bfw-preview-open img,.bfw-preview-open video,.bfw-document-thumb{width:100%;aspect-ratio:16/10;object-fit:contain;background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open>strong,.bfw-preview-open>.bfw-muted,.bfw-preview-card>.bfw-code{padding-inline:.8rem;overflow-wrap:anywhere}.bfw-preview-open>.bfw-muted{padding-block-end:.6rem}.bfw-scene-check{display:flex;align-items:center;gap:.5em;padding:.8rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-document-thumb{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5em;padding:1rem;overflow:hidden}.bfw-document-thumb>span:first-child{font:2rem ui-monospace,monospace}.bfw-item img{width:100%;aspect-ratio:16/10;object-fit:contain;margin-block-end:.75rem}.bfw-item p{white-space:pre-wrap;overflow-wrap:anywhere}.bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin:1rem auto}.bfw-question{white-space:pre-wrap;font-size:1rem;overflow-wrap:anywhere}
-.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:16rem;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
+.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:0;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
 .bfw-annotation-image{position:relative;width:fit-content;max-inline-size:100%;margin-inline:auto}.bfw-annotation-image img{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain}.bfw-annotation-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:1rem;overflow-wrap:anywhere}.bfw-production p{margin-block:.4em}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}.bfw-live-details>summary{padding-block:.4rem;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding-block:.75rem;border-block-start:1px solid var(--dsw-alias-border-l3);margin-block-start:.5rem}.bfw-callout,.bfw-notice{padding:.75rem 1rem;border-radius:.75rem;background:var(--dsw-alias-bg-layer-2);margin-block:.75rem;overflow-wrap:anywhere}.bfw-catalog{display:grid;gap:.75rem;margin-block:1rem}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:.75rem;border-radius:.75rem;min-inline-size:0}.bfw-template header,.bfw-selected{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}.bfw-template[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-selected{padding-block:.5rem;border-block-end:1px solid var(--dsw-alias-border-l3)}
 .bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.4em .7em;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
 .bfw-demand{min-inline-size:0;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;padding:1rem;margin:0;background:var(--dsw-alias-bg-layer-1)}.bfw-demand h2{font-size:.9rem;font-weight:600;margin:0}.bfw-demand .bfw-toolbar{justify-content:space-between}.bfw-demand textarea{min-block-size:4.5em}.bfw-draft-review{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:.75rem}.bfw-draft-review pre{max-block-size:15em;overflow:auto}.bfw-consent{display:flex;align-items:flex-start;gap:.6em}.bfw-consent input{margin-block-start:.35em}
-.bfw-command-deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,25rem),1fr));gap:clamp(.75rem,1.5cqi,1.15rem);align-items:start;margin-block:1rem 1.25rem}
-.bfw-context-heading,.bfw-demand-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-block-end:.75rem;min-inline-size:0}.bfw-context-heading>strong{font-size:.9rem;font-weight:600}.bfw-context-heading>.bfw-button{margin-inline-start:auto;padding:.3em .65em;font-size:.75rem}.bfw-context-heading .bfw-pill{font-size:.68rem}.bfw-context-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem 1rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.65rem;margin-block-start:.65rem;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions]::before{content:'';display:inline-block;inline-size:.35rem;block-size:.35rem;margin-inline-end:.45rem;border-radius:50%;background:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions=true]::before{background:var(--dsw-alias-state-success-primary)}
-.bfw-stage-copy{flex:1 1 5.5ch;min-inline-size:0}.bfw-stage[aria-current=step] .bfw-stage-index{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff)}.bfw-product>.bfw-empty:only-child{display:grid;place-items:center;min-block-size:10rem;max-inline-size:45ch;margin-inline:auto;text-align:center}
+.bfw-command-deck{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,25rem),1fr));gap:clamp(.75rem,1.5cqi,1.15rem);align-items:start;margin-block:.75rem}
+.bfw-context-heading,.bfw-demand-heading{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-block-end:.75rem;min-inline-size:0}.bfw-context-heading>strong{font-size:.9rem;font-weight:600}.bfw-context-heading>.bfw-button{margin-inline-start:auto;padding:.3em .65em;font-size:.75rem}.bfw-context-heading .bfw-pill{font-size:.68rem}.bfw-context-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem 1rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.35rem;margin-block-start:.35rem;font-size:.68rem;color:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions]::before{content:'';display:inline-block;inline-size:.35rem;block-size:.35rem;margin-inline-end:.45rem;border-radius:50%;background:var(--dsw-alias-label-secondary)}.bfw-context-footer [data-full-permissions=true]::before{background:var(--dsw-alias-state-success-primary)}
+.bfw-stage-copy{flex:1 1 5.5ch;min-inline-size:0}.bfw-stage[aria-current=step] .bfw-stage-index{background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-onbrand,#fff)}.bfw-product>.bfw-empty:only-child{display:grid;place-items:center;min-block-size:3rem;max-inline-size:45ch;margin-inline:auto;text-align:center}
 .bfw-demand-heading{justify-content:space-between}.bfw-demand-heading>.bfw-label{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-heading .bfw-select{inline-size:auto;padding:.25em .55em;font-size:.75rem;color:var(--dsw-alias-label-primary)}.bfw-demand form{display:grid;gap:.75rem}.bfw-demand-fields{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,2.5fr);gap:.75rem;min-inline-size:0}.bfw-demand .bfw-label{font-size:.75rem;gap:.3rem}.bfw-demand .bfw-input{font-size:.8rem}.bfw-demand-footer{display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:space-between;gap:.75rem}.bfw-demand-options{flex:1 1 20ch;min-inline-size:0;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-options p{margin:.35rem 0 0}.bfw-demand-options summary{width:fit-content;color:var(--dsw-alias-label-primary)}.bfw-demand-options .bfw-form{margin-block:.65rem;gap:.65rem}.bfw-demand-footer>.bfw-button{flex:0 0 auto;padding:.5em 1em;font-size:.8rem}.bfw-demand .bfw-draft-review{margin:0}
 .bfw-public-observation{min-inline-size:0;margin:1rem 0}.bfw-public-observation>figcaption{font-size:.75rem;color:var(--dsw-alias-label-secondary)}.bfw-public-observation[data-compact=true]{margin:0}.bfw-public-observation[data-compact=true] .bfw-observation{margin:0 0 .75rem;aspect-ratio:16/10}
 .bfw-scene-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,42ch),1fr));gap:1rem}.bfw-scene-project{max-inline-size:72ch}.bfw-scene-poster{position:relative;display:grid;place-items:center;background:var(--dsw-alias-bg-layer-2);aspect-ratio:16/10;overflow:hidden}.bfw-scene-poster img{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-play{position:absolute;display:grid;place-items:center;inline-size:3rem;block-size:3rem;border-radius:50%;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 .2rem 1rem #0002}.bfw-scene-video{display:grid;gap:.75rem;min-inline-size:0}.bfw-scene-video video,.bfw-scene-video canvas{display:block;inline-size:auto;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin-inline:auto}.bfw-scene-video progress{inline-size:100%}
-.bfw-library-controls{margin-block:1rem}.bfw-library-controls>.bfw-input{flex:1 1 24ch;min-inline-size:0}.bfw-library-policy{margin-block:1rem .5rem}.bfw-scene-select{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-block-end:1px solid var(--dsw-alias-border-l3);font-size:.8rem}.bfw-scene-select input,.bfw-library-policy input{accent-color:var(--dsw-alias-brand-primary);inline-size:1rem;block-size:1rem;flex:none}.bfw-scene-selected{border-color:var(--dsw-alias-brand-primary)}.bfw-scene-poster video{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-project>.bfw-code{font-size:.7rem;padding-inline:.85rem;overflow-wrap:anywhere}.bfw-library-location{margin-block-start:1rem;font-size:.75rem}.bfw-library-location p{overflow-wrap:anywhere}.bfw-demand-scene-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:.75rem}.bfw-demand-scene-summary>.bfw-button{padding:.3em .65em;margin-inline-start:auto}
+.bfw-library-controls{margin-block:.6rem}.bfw-library-controls>.bfw-input{flex:1 1 24ch;min-inline-size:0}.bfw-library-policy{margin-block:.4rem .2rem}.bfw-scene-select{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-block-end:1px solid var(--dsw-alias-border-l3);font-size:.8rem}.bfw-scene-select input,.bfw-library-policy input{accent-color:var(--dsw-alias-brand-primary);inline-size:1rem;block-size:1rem;flex:none}.bfw-scene-selected{border-color:var(--dsw-alias-brand-primary)}.bfw-scene-poster video{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-project>.bfw-code{font-size:.7rem;padding-inline:.85rem;overflow-wrap:anywhere}.bfw-library-location{margin-block-start:1rem;font-size:.75rem}.bfw-library-location p{overflow-wrap:anywhere}.bfw-demand-scene-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:.75rem}.bfw-demand-scene-summary>.bfw-button{padding:.3em .65em;margin-inline-start:auto}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -439,82 +445,10 @@ window.__ModuleLoader__.load({
       return steps.find((row) => row.state !== 'completed' && row.state !== 'unknown')?.state ||
         (pipeline.current?.stage === id && pipeline.state !== 'completed' ? pipeline.state : 'unknown');
     }
-    function Production({record, pipeline, scene, selected, selectScene, visible, conversationRunning, t}) {
-      const value = record.value, jobs = value?.scenes?.runs || [];
-      const tasks = scene?.tasks || [];
-      const activeTask = tasks.find((row) => row.state === 'RUNNING') || tasks.find((row) => row.state !== 'SUCCEEDED') || tasks[0];
-      const productionState = scene ? lifecycle(scene.state) : pipeline?.state || 'unknown';
-      const visibleError = scene?.error || activeTask?.failure || activeTask?.progress?.error || pipeline?.current?.error || pipeline?.missing_binding;
-      const unavailable = record.error || ['unavailable', 'partial'].includes(value?.scenes?.status) ||
-        value?.sources?.some((source) => ['index_error', 'record_error'].includes(source.status));
-      const details = [];
-      if (pipeline) details.push(h('div', {className: 'bfw-live-line'},
-        h('div', {className: 'bfw-muted'}, t('workspacePipeline')),
-        h('span', {className: 'bfw-code', title: pipeline.label}, displayRef(pipeline.label), ' '),
-        status(pipeline.state, t),
-        h('p', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—')),
-        pipeline.total !== null && pipeline.total > 0 && h('progress', {max: pipeline.total, value: pipeline.completed, 'aria-label': t('persistedSteps')}),
-        pipeline.current && h('p', null, t('currentStep') + ': ' + pipeline.current.id + ' · ' + (pipeline.current.uses || '') +
-          (pipeline.current.state === 'unknown' ? ' · ' + t('unrecordedStep') : '')),
-        (pipeline.missing_binding || pipeline.current?.error || pipeline.next) && h('p', {className: 'bfw-muted'},
-          t('reason') + ': ' + (pipeline.missing_binding || pipeline.current?.error || pipeline.next))));
-      if (jobs.length) details.push(select(t('sceneJobs'), selected, selectScene,
-        jobs.map((row) => [row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))])));
-      if (scene) {
-        details.push(h('p', null, status(lifecycle(scene.state), t), ' · ' + t('completedTasks') + ': ' +
-          tasks.filter((row) => row.state === 'SUCCEEDED').length + ' / ' + tasks.length));
-        if (scene.error) details.push(h('p', {className: 'bfw-error'}, scene.error));
-        for (const row of tasks.slice(0, 12)) {
-          const progress = row.progress || {}, revisions = row.evidence?.captured_revisions || [];
-          details.push(h('div', {className: 'bfw-live-task', key: row.id, 'data-production-task': row.id},
-            h('div', null, h('span', {className: 'bfw-code'}, row.id), ' ',
-              status(scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state), t)),
-            h('p', null, t('phase') + ': ' + (row.phase || '—') +
-              (progress.stage ? ' · ' + t('workerStage') + ': ' + progress.stage : '') + ' · r' + row.revision),
-            progress.age_seconds !== undefined && h('p', {className: 'bfw-muted'}, t('workerAge') + ': ' + progress.age_seconds + ' s'),
-            progress.total_bytes > 0 && h('p', null, t('transfer') + ': ' +
-              ((progress.bytes_received || 0) / 1048576).toFixed(1) + ' / ' + (progress.total_bytes / 1048576).toFixed(1) + ' MB'),
-            row.queue && h('p', {className: 'bfw-warning'}, t('waiting') + ': ' + row.queue.reason + (row.queue.blocking_task_id ? ' · ' + row.queue.blocking_task_id : '')),
-            (row.failure || progress.error) && h('pre', {className: 'bfw-json bfw-error'}, JSON.stringify(row.failure || progress.error, null, 2)),
-            h('p', {className: 'bfw-muted'}, t('capturedViews') + ': ' + revisions.reduce((n, r) => n + r.views, 0) +
-              ' · ' + t('actionTraces') + ': ' + revisions.reduce((n, r) => n + r.action_traces, 0)),
-            row.summary && h('p', null, t('accepted') + ': ' + (row.summary.accepted ?? '—') + ' / ' + (row.summary.target_items ?? '—')),
-            row.quality && h('p', {className: 'bfw-muted'}, t('publication') + ': ' + row.quality.publication_status + ' · ' +
-              t('approval') + ': ' + t(row.quality.benchmark_approved ? 'yes' : 'no')),
-            row.downloads?.length > 0 && h('p', {className: 'bfw-code'}, row.downloads.join(' · '))));
-        }
-        if (tasks.length > 12) details.push(h('p', {className: 'bfw-muted'}, t('taskLimit')));
-      }
-      if (!scene && !pipeline && !record.loading) details.push(empty(t('noProduction')));
-      if (value?.operations?.length > 0) details.push(h('details', null,
-        h('summary', null, t('recentOperations')),
-        table([t('operator'), t('state'), t('updated')], value.operations.slice(0, 8).map((row) =>
-          [row.tool, status(row.state, t), row.started_at || '—']))));
-      return h('section', {className: 'bfw-production', 'data-production-monitor': true, 'aria-label': t('productionMonitor')},
-        h('div', {className: 'bfw-toolbar'}, h('strong', null, t('productionMonitor')),
-          h('span', {className: 'bfw-pill ' + (unavailable ? 'failed' : 'running'), 'data-live-state': unavailable ? 'stale' : record.loading ? 'loading' : 'live'},
-            t(unavailable ? 'staleSnapshot' : record.loading ? 'loading' : visible ? 'autoRefresh' : 'pollingPaused'))),
-        h('p', {className: 'bfw-production-summary'},
-          h('span', {role: 'status', 'aria-live': 'polite', 'aria-atomic': true},
-            status(productionState, t), ' ',
-            activeTask && h('span', {className: 'bfw-code'}, activeTask.id), ' ',
-            activeTask?.phase && h('span', null, t('phase') + ': ' + activeTask.phase), ' ',
-            pipeline && h('span', null, t('persistedSteps') + ': ' + pipeline.completed + ' / ' + (pipeline.total ?? '—'))),
-          h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
-        record.error && h('p', {className: 'bfw-error', role: 'alert'}, t('retainedSnapshot') + ' · ' + record.error),
-        unavailable && !record.error && h('p', {className: 'bfw-error'}, t('partialObservation')),
-        visibleError && h('p', {className: 'bfw-error', role: 'alert'},
-          typeof visibleError === 'string' ? visibleError : JSON.stringify(visibleError)),
-        value?.scenes?.status === 'not_configured' && h('p', {className: 'bfw-muted'}, t('observerNotConfigured')),
-        h('details', {className: 'bfw-live-details'},
-          h('summary', null, t('productionDetails')),
-          ...details));
-    }
-
     function TemplateCatalog({catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
       capability, setCapability, retry, t}) {
       return h('details', {'data-template-reference': true}, h('summary', null, t('templateCatalog')),
-        h('p', {className: 'bfw-muted'}, t('catalogDesign')),
+        h('small', {className: 'bfw-hint'}, t('catalogDesign')),
         h('div', {className: 'bfw-toolbar'},
           h('input', {className: 'bfw-input', 'aria-label': t('searchTemplates'), value: catalogQuery,
             placeholder: t('searchTemplates'), onChange: (e) => {setCatalogQuery(e.target.value); setCatalogPage(1);}}),
@@ -544,7 +478,7 @@ window.__ModuleLoader__.load({
           record.plan && h('details', {className: 'bfw-detail-row'}, h('summary', null, t('plan')), json(record.plan)))),
         h('div', {className: 'bfw-details'},
           card(t('lineage'), h(React.Fragment, null,
-            h('p', {className: 'bfw-muted'}, t('shapeNote')),
+            h('small', {className: 'bfw-hint'}, t('shapeNote')),
             record.artifacts_truncated && h('p', null, t('truncated')),
             artifacts.length ? artifacts.map((artifact) => h('details', {className: 'bfw-artifact', key: artifact.artifact_id},
               h('summary', null, status(artifact.status, t), ' ', artifact.artifact_type, ' · v', artifact.version),
@@ -554,7 +488,7 @@ window.__ModuleLoader__.load({
               h('div', {className: 'bfw-detail-row'}, t('evidence')), json(artifact.evidence_refs),
               h('div', {className: 'bfw-detail-row'}, t('contracts')), json(artifact.contract_results))) : empty(t('noArtifacts')))),
           card(t('repairs'), h(React.Fragment, null,
-            h('p', {className: 'bfw-muted'}, t('repairNote')),
+            h('small', {className: 'bfw-hint'}, t('repairNote')),
             record.repairs.length ? record.repairs.map((repair, i) => h('details', {className: 'bfw-artifact', key: i},
               h('summary', null, status(repair.status, t), ' ', t(repair.operator)),
               h('div', {className: 'bfw-code bfw-detail-row'}, repair.artifact_id),
@@ -578,22 +512,38 @@ window.__ModuleLoader__.load({
       const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
         /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
-      return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id, 'aria-label': t('stageProgress')},
-        h('div', {className: 'bfw-progress-caption'}, h('strong', null, t('stageProgress')), status(state, t),
-          h('span', {className: 'bfw-muted'}, steps.length ? completed + ' / ' + steps.length + ' · ' + t(operations.length ? 'recentOperations' : 'observedSteps') :
-            products.length ? products.length + ' / ' + productTotal + ' · ' + t('savedStageProducts') : t('waitingForReceipt'))),
-        steps.length ? h('progress', {max: steps.length, value: completed, 'aria-label': t('stageProgress')}) :
-          products.length ? h('progress', {max: productTotal, value: products.length, 'aria-label': t('savedStageProducts')}) :
-            h('div', {className: 'bfw-progress-track', 'aria-label': t('unmeasuredProgress')}),
-        h('div', {className: 'bfw-progress-caption', role: 'status', 'aria-live': 'polite'},
-          h('span', null, current ? current.id + (current.label ? ' · ' + current.label : '') :
-            t(steps.length ? 'knownProgress' : products.length ? 'pairedAnnotations' : 'noStageSteps')),
-          h('span', {className: 'bfw-muted'}, t('lastObserved') + ': ' + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—'))),
+      // A list of recent operations is history, not a declared workload total.
+      const total = operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal;
+      const done = steps.length ? completed : products.length;
+      const measured = total > 0;
+      const percent = measured ? Math.min(100, Math.round(done / total * 100)) : null;
+      const moving = ['running', 'previewable'].includes(state);
+      const metric = measured ? percent + '%' : t(state === 'completed' ? 'stageDone' : moving ? 'progressPending' :
+        ['failed', 'canceled'].includes(state) ? 'progressPaused' : 'progressWaiting');
+      const unit = t(products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps');
+      return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id,
+        'data-progress-state': stale ? 'stale' : state, 'aria-label': t('stageProgress')},
+        h('div', {className: 'bfw-progress-caption'},
+          h('div', {className: 'bfw-progress-heading'}, h('h2', null, t(stage.key)), status(state, t)),
+          h('strong', {className: 'bfw-progress-metric'}, metric)),
+        h('div', {className: 'bfw-progress-rail', 'data-indeterminate': String(!measured && moving)},
+          measured ? h('progress', {max: total, value: done,
+            'aria-label': t(products.length ? 'savedStageProducts' : 'stageProgress')}) :
+            h('div', {className: 'bfw-progress-track', role: 'progressbar', 'aria-label': t('stageProgress'),
+              'aria-valuetext': metric}, moving && h('span', {className: 'bfw-progress-sweep'})),
+          measured && state === 'running' && h('span', {className: 'bfw-progress-activity', 'aria-hidden': true})),
+        h('div', {className: 'bfw-progress-footer'},
+          h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'},
+            measured ? unit + ' ' + done + ' / ' + total : t('waitingForReceipt')),
+          current && h('span', {className: 'bfw-progress-current', title: current.id}, current.label || current.id),
+          steps.length > 0 && h('details', {className: 'bfw-progress-details'}, h('summary', null, t('stageProcess')),
+            h('div', {className: 'bfw-progress-detail-body'},
+              h('small', {className: 'bfw-muted'}, t('lastObserved') + ': ' +
+                (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—')),
+              table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))))),
         stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
         current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
-        current?.queue && h('p', null, t('waiting') + ': ' + current.queue.reason),
-        steps.length > 0 && h('details', null, h('summary', null, t('stageProcess')),
-          table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))));
+        current?.queue && h('small', {className: 'bfw-hint'}, t('waiting') + ': ' + current.queue.reason));
     }
     function PublicObservation({src, type = 'image/*', label, compact = false, t}) {
       const [record, setRecord] = React.useState({loading: type === 'application/json', data: null, error: ''});
@@ -680,7 +630,7 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-toolbar'}, h('h3', null, t('sceneLibrary')),
           h('span', {className: 'bfw-pill'}, t('sceneSelected') + ': ' + selected.length + ' / ' + data.all),
           h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'}, t(saving ? 'sceneSaving' : record.loading ? 'sceneLibraryLoading' : 'sceneSaved'))),
-        h('p', {className: 'bfw-muted'}, t('sceneLibraryHelp')),
+
         h('div', {className: 'bfw-toolbar bfw-library-controls'},
           h('input', {className: 'bfw-input', type: 'search', 'aria-label': t('sceneSearch'), placeholder: t('sceneSearch'), value: query,
             onChange: (event) => search(event.target.value)}),
@@ -689,7 +639,7 @@ window.__ModuleLoader__.load({
           button(t('clearScenePage'), () => changePage(false), {disabled: busy || !selected.length})),
         h('label', {className: 'bfw-consent bfw-library-policy'}, h('input', {type: 'checkbox', checked: !!selection?.allow_new_scenes,
           disabled: busy, onChange: (event) => choose(selected, event.target.checked)}), t('allowNewScenes')),
-        h('p', {className: 'bfw-muted'}, t('sceneSelectionHelp')),
+        h('small', {className: 'bfw-hint'}, t('sceneSelectionHelp')),
         error && h('p', {className: 'bfw-error', role: 'alert'}, error),
         h('div', {className: 'bfw-scene-projects'}, data.items.map((row) => {
           const checked = selected.some((reference) => reference.id === row.id && reference.revision === row.revision);
@@ -863,7 +813,7 @@ window.__ModuleLoader__.load({
     function Quality({report, t}) {
       if (!report) return empty(t('noReport'));
       return h(React.Fragment, null,
-        h('p', {className: 'bfw-muted'}, t('reportNote')),
+        h('small', {className: 'bfw-hint'}, t('reportNote')),
         h('div', {className: 'bfw-stats'}, ['requested', 'accepted', 'shortfall', 'scene_groups'].map((key) =>
           h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, report[key] ?? '—')))),
         h('p', null, t('approval') + ': ', report.benchmark_approved === undefined ? '—' : t(report.benchmark_approved ? 'yes' : 'no')),
@@ -1129,7 +1079,7 @@ window.__ModuleLoader__.load({
           button(t('nextPage'), () => onPage(listing.page + 1), {disabled: listing.page >= listing.pages})));
       const data = dataset.value;
       const runHistory = h('details', {'data-run-history': true}, h('summary', null, t('runHistory')),
-        h('p', {className: 'bfw-muted'}, t('scope')),
+        h('small', {className: 'bfw-hint'}, t('scope')),
         h('div', {className: 'bfw-counts'}, h('span', null, t('runCount') + ': ' + (summary.value ? rows.length : '—')),
           h('span', null, t('datasetCount') + ': ' + (summary.value ? datasets.length : '—'))),
         listControls(runListing, route.runFilter, t('runFilter'),
@@ -1138,7 +1088,7 @@ window.__ModuleLoader__.load({
         summary.loading ? empty(t('loading')) : summary.error && !summary.value ? readFailure() :
           runListing.total ? runTable(runListing.items) : empty(rows.length ? t('noMatchingRuns') : t('noRuns')));
       const datasetDirectory = h('details', {'data-dataset-directory': true, open: !route.dataset},
-        h('summary', null, t('directory')), h('p', {className: 'bfw-muted'}, t('datasetNote')),
+        h('summary', null, t('directory')), h('small', {className: 'bfw-hint'}, t('datasetNote')),
         summary.loading ? empty(t('loading')) : summary.error && !summary.value ? readFailure() : datasets.length ? h(React.Fragment, null,
           listControls(versionListing, route.versionFilter, t('versionFilter'),
             (value) => update({versionFilter: value, versionListPage: 1}), (page) => update({versionListPage: page}),
@@ -1147,7 +1097,7 @@ window.__ModuleLoader__.load({
             [row.workspace, h('span', {className: 'bfw-code bfw-version', title: row.version}, displayRef(row.version)), row.report?.accepted ?? '—',
               status(row.state, t), button(t('browse'), () => openDataset(row.id))])) : empty(t('noMatchingVersions'))) : empty(t('noDatasets')));
       const datasetBrowser = h('div', {'data-dataset-browser': true},
-        h('p', {className: 'bfw-muted'}, t('publicNote')),
+        h('small', {className: 'bfw-hint'}, t('publicNote')),
         h('form', {className: 'bfw-toolbar', onSubmit: (e) => {e.preventDefault(); update({q: search, page: 1});}},
           select(t('template'), route.template, (id) => update({template: id, page: 1}), [['', t('all')], ...(data?.facets.templates || []).map((id) => [id, id])]),
           select(t('split'), route.split, (id) => update({split: id, page: 1}), [['', t('all')], ...(data?.facets.splits || []).map((id) => [id, id])]),
@@ -1206,7 +1156,7 @@ window.__ModuleLoader__.load({
           filter: (origin) => {setSceneOrigin(origin); setScenePage(1);}, page: setScenePage,
           refresh: () => setRevision((value) => value + 1), preview: setPreview, t});
         else if (['S2', 'S3'].includes(stage.id)) product = h(React.Fragment, null,
-          stage.id === 'S3' && h('p', {className: 'bfw-muted'}, t('annotationNote')),
+          stage.id === 'S3' && h('small', {className: 'bfw-hint'}, t('annotationNote')),
           filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
           (sceneArtifacts.loading || run.loading) && empty(t('loading')),
           (productFiles.length > 0 || !(sceneArtifacts.loading || run.loading || filesError)) &&
@@ -1234,9 +1184,7 @@ window.__ModuleLoader__.load({
           productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
             h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
       const body = h(React.Fragment, null,
-          h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, artifacts: allStageFiles, t}),
-          h('div', {className: 'bfw-stage-heading'}, h('span', {className: 'bfw-stage-number'}, stage.id),
-            h('div', null, h('h2', null, t(stage.key)), h('p', {className: 'bfw-muted'}, t(stage.key + 'Desc')))),
+
           productionOptions.length > 2 && h('div', {className: 'bfw-production-source'},
             select(t('productionRecord'), route.run || (route.production ? 'scene:' + route.production : ''), chooseProduction, productionOptions)),
           h('section', {className: 'bfw-product', 'data-stage-product': stage.id, 'aria-label': t('keyProduct') + ' · ' + t(stage.key)}, product),
@@ -1247,8 +1195,7 @@ window.__ModuleLoader__.load({
             button(t('nextStep'), () => update({stage: STAGES[STAGES.indexOf(stage) + 1].id}), {disabled: stage.id === 'S5'})));
       return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
         h('header', {className: 'bfw-header'}, h('div', null,
-          h('div', {className: 'bfw-kicker'}, 'SpatialForge'), h('h1', {className: 'bfw-title'}, t('panel')),
-          h('div', {className: 'bfw-muted'}, t('subtitle'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
+          h('div', {className: 'bfw-kicker'}, 'SpatialForge'), h('h1', {className: 'bfw-title'}, t('panel'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
         h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
           className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
           'aria-current': stage.id === step.id ? 'step' : undefined,
@@ -1257,6 +1204,7 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-stage-copy'}, h('strong', {title: t(step.key)}, t(step.key + 'Nav')),
           h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
             t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
+        h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, artifacts: allStageFiles, t}),
         h('div', {className: 'bfw-command-deck'},
           h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
             h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),
@@ -1278,12 +1226,6 @@ window.__ModuleLoader__.load({
         notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
         [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
         h('section', {id: 'bfw-content-' + sessionId, 'aria-label': t(stage.key)}, body),
-        workspacePath && h('details', {className: 'bfw-tools'}, h('summary', null, t('productionMonitor')),
-          summary.value && h('p', {className: 'bfw-muted'}, t('snapshot') + ': ' + summary.value.snapshot_at),
-          table([t('workspace'), t('state'), t('details')], (summary.value?.sources || []).map((source) =>
-            [source.workspace, t(source.status), source.error || (source.truncated ? t('truncated') : source.limit ? source.limit + ' ' + t('limit') : '—')])),
-          h(Production, {record: progress, pipeline: activePipeline, scene: sourceScene, selected: scene?.run_id || '',
-            selectScene: (id) => update({production: id, run: ''}), visible, conversationRunning, t})),
         preview && h(PreviewDialog, {key: preview.url || preview.title, item: preview, close: () => setPreview(null), t}),
         sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
           sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));

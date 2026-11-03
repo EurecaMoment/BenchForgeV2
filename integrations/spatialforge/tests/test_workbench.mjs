@@ -295,9 +295,14 @@ test('automatic assessment products retain explicit template intent while a sepa
     assert.match(text(render('S1')), /本组总题数.*6/);
     assert.doesNotMatch(text(render('S1')), /Capture production views/);
     const scenePage = render('S2');
-    assert.match(text(scenePage), /capture_ready/);
     const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
       : node && typeof node === 'object' ? predicate(node) ? node : find(node.children, predicate) : null;
+    const sceneProgress = find(scenePage, (node) => node.props['data-stage-progress'] === 'S2');
+    assert.equal(sceneProgress.props['data-progress-state'], 'waiting');
+    const captureSteps = capture.steps.filter((step) => step.stage === 'S2');
+    assert.equal(find(sceneProgress, (node) => node.type === 'progress').props.max, captureSteps.length);
+    assert.equal(find(sceneProgress, (node) => node.type === 'progress').props.value,
+      captureSteps.filter((step) => step.state === 'completed').length);
     const sceneTab = find(scenePage, (node) => node.props['data-stage'] === 'S2');
     assert.equal(find(sceneTab, (node) => 'data-stage-state' in node.props).props['data-stage-state'], 'waiting');
     assert.match(text(render('S4')), /目标题量.*6/);

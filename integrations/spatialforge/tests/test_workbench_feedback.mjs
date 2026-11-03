@@ -10,6 +10,32 @@ const React = {createElement: (type, props, ...children) => ({type, props: {...p
 vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}});
 const {ExecutionFeedback} = registration.factory(() => React);
 
+test('stage progress measures declared work but never treats recent tool history as a workload total', async () => {
+  let loaded;
+  const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {StageProgress}; return {inject:');
+  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}, Date});
+  const {StageProgress} = loaded.factory(() => React);
+  const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+    : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
+  const render = (props) => StageProgress({stage: {id: 'S2', key: 'collection'}, record: {value: {}}, t: (key) => key, ...props});
+  const measured = render({pipeline: {steps: ['completed', 'completed', 'failed', 'waiting'].map((state, id) => ({id, stage: 'S2', state}))}});
+  const meter = find(measured, (node) => node.type === 'progress');
+  assert.equal(meter.props.value, 2);
+  assert.equal(meter.props.max, 4);
+  assert.equal(measured.props['data-progress-state'], 'failed');
+  assert.equal(find(measured, (node) => node.props.className === 'bfw-progress-metric').props.children[0], '50%');
+  const history = render({record: {value: {operations: [{stage: 'S2', state: 'completed'}, {stage: 'S2', state: 'running'}]}}});
+  assert.equal(find(history, (node) => node.type === 'progress'), undefined);
+  const unknown = find(history, (node) => node.props.role === 'progressbar');
+  assert.equal(unknown.props['aria-valuenow'], undefined);
+  assert.equal(unknown.props['aria-valuetext'], 'progressPending');
+  const savedPlan = render({stage: {id: 'S1', key: 'blueprint'}, planReceipt: {state: 'completed'},
+    record: {value: {operations: [{stage: 'S1', state: 'completed'}]}}});
+  assert.equal(find(savedPlan, (node) => node.type === 'progress').props.value, 1);
+  assert.equal(find(savedPlan, (node) => node.type === 'progress').props.max, 1);
+});
+
 test('a confirmed session permission survives a missing projection but an explicit permission change takes effect', async () => {
   let loaded, index = 0;
   const hooks = [];
