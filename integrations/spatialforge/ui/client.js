@@ -92,7 +92,7 @@ window.__ModuleLoader__.load({
         skill_reexecution: '重新执行步骤', upstream_rollback: '上游回滚', final_rejection: '最终拒绝',
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
         workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
-        progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '进行中', progressWaiting: '等待开始', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
+        productionProgress: '生产进度', progressUpload: '产物上传', progressItems: '已完成数量', progressStages: '已完成阶段', progressUpdated: '更新', progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '执行中', progressWaiting: '等待回执', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
         keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
         planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
         selectionTotal: '本组总题数',
@@ -202,7 +202,7 @@ window.__ModuleLoader__.load({
         skill_reexecution: 'Step re-execution', upstream_rollback: 'Upstream rollback', final_rejection: 'Final rejection',
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
         workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
-        progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Not started', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
+        productionProgress: 'Production progress', progressUpload: 'Artifact upload', progressItems: 'Completed items', progressStages: 'Completed stages', progressUpdated: 'Updated', progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Awaiting receipt', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
         keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
         planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
         selectionTotal: 'Total items in this selection',
@@ -496,31 +496,52 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
-    function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], t}) {
+    function executionStage(viewed, states, running) {
+      if (!running) return viewed;
+      return STAGES.find((row) => states[row.id] === 'running') ||
+        STAGES.find((row) => states[row.id] === 'waiting') || {id: 'execution', key: 'productionProgress'};
+    }
+    function reportedProgress(value) {
+      if (!value || value.interrupted) return null;
+      const pairs = [['bytes_received', 'total_bytes', 'progressUpload'], ['completed', 'total', 'progressItems']];
+      for (const [doneKey, totalKey, label] of pairs) {
+        const done = value[doneKey], total = value[totalKey];
+        if (Number.isFinite(done) && Number.isFinite(total) && total > 0 && done >= 0) {
+          return {done: Math.min(done, total), total, label, bytes: totalKey === 'total_bytes'};
+        }
+      }
+      return null;
+    }
+    function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
       const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
         state: scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state),
         label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
-        queue: row.queue, age: row.progress?.age_seconds})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
+        queue: row.queue, age: row.progress?.age_seconds, progress: row.progress})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
         .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
       const completed = steps.filter((row) => row.state === 'completed').length;
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
-      const state = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
+      const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
+      const state = recordedState === 'unknown' && conversationRunning ? 'running' : recordedState;
       const products = stage.id === 'S3' && !steps.length ? annotationProducts(artifacts) : [];
       const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
         /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
       // A list of recent operations is history, not a declared workload total.
-      const total = operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal;
-      const done = steps.length ? completed : products.length;
+      const detail = current && !['failed', 'canceled'].includes(state) ? reportedProgress(current.progress) : null;
+      // A whole-task count cannot describe work still occurring within that task.
+      const activeUnknown = state === 'running' && current && !detail;
+      const total = detail?.total || (activeUnknown || operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal);
+      const done = detail?.done ?? (steps.length ? completed : products.length);
       const measured = total > 0;
       const percent = measured ? Math.min(100, Math.round(done / total * 100)) : null;
       const moving = ['running', 'previewable'].includes(state);
       const metric = measured ? percent + '%' : t(state === 'completed' ? 'stageDone' : moving ? 'progressPending' :
         ['failed', 'canceled'].includes(state) ? 'progressPaused' : 'progressWaiting');
-      const unit = t(products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps');
+      const unit = t(detail?.label || (products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps'));
+      const amount = detail?.bytes ? (done / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB' : done + ' / ' + total;
       return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id,
         'data-progress-state': stale ? 'stale' : state, 'aria-label': t('stageProgress')},
         h('div', {className: 'bfw-progress-caption'},
@@ -534,8 +555,11 @@ window.__ModuleLoader__.load({
           measured && state === 'running' && h('span', {className: 'bfw-progress-activity', 'aria-hidden': true})),
         h('div', {className: 'bfw-progress-footer'},
           h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'},
-            measured ? unit + ' ' + done + ' / ' + total : t('waitingForReceipt')),
+            measured ? unit + ' ' + amount : stage.id === 'execution' ? t('progressStages') + ' ' + completedStages + ' / 5' :
+              steps.length ? unit + ' ' + completed + ' / ' + steps.length : t('waitingForReceipt')),
           current && h('span', {className: 'bfw-progress-current', title: current.id}, current.label || current.id),
+          conversationRunning && record.updatedAt && h('small', {className: 'bfw-muted', 'data-progress-updated': record.updatedAt},
+            t('progressUpdated') + ' ' + new Date(record.updatedAt).toLocaleTimeString()),
           steps.length > 0 && h('details', {className: 'bfw-progress-details'}, h('summary', null, t('stageProcess')),
             h('div', {className: 'bfw-progress-detail-body'},
               h('small', {className: 'bfw-muted'}, t('lastObserved') + ': ' +
@@ -1142,6 +1166,10 @@ window.__ModuleLoader__.load({
         const navigationState = (id) => stageState(id, navigationPipeline(id), navigationScene(id), progress.value?.operations,
           planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
             navigationPipeline(id)?.id === selectedRunId ? allStageFiles : []);
+        const progressStates = Object.fromEntries(STAGES.map((row) => [row.id, navigationState(row.id)]));
+        const liveProgressStage = executionStage(stage, progressStates, conversationRunning);
+        const liveProgressPipeline = liveProgressStage.id === 'execution' ? null : navigationPipeline(liveProgressStage.id);
+        const liveProgressScene = liveProgressStage.id === 'execution' ? null : navigationScene(liveProgressStage.id);
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
@@ -1204,7 +1232,9 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-stage-copy'}, h('strong', {title: t(step.key)}, t(step.key + 'Nav')),
           h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
             t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
-        h(StageProgress, {stage, pipeline: activePipeline, scene: sourceScene, record: progress, planReceipt, artifacts: allStageFiles, t}),
+        h(StageProgress, {stage: liveProgressStage, pipeline: liveProgressPipeline, scene: liveProgressScene, record: progress,
+          planReceipt, artifacts: allStageFiles, conversationRunning,
+          completedStages: Object.values(progressStates).filter((state) => state === 'completed').length, t}),
         h('div', {className: 'bfw-command-deck'},
           h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
             h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),

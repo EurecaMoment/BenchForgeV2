@@ -56,6 +56,33 @@ test('a confirmed session permission survives a missing projection but an explic
   assert.equal(renderPermission(), false, 'an explicit change must not be hidden by retained permissions');
 });
 
+test('running task counters update the meter before the task completes and browsing another stage does not redirect live progress', async () => {
+  let loaded;
+  const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {StageProgress, executionStage}; return {inject:');
+  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}, Date});
+  const {StageProgress, executionStage} = loaded.factory(() => React);
+  const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+    : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
+  const viewed = {id: 'S1', key: 'blueprint'};
+  const live = executionStage(viewed, {S1: 'completed', S2: 'running'}, true);
+  assert.equal(live.id, 'S2');
+  const props = {stage: live, conversationRunning: true, record: {value: {}, updatedAt: '2026-11-03T06:00:00Z'}, t: (key) => key};
+  for (const bytes of [25, 75]) {
+    const element = StageProgress({...props, scene: {state: 'RUNNING', tasks: [{id: 'capture', phase: 'capture',
+      state: 'RUNNING', progress: {stage: 'upload', bytes_received: bytes, total_bytes: 100}}]}});
+    const bar = find(element, (node) => node.type === 'progress');
+    assert.equal(bar.props.value, bytes);
+    assert.equal(bar.props.max, 100);
+    assert.equal(find(element, (node) => node.props.className === 'bfw-progress-metric').props.children[0], bytes + '%');
+  }
+  const unknown = StageProgress({...props, scene: {state: 'RUNNING', tasks: [{id: 'capture', phase: 'capture', state: 'RUNNING', progress: {stage: 'capture'}}]}});
+  assert.equal(find(unknown, (node) => node.type === 'progress'), undefined);
+  assert.equal(find(unknown, (node) => node.props.role === 'progressbar').props['aria-valuetext'], 'progressPending');
+  assert.equal(executionStage(viewed, {S1: 'completed'}, true).id, 'execution');
+  assert.equal(executionStage(viewed, {S1: 'completed', S2: 'running'}, false), viewed);
+});
+
 test('workbench embeds the native conversation through its authorized factory without replacing its content', () => {
   const calls = [];
   const nativeChat = {type: 'NativeChatView', props: {children: [
