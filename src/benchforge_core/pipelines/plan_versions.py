@@ -48,9 +48,12 @@ def verify_application(active,args):
         if key in saved['inputs'] and inputs.get(key)!=saved['inputs'][key]:
             raise ValueError('Execution changes must honor the edited '+key)
     previous=json.loads(Path(saved['edit_revision']['base_plan']).read_text(encoding='utf-8'))
-    semantic=('annotations','questions','scoring','quality_gates','execution')
+    semantic=('objectives','summary','annotations','questions','scoring','quality_gates','execution')
     changed=any(saved['assessment'].get(key)!=previous.get('assessment',{}).get(key) for key in semantic)
     scenes=lambda document:{key:value for key,value in document.get('scenes',{}).items() if key!='target_scene_count'}
     changed=changed or scenes(saved['assessment'])!=scenes(previous.get('assessment',{}))
+    coverage=lambda document:[{key:value for key,value in row.items() if key not in ('count','selection_reason')} for row in document.get('coverage',[])]
+    dataset=lambda document:{key:value for key,value in document.get('dataset',{}).items() if key not in ('target_items','seed')}
+    changed=changed or coverage(saved['assessment'])!=coverage(previous.get('assessment',{})) or dataset(saved['assessment'])!=dataset(previous.get('assessment',{}))
     if changed and args.get('steps')==saved['steps'] and inputs.get('evidence')==saved['inputs'].get('evidence'):
         raise ValueError('Changed production rules require updated executable steps or evidence inputs; repeating the document does not apply them.')
