@@ -1007,15 +1007,6 @@ window.__ModuleLoader__.load({
         sessionError ? 'failed' : sessionState.openState === 'loading' ? 'loading' : 'idle';
       const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
-      const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
-      const reviewAction = async (action,instruction='') => {
-        const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
-          {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,review_id:reviewRecord.value?.review_id,instruction})});
-        const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || 'Stage review update failed');
-        setRevision(old => old+1);
-        return value;
-      };
       const receiptsRevision = revision + ':' + sessionStatus + ':' + JSON.stringify([
         (progress.value?.operations || []).map((row) => [row.id, row.state]),
         (progress.value?.pipelines || []).map((row) => [row.id, row.updated_at]),
@@ -1047,6 +1038,15 @@ window.__ModuleLoader__.load({
         {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
       const sceneLibrary = useRecord(workspacePath ? {view: 'scene_library', workspace_path: workspacePath, session_id: sessionId,
         q: sceneQuery, origin: sceneOrigin, page: scenePage} : null, receiptsRevision, 30000, visible);
+      const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
+      const reviewAction = async (action,instruction='') => {
+        const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
+          {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,review_id:reviewRecord.value?.review_id,instruction})});
+        const value = await response.json();
+        if (!response.ok || value.error) throw new Error(value.error || 'Stage review update failed');
+        setRevision(old => old+1);
+        return value;
+      };
       if (sceneLibrary.value) lastSceneLibrary.current = sceneLibrary.value;
       const sceneLibraryView = sceneLibrary.value ? sceneLibrary : {...sceneLibrary, value: lastSceneLibrary.current};
       const savedSceneSelection = sceneLibraryView.value?.selection;

@@ -20,7 +20,11 @@ const fixtureCode = [
   'outputs=[]',
   'for seed,count in [(101,30),(202,3)]:',
   ' p=r.call("pipeline_plan",{"template_ids":["C01-T01"],"target_items":count,"seed":seed})',
-  ' outputs.append(r.call("pipeline_run",{"plan":p["plan"]}))',
+  ' result=r.call("pipeline_run",{"plan":p["plan"]})',
+  ' while result["state"]=="waiting_user":',
+  '  r.call("stage_review",{"action":"continue","review_id":result["stage_review"]["review_id"]})',
+  '  result=r.call("pipeline_run",{"plan":p["plan"],"run":result["run"]})',
+  ' outputs.append(result)',
   'r.close()',
   'print(json.dumps(outputs))',
 ].join('\n');
