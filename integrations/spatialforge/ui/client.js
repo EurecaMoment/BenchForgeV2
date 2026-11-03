@@ -12,6 +12,28 @@ window.__ModuleLoader__.load({
       {id: 'S4', key: 'synthesis'},
       {id: 'S5', key: 'verification'},
     ];
+    const PLAN_SECTIONS = [
+      ['objectives', '评测目标与边界'], ['coverage', '能力、模板与题量分配'], ['scenes', '场景与采集设计'],
+      ['annotations', '标注与真值来源'], ['questions', '出题规则与公开样例'], ['dataset', '数据集规模与分区'],
+      ['scoring', '评分方法与对照'], ['quality_gates', '质量检查与验收'], ['execution', '五阶段执行安排'],
+      ['delivery', '交付物与验收入口'], ['risks', '风险与待解决事项'],
+    ];
+    const PLAN_FIELDS = {
+      id: '编号', capability: '测量能力', research_question: '具体评测问题', success_criterion: '成功条件', exclusions: '范围边界',
+      objective_id: '目标编号', template_id: '模板', count: '题数', difficulty: '难度', conditions: '测量条件', selection_reason: '选择理由',
+      source_policy: '来源策略', selection_path: '场景选择记录', selected_scenes: '选用场景', allow_new_scenes: '允许新增场景',
+      target_scene_count: '目标场景数', designs: '场景设计', name: '场景名称', purpose: '测量用途', layout: '布局', objects: '物体配置',
+      cameras: '视角与采集', variation: '变化维度', artifact: '预览产物', reuse_constraints: '复用约束', preview_policy: '视频或全景展示',
+      authority_source: '真值来源', fields: '字段与单位', derivation: '推导方法', alignment: '媒体与标注对齐', validation: '校验规则',
+      public_observations: '公开观测', answerability: '可回答性', output_contract: '输出格式', difficulty_design: '难度设计',
+      anti_shortcut_checks: '捷径与歧义检查', example: '公开题目样例', target_items: '目标题量', split_policy: '分区策略', seed: '随机种子',
+      grouping: '分组单位', deduplication: '去重规则', balance: '分布平衡', metrics: '逐模板评分', metric: '指标', unit: '单位',
+      tolerance: '容差', aggregation: '聚合方式', missing_response: '缺失与无效响应', baselines: '对照基线', model_evaluation: '模型评测安排',
+      check: '检查内容', threshold: '通过阈值', evidence: '证据位置', on_failure: '失败处理', stage: '阶段', action: '执行动作',
+      inputs: '输入', outputs: '输出', completion_condition: '完成条件', artifacts: '交付文件', path: '保存位置', format: '格式',
+      contents: '内容', acceptance: '交付验收', issue: '风险或限制', impact: '影响', mitigation: '应对方式', status: '状态',
+      task_id: '场景任务', revision: '版本', run_id: '运行', program_path: '场景程序', source_directory: '来源目录',
+    };
     const dictionaries = {
       zh: {
         executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。',
@@ -101,6 +123,10 @@ window.__ModuleLoader__.load({
         evaluationConfig: '评测配置', questionTable: '题目表', finalReport: '最终报告', artifactFiles: '产物文件与来源',
         insertStage: '填入对话', stepInstruction: '查看本步指令', chooseSceneHint: '可多选，所选场景会随本步指令填入对话。',
         persistedPlan: '已落盘评测计划', planSteps: '计划步骤', reportPending: '最终报告尚未生成；执行完成不等于评测通过。',
+        completePlan: '完整评测设计', legacyPlan: '当前仅有执行摘要，尚缺完整评测设计。', completePlanRequest: '按模板补全计划',
+        revisePlan: '修改计划', continuePlan: '按此计划继续生产', exportPlan: '导出计划', exportPlanText: '导出 Markdown',
+        planDesignNote: '以下数量和阈值为计划目标；执行结果见各阶段产物。', templateReadFailed: '评测计划模板读取失败，尚未发送请求。',
+        planTemplate: '大模型评测计划模板', planTemplateNote: '提交需求后由大模型填写并保存，计划页显示真实内容。',
         knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
         downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', runHistory: '本对话的计划与运行', runDetails: '当前运行明细与产物来源',
         confirmSend: '确认发送', confirmTitle: '向当前对话提出要求', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
@@ -211,6 +237,10 @@ window.__ModuleLoader__.load({
         evaluationConfig: 'Evaluation configuration', questionTable: 'Questions', finalReport: 'Final report', artifactFiles: 'Artifact files & provenance',
         insertStage: 'Draft in chat', stepInstruction: 'View stage instruction', chooseSceneHint: 'Select multiple scenes to include in the stage instruction.',
         persistedPlan: 'Persisted evaluation plan', planSteps: 'Planned steps', reportPending: 'No final report yet. Execution completion is not benchmark approval.',
+        completePlan: 'Assessment design', legacyPlan: 'This execution summary needs a complete assessment design.', completePlanRequest: 'Complete from template',
+        revisePlan: 'Revise plan', continuePlan: 'Continue production from plan', exportPlan: 'Export plan', exportPlanText: 'Export Markdown',
+        planDesignNote: 'Counts and thresholds are design targets. Execution results appear in stage artifacts.', templateReadFailed: 'Could not read the assessment template. Nothing was submitted.',
+        planTemplate: 'Model assessment template', planTemplateNote: 'The model fills and saves the template after submission. This page shows its saved content.',
         knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
         downloadArtifact: 'Open artifact', artifactReadFailed: 'Could not read this artifact. Retry.', runHistory: 'Past plans and runs', runDetails: 'Current run details and artifact provenance',
         confirmSend: 'Confirm and send', confirmTitle: 'Confirm stage task', cancel: 'Cancel', sending: 'Submitting…', sent: 'Stage task submitted to this conversation; follow its execution receipt in chat.',
@@ -257,7 +287,7 @@ window.__ModuleLoader__.load({
 .bfw-context{min-inline-size:0;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1)}.bfw-native-chat{display:flex;flex-direction:column;min-inline-size:0;min-block-size:0;block-size:clamp(10rem,23dvh,18rem);--dsh-chat-content-width:min(100%,var(--dsh-chat-user-width,84ch));--dsh-composer-side-clearance:0rem}.bfw-native-chat>*{flex:1;min-inline-size:0;min-block-size:0}.bfw-native-chat [data-composer-seat]{display:none}
 .bfw-artifact{padding-block:.75rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin-block:.5rem;overflow-wrap:anywhere}.bfw-root summary{cursor:pointer}.bfw-version{display:block;max-inline-size:100%;overflow-wrap:anywhere}.bfw-pagination{justify-content:space-between;margin-block:1rem}.bfw-list-controls{display:grid;gap:.5rem;margin-block:.75rem}.bfw-list-controls .bfw-toolbar,.bfw-list-controls .bfw-pagination{margin:0}
 .bfw-items,.bfw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:1rem}.bfw-item,.bfw-preview-card{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;text-align:start;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.bfw-item{padding:.75rem;cursor:pointer}.bfw-preview-card[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open{border:0;padding:0;display:flex;flex-direction:column;gap:.6rem;text-align:start;background:transparent;color:inherit;cursor:pointer;font:inherit}.bfw-preview-open img,.bfw-preview-open video,.bfw-document-thumb{width:100%;aspect-ratio:16/10;object-fit:contain;background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open>strong,.bfw-preview-open>.bfw-muted,.bfw-preview-card>.bfw-code{padding-inline:.8rem;overflow-wrap:anywhere}.bfw-preview-open>.bfw-muted{padding-block-end:.6rem}.bfw-scene-check{display:flex;align-items:center;gap:.5em;padding:.8rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-document-thumb{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5em;padding:1rem;overflow:hidden}.bfw-document-thumb>span:first-child{font:2rem ui-monospace,monospace}.bfw-item img{width:100%;aspect-ratio:16/10;object-fit:contain;margin-block-end:.75rem}.bfw-item p{white-space:pre-wrap;overflow-wrap:anywhere}.bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin:1rem auto}.bfw-question{white-space:pre-wrap;font-size:1rem;overflow-wrap:anywhere}
-.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:0;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
+.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:0;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem;margin-block:.8rem .35rem}.bfw-plan-summary{white-space:pre-wrap;margin:.35rem 0}.bfw-plan-toc{display:flex;flex-wrap:wrap;gap:.35rem .85rem;margin:.75rem 0;font-size:.8rem}.bfw-plan-toc a{color:var(--dsw-alias-label-secondary);text-decoration:none}.bfw-plan-section{scroll-margin-block:1rem;border-top:1px solid var(--dsw-alias-border-l3);padding-block:.75rem}.bfw-plan-section h4{font-size:1rem;margin:0 0 .65rem}.bfw-plan-fields{margin:0;display:grid;gap:.65rem}.bfw-plan-fields>div{display:grid;grid-template-columns:minmax(7rem,15%) minmax(0,1fr);gap:.65rem}.bfw-plan-fields dt{color:var(--dsw-alias-label-secondary);font-size:.8rem}.bfw-plan-fields dd{margin:0;white-space:pre-wrap;min-width:0;overflow-wrap:anywhere}.bfw-plan-records{display:grid;gap:.65rem}.bfw-plan-records>div{border:1px solid var(--dsw-alias-border-l3);border-radius:.7rem;padding:.75rem}@container (max-width:500px){.bfw-plan-fields>div{grid-template-columns:1fr;gap:.15rem}.bfw-plan-document .bfw-toolbar{gap:.35rem}}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
 .bfw-annotation-image{position:relative;width:fit-content;max-inline-size:100%;margin-inline:auto}.bfw-annotation-image img{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain}.bfw-annotation-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:1rem;overflow-wrap:anywhere}.bfw-production p{margin-block:.4em}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}.bfw-live-details>summary{padding-block:.4rem;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding-block:.75rem;border-block-start:1px solid var(--dsw-alias-border-l3);margin-block-start:.5rem}.bfw-callout,.bfw-notice{padding:.75rem 1rem;border-radius:.75rem;background:var(--dsw-alias-bg-layer-2);margin-block:.75rem;overflow-wrap:anywhere}.bfw-catalog{display:grid;gap:.75rem;margin-block:1rem}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:.75rem;border-radius:.75rem;min-inline-size:0}.bfw-template header,.bfw-selected{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}.bfw-template[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-selected{padding-block:.5rem;border-block-end:1px solid var(--dsw-alias-border-l3)}
 .bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.4em .7em;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
@@ -276,6 +306,31 @@ window.__ModuleLoader__.load({
     function card(title, children) { return h('section', {className: 'bfw-card'}, h('h2', null, title), h('div', {className: 'bfw-body'}, children)); }
     function empty(text) { return h('div', {className: 'bfw-empty'}, text); }
     function json(value) { return h('pre', {className: 'bfw-json'}, JSON.stringify(value, null, 2)); }
+    function planValue(value) {
+      if (value === null || value === undefined || value === '') return h('span', {className: 'bfw-muted'}, '—');
+      if (typeof value === 'boolean') return value ? '是' : '否';
+      if (Array.isArray(value)) {
+        if (!value.length) return h('span', {className: 'bfw-muted'}, '无');
+        if (value.every((row) => row && typeof row === 'object' && !Array.isArray(row))) {
+          const keys = [...new Set(value.flatMap((row) => Object.keys(row)))];
+          if (keys.length <= 7) return table(keys.map((key) => PLAN_FIELDS[key] || key), value.map((row) => keys.map((key) => planValue(row[key]))));
+          return h('div', {className: 'bfw-plan-records'}, value.map((row, index) => h('div', {key: index}, planValue(row))));
+        }
+        return h('ul', null, value.map((row, index) => h('li', {key: index}, planValue(row))));
+      }
+      if (typeof value === 'object') return h('dl', {className: 'bfw-plan-fields'}, Object.entries(value).map(([key, child]) =>
+        h('div', {key}, h('dt', null, PLAN_FIELDS[key] || key), h('dd', null, planValue(child)))));
+      return String(value);
+    }
+    function planMarkdown(plan) {
+      const format = (value, depth = 0) => Array.isArray(value) ? value.map((row, index) => '- ' + (typeof row === 'object' ? '\n' : '') + format(row, depth + 1)).join('\n')
+        : value && typeof value === 'object' ? Object.entries(value).map(([key, child]) => '  '.repeat(depth) + (PLAN_FIELDS[key] || key) + ': ' +
+          (typeof child === 'object' && child !== null ? '\n' + format(child, depth + 1) : child === true ? '是' : child === false ? '否' : child ?? '—')).join('\n') : String(value ?? '—');
+      const document = plan.assessment;
+      if (!document) return '# ' + (plan.objective || '评测计划') + '\n\n执行摘要\n\n```json\n' + JSON.stringify(plan, null, 2) + '\n```\n';
+      return '# ' + document.title + '\n\n' + document.summary + '\n\n' + PLAN_SECTIONS.filter(([key]) => document[key]).map(([key, title]) =>
+        '## ' + title + '\n\n' + format(document[key])).join('\n\n') + '\n';
+    }
     function table(headers, rows) {
       return h('div', {className: 'bfw-scroll'}, h('table', {className: 'bfw-table'},
         h('thead', null, h('tr', null, headers.map((text, i) => h('th', {key: i}, text)))),
@@ -798,16 +853,36 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
           button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending || !payload.text.trim()})));
     }
-    function PlanProduct({plan, artifacts, preview, t}) {
-      if (!plan) return empty(t('planPending'));
-      return h('article', {className: 'bfw-plan-document'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
-        h('h3', null, typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint')),
+    function PlanProduct({plan, artifacts, preview, request, template, t}) {
+      if (!plan) return h('div', null, empty(t('planPending')), h('details', null, h('summary', null, t('planTemplate')),
+        h('small', {className: 'bfw-hint'}, t('planTemplateNote')),
+        h('ol', null, (template?.sections || PLAN_SECTIONS.map(([key, title]) => ({key, title}))).map((row) => h('li', {key: row.key}, row.title)))));
+      const document = plan.assessment;
+      const sections = PLAN_SECTIONS.filter(([key]) => document?.[key]);
+      return h('article', {className: 'bfw-plan-document', 'data-assessment-document': document?.schema || 'legacy_summary'},
+        h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
+          document && h('span', {className: 'bfw-pill'}, t('completePlan') + ' · ' + sections.length + '/' + PLAN_SECTIONS.length),
+          request && button(t(document ? 'revisePlan' : 'completePlanRequest'), () => request(document
+            ? '请修改当前评测计划：\n修改要求：\n保留未修改部分，按照完整评测计划模板重新保存一个版本，并说明变化。'
+            : '请基于当前真实需求和已保存的执行摘要，按照完整评测计划模板补全并保存 assessment。读取原模板合同和已有产物，不得编造执行结果；复用当前用户勾选的场景约束。'), {'data-plan-revise': true}),
+          document && request && button(t('continuePlan'), () => request('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
+          h('a', {className: 'bfw-button', href: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(plan, null, 2)), download: 'assessment-plan.json'}, t('exportPlan')),
+          h('a', {className: 'bfw-button', href: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(planMarkdown(plan)), download: 'assessment-plan.md'}, t('exportPlanText'))),
+        h('h3', null, document?.title || (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
+        document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, document.summary),
+          h('small', {className: 'bfw-hint'}, t('planDesignNote')),
+          h('nav', {className: 'bfw-plan-toc', 'aria-label': t('completePlan')}, sections.map(([key, title], index) =>
+            h('a', {key, href: '#bfw-plan-' + key}, String(index + 1).padStart(2, '0') + ' ' + title))),
+          sections.map(([key, title], index) => h('section', {key, id: 'bfw-plan-' + key, className: 'bfw-plan-section', 'data-plan-section': key},
+            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key]))))
+          : h('p', {className: 'bfw-hint'}, t('legacyPlan')),
+        h(document ? 'details' : React.Fragment, document ? {} : null, document && h('summary', null, t('planSteps')),
         plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
           h('dt', null, key), h('dd', null, typeof value === 'object' ? JSON.stringify(value) : String(value))))),
         plan.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
           plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
         plan.steps?.length ? table([t('steps'), t('operator'), t('details')], plan.steps.map((row) =>
-          [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null,
+          [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null),
         artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
         h('details', null, h('summary', null, t('plan')), json(plan)));
     }
@@ -1003,11 +1078,11 @@ window.__ModuleLoader__.load({
         ? pipelineForStage(id, pipelines) || (['S2', 'S3'].includes(id) ? null : activePipeline) : activePipeline;
       const navigationScene = (id) => route.run || route.production ? sourceScene :
         navigationPipeline(id) ? null : sceneForStage(id, sceneJobs);
-      const prepare = () => {
+      const prepare = (text = '') => {
         if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
         setSendError('');
         setDraftConsent('');
-        setSendPayload({text: '', inserted: false});
+        setSendPayload({text: typeof text === 'string' ? text : '', inserted: false});
       };
       const submitRequest = (payload, setError) => {
         if (submitLock.current || payload.submitted || lastSubmitted.current === payload.text) return false;
@@ -1048,6 +1123,7 @@ window.__ModuleLoader__.load({
         if (!canSubmit) {setError(t('permissionsPending')); return false;}
         if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {setError(t('draftConsentRequired')); return false;}
         selectionSubmitLock.current = true; setSending(true); setError('');
+        let readError = 'sceneSelectionReadFailed';
         try {
           const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
             workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
@@ -1057,8 +1133,18 @@ window.__ModuleLoader__.load({
             setSceneChoice(value); setError(t('sceneChanged')); return false;
           }
           if (!value.sources?.length && !value.allow_new_scenes) {setError(t('chooseSceneRequired')); return false;}
-          return submitRequest({...payload, text: payload.text + sceneConstraint(value)}, setError);
-        } catch (error) {setError(t('sceneSelectionReadFailed') + ' ' + error.message); return false;}
+          readError = 'templateReadFailed';
+          const templateResponse = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'plan_template',
+            workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
+          const template = await templateResponse.json();
+          if (!templateResponse.ok || template.schema !== 'spatialforge.assessment-template/v1' || !template.assessment) {
+            setError(t('templateReadFailed')); return false;
+          }
+          return submitRequest({...payload, text: payload.text + sceneConstraint(value) +
+            '\n制定或修改评测计划时必须遵守以下完整模板；已有完整计划且本次只要求继续执行时，复用已有计划。\n' +
+            template.instructions + '\n' + template.scene_binding + '\n各章节要求：\n' + JSON.stringify(template.sections, null, 2) +
+            '\n传入 pipeline_plan.assessment 的填写结构：\n' + JSON.stringify(template.assessment, null, 2)}, setError);
+        } catch (error) {setError(t(readError) + ' ' + error.message); return false;}
         finally {selectionSubmitLock.current = false; setSending(false);}
       };
       const confirmSend = async () => {
@@ -1174,7 +1260,7 @@ window.__ModuleLoader__.load({
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
         if (stage.id === 'S1') product = h(React.Fragment, null,
-          h(PlanProduct, {plan, artifacts: productFiles, preview: setPreview, t}),
+          h(PlanProduct, {plan, artifacts: productFiles, preview: setPreview, request: prepare, t}),
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);

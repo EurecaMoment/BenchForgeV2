@@ -5,6 +5,7 @@ from pathlib import Path
 from ..runtime import write
 from .catalog import all_templates, capability_id, selected_templates, pipeline_files, relevance
 from .adapters import supports
+from .assessment import validate_assessment
 
 
 def plan(args, directory, config=None):
@@ -58,9 +59,12 @@ def plan(args, directory, config=None):
     value = {'schema': 'spatialforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe,
              'objective': objective, 'inputs': inputs, 'steps': pipeline['steps'], 'selections': selections,
              'template_contracts': [{k: catalog[tid][k] for k in ('id', 'task_id', 'task_name', 'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links')} | {'execution': supports(tid)} for tid in dict.fromkeys(tid for s in selections for tid in s['template_ids'])]}
+    if args.get('assessment') is not None:
+        value['assessment'] = validate_assessment(args['assessment'], selections, inputs)
     target = Path(directory)/'plan.json'
     write(target, value)
     unsupported = [t['id'] for t in value['template_contracts'] if not t['execution']['program_generator']]
     return {'state': 'planned', 'plan': str(target.resolve()), 'pipeline_id': recipe,
+            'assessment_status': 'structured' if value.get('assessment') else 'legacy_summary',
             'selections': selections, 'evidence_required_for': unsupported,
             'next': 'pipeline_run; when evidence is required, use exact template protocol with task code or existing collectors, then supply evidence. No legacy 3240-template substitution.'}

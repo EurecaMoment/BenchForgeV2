@@ -29,7 +29,7 @@ test('workbench submits full production once and requires visible consent for pr
   let selectionReads = 0, selectionReadFailed = false;
   vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}},
     localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date,
-    fetch: async (url) => {assert.match(url, /view=scene_selection/); selectionReads++;
+    fetch: async (url) => {if (url.includes('view=plan_template')) return {ok: true, json: async () => JSON.parse(await fs.readFile(new URL('../../../src/benchforge_core/pipelines/assessment_template.json', import.meta.url), 'utf8'))}; assert.match(url, /view=scene_selection/); selectionReads++;
       return {ok: !selectionReadFailed, json: async () => selectionReadFailed ? {error: 'fixture unavailable'} : sceneSelection};}});
   const {Workbench} = registration.factory(() => React);
   assert.equal(typeof Workbench, 'function', 'test seam must expose the actual component');
@@ -76,6 +76,10 @@ test('workbench submits full production once and requires visible consent for pr
   assert.match(submissions[0].text, /完整完成五阶段/);
   assert.match(submissions[0].text, /目标题量：6 条/);
   assert.match(submissions[0].text, /不要只写计划/);
+  assert.match(submissions[0].text, /pipeline_plan.assessment/);
+  assert.match(submissions[0].text, /spatialforge.assessment\/v1/);
+  assert.match(submissions[0].text, /quality_gates/);
+  assert.match(submissions[0].text, /inputs.scene_selection/);
   assert.match(submissions[0].text, /保留的原草稿/);
   assert.equal(selectionReads, 1, 'one official submission reads one saved selection snapshot');
   assert.match(submissions[0].text, /sf_selected.scene0/);

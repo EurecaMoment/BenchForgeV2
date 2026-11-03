@@ -65,6 +65,9 @@ def relevance(row, query):
 def catalog(args, directory=None, config=None):
     from .adapters import supports
     section = args.get('section', 'pipelines')
+    if section == 'plan_template':
+        from .assessment import assessment_template
+        return assessment_template()
     if section == 'protocol':
         return {'common_protocol': document()['common_protocol'], 'source_status': document()['meta']['evidence_status']}
     if section == 'capabilities':
@@ -77,7 +80,7 @@ def catalog(args, directory=None, config=None):
         rows = selected_templates(args)
         rows = [{**r, 'execution': supports(r['id'])} for r in rows]
     else:
-        raise ValueError('section must be pipelines, capabilities, tasks, templates or protocol')
+        raise ValueError('section must be pipelines, capabilities, tasks, templates, protocol or plan_template')
     if args.get('item_id'):
         rows = [r for r in rows if r['id'] == args['item_id']]
     if args.get('query'):

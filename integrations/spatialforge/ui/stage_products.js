@@ -70,7 +70,10 @@ function workbenchUrl(params, workspacePath) {
 
 function publicPlan(plan) {
   if (!plan) return null;
+  const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).filter(([key]) => key === 'authority_source' || !/^(?:answer|answers|authority|gold|oracle|token|password|api_key)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
   return {...pick(plan, ['pipeline_id', 'version', 'objective']),
+    assessment: plan.assessment ? clean(plan.assessment) : undefined,
     selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
     inputs: pick(plan.inputs || {}, ['seed', 'split', 'target_items']),
     template_contracts: (plan.template_contracts || []).map((row) => pick(row, ['id', 'task_id', 'task_name',
@@ -461,7 +464,7 @@ async function discover(roots, config, signal, scope) {
         if (!matchesSession(request.context, scope)) { if (!request.context?.session_id) unassociatedRecords++; continue; }
         const result = await readJson(path.join(artifact, 'result.json')) || {};
         if (['pipeline_plan', 'plan'].includes(operation.tool)) {
-          if (operation.state === 'completed' && !latestPlan?.selections?.some((row) => row.template_ids?.length)) {
+          if (operation.state === 'completed' && !latestPlan?.assessment) {
             const declared = operation.tool === 'pipeline_plan' ? result.plan : result.brief;
             const file = typeof declared === 'string' ? await inside(root, declared) : null;
             const saved = file ? await readJson(file) : null;
@@ -469,7 +472,7 @@ async function discover(roots, config, signal, scope) {
               const candidate = operation.tool === 'pipeline_plan' ? publicPlan(saved) :
                 {objective: saved.objective || '', inputs: pick(saved, ['target_items']),
                   sources: saved.sources || [], notes: saved.notes || '', source: 'saved_benchmark_brief'};
-              if (!latestPlan || !latestPlan.selections?.some((row) => row.template_ids?.length) &&
+              if (!latestPlan || candidate.assessment || !latestPlan.selections?.some((row) => row.template_ids?.length) &&
                   candidate.selections?.some((row) => row.template_ids?.length)) {
                 latestPlan = candidate;
                 planSource = {operation_id: operation.id, tool: operation.tool,
@@ -651,6 +654,7 @@ export function createWorkbenchHandler(config, registered = () => []) {
       }
       else if (view === 'scene_library' || view === 'scene_selection') value = await sceneLibrary(limits, roots, url, request.signal);
       else if (view === 'catalog') value = await templateCatalog(url);
+      else if (view === 'plan_template') value = await readJson(fileURLToPath(new URL('../../../src/benchforge_core/pipelines/assessment_template.json', import.meta.url)));
       else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
       else if (view === 'progress') value = await productionProgress(roots, limits, url, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);

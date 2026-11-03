@@ -1,0 +1,34 @@
+{
+  "schema": "spatialforge.assessment-template/v1",
+  "scene_binding": "如果请求包含保存的场景选择，将该约束对象一并传入 pipeline_plan.inputs.scene_selection，服务端将校验 assessment.scenes 的勾选场景、版本、selection_path 和 allow_new_scenes；设计新场景写入 designs，不写成已采集场景。",
+  "instructions": "你负责撰写可执行、可审阅的评测计划，前端只展示与操作真实落盘内容。先读取用户需求、保存的场景选择及 pipeline_catalog 中准确的模板合同，再填写下面 assessment 的所有章节。用用户的语言写具体内容，不得照抄空值、占位符或泛泛而谈。计划中的目标和阈值是设计值，不得写成已完成结果；无法确定的事项在 risks 中列出影响、解决方式和待确认状态。coverage 必须逐模板填写实际分配题数，严格对应 selections 的均分和余数分配规则；总数必须等于 dataset.target_items。场景来源严格遵守 selected_scenes、revision 和 allow_new_scenes，不得绕过用户勾选。公开观测必须足以作答，不能把隐藏 GT 当公开条件。给出不含真实答案的公开题目示例、输出格式、每模板评分规则和可执行验收条件。execution 覆盖 S1 到 S5，delivery 为每一阶段声明可查看的产物。调用 pipeline_plan 时将完整对象传入 assessment，并传入一致的 objective、selections 和 inputs；保存后引用返回的计划路径继续已有生产流程。修改计划时重新保存新版本并保留原产物。没有实际采集、验收或模型响应时不得编造其结果，也不得调用未授权的目标模型评测接口。",
+  "sections": [
+    {"key": "objectives", "title": "评测目标与边界", "guidance": "逐项说明测量的能力、具体问题、成功条件及不覆盖的范围。"},
+    {"key": "coverage", "title": "能力、模板与题量分配", "guidance": "逐模板绑定目标、分配题数、难度、测量条件和选择理由，遵守准确模板合同。"},
+    {"key": "scenes", "title": "场景与采集设计", "guidance": "一个项目一个场景，声明复用约束、布局、物体、视角、变化维度和可直接播放的视频或交互全景产物。"},
+    {"key": "annotations", "title": "标注与真值来源", "guidance": "定义标注字段、单位坐标、来源推导、媒体对齐与校验；模型预测不可充当 GT。"},
+    {"key": "questions", "title": "出题规则与公开样例", "guidance": "说明公开条件、可回答性、输出格式、难度与捷径检查，给出具体题目样例，不能泄露真实答案。"},
+    {"key": "dataset", "title": "数据集规模与分区", "guidance": "声明目标题量、随机种子、场景分组分区、去重与分布平衡策略。"},
+    {"key": "scoring", "title": "评分方法与对照", "guidance": "逐模板定义指标、单位、容差和聚合方式，处理无效或缺失响应，说明基线及本次是否实际评测模型。"},
+    {"key": "quality_gates", "title": "质量检查与验收", "guidance": "给出可执行检查、具体阈值、证据路径和失败处置，覆盖可回答性、GT、覆盖量、分区泄漏与媒体有效性。"},
+    {"key": "execution", "title": "五阶段执行安排", "guidance": "覆盖 S1–S5，逐阶段写清动作、输入、输出、完成条件，不把设计目标当作执行结果。"},
+    {"key": "delivery", "title": "交付物与验收入口", "guidance": "每阶段至少一个可查看的产物，明确格式、内容、相对保存位置和交付条件。"},
+    {"key": "risks", "title": "风险与待解决事项", "guidance": "列出具体限制、影响、应对方式与状态；无已知风险也应明确检查范围。"}
+  ],
+  "assessment": {
+    "schema": "spatialforge.assessment/v1",
+    "title": "",
+    "summary": "",
+    "objectives": [{"id": "", "capability": "", "research_question": "", "success_criterion": "", "exclusions": ""}],
+    "coverage": [{"objective_id": "", "template_id": "", "count": null, "difficulty": "", "conditions": "", "selection_reason": ""}],
+    "scenes": {"source_policy": "", "selection_path": "", "selected_scenes": [], "allow_new_scenes": null, "target_scene_count": null, "designs": [{"id": "", "name": "", "purpose": "", "layout": "", "objects": "", "cameras": "", "variation": "", "artifact": ""}], "reuse_constraints": "", "preview_policy": ""},
+    "annotations": {"authority_source": "", "fields": "", "derivation": "", "alignment": "", "validation": ""},
+    "questions": {"public_observations": "", "answerability": "", "output_contract": "", "difficulty_design": "", "anti_shortcut_checks": "", "example": ""},
+    "dataset": {"target_items": null, "split_policy": "", "seed": null, "grouping": "", "deduplication": "", "balance": ""},
+    "scoring": {"metrics": [{"template_id": "", "metric": "", "unit": "", "tolerance": "", "aggregation": ""}], "missing_response": "", "baselines": "", "model_evaluation": ""},
+    "quality_gates": [{"id": "", "check": "", "threshold": "", "evidence": "", "on_failure": ""}],
+    "execution": [{"stage": "S1", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S2", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S3", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S4", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S5", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}],
+    "delivery": {"artifacts": [{"stage": "", "path": "", "format": "", "contents": ""}], "acceptance": ""},
+    "risks": [{"issue": "", "impact": "", "mitigation": "", "status": ""}]
+  }
+}
