@@ -68,16 +68,19 @@ function workbenchUrl(params, workspacePath) {
   return 'api/benchforge/workbench?' + query;
 }
 
+const planTemplateTitles = new Map(JSON.parse(await fs.readFile(fileURLToPath(new URL('../../../src/benchforge_core/pipelines/task_templates.json',import.meta.url)),'utf8'))
+  .tasks.flatMap((task)=>task.templates.map((row)=>[row.id,row.title])));
+
 function publicPlan(plan) {
   if (!plan) return null;
   const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
     ? Object.fromEntries(Object.entries(value).filter(([key]) => key === 'authority_source' || !/^(?:answer|answers|authority|gold|oracle|token|password|api_key)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
-  return {...pick(plan, ['pipeline_id', 'version', 'objective']),
+  return {...pick(plan, ['pipeline_id', 'version', 'objective', 'edit_revision', 'applies_edit']),
     assessment: plan.assessment ? clean(plan.assessment) : undefined,
     selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
     inputs: pick(plan.inputs || {}, ['seed', 'split', 'target_items']),
-    template_contracts: (plan.template_contracts || []).map((row) => pick(row, ['id', 'task_id', 'task_name',
-      'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links', 'execution'])),
+    template_contracts: (plan.template_contracts || []).map((row) => ({...pick(row, ['id', 'task_id', 'task_name',
+      'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links', 'execution']),title:planTemplateTitles.get(row.id) || row.task_name})),
     steps: (plan.steps || []).map((step) => pick(step, ['id', 'uses', 'pipeline_id', 'artifact_type', 'await_terminal']))};
 }
 
@@ -133,7 +136,8 @@ async function sceneLibrary(config, roots, url, signal, selection) {
   const helper = fileURLToPath(new URL('./scene_library.py', import.meta.url));
   const args = ['-B', helper, '--config', config.productionConfig, '--workspace', roots[0].path,
     '--session', session, '--action', action, '--page', String(Math.max(1, Number(url.searchParams.get('page')) || 1)),
-    '--query', (url.searchParams.get('q') || '').slice(0, 300), '--origin', url.searchParams.get('origin') || 'all'];
+    '--query', (url.searchParams.get('q') || '').slice(0, 300), '--origin', url.searchParams.get('origin') || 'all',
+    '--size',String(Math.max(1,Math.min(24,Number(url.searchParams.get('page_size')) || 12)))];
   if (selection) args.push('--value', JSON.stringify(selection));
   const key = JSON.stringify([roots[0].path, session, args.slice(9)]);
   const cached = action === 'list' && config._libraryCache.get(key);
@@ -472,7 +476,7 @@ async function discover(roots, config, signal, scope) {
               const candidate = operation.tool === 'pipeline_plan' ? publicPlan(saved) :
                 {objective: saved.objective || '', inputs: pick(saved, ['target_items']),
                   sources: saved.sources || [], notes: saved.notes || '', source: 'saved_benchmark_brief'};
-              if (!latestPlan || candidate.assessment || !latestPlan.selections?.some((row) => row.template_ids?.length) &&
+              if (!latestPlan || candidate.assessment && !latestPlan.assessment || !latestPlan.assessment && !latestPlan.selections?.some((row) => row.template_ids?.length) &&
                   candidate.selections?.some((row) => row.template_ids?.length)) {
                 latestPlan = candidate;
                 planSource = {operation_id: operation.id, tool: operation.tool,
@@ -633,7 +637,7 @@ async function readMedia(url, roots, signal) {
 }
 
 export function createWorkbenchHandler(config, registered = () => []) {
-  const limits = {maxRuns: 60, maxArtifacts: 300, ...config};
+  const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
   return async (request) => {
@@ -642,7 +646,26 @@ export function createWorkbenchHandler(config, registered = () => []) {
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const scope = scopeOf(url);
       let value;
-      if (view === 'stage_review') {
+      if (view === 'plan_edit') {
+        if (request.method !== 'POST') throw new ApiError('Plan editing requires POST',405);
+        if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
+        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site plan editing is not allowed',403);
+        const body = await request.text();
+        if (body.length > 512000) throw new ApiError('Plan edit is too large',413);
+        let edit;
+        try {edit=JSON.parse(body);} catch {throw new ApiError('Invalid plan edit JSON');}
+        if (!edit?.assessment || typeof edit.plan_path !== 'string') throw new ApiError('A saved plan and edited assessment are required');
+        const file=await inside(roots[0],edit.plan_path);
+        await assertSessionDirectory(roots[0],path.dirname(file),scope);
+        const helper=fileURLToPath(new URL('./plan_edit_cli.py',import.meta.url));
+        const process=execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--plan',file],
+          {signal:request.signal,timeout:20000,maxBuffer:256000});
+        process.child.stdin.on('error',()=>{});
+        process.child.stdin.end(JSON.stringify({assessment:edit.assessment,split:edit.split}));
+        value=JSON.parse((await process).stdout);
+        if (value.error) throw new ApiError(value.error,value.status_code || 400);
+      }
+      else if (view === 'stage_review') {
         if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
         if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site stage review is not allowed',403);
         const body = request.method === 'POST' ? await request.text() : '{}';

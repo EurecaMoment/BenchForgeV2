@@ -6,6 +6,7 @@ from ..runtime import write
 from .catalog import all_templates, capability_id, selected_templates, pipeline_files, relevance
 from .adapters import supports
 from .assessment import validate_assessment
+from .plan_versions import current,activate,verify_application
 
 
 def plan(args, directory, config=None):
@@ -61,10 +62,19 @@ def plan(args, directory, config=None):
              'template_contracts': [{k: catalog[tid][k] for k in ('id', 'task_id', 'task_name', 'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links')} | {'execution': supports(tid)} for tid in dict.fromkeys(tid for s in selections for tid in s['template_ids'])]}
     if args.get('assessment') is not None:
         value['assessment'] = validate_assessment(args['assessment'], selections, inputs)
+    session = args.get('_dsh_context', {}).get('session_id')
+    workspace=Path(directory).parents[1]
+    active=current(workspace,session) if session else None
+    edit=args.get('_plan_edit')
+    if not edit:verify_application(active,args)
+    if edit:value['edit_revision']=deepcopy(edit)
+    if args.get('applies_edit'):value['applies_edit']=args['applies_edit']
     target = Path(directory)/'plan.json'
     write(target, value)
+    if session and (active or edit):
+        activate(workspace,session,str(target.resolve()),expected=edit['base_plan'] if edit else active['plan'],
+                 pending=bool(edit),changes=edit['changes'] if edit else ())
     review = None
-    session = args.get('_dsh_context', {}).get('session_id')
     if session:
         from ..stage_review import gate
         review = gate(Path(directory).parents[1], session, 'S1', str(target.resolve()), str(target.resolve()))

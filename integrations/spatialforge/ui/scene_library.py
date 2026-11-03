@@ -215,8 +215,10 @@ def operate(config, workspace, session, action='list', value=None, page=1, size=
             return save_selection(folder, session, catalog, value)
         if action == 'selection':
             return {**selection, 'sources': selected_sources(catalog, selection['selected'])}
+        selected_ids={(row['id'],row['revision']) for row in selection['selected']}
         rows = [row for row in catalog['items'] if
-                (origin == 'all' or (row['origin_session'] == session) == (origin == 'current')) and
+                (origin == 'all' or origin=='selected' and (row['id'],row['revision']) in selected_ids or
+                 origin in ('current','history') and (row['origin_session'] == session) == (origin == 'current')) and
                 (not query or query.casefold() in (row['name'] + ' ' + row['id'] + ' ' + row['description']).casefold())]
         pages = max(1, (len(rows) + size - 1) // size)
         page = max(1, min(page, pages))
@@ -235,7 +237,7 @@ if __name__ == '__main__':
     parser.add_argument('--page', type=int, default=1)
     parser.add_argument('--size', type=int, default=12)
     parser.add_argument('--query', default='')
-    parser.add_argument('--origin', choices=('all', 'current', 'history'), default='all')
+    parser.add_argument('--origin', choices=('all', 'current', 'history', 'selected'), default='all')
     parser.add_argument('--task')
     parser.add_argument('--revision', type=int)
     parser.add_argument('--file')

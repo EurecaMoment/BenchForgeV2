@@ -8,6 +8,7 @@ from .artifact_graph import ArtifactGraph, binding_roots, make_record
 from .repair import create_plan
 from .production import produce, package
 from ..stage_review import gate, review
+from .plan_versions import current as active_plan
 
 SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
                   'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine',
@@ -120,6 +121,20 @@ def run(args, directory, config=None, client=service_call):
     environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_dsh_context': context,
                    '_run_key': 'pipeline:'+run_root.as_posix()}
     session = context.get('session_id')
+    def plan_guard():
+        active=active_plan(args['_workspace'],session) if session and not args.get('_review_nested') else None
+        if active and (active['plan']!=str(plan_path) or active['pending']):
+            state.update(state='needs_plan_application' if active['plan']==str(plan_path) else 'plan_superseded',
+                active_plan=active['plan'],changed_sections=active['changes'],
+                next='Read the saved edited assessment, update scene/task code and executable steps, and call pipeline_plan with applies_edit='+active['plan']+'. Retain its assessment, allocation and inputs. Use a new run; do not execute the old plan.')
+            write(state_path,state)
+            return {'run':str(run_root.resolve()),**state}
+        if active:
+            for key in ('seed','split','target_items','selections','scene_selection','target_scene_count'):
+                if key in args.get('bindings',{}) and args['bindings'][key]!=plan['inputs'].get(key):
+                    raise ValueError('Run bindings must honor the active edited '+key)
+    blocked=plan_guard()
+    if blocked:return blocked
     def waiting(value):
         state.update(state=value['state'], stage_review=value,
                      next='Wait for the user review window with stage_review(action=wait), then resume this same run. Apply pending user instructions first.')
@@ -142,6 +157,8 @@ def run(args, directory, config=None, client=service_call):
                      str((run_root/'steps'/step['id']/'result.json').resolve()))
         return waiting(value) if not value['can_continue'] else None
     for index, step in enumerate(plan['steps']):
+        blocked=plan_guard()
+        if blocked:return blocked
         prior = state['steps'].get(step['id'])
         if prior and prior['state'] == 'completed':
             arguments = bind(step.get('arguments', {}), environment)

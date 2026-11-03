@@ -1,7 +1,7 @@
 {
   "schema": "spatialforge.assessment-template/v1",
   "scene_binding": "如果请求包含保存的场景选择，将该约束对象一并传入 pipeline_plan.inputs.scene_selection，服务端将校验 assessment.scenes 的勾选场景、版本、selection_path 和 allow_new_scenes；设计新场景写入 designs，不写成已采集场景。",
-  "instructions": "你负责撰写可执行、可审阅的评测计划，前端只展示与操作真实落盘内容。先读取用户需求、保存的场景选择及 pipeline_catalog 中准确的模板合同，再填写下面 assessment 的所有章节。用用户的语言写具体内容，不得照抄空值、占位符或泛泛而谈。计划中的目标和阈值是设计值，不得写成已完成结果；无法确定的事项在 risks 中列出影响、解决方式和待确认状态。coverage 必须逐模板填写实际分配题数，严格对应 selections 的均分和余数分配规则；总数必须等于 dataset.target_items。场景来源严格遵守 selected_scenes、revision 和 allow_new_scenes，不得绕过用户勾选。公开观测必须足以作答，不能把隐藏 GT 当公开条件。给出不含真实答案的公开题目示例、输出格式、每模板评分规则和可执行验收条件。execution 覆盖 S1 到 S5，delivery 为每一阶段声明可查看的产物。调用 pipeline_plan 时将完整对象传入 assessment，并传入一致的 objective、selections 和 inputs；保存后引用返回的计划路径继续已有生产流程。修改计划时重新保存新版本并保留原产物。没有实际采集、验收或模型响应时不得编造其结果，也不得调用未授权的目标模型评测接口。",
+  "instructions": "你负责撰写可执行、可审阅的评测计划，前端只展示与操作真实落盘内容。先读取用户需求、保存的场景选择及 pipeline_catalog 中准确的模板合同，再填写下面 assessment 的所有章节。用用户的语言写具体内容，不得照抄空值、占位符或泛泛而谈。计划中的目标和阈值是设计值，不得写成已完成结果；无法确定的事项在 risks 中列出影响、解决方式和待确认状态。coverage 必须逐模板填写实际分配题数，严格对应 selections 的均分和余数分配规则；总数必须等于 dataset.target_items。场景来源严格遵守 selected_scenes、revision 和 allow_new_scenes，不得绕过用户勾选。公开观测必须足以作答，不能把隐藏 GT 当公开条件。给出不含真实答案的公开题目示例、输出格式、每模板评分规则和可执行验收条件。execution 覆盖 S1 到 S5，delivery 为每一阶段声明可查看的产物。调用 pipeline_plan 时将完整对象传入 assessment，并传入一致的 objective、selections 和 inputs；保存后引用返回的计划路径继续已有生产流程。修改计划时重新保存新版本并保留原产物。没有实际采集、验收或模型响应时不得编造其结果，也不得调用未授权的目标模型评测接口。 通用展示要求：计划、场景、标注、题目和报告以真实图像、可直接播放的视频或可操作全景及有效文字为主体；使用可读题型、场景名称和用途，技术ID与路径留在详情。参考图必须来自已保存的真实采集并注明参考性质，不能把未执行设计当作完成场景。",
   "sections": [
     {"key": "objectives", "title": "评测目标与边界", "guidance": "逐项说明测量的能力、具体问题、成功条件及不覆盖的范围。"},
     {"key": "coverage", "title": "能力、模板与题量分配", "guidance": "逐模板绑定目标、分配题数、难度、测量条件和选择理由，遵守准确模板合同。"},

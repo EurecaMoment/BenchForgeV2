@@ -75,6 +75,7 @@ window.__ModuleLoader__.load({
         persistedSteps: '已落盘完成步骤', currentStep: '当前待完成步骤', unrecordedStep: '尚无执行回执', sceneJobs: '本会话场景任务',
         completedTasks: '执行完成任务', phase: '生产阶段', workerStage: 'worker 最近上报', workerAge: '距 worker 上报', transfer: '已接收产物',
         capturedViews: '已记录图像', actionTraces: '交互轨迹', publication: '发布状态', canceled: '已取消',
+        waiting_user:'等待你的指令',needs_plan_application:'待应用计划修改',plan_superseded:'已由新版计划替代',
         taskLimit: '本页显示前 12 项任务；完整状态可在对话使用 spatialforge_status 查看。',
         noProduction: '当前对话尚无生产回执；任务开始后将在这里更新。',
         recentOperations: '最近工具操作', observerNotConfigured: '场景队列观察器未配置；当前仅读取工作区 pipeline。',
@@ -190,6 +191,7 @@ window.__ModuleLoader__.load({
         persistedSteps: 'Persisted completed steps', currentStep: 'Current unfinished step', unrecordedStep: 'No execution receipt yet', sceneJobs: 'Session scene jobs',
         completedTasks: 'Completed tasks', phase: 'Production phase', workerStage: 'Last worker report', workerAge: 'Since worker report', transfer: 'Artifacts received',
         capturedViews: 'Recorded images', actionTraces: 'Action traces', publication: 'Publication status', canceled: 'Canceled',
+        waiting_user:'Waiting for your instructions',needs_plan_application:'Plan edits need application',plan_superseded:'Replaced by a newer plan',
         taskLimit: 'Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.',
         noProduction: 'This conversation has no production receipts yet. They will appear when a task starts.',
         recentOperations: 'Recent tool operations', observerNotConfigured: 'Scene observer is not configured; only workspace pipelines are observed.',
@@ -282,7 +284,7 @@ window.__ModuleLoader__.load({
 .bfw-progress-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .75rem;margin-top:.4rem;font-size:.72rem;font-variant-numeric:tabular-nums}.bfw-progress-current{max-inline-size:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}.bfw-progress-details{margin-inline-start:auto}.bfw-progress-details summary{color:var(--dsw-alias-label-secondary)}.bfw-progress-details[open]{flex-basis:100%;margin:0}.bfw-progress-detail-body{padding-top:.5rem}.bfw-hint{display:block;color:var(--dsw-alias-label-secondary);font-size:.72rem;line-height:1.4;margin:.2rem 0;overflow-wrap:anywhere}
 
 .bfw-stage-heading{display:flex;align-items:flex-start;gap:.7rem;margin-block:.85rem}.bfw-stage-heading h2{font-size:clamp(1.05rem,2cqi,1.3rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{display:grid;place-items:center;inline-size:2rem;block-size:2rem;flex:0 0 auto;border-radius:.55rem;background:var(--dsw-alias-bg-layer-2);font:.8rem ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}
-.bfw-product{min-inline-size:0;min-block-size:0;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(.75rem,1.4cqi,1rem);margin-block:.65rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-production-source{flex:1 1 26ch}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
+.bfw-product{min-inline-size:0;min-block-size:0;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(.75rem,1.4cqi,1rem);margin-block:.65rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
 .bfw-card{min-width:0;margin-block:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;background:var(--dsw-alias-bg-layer-1)}.bfw-card h2{font-size:.95rem;font-weight:600;margin:0;padding:.8rem 1rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-body{padding:clamp(.75rem,2cqi,1.25rem)}
 .bfw-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12ch),1fr));gap:.75rem;margin-block:1rem}.bfw-stat{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.9rem;min-inline-size:0}.bfw-stat strong{display:block;font-size:clamp(1.25rem,3cqi,1.75rem);margin-block-start:.4rem}.bfw-details,.bfw-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,30ch),1fr));gap:1rem;min-inline-size:0}.bfw-form .bfw-wide{grid-column:1/-1}.bfw-textarea{width:100%;min-height:7em;resize:vertical;line-height:1.6}.bfw-evaluation-grid{display:flex;flex-wrap:wrap;gap:1.5rem;min-inline-size:0}.bfw-evaluation-config{flex:1 1 24ch;min-inline-size:0}.bfw-evaluation-questions{flex:3 1 40ch;min-inline-size:0}
 .bfw-scroll{overflow:auto;max-inline-size:100%}.bfw-table{width:100%;border-collapse:collapse}.bfw-table td,.bfw-table th{text-align:start;padding:.65rem .75rem;border-block-end:1px solid var(--dsw-alias-border-l3);vertical-align:top;overflow-wrap:anywhere}.bfw-table th{font-size:.8rem;font-weight:500;color:var(--dsw-alias-label-secondary)}.bfw-table tr:last-child td{border:0}.bfw-table td>button{max-inline-size:100%}
@@ -290,7 +292,7 @@ window.__ModuleLoader__.load({
 .bfw-context{min-inline-size:0;display:flex;flex-direction:column;padding:1rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1)}.bfw-native-chat{display:flex;flex-direction:column;min-inline-size:0;min-block-size:0;block-size:clamp(10rem,23dvh,18rem);--dsh-chat-content-width:min(100%,var(--dsh-chat-user-width,84ch));--dsh-composer-side-clearance:0rem}.bfw-native-chat>*{flex:1;min-inline-size:0;min-block-size:0}.bfw-native-chat [data-composer-seat]{display:none}
 .bfw-artifact{padding-block:.75rem;border-block-end:1px solid var(--dsw-alias-border-l3)}.bfw-artifact:last-child{border:0}.bfw-detail-row{margin-block:.5rem;overflow-wrap:anywhere}.bfw-root summary{cursor:pointer}.bfw-version{display:block;max-inline-size:100%;overflow-wrap:anywhere}.bfw-pagination{justify-content:space-between;margin-block:1rem}.bfw-list-controls{display:grid;gap:.5rem;margin-block:.75rem}.bfw-list-controls .bfw-toolbar,.bfw-list-controls .bfw-pagination{margin:0}
 .bfw-items,.bfw-gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:1rem}.bfw-item,.bfw-preview-card{display:flex;flex-direction:column;min-inline-size:0;overflow:hidden;text-align:start;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}.bfw-item{padding:.75rem;cursor:pointer}.bfw-preview-card[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open{border:0;padding:0;display:flex;flex-direction:column;gap:.6rem;text-align:start;background:transparent;color:inherit;cursor:pointer;font:inherit}.bfw-preview-open img,.bfw-preview-open video,.bfw-document-thumb{width:100%;aspect-ratio:16/10;object-fit:contain;background:var(--dsw-alias-bg-layer-2)}.bfw-preview-open>strong,.bfw-preview-open>.bfw-muted,.bfw-preview-card>.bfw-code{padding-inline:.8rem;overflow-wrap:anywhere}.bfw-preview-open>.bfw-muted{padding-block-end:.6rem}.bfw-scene-check{display:flex;align-items:center;gap:.5em;padding:.8rem;border-block-start:1px solid var(--dsw-alias-border-l3)}.bfw-document-thumb{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5em;padding:1rem;overflow:hidden}.bfw-document-thumb>span:first-child{font:2rem ui-monospace,monospace}.bfw-item img{width:100%;aspect-ratio:16/10;object-fit:contain;margin-block-end:.75rem}.bfw-item p{white-space:pre-wrap;overflow-wrap:anywhere}.bfw-question-preview{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}.bfw-observation{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin:1rem auto}.bfw-question{white-space:pre-wrap;font-size:1rem;overflow-wrap:anywhere}
-.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-document{min-block-size:0;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem;margin-block:.8rem .35rem}.bfw-plan-summary{white-space:pre-wrap;margin:.35rem 0}.bfw-plan-toc{display:flex;flex-wrap:wrap;gap:.35rem .85rem;margin:.75rem 0;font-size:.8rem}.bfw-plan-toc a{color:var(--dsw-alias-label-secondary);text-decoration:none}.bfw-plan-section{scroll-margin-block:1rem;border-top:1px solid var(--dsw-alias-border-l3);padding-block:.75rem}.bfw-plan-section h4{font-size:1rem;margin:0 0 .65rem}.bfw-plan-section .bfw-table th:first-child,.bfw-plan-section .bfw-table td:first-child{white-space:nowrap}.bfw-plan-fields{margin:0;display:grid;gap:.65rem}.bfw-plan-fields>div{display:grid;grid-template-columns:minmax(7rem,15%) minmax(0,1fr);gap:.65rem}.bfw-plan-fields dt{color:var(--dsw-alias-label-secondary);font-size:.8rem}.bfw-plan-fields dd{margin:0;white-space:pre-wrap;min-width:0;overflow-wrap:anywhere}.bfw-plan-records{display:grid;gap:.65rem}.bfw-plan-records>div{border:1px solid var(--dsw-alias-border-l3);border-radius:.7rem;padding:.75rem}@container (max-width:500px){.bfw-plan-fields>div{grid-template-columns:1fr;gap:.15rem}.bfw-plan-document .bfw-toolbar{gap:.35rem}}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
+.bfw-preview-dialog{width:min(92vw,80rem);max-height:90vh;border:1px solid var(--dsw-alias-border-l3);border-radius:1.25rem;padding:clamp(1rem,3vw,2rem);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}.bfw-preview-dialog::backdrop{background:#0008}.bfw-preview-header{justify-content:space-between}.bfw-preview-header h2{font-size:1.1rem;overflow-wrap:anywhere}.bfw-preview-dialog>img,.bfw-preview-dialog>video{display:block;max-width:100%;max-height:70vh;object-fit:contain;margin:auto}.bfw-plan-scenes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;margin:.8rem 0}.bfw-plan-scene{display:grid;text-align:start;gap:.3rem;padding:.4rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.65rem;background:transparent;color:inherit;font:inherit;min-width:0;cursor:pointer}.bfw-plan-scene img{width:100%;aspect-ratio:16/10;object-fit:contain;border-radius:.35rem}.bfw-plan-scene small{font-size:.65rem;color:var(--dsw-alias-label-secondary)}.bfw-plan-editable{display:block;white-space:pre-wrap;border-radius:.3rem;min-height:1.4em;outline:1px dashed var(--dsw-alias-border-l3);padding:.15em .3em}.bfw-plan-editable:focus{outline:2px solid var(--dsw-alias-brand-primary)}.bfw-plan-number{width:8ch;padding:.2em .4em}.bfw-plan-document{min-block-size:0;overflow-wrap:anywhere}.bfw-plan-document h3{font-size:1.25rem;margin-block:.8rem .35rem}.bfw-plan-summary{white-space:pre-wrap;margin:.35rem 0}.bfw-plan-toc{display:flex;flex-wrap:wrap;gap:.35rem .85rem;margin:.75rem 0;font-size:.8rem}.bfw-plan-toc a{color:var(--dsw-alias-label-secondary);text-decoration:none}.bfw-plan-section{scroll-margin-block:1rem;border-top:1px solid var(--dsw-alias-border-l3);padding-block:.75rem}.bfw-plan-section h4{font-size:1rem;margin:0 0 .65rem}.bfw-plan-section .bfw-table th:first-child,.bfw-plan-section .bfw-table td:first-child{white-space:nowrap}.bfw-plan-fields{margin:0;display:grid;gap:.65rem}.bfw-plan-fields>div{display:grid;grid-template-columns:minmax(7rem,15%) minmax(0,1fr);gap:.65rem}.bfw-plan-fields dt{color:var(--dsw-alias-label-secondary);font-size:.8rem}.bfw-plan-fields dd{margin:0;white-space:pre-wrap;min-width:0;overflow-wrap:anywhere}.bfw-plan-records{display:grid;gap:.65rem}.bfw-plan-records>div{border:1px solid var(--dsw-alias-border-l3);border-radius:.7rem;padding:.75rem}@container (max-width:500px){.bfw-plan-fields>div{grid-template-columns:1fr;gap:.15rem}.bfw-plan-document .bfw-toolbar{gap:.35rem}}.bfw-definition{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,20ch),1fr));gap:1rem}.bfw-definition dt{color:var(--dsw-alias-label-secondary)}.bfw-definition dd{margin:0;overflow-wrap:anywhere}
 .bfw-annotation-image{position:relative;width:fit-content;max-inline-size:100%;margin-inline:auto}.bfw-annotation-image img{display:block;max-inline-size:100%;max-block-size:65vh;object-fit:contain}.bfw-annotation-image svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bfw-production{border:1px solid var(--dsw-alias-border-l3);border-radius:.75rem;padding:.75rem;margin-block:1rem;overflow-wrap:anywhere}.bfw-production p{margin-block:.4em}.bfw-production-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5em}.bfw-live-details>summary{padding-block:.4rem;color:var(--dsw-alias-label-secondary)}.bfw-live-task,.bfw-live-line{padding-block:.75rem;border-block-start:1px solid var(--dsw-alias-border-l3);margin-block-start:.5rem}.bfw-callout,.bfw-notice{padding:.75rem 1rem;border-radius:.75rem;background:var(--dsw-alias-bg-layer-2);margin-block:.75rem;overflow-wrap:anywhere}.bfw-catalog{display:grid;gap:.75rem;margin-block:1rem}.bfw-template{border:1px solid var(--dsw-alias-border-l3);padding:.75rem;border-radius:.75rem;min-inline-size:0}.bfw-template header,.bfw-selected{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}.bfw-template[data-selected=true]{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}.bfw-selected{padding-block:.5rem;border-block-end:1px solid var(--dsw-alias-border-l3)}
 .bfw-evaluation-launcher{font:inherit;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-button-elevated-fill);border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem;padding:.4em .7em;cursor:pointer}.bfw-evaluation-launcher:hover{background:var(--dsw-alias-button-floating-hover)}.bfw-evaluation-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
@@ -309,21 +311,45 @@ window.__ModuleLoader__.load({
     function card(title, children) { return h('section', {className: 'bfw-card'}, h('h2', null, title), h('div', {className: 'bfw-body'}, children)); }
     function empty(text) { return h('div', {className: 'bfw-empty'}, text); }
     function json(value) { return h('pre', {className: 'bfw-json'}, JSON.stringify(value, null, 2)); }
-    function planValue(value) {
+    const PLAN_TECHNICAL=new Set(['id','objective_id','task_id','run_id','selection_path','source_directory','program_path','path','artifact','revision','evidence']);
+    function sceneName(name,index=0) {
+      const label=String(name || '');
+      if(/[\u4e00-\u9fff]/.test(label))return label;
+      const rooms={living_room:'客厅',living:'客厅',dining:'餐厅',storage:'储物间',corridor:'走廊',study:'书房',kitchen:'餐厨',office:'办公室',garden:'花园',yard:'庭院',plaza:'广场',warehouse:'仓库'};
+      const matched=Object.keys(rooms).find(key=>new RegExp('(?:^|_)'+key+'(?:_|$)').test(label));
+      if(!matched)return /^(?:sf_|[a-f0-9]{12,})/.test(label) ? '场景 '+(index+1) : label.replace(/_/g,' ');
+      const version=label.match(/(?:^|_)v(\d+)(?:_|$)/);
+      return rooms[matched]+(/probe/.test(label) ? ' · 校准版' : /archive/.test(label) ? ' · 归档版' : '')+(version ? ' · 版本 '+version[1] : '');
+    }
+    function planValue(value, edit, path = [], labels = {}) {
+      const key = path[path.length - 1];
+      if(key==='template_id') return labels[value] || '题型';
+      if(key==='stage') return {S1:'计划',S2:'场景',S3:'标注',S4:'题目',S5:'报告'}[value] || value;
+      const fixed = ['schema','id','objective_id','template_id','stage','selection_path','selected_scenes','allow_new_scenes'].includes(key);
+      const next = fixed ? null : edit;
+      if (next && (typeof value === 'number' || (value === null && ['count','seed','target_items','target_scene_count'].includes(key)))) {
+        return h('input', {className:'bfw-input bfw-plan-number', type:'number', step:1, min:key === 'seed' ? undefined : 1,
+          'aria-label':path.join('.'), 'data-plan-field':path.join('.'), value:value ?? '',
+          onChange:(event)=>next(path,event.target.value === '' ? null : Number(event.target.value))});
+      }
+      if (next && typeof value === 'string') return h('span', {className:'bfw-plan-editable', contentEditable:true,
+        suppressContentEditableWarning:true, role:'textbox', 'aria-multiline':true, 'aria-label':path.join('.'),
+        'data-plan-field':path.join('.'), onInput:(event)=>next(path,event.currentTarget.textContent)}, value);
       if (value === null || value === undefined || value === '') return h('span', {className: 'bfw-muted'}, '—');
       if (typeof value === 'boolean') return value ? '是' : '否';
       if (Array.isArray(value)) {
         if (!value.length) return h('span', {className: 'bfw-muted'}, '无');
         if (value.every((row) => row && typeof row === 'object' && !Array.isArray(row))) {
-          const keys = [...new Set(value.flatMap((row) => Object.keys(row)))];
-          if (keys.length <= 7) return table(keys.map((key) => PLAN_FIELDS[key] || key), value.map((row) => keys.map((key) => planValue(row[key]))));
-          return h('div', {className: 'bfw-plan-records'}, value.map((row, index) => h('div', {key: index}, planValue(row))));
+          const keys = [...new Set(value.flatMap((row) => Object.keys(row)))].filter((key)=>!PLAN_TECHNICAL.has(key));
+          if (keys.length <= 7 && key!=='designs') return table(keys.map((key) => PLAN_FIELDS[key] || key), value.map((row,index) => keys.map((key) => planValue(row[key],next,[...path,index,key],labels))));
+          return h('div', {className: 'bfw-plan-records'}, value.map((row, index) => h('div', {key: index}, planValue(row,next,[...path,index],labels))));
         }
-        return h('ul', null, value.map((row, index) => h('li', {key: index}, planValue(row))));
+        return h('ul', null, value.map((row, index) => h('li', {key: index}, planValue(row,next,[...path,index],labels))));
       }
-      if (typeof value === 'object') return h('dl', {className: 'bfw-plan-fields'}, Object.entries(value).map(([key, child]) =>
-        h('div', {key}, h('dt', null, PLAN_FIELDS[key] || key), h('dd', null, planValue(child)))));
-      return String(value);
+      if (typeof value === 'object') return h('dl', {className: 'bfw-plan-fields'}, Object.entries(value).filter(([key])=>!PLAN_TECHNICAL.has(key)).map(([key, child]) =>
+        h('div', {key}, h('dt', null, PLAN_FIELDS[key] || key), h('dd', null, planValue(child,next,[...path,key],labels)))));
+      if(key==='name')return sceneName(value);
+      return String(value).replace(/\b(?:C\d{2}|P\d{3})-T\d{2}\b/g,(id)=>labels[id] || id);
     }
     function planMarkdown(plan) {
       const format = (value, depth = 0) => Array.isArray(value) ? value.map((row, index) => '- ' + (typeof row === 'object' ? '\n' : '') + format(row, depth + 1)).join('\n')
@@ -660,6 +686,7 @@ window.__ModuleLoader__.load({
         const id = item.task_id || item.scene_id || 'scene';
         if (!groups.has(id)) groups.set(id, {id, title: item.scene_name || id, frames: [], video: null, kind: 'scene'});
         const project = groups.get(id);
+        project.title=sceneName(project.title,groups.size-1);
         if (item.kind === 'video' && (!project.video || item.purpose === 'scene_tour')) project.video = item;
         else project.frames.push(item);
       }
@@ -725,22 +752,23 @@ window.__ModuleLoader__.load({
         error && h('p', {className: 'bfw-error', role: 'alert'}, error),
         h('div', {className: 'bfw-scene-projects'}, data.items.map((row) => {
           const checked = selected.some((reference) => reference.id === row.id && reference.revision === row.revision);
-          const project = {...row, title: row.name, kind: 'scene'};
+          const name=sceneName(row.name,data.items.indexOf(row));
+          const project = {...row, title: name, kind: 'scene'};
           return h('article', {className: 'bfw-preview-card bfw-scene-project' + (checked ? ' bfw-scene-selected' : ''), key: row.id,
             'data-scene-project': row.id, 'data-scene-selected': String(checked)},
             h('label', {className: 'bfw-scene-select'}, h('input', {type: 'checkbox', checked, disabled: busy || !row.available,
-              'aria-label': t('useScene') + ' ' + row.name, onChange: (event) => choose(event.target.checked
+              'aria-label': t('useScene') + ' ' + name, onChange: (event) => choose(event.target.checked
                 ? [...selected.filter((reference) => reference.id !== row.id), {id: row.id, revision: row.revision}]
                 : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)}), t('useScene')),
             h('button', {type: 'button', className: 'bfw-preview-open', disabled: !row.available, onClick: () => preview(project),
-              'aria-label': t('preview') + ' ' + row.name},
+              'aria-label': t('preview') + ' ' + name},
               h('span', {className: 'bfw-scene-poster'}, row.video ? h('video', {src: row.video.url, poster: row.frames[0]?.url,
                 preload: 'metadata', muted: true, playsInline: true}) : row.frames.length ? h('img', {src: row.frames[0].url, alt: row.name, loading: 'lazy'}) :
                   h('span', {className: 'bfw-muted'}, t('sceneUnavailable')),
                 row.available && h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, row.video ? '▶' : '↔')),
-              h('strong', null, row.name), h('span', {className: 'bfw-muted'}, t(row.origin_session === selection?.session_id ? 'currentScenes' : 'historyScenes') +
-                ' · ' + t('recordedViews') + ': ' + row.frame_count + ' · r' + row.revision)),
-            h('p', {className: 'bfw-code'}, row.id));
+              h('strong', null, name), h('span', {className: 'bfw-muted'}, t(row.origin_session === selection?.session_id ? 'currentScenes' : 'historyScenes') +
+                ' · ' + t('recordedViews') + ': ' + row.frame_count)),
+            h('details',null,h('summary',null,'技术详情'),h('p', {className: 'bfw-code'}, row.id+' · 采集版本 '+row.revision)));
         })),
         !data.items.length && empty(t('noMatchingRuns')),
         h('div', {className: 'bfw-pagination'}, button(t('previous'), () => page(data.page - 1), {disabled: data.page <= 1}),
@@ -783,18 +811,25 @@ window.__ModuleLoader__.load({
                     h('text', {x: x1 + 4, y: Math.max(18, y1 - 5), fill: '#4ade80', stroke: '#102020', strokeWidth: .5,
                       fontSize: Math.max(14, data.image_size.width / 65)}, row.label || row.object_id));
                 }))),
-            typeof data === 'string' ? h('pre', {className: 'bfw-json'}, data) : json(data)) : empty(t('loading')));
+            typeof data === 'string' ? h('pre', {className: 'bfw-json'}, data) : h(React.Fragment,null,
+              data.visible_objects?.length>0 && h('div',null,h('p',null,'可见物体：'+data.visible_objects.length+' · 图像标注与当前场景配对'),
+                table(['物体','图像位置（像素）'],data.visible_objects.map((row,index)=>[row.label || '物体 '+(index+1),row.bbox_2d?.xyxy?.join(', ') || '—']))),
+              h('details',null,h('summary',null,t('details')),json(data)))) : empty(t('loading')));
     }
     function ArtifactGallery({items, preview, t}) {
       if (!items.length) return empty(t('artifactPending'));
-      return h('div', {className: 'bfw-gallery'}, items.map((item) => h('article', {className: 'bfw-preview-card', key: item.url || item.title,
+      return h('div', {className: 'bfw-gallery'}, items.map((saved,index) => {
+        const view=(saved.file || saved.title || '').match(/view[_-](\d+)/);
+        const kind=saved.image_url ? '标注' : saved.kind==='image' ? '场景图' : saved.kind==='video' ? '场景巡览' : '产物';
+        const item={...saved,title:(view ? '视角 '+(Number(view[1])+1)+' · '+kind : saved.title || kind+' '+(index+1))};
+        return h('article', {className: 'bfw-preview-card', key: item.url || item.title,
         'data-preview-kind': item.kind},
         h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(item), 'aria-label': t('preview') + ' ' + item.title},
           item.kind === 'image' || item.image_url ? h('img', {src: item.image_url || item.url, loading: 'lazy', alt: item.title}) : item.kind === 'video' ?
             h('video', {src: item.url, preload: 'metadata', muted: true, 'aria-label': item.title}) :
             h('div', {className: 'bfw-document-thumb'}, h('span', null, item.kind === 'json' ? '{ }' : '≡'), h('span', null, item.title)),
           h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
-        item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision)))));
+        item.task_id && h('details',null,h('summary',null,'技术详情'),h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision))));}));
     }
     function StageReviewPanel({value, act, change, t}) {
       const [tick,setTick] = React.useState(Date.now());
@@ -875,30 +910,70 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
           button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending || !payload.text.trim()})));
     }
-    function PlanProduct({plan, source, artifacts, preview, request, template, t}) {
+    function PlanProduct({plan, source, artifacts, preview, request, save, applyEdit, scenes = [],template, t}) {
+      const [draft,setDraft]=React.useState(null);
+      const [busy,setBusy]=React.useState(false);
+      const [error,setError]=React.useState('');
+      const [pending,setPending]=React.useState(null);
+      const draftRef=React.useRef(null);
+      const lock=React.useRef(false);
+      const begin=()=>{const value={assessment:JSON.parse(JSON.stringify(plan.assessment)),split:plan.inputs?.split || 'train',base:source?.plan_path};
+        draftRef.current=value;setDraft(value);setError('');};
+      const change=(path,value)=>{
+        const copy=JSON.parse(JSON.stringify(draftRef.current));
+        let parent=copy.assessment;for(const key of path.slice(0,-1)) parent=parent[key];parent[path[path.length-1]]=value;
+        if(path[0]==='coverage' && path[2]==='count') copy.assessment.dataset.target_items=copy.assessment.coverage.reduce((sum,row)=>sum+(row.count || 0),0);
+        if(path.join('.')==='dataset.target_items' && Number.isInteger(value) && value>=copy.assessment.coverage.length) {
+          const rows=copy.assessment.coverage,total=rows.reduce((sum,row)=>sum+row.count,0),remaining=value-rows.length;
+          const allocation=rows.map((row,index)=>({index,share:remaining*(total ? row.count/total : 1/rows.length)}));
+          let left=value;allocation.forEach((row)=>{rows[row.index].count=1+Math.floor(row.share);left-=rows[row.index].count;});
+          allocation.sort((a,b)=>(b.share%1)-(a.share%1)).slice(0,left).forEach((row)=>rows[row.index].count++);
+        }
+        draftRef.current=copy;
+        if(typeof value!=='string') setDraft(copy);
+      };
+      const apply=async(path)=>{let message='',ok=false;
+        try{ok=await applyEdit(path,(value)=>{message=value;});}catch(error){message=error.message;}
+        if(!ok) setError('计划已保存，制作变更尚未提交。'+(message || '请点击“应用已保存修改”重试。'));
+        else {setPending(null);setError('');}return ok;};
+      const commit=async()=>{
+        if(lock.current)return;lock.current=true;setBusy(true);setError('');
+        try {const value=draftRef.current;const result=await save({plan_path:value.base,assessment:value.assessment,split:value.split});
+          setDraft(null);draftRef.current=null;
+          if(result.state!=='unchanged'){setPending(result.plan);if(applyEdit)await apply(result.plan);}
+        }catch(error){setError(error.message);}finally{lock.current=false;setBusy(false);}
+      };
       if (!plan) return h('div', null, empty(t('planPending')), h('details', null, h('summary', null, t('planTemplate')),
         h('small', {className: 'bfw-hint'}, t('planTemplateNote')),
         h('ol', null, (template?.sections || PLAN_SECTIONS.map(([key, title]) => ({key, title}))).map((row) => h('li', {key: row.key}, row.title)))));
-      const document = plan.assessment;
+      const document = draft?.assessment || plan.assessment;
+      const labels=Object.fromEntries((plan.template_contracts || []).map((row)=>[row.id,row.title || row.task_name]));
       const sections = PLAN_SECTIONS.filter(([key]) => document?.[key]);
       const operate = (text) => request('本次操作对象是当前页面展示的已保存计划：' +
         (source?.plan_path || source?.operation_id || source?.run_id || plan.objective) + '\n请先读取该计划及其准确合同，再应用以下要求：\n' + text);
-      return h('article', {className: 'bfw-plan-document', 'data-assessment-document': document?.schema || 'legacy_summary'},
+      return h('article', {key:draft ? 'editing' : 'saved',className: 'bfw-plan-document', 'data-assessment-document': document?.schema || 'legacy_summary'},
         h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
           document && h('span', {className: 'bfw-pill'}, t('completePlan') + ' · ' + sections.length + '/' + PLAN_SECTIONS.length),
-          request && button(t(document ? 'revisePlan' : 'completePlanRequest'), () => operate(document
-            ? '请修改当前评测计划：\n修改要求：\n保留未修改部分，按照完整评测计划模板重新保存一个版本，并说明变化。'
-            : '请基于当前真实需求和已保存的执行摘要，按照完整评测计划模板补全并保存 assessment。读取原模板合同和已有产物，不得编造执行结果；复用当前用户勾选的场景约束。'), {'data-plan-revise': true}),
-          document && request && button(t('continuePlan'), () => operate('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
+          !draft && (document ? save && button(t('revisePlan'),begin,{'data-plan-revise':true}) : request && button(t('completePlanRequest'),()=>operate('请按照完整评测计划模板补全并保存 assessment，复用当前场景约束。'),{'data-plan-revise':true})),
+          draft && button(busy ? '保存中…' : '保存并应用',commit,{'data-plan-save':true,disabled:busy}),
+          draft && button('取消',()=>{setDraft(null);draftRef.current=null;setError('');},{'data-plan-cancel':true,disabled:busy}),
+          !draft && (pending || (plan.edit_revision && !plan.applies_edit)) && applyEdit && button('应用已保存修改',()=>apply(pending || source.plan_path),{'data-plan-apply':true}),
+          !draft && !pending && !plan.edit_revision && document && request && button(t('continuePlan'), () => operate('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
           h('a', {className: 'bfw-button', href: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(plan, null, 2)), download: 'assessment-plan.json'}, t('exportPlan')),
           h('a', {className: 'bfw-button', href: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(planMarkdown(plan)), download: 'assessment-plan.md'}, t('exportPlanText'))),
-        h('h3', null, document?.title || (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
-        document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, document.summary),
+        error && h('p',{className:'bfw-error',role:'alert'},error),
+        draft && h('small',{className:'bfw-hint'},'直接点击正文修改。题量会同步到制作参数；保存后按新计划更新制作。'),
+        draft && select('制作分区',draft.split,(value)=>{draftRef.current={...draftRef.current,split:value};setDraft({...draftRef.current});},['train','dev','test','sealed'].map(value=>[value,value])),
+        h('h3', null, document ? planValue(document.title,draft ? change : null,['title'],labels) : (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
+        scenes.length>0 && h('div',{className:'bfw-plan-scenes','data-plan-scene-previews':true},scenes.slice(0,3).map((row)=>h('button',{
+          type:'button',className:'bfw-plan-scene',key:row.id,onClick:()=>preview({...row,title:row.name,kind:'scene'})},
+          row.frames?.[0]?.url && h('img',{src:row.frames[0].url,alt:sceneName(row.name),loading:'lazy'}),h('span',null,sceneName(row.name)),h('small',null,'已采集参考场景')))),
+        document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, planValue(document.summary,draft ? change : null,['summary'],labels)),
           h('small', {className: 'bfw-hint'}, t('planDesignNote')),
           h('nav', {className: 'bfw-plan-toc', 'aria-label': t('completePlan')}, sections.map(([key, title], index) =>
             h('a', {key, href: '#bfw-plan-' + key}, String(index + 1).padStart(2, '0') + ' ' + title))),
           sections.map(([key, title], index) => h('section', {key, id: 'bfw-plan-' + key, className: 'bfw-plan-section', 'data-plan-section': key},
-            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key]))))
+            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key],draft ? change : null,[key],labels))))
           : h('p', {className: 'bfw-hint'}, t('legacyPlan')),
         h(document ? 'details' : React.Fragment, document ? {} : null, document && h('summary', null, t('planSteps')),
         plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
@@ -933,14 +1008,14 @@ window.__ModuleLoader__.load({
           h('div', {key}, h('dt', null, t(key)), h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : String(value ?? '—'))))),
         h('details', null, h('summary', null, t('details')), json(data)));
     }
-    function Quality({report, t}) {
+    function Quality({report, t, templateName=(id)=>id}) {
       if (!report) return empty(t('noReport'));
       return h(React.Fragment, null,
         h('small', {className: 'bfw-hint'}, t('reportNote')),
         h('div', {className: 'bfw-stats'}, ['requested', 'accepted', 'shortfall', 'scene_groups'].map((key) =>
           h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, report[key] ?? '—')))),
         h('p', null, t('approval') + ': ', report.benchmark_approved === undefined ? '—' : t(report.benchmark_approved ? 'yes' : 'no')),
-        card(t('coverage'), table([t('template'), t('accepted')], Object.entries(report.per_template || {}))),
+        card(t('coverage'), table([t('template'), t('accepted')], Object.entries(report.per_template || {}).map(([id,count])=>[templateName(id),count]))),
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
     }
 
@@ -1038,6 +1113,8 @@ window.__ModuleLoader__.load({
         {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
       const sceneLibrary = useRecord(workspacePath ? {view: 'scene_library', workspace_path: workspacePath, session_id: sessionId,
         q: sceneQuery, origin: sceneOrigin, page: scenePage} : null, receiptsRevision, 30000, visible);
+      const planSceneLibrary=useRecord(workspacePath && route.stage==='S1' ? {view:'scene_library',workspace_path:workspacePath,session_id:sessionId,
+        origin:'selected',page_size:24} : null,receiptsRevision,30000,visible);
       const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
       const reviewAction = async (action,instruction='') => {
         const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
@@ -1186,6 +1263,20 @@ window.__ModuleLoader__.load({
         } catch (error) {setError(t(readError) + ' ' + error.message); return false;}
         finally {selectionSubmitLock.current = false; setSending(false);}
       };
+      const savePlan=async(edit)=>{
+        const response=await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'plan_edit',workspace_path:workspacePath,session_id:sessionId}),
+          {method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(edit)});
+        const value=await response.json();if(!response.ok || value.error) throw new Error(value.error || '计划保存失败');
+        if(value.state!=='unchanged'){update({run:'',production:''});setRevision((value)=>value+1);}
+        return value;
+      };
+      const applyPlanEdit=async(path,setError)=>{
+        if(conversationRunning)await stopExecution();
+        return submitWithScenes({text:'用户已在计划正文中完成编辑，已保存的新计划：'+path+
+          '\n必须先读取该文件，比较 edit_revision.base_plan，并按修改后的正文更新场景方案、任务代码、校验和可执行步骤。调用 pipeline_plan(applies_edit="'+path+
+          '")，原样保留该文件的 assessment、selections 和 inputs 中的题量、种子、分区及场景约束。文字规则必须落实到制作代码和步骤，不能只复述文档。新执行计划保存后使用新的 run 继续生产，复用仍符合新合同的已有产物和已提交采集。',
+          inserted:false,reviewContinued:true},setError);
+      };
       const confirmSend = async () => {
         if (sendPayload && await submitWithScenes(sendPayload, setSendError)) setSendPayload(null);
       };
@@ -1207,16 +1298,9 @@ window.__ModuleLoader__.load({
       const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
-      const versionOptions = [['', t('chooseDataset')], ...datasets.map((row) =>
-        [row.id, row.workspace + ' / ' + displayRef(row.version)])];
-      const chooseProduction = (value) => {
-        setPreview(null);
-        if (value.startsWith('scene:')) update({production: value.slice(6), run: '', dataset: '', template: '', split: '', q: '', page: 1});
-        else update({run: value, production: '', dataset: '', template: '', split: '', q: '', page: 1});
-      };
-      const productionOptions = [['', t('automaticRecord')],
-        ...sceneJobs.map((row) => ['scene:' + row.run_id, row.run_id + ' · ' + t(lifecycle(row.state))]),
-        ...rows.map((row) => [row.id, displayRef(row.label) + ' · ' + t(row.state)])];
+      const templateName=(id)=>plan?.template_contracts?.find(row=>row.id===id)?.title || '题型';
+      const versionOptions = [['', t('chooseDataset')], ...datasets.map((row,index) =>
+        [row.id,'数据集 '+(index+1)+' · '+(row.report?.accepted ?? '—')+' 题 · '+(row.updated_at || '').slice(0,10)])];
       const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h('div', {className: 'bfw-list-controls'},
         h('div', {className: 'bfw-toolbar'},
           h('input', {className: 'bfw-input', type: 'search', 'aria-label': label, placeholder: label, value: query, onChange: (e) => onQuery(e.target.value)}),
@@ -1258,7 +1342,7 @@ window.__ModuleLoader__.load({
           button(t('table'), () => update({layout: 'table'}), {'aria-pressed': route.layout === 'table'}),
           h('span', {className: 'bfw-muted'}, t('matches') + ': ' + (data?.total ?? '—') + ' / ' + t('total') + ': ' + (data?.all ?? '—'))),
         dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : currentSample ? h(React.Fragment, null,
-          button(t('close'), () => setSample(null)), h('h3', {className: 'bfw-code', ref: sampleHeadingRef, tabIndex: -1}, currentSample.item_id || currentSample.id),
+          button(t('close'), () => setSample(null)), h('h3', {ref: sampleHeadingRef, tabIndex: -1},'题目 '+(currentSample.row_index+1)),
           h('p', {className: 'bfw-question'}, currentSample.question), h('h3', null, t('media')),
           currentSample.media?.length ? currentSample.media.map((src, i) => h(PublicObservation,
             {key: src, src, type: currentSample.media_types?.[i], label: t('media') + ' ' + (i + 1), t})) : empty(t('noMedia')),
@@ -1266,12 +1350,12 @@ window.__ModuleLoader__.load({
           !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
             (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
             table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
-              [item.item_id || item.id, item.template_id || '—', item.split || '—', item.question,
+              [item.row_index+1, plan?.template_contracts?.find(row=>row.id===item.template_id)?.title || '题型', item.split || '—', item.question,
                 button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
             h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
               'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
               firstImage(item) && h(PublicObservation, {src: firstImage(item), compact: true, label: t('media'), t}),
-              h('span', {className: 'bfw-code'}, item.item_id || item.id), h('p', {className: 'bfw-question-preview'}, item.question),
+              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, item.question),
               h('span', {className: 'bfw-muted'}, (item.template_id || '') + ' · ' + (item.split || ''))))),
         !currentSample && h('div', {className: 'bfw-pagination'},
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
@@ -1300,7 +1384,9 @@ window.__ModuleLoader__.load({
         let product;
         if (stage.id === 'S1') product = h(React.Fragment, null,
           h(PlanProduct, {plan, source: conversationPlan || !selectedRunId ? summary.value?.plan_source : run.value?.plan_source,
-            artifacts: productFiles, preview: setPreview, request: prepare, t}),
+            artifacts: productFiles, preview: setPreview, request: prepare, save:savePlan,applyEdit:applyPlanEdit,
+            scenes:(planSceneLibrary.value?.items || []).filter(row=>plan?.assessment?.scenes?.selected_scenes?.some(selected=>(selected.task_id || selected.id)===row.id && selected.revision===row.revision))
+              .sort((a,b)=>Number(plan?.assessment?.scenes?.designs?.some(design=>sceneName(b.name).startsWith(design.name)))-Number(plan?.assessment?.scenes?.designs?.some(design=>sceneName(a.name).startsWith(design.name)))),t}),
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);
@@ -1319,11 +1405,11 @@ window.__ModuleLoader__.load({
           h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
             select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
             h('dl', {className: 'bfw-definition'},
-              h('div', null, h('dt', null, t('version')), h('dd', null, selectedDataset ? displayRef(selectedDataset.version) : '—')),
+              h('div', null, h('dt', null, t('version')), h('dd', null, selectedDataset ? '数据集 '+(datasets.indexOf(selectedDataset)+1) : '—')),
               h('div', null, h('dt', null, t('targetItems')), h('dd', null, dataset.value?.report?.requested ?? plannedItems ?? '—')),
               h('div', null, h('dt', null, t('sourceType')), h('dd', null, dataset.value?.report?.source || '—'))),
             plan?.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
-              plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
+              plan.selections.map((row) => [row.template_ids.map(templateName).join('、'), row.count, row.reason])),
             productFiles.length > 0 && h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t}),
             datasetDirectory),
           h('section', {className: 'bfw-evaluation-questions'}, h('h3', null, t('questionTable')),
@@ -1331,7 +1417,7 @@ window.__ModuleLoader__.load({
         else product = h(React.Fragment, null,
           select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
           dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
-          (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report, t}),
+          (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report,templateName,t}),
           !finalReport && (sceneArtifacts.loading || run.loading) ? empty(t('loading')) :
             !finalReport && filesError ? h('p', {className: 'bfw-error'}, t('artifactReadFailed') + ' ' + filesError) :
               h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
@@ -1339,8 +1425,6 @@ window.__ModuleLoader__.load({
             h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
       const body = h(React.Fragment, null,
 
-          productionOptions.length > 2 && h('div', {className: 'bfw-production-source'},
-            select(t('productionRecord'), route.run || (route.production ? 'scene:' + route.production : ''), chooseProduction, productionOptions)),
           h('section', {className: 'bfw-product', 'data-stage-product': stage.id, 'aria-label': t('keyProduct') + ' · ' + t(stage.key)}, product),
           !sourceScene && run.value && h('details', {'data-run-details': true}, h('summary', null, t('runDetails')),
             h(RunDetails, {record: run.value, t})),
