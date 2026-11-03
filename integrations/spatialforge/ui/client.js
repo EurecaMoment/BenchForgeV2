@@ -110,7 +110,7 @@ window.__ModuleLoader__.load({
         publicNote: '当前是公开题目视角，接口不读取 authority、答案或 oracle 文件。',
         report: '生成质量报告', noReport: '该版本没有 quality_report.json，不能宣称已完成集合质量验收。',
         requested: '请求数', accepted: '生成接纳数', shortfall: '缺口', scene_groups: '场景组',
-        approval: '报告声明 benchmark_approved', reportNote: '生成接纳数不等于已验证样本数；未收集模型响应时不显示 IRT。',
+        approval: '评测验证通过', reportNote: '生成接纳数不等于已验证样本数；未收集模型响应时不显示 IRT。',
         coverage: '各模板实际接纳数', rejections: '缺口与拒绝原因', noRejections: '报告没有记录缺口或拒绝原因。',
         local_field_repair: '局部字段修复', template_rebinding: '模板重绑定', candidate_resynthesis: '候选重合成',
         skill_reexecution: '重新执行步骤', upstream_rollback: '上游回滚', final_rejection: '最终拒绝',
@@ -226,7 +226,7 @@ window.__ModuleLoader__.load({
         publicNote: 'Public view. The API does not read authority, answers or oracle files.',
         report: 'Generation quality report', noReport: 'No quality_report.json. Collection acceptance cannot be inferred.',
         requested: 'Requested', accepted: 'Generation accepted', shortfall: 'Shortfall', scene_groups: 'Scene groups',
-        approval: 'Report declares benchmark_approved', reportNote: 'Generation acceptance is not verified-item count. IRT is hidden without model responses.',
+        approval: 'Benchmark validation passed', reportNote: 'Generation acceptance is not verified-item count. IRT is hidden without model responses.',
         coverage: 'Accepted items per template', rejections: 'Shortfalls & rejections', noRejections: 'No shortfall or rejection recorded in this report.',
         local_field_repair: 'Local field repair', template_rebinding: 'Template rebinding', candidate_resynthesis: 'Candidate resynthesis',
         skill_reexecution: 'Step re-execution', upstream_rollback: 'Upstream rollback', final_rejection: 'Final rejection',
@@ -1004,9 +1004,13 @@ window.__ModuleLoader__.load({
       if (error) return h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + error);
       if (!data) return empty(t('loading'));
       return h('article', {className: 'bfw-plan-document'}, h('h3', null, item.title),
-        h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([, value]) => value === null || typeof value !== 'object').map(([key, value]) =>
-          h('div', {key}, h('dt', null, t(key)), h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : String(value ?? '—'))))),
-        h('details', null, h('summary', null, t('details')), json(data)));
+        h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([key, value]) =>
+          ['requested','accepted','shortfall','split','scene_groups','total','count','success_rate','model_api_calls','benchmark_approved','state','status'].includes(key) &&
+          (value === null || typeof value !== 'object')).map(([key, value]) =>
+          h('div', {key}, h('dt', null, key==='benchmark_approved' ? t('approval') :
+            ({total:'总数',count:'数量',success_rate:'成功率',model_api_calls:'模型调用次数',status:'状态'})[key] || t(key)),
+            h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : ['state','status'].includes(key) ? t(value) : String(value ?? '—'))))),
+        h('details', null, h('summary', null,'数据详情'), json(data)));
     }
     function Quality({report, t, templateName=(id)=>id}) {
       if (!report) return empty(t('noReport'));
