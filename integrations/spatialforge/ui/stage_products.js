@@ -476,6 +476,7 @@ async function discover(roots, config, signal, scope) {
                   candidate.selections?.some((row) => row.template_ids?.length)) {
                 latestPlan = candidate;
                 planSource = {operation_id: operation.id, tool: operation.tool,
+                  plan_path: file,
                   updated_at: (await fs.stat(file)).mtime.toISOString()};
               }
             }
@@ -542,6 +543,7 @@ async function readRun(id, roots, config, signal, scope) {
     steps: Object.entries(state.steps || {}).map(([key, value]) => ({id: key, state: value.state,
       error: value.error, artifact_id: value.artifact?.artifact_id})),
     plan: publicPlan(plan), scene_ids: pipelineSceneIds(state), stage_artifacts: await runProducts(id, root, directory, state, plan, scope),
+    plan_source: plan ? {plan_path: path.join(directory, 'plan.json'), run_id: id} : null,
     artifacts: artifacts.artifacts, artifact_total: artifacts.total, artifact_counts: artifacts.counts,
     artifacts_truncated: artifacts.truncated, repairs: repairs.rows, repair_total: repairs.total};
 }

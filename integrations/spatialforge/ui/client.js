@@ -853,19 +853,21 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
           button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending || !payload.text.trim()})));
     }
-    function PlanProduct({plan, artifacts, preview, request, template, t}) {
+    function PlanProduct({plan, source, artifacts, preview, request, template, t}) {
       if (!plan) return h('div', null, empty(t('planPending')), h('details', null, h('summary', null, t('planTemplate')),
         h('small', {className: 'bfw-hint'}, t('planTemplateNote')),
         h('ol', null, (template?.sections || PLAN_SECTIONS.map(([key, title]) => ({key, title}))).map((row) => h('li', {key: row.key}, row.title)))));
       const document = plan.assessment;
       const sections = PLAN_SECTIONS.filter(([key]) => document?.[key]);
+      const operate = (text) => request('本次操作对象是当前页面展示的已保存计划：' +
+        (source?.plan_path || source?.operation_id || source?.run_id || plan.objective) + '\n请先读取该计划及其准确合同，再应用以下要求：\n' + text);
       return h('article', {className: 'bfw-plan-document', 'data-assessment-document': document?.schema || 'legacy_summary'},
         h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
           document && h('span', {className: 'bfw-pill'}, t('completePlan') + ' · ' + sections.length + '/' + PLAN_SECTIONS.length),
-          request && button(t(document ? 'revisePlan' : 'completePlanRequest'), () => request(document
+          request && button(t(document ? 'revisePlan' : 'completePlanRequest'), () => operate(document
             ? '请修改当前评测计划：\n修改要求：\n保留未修改部分，按照完整评测计划模板重新保存一个版本，并说明变化。'
             : '请基于当前真实需求和已保存的执行摘要，按照完整评测计划模板补全并保存 assessment。读取原模板合同和已有产物，不得编造执行结果；复用当前用户勾选的场景约束。'), {'data-plan-revise': true}),
-          document && request && button(t('continuePlan'), () => request('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
+          document && request && button(t('continuePlan'), () => operate('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
           h('a', {className: 'bfw-button', href: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(plan, null, 2)), download: 'assessment-plan.json'}, t('exportPlan')),
           h('a', {className: 'bfw-button', href: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(planMarkdown(plan)), download: 'assessment-plan.md'}, t('exportPlanText'))),
         h('h3', null, document?.title || (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
@@ -1260,7 +1262,8 @@ window.__ModuleLoader__.load({
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
         let product;
         if (stage.id === 'S1') product = h(React.Fragment, null,
-          h(PlanProduct, {plan, artifacts: productFiles, preview: setPreview, request: prepare, t}),
+          h(PlanProduct, {plan, source: conversationPlan || !selectedRunId ? summary.value?.plan_source : run.value?.plan_source,
+            artifacts: productFiles, preview: setPreview, request: prepare, t}),
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);

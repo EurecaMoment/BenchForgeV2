@@ -42,6 +42,7 @@ test('saved assessment reaches the authenticated plan API while private payload 
     };
     assert.equal((await read('plan_template')).sections.length, 11);
     const summary = await read('summary');
+    assert.equal(summary.plan_source.plan_path, result.plan);
     assert.equal(summary.plan.assessment.dataset.target_items, 5);
     assert.equal(summary.plan.assessment.annotations.authority_source, saved.assessment.annotations.authority_source);
     assert.equal(summary.plan.assessment.questions.authority, undefined);
@@ -57,7 +58,7 @@ test('plan view displays saved model content, exports it and sends changes only 
     annotations: {...template.assessment.annotations, authority_source: '仿真回执与程序推导'}};
   const plan = {objective: 'Produce an assessment', assessment: document};
   const requests = [];
-  const view = PlanProduct({plan, artifacts: [], t: (key) => key, request: (request) => requests.push(request)});
+  const view = PlanProduct({plan, source: {plan_path: '/fixture/current-plan.json'}, artifacts: [], t: (key) => key, request: (request) => requests.push(request)});
   assert.equal(view.props['data-assessment-document'], 'spatialforge.assessment/v1');
   assert.equal(requests.length, 0, 'viewing the plan must not submit production');
   assert.match(text(view), /公开两视图和标定求解/);
@@ -72,6 +73,7 @@ test('plan view displays saved model content, exports it and sends changes only 
   assert.match(requests[0], /修改要求/);
   find(view, (node) => node.props?.['data-plan-continue']).props.onClick();
   assert.match(requests[1], /不要重复提交/);
+  assert.match(requests[1], /\/fixture\/current-plan.json/);
   const legacy = PlanProduct({plan: {objective: 'Old execution summary'}, artifacts: [], t: (key) => key, request() {}});
   assert.match(text(legacy), /legacyPlan/);
   assert.equal(find(legacy, (node) => node.props?.['data-plan-continue']), undefined);
