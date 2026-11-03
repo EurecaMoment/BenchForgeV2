@@ -17,10 +17,12 @@ from .pipelines.runner import pipeline_run, status as pipeline_status
 from .pipelines.artifact_graph import inspect as pipeline_artifacts
 from .pipelines.repair import repair_plan as pipeline_repair_plan
 from .pipelines.evaluation import evaluate as pipeline_evaluate
+from .stage_review import call as stage_review
 from pathlib import Path
 import re
 
 OPERATIONS={
+ 'stage_review':stage_review,
  'pipeline_catalog':pipeline_catalog,'pipeline_plan':pipeline_plan,
  'pipeline_run':pipeline_run,'pipeline_status':pipeline_status,
  'pipeline_artifacts':pipeline_artifacts,'pipeline_repair_plan':pipeline_repair_plan,

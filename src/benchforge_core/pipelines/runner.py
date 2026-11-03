@@ -7,6 +7,7 @@ from ..runtime import read, write
 from .artifact_graph import ArtifactGraph, binding_roots, make_record
 from .repair import create_plan
 from .production import produce, package
+from ..stage_review import gate, review
 
 SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
                   'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine',
@@ -69,7 +70,7 @@ def execute_step(step, arguments, directory, environment, client):
         if saved.exists():
             write(nested_path, read(saved))
         return run({'plan': str(nested_path), 'run': str(nested_root), '_workspace': environment['_workspace'], 'bindings': inputs,
-                    '_dsh_context': environment.get('_dsh_context', {})}, directory, client=client)
+                    '_dsh_context': environment.get('_dsh_context', {}), '_review_nested':True}, directory, client=client)
     if operation == 'templates.produce':
         return produce({**arguments, '_workspace': environment['_workspace']}, directory)
     if operation == 'data.package':
@@ -84,6 +85,14 @@ def execute_step(step, arguments, directory, environment, client):
             raise RuntimeError('Task-code adapter failed: '+str(result))
         return result
     raise ValueError(f'Unknown pipeline operation: {operation}')
+
+
+def stage_of(step):
+    if step.get('review_stage') in ('S1','S2','S3','S4','S5'):
+        return step['review_stage']
+    return {'spatialforge.start':'S2','spatialforge.capture':'S2','spatialforge.observe':'S2',
+            'spatialforge.refine':'S2','spatialforge.asset':'S2','spatialforge.evidence':'S3',
+            'templates.produce':'S4','data.package':'S5'}.get(step['uses'])
 
 
 def run(args, directory, config=None, client=service_call):
@@ -110,7 +119,29 @@ def run(args, directory, config=None, client=service_call):
     # and stays the same when an interrupted submission is resumed.
     environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_dsh_context': context,
                    '_run_key': 'pipeline:'+run_root.as_posix()}
-    for step in plan['steps']:
+    session = context.get('session_id')
+    def waiting(value):
+        state.update(state=value['state'], stage_review=value,
+                     next='Wait for the user review window with stage_review(action=wait), then resume this same run. Apply pending user instructions first.')
+        write(state_path,state)
+        return {'run':str(run_root.resolve()), **state}
+    if session:
+        current = review(args['_workspace'],session)
+        if current['state'] in ('waiting_user','paused','needs_input'):
+            return waiting(current)
+        if not args.get('_review_nested'):
+            initial = gate(args['_workspace'],session,'S1',str(plan_path),str(plan_path))
+            if not initial['can_continue']:
+                return waiting(initial)
+    def checkpoint(index, step, result):
+        stage = stage_of(step)
+        next_stage = stage_of(plan['steps'][index+1]) if index+1 < len(plan['steps']) else None
+        if not session or not stage or stage == next_stage or result.get('state') in ('RUNNING','READY'):
+            return None
+        value = gate(args['_workspace'],session,stage,str(run_root.resolve())+':'+step['id'],
+                     str((run_root/'steps'/step['id']/'result.json').resolve()))
+        return waiting(value) if not value['can_continue'] else None
+    for index, step in enumerate(plan['steps']):
         prior = state['steps'].get(step['id'])
         if prior and prior['state'] == 'completed':
             arguments = bind(step.get('arguments', {}), environment)
@@ -120,6 +151,9 @@ def run(args, directory, config=None, client=service_call):
             prior_artifact = prior.get('artifact')
             if prior_artifact:
                 artifact_ids[step['id']] = prior_artifact.get('artifact_id')
+            pending = checkpoint(index,step,prior['result'])
+            if pending:
+                return pending
             continue
         step_root = run_root/'steps'/step['id']
         step_root.mkdir(parents=True, exist_ok=True)
@@ -137,7 +171,7 @@ def run(args, directory, config=None, client=service_call):
                                   operation=operation, arguments=arguments, result=result,
                                   parent_ids=parent_ids, declared_type=step.get('artifact_type'),
                                   result_path=str(result_path.resolve()))
-            if result.get('state') in ('needs_evidence', 'needs_input', 'waiting'):
+            if result.get('state') in ('needs_evidence', 'needs_input', 'waiting','waiting_user','paused'):
                 state['steps'][step['id']] = {'state': result['state'], 'result': result, 'artifact': artifact}
                 state['state'] = result['state']
                 state['next'] = 'Read exact template conditions, generate/source evidence and rerun with bindings.evidence. Completed upstream steps remain reusable.'
@@ -157,6 +191,9 @@ def run(args, directory, config=None, client=service_call):
             artifact_ids[step['id']] = artifact['artifact_id']
             state['state'] = 'running'
             write(state_path, state)
+            pending = checkpoint(index,step,result)
+            if pending:
+                return pending
         except MissingBinding as error:
             artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
                                   operation=step.get('uses', 'pipeline'), arguments=step.get('arguments', {}),
@@ -182,6 +219,7 @@ def run(args, directory, config=None, client=service_call):
     state.pop('next', None)
     state.pop('missing_binding', None)
     state.pop('step', None)
+    state.pop('stage_review', None)
     write(state_path, state)
     return {'run': str(run_root.resolve()), 'outputs': {k: v['result'] for k, v in state['steps'].items()}, **state}
 

@@ -36,7 +36,8 @@ window.__ModuleLoader__.load({
     };
     const dictionaries = {
       zh: {
-        executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。',
+        reviewWaiting:'等待你的指令', reviewPaused:'已暂停，等待你的指令', reviewInstruction:'新指令已保存，等待处理', reviewContinue:'立即继续', reviewPause:'暂停自动继续', reviewChange:'补充指令', reviewNote:'无新指令，5 分钟后继续', reviewFinished:'阶段等待已结束',
+        executionProgress: '执行进展', productionHint: '每阶段完成后等待你的指令 5 分钟。',
         blueprintNav: '计划', collectionNav: '场景', structureNav: '标注', synthesisNav: '题目', verificationNav: '报告', stageDone: '已完成',
         previewable: '可预览', savedStageProducts: '已保存产物', observationReadFailed: '公开观测加载失败，请重试。', unsupportedObservation: '暂不支持预览这种公开观测。',
         sceneProject: '场景项目', sceneTour: '视角巡览视频', sceneViews: '场景视角', recordedViews: '已采集视角', sceneVideoFailed: '场景视频读取失败，请重试。', pairedAnnotations: '场景图与标注已配对',
@@ -150,6 +151,7 @@ window.__ModuleLoader__.load({
         savedAt: '草稿保存于', navigation: 'BenchForge 五步', liveRecords: '当前会话的实际产物', requiredGoal: '先填写评测目标。', perTemplate: '题 / 模板',
       },
       en: {
+        reviewWaiting:'Waiting for your instructions', reviewPaused:'Paused for your instructions', reviewInstruction:'Instruction saved for processing', reviewContinue:'Continue now', reviewPause:'Pause automatic continuation', reviewChange:'Add instructions', reviewNote:'Continue after 5 minutes without new instructions', reviewFinished:'Stage review finished',
         executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.',
         blueprintNav: 'Plan', collectionNav: 'Scenes', structureNav: 'Labels', synthesisNav: 'Items', verificationNav: 'Report', stageDone: 'Done',
         previewable: 'Preview available', savedStageProducts: 'Saved products', observationReadFailed: 'Public observation failed to load. Please retry.', unsupportedObservation: 'This public observation type cannot be previewed yet.',
@@ -265,6 +267,7 @@ window.__ModuleLoader__.load({
       },
     };
     const styles = `
+.bfw-review{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem;margin-block:.5rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.6rem;font-size:.875rem}.bfw-review-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-inline-start:auto}.bfw-review p{flex-basis:100%;margin:.2rem 0;white-space:pre-wrap}.bfw-review [data-review-countdown]{font-variant-numeric:tabular-nums}.bfw-review .bfw-button{padding:.3rem .5rem;font-size:.8125rem}
 .bfw-root{height:100%;overflow:auto;box-sizing:border-box;container-type:inline-size;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:.875rem/1.55 system-ui,sans-serif}
 .bfw-root *{box-sizing:border-box}.bfw-shell{min-width:0;max-inline-size:100rem;margin-inline:auto;padding:clamp(.85rem,2cqi,1.5rem)}
 .bfw-header,.bfw-toolbar,.bfw-pagination,.bfw-counts,.bfw-preview-header,.bfw-progress-caption{display:flex;align-items:center;flex-wrap:wrap;gap:clamp(.5rem,1.5cqi,1rem)}
@@ -793,6 +796,25 @@ window.__ModuleLoader__.load({
           h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
         item.task_id && h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision)))));
     }
+    function StageReviewPanel({value, act, change, t}) {
+      const [tick,setTick] = React.useState(Date.now());
+      React.useEffect(() => {const timer=setInterval(() => setTick(Date.now()),1000); return () => clearInterval(timer);},[]);
+      const received = React.useRef({value:null,at:0});
+      if (received.current.value !== value) received.current={value,at:Date.now()};
+      if (!value?.review_id) return null;
+      const waiting = value.state === 'waiting_user';
+      const remaining = Math.max(0,Math.ceil(value.deadline-value.server_time-(tick-received.current.at)/1000));
+      const label = {waiting_user:'reviewWaiting',paused:'reviewPaused',needs_input:'reviewInstruction'}[value.state] || 'reviewFinished';
+      return h('section',{className:'bfw-review','data-stage-review':value.stage,'data-review-state':value.state,'aria-live':'polite'},
+        h('strong',null,t(STAGES.find(stage => stage.id === value.stage)?.key+'Nav')+' · '+t(label)), ' ', waiting && h('strong',{'data-review-countdown':true},
+          Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0')),
+        waiting && h('span',{className:'bfw-muted'},' · '+t('reviewNote')),
+        ['waiting_user','paused','needs_input'].includes(value.state) && h('div',{className:'bfw-review-actions'},
+          value.state !== 'needs_input' && button(t('reviewContinue'),() => act('continue'),{'data-review-continue':true}),
+          waiting && button(t('reviewPause'),() => act('pause'),{'data-review-pause':true}),
+          button(t('reviewChange'),change,{'data-review-instruction':true})),
+        value.instruction && h('p',null,value.instruction));
+    }
     function DraftReview({draft, attachments, included, onInclude, t}) {
       if (!draft && !attachments.length) return null;
       return h('section', {className: 'bfw-draft-review', 'data-preserved-draft': true},
@@ -985,6 +1007,15 @@ window.__ModuleLoader__.load({
         sessionError ? 'failed' : sessionState.openState === 'loading' ? 'loading' : 'idle';
       const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
+      const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
+      const reviewAction = async (action,instruction='') => {
+        const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
+          {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,review_id:reviewRecord.value?.review_id,instruction})});
+        const value = await response.json();
+        if (!response.ok || value.error) throw new Error(value.error || 'Stage review update failed');
+        setRevision(old => old+1);
+        return value;
+      };
       const receiptsRevision = revision + ':' + sessionStatus + ':' + JSON.stringify([
         (progress.value?.operations || []).map((row) => [row.id, row.state]),
         (progress.value?.pipelines || []).map((row) => [row.id, row.updated_at]),
@@ -1127,6 +1158,11 @@ window.__ModuleLoader__.load({
         selectionSubmitLock.current = true; setSending(true); setError('');
         let readError = 'sceneSelectionReadFailed';
         try {
+          if (!payload.reviewContinued && ['waiting_user','paused','needs_input'].includes(reviewRecord.value?.state)) {
+            await reviewAction('instruction',payload.text);
+            if (conversationRunning) await stopExecution();
+            payload={...payload,text:'阶段等待中的用户指令已保存。先读取 stage_review(action=status)，应用以下要求后再处理后续阶段；不要绕过等待关口。\n'+payload.text};
+          }
           const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
             workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
           const value = await response.json();
@@ -1143,6 +1179,7 @@ window.__ModuleLoader__.load({
             setError(t('templateReadFailed')); return false;
           }
           return submitRequest({...payload, text: payload.text + sceneConstraint(value) +
+            '\n每个阶段 S1 计划、S2 场景、S3 标注、S4 题目、S5 报告完成后，展示真实产物并等待用户 5 分钟。使用 stage_review 打开及等待持久关口；无新指令到期继续，有指令先处理，暂停后不得自动继续。\n' +
             '\n制定或修改评测计划时必须遵守以下完整模板；已有完整计划且本次只要求继续执行时，复用已有计划。\n' +
             template.instructions + '\n' + template.scene_binding + '\n各章节要求：\n' + JSON.stringify(template.sections, null, 2) +
             '\n传入 pipeline_plan.assessment 的填写结构：\n' + JSON.stringify(template.assessment, null, 2)}, setError);
@@ -1324,6 +1361,11 @@ window.__ModuleLoader__.load({
         h(StageProgress, {stage: liveProgressStage, pipeline: liveProgressPipeline, scene: liveProgressScene, record: progress,
           planReceipt, artifacts: allStageFiles, conversationRunning,
           completedStages: Object.values(progressStates).filter((state) => state === 'completed').length, t}),
+        h(StageReviewPanel,{value:reviewRecord.value,t,change:() => prepare(''),act:async (action) => {
+          try {await reviewAction(action); if (action === 'pause' && conversationRunning) await stopExecution(); if (action === 'continue' && !conversationRunning) {
+            await submitWithScenes({text:'用户已点击立即继续。读取阶段等待状态并复用当前计划和产物继续生产。',inserted:false,reviewContinued:true},setDemandError);
+          }} catch(error) {setNotice(error.message);}
+        }}),
         h('div', {className: 'bfw-command-deck'},
           h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
             h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),

@@ -63,8 +63,14 @@ def plan(args, directory, config=None):
         value['assessment'] = validate_assessment(args['assessment'], selections, inputs)
     target = Path(directory)/'plan.json'
     write(target, value)
+    review = None
+    session = args.get('_dsh_context', {}).get('session_id')
+    if session:
+        from ..stage_review import gate
+        review = gate(Path(directory).parents[1], session, 'S1', str(target.resolve()), str(target.resolve()))
     unsupported = [t['id'] for t in value['template_contracts'] if not t['execution']['program_generator']]
     return {'state': 'planned', 'plan': str(target.resolve()), 'pipeline_id': recipe,
+            'stage_review': review,
             'assessment_status': 'structured' if value.get('assessment') else 'legacy_summary',
             'selections': selections, 'evidence_required_for': unsupported,
             'next': 'pipeline_run; when evidence is required, use exact template protocol with task code or existing collectors, then supply evidence. No legacy 3240-template substitution.'}

@@ -642,7 +642,17 @@ export function createWorkbenchHandler(config, registered = () => []) {
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const scope = scopeOf(url);
       let value;
-      if (request.method === 'POST') {
+      if (view === 'stage_review') {
+        if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
+        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site stage review is not allowed',403);
+        const body = request.method === 'POST' ? await request.text() : '{}';
+        if (body.length > 16000) throw new ApiError('Stage instruction is too large',413);
+        const helper = fileURLToPath(new URL('./stage_review_cli.py',import.meta.url));
+        const result = await execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--request',body],
+          {signal:request.signal,timeout:12000,maxBuffer:128000});
+        value = JSON.parse(result.stdout);
+      }
+      else if (request.method === 'POST') {
         if (view !== 'scene_selection') throw new ApiError('This workbench operation is read-only', 405);
         // DSH authorizes the connection before dispatch and constructs a virtual Request.
         // Its virtual origin is not the browser's origin; reject an explicit cross-site fetch instead.
