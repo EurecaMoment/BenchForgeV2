@@ -967,7 +967,7 @@ window.__ModuleLoader__.load({
         h('h3', null, document ? planValue(document.title,draft ? change : null,['title'],labels) : (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
         scenes.length>0 && h('div',{className:'bfw-plan-scenes','data-plan-scene-previews':true},scenes.slice(0,3).map((row)=>h('button',{
           type:'button',className:'bfw-plan-scene',key:row.id,onClick:()=>preview({...row,title:row.name,kind:'scene'})},
-          row.frames?.[0]?.url && h('img',{src:row.frames[0].url,alt:sceneName(row.name),loading:'lazy'}),h('span',null,sceneName(row.name)),h('small',null,'已采集参考场景')))),
+          row.frames?.[0]?.url && h('img',{src:row.frames[0].url,alt:sceneName(row.name),loading:'lazy'}),h('span',null,sceneName(row.name)),h('small',null,row.planCurrent ? '本会话已采集场景' : '已采集参考场景')))),
         document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, planValue(document.summary,draft ? change : null,['summary'],labels)),
           h('small', {className: 'bfw-hint'}, t('planDesignNote')),
           h('nav', {className: 'bfw-plan-toc', 'aria-label': t('completePlan')}, sections.map(([key, title], index) =>
@@ -1381,12 +1381,17 @@ window.__ModuleLoader__.load({
         const liveProgressScene = liveProgressStage.id === 'execution' ? null : navigationScene(liveProgressStage.id);
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
           productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
+        const designMatch=row=>plan?.assessment?.scenes?.designs?.some(design=>sceneName(row.name).startsWith(design.name));
+        const planScenes=[...(plan?.assessment?.scenes?.allow_new_scenes ? (sceneLibrary.value?.items || [])
+          .filter(row=>row.origin_session===sessionId && row.available && designMatch(row)).map(row=>({...row,planCurrent:true})) : []),
+          ...(planSceneLibrary.value?.items || []).filter(row=>plan?.assessment?.scenes?.selected_scenes?.some(selected=>(selected.task_id || selected.id)===row.id && selected.revision===row.revision))]
+          .sort((a,b)=>Number(b.planCurrent || false)-Number(a.planCurrent || false) || Number(designMatch(b))-Number(designMatch(a)));
+        const uniqueScenes=planScenes.filter((row,index)=>planScenes.findIndex(other=>sceneName(other.name).split(' · ')[0]===sceneName(row.name).split(' · ')[0])===index);
         let product;
         if (stage.id === 'S1') product = h(React.Fragment, null,
           h(PlanProduct, {plan, source: conversationPlan || !selectedRunId ? summary.value?.plan_source : run.value?.plan_source,
             artifacts: productFiles, preview: setPreview, request: prepare, save:savePlan,applyEdit:applyPlanEdit,
-            scenes:(planSceneLibrary.value?.items || []).filter(row=>plan?.assessment?.scenes?.selected_scenes?.some(selected=>(selected.task_id || selected.id)===row.id && selected.revision===row.revision))
-              .sort((a,b)=>Number(plan?.assessment?.scenes?.designs?.some(design=>sceneName(b.name).startsWith(design.name)))-Number(plan?.assessment?.scenes?.designs?.some(design=>sceneName(a.name).startsWith(design.name)))),t}),
+            scenes:uniqueScenes,t}),
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);
