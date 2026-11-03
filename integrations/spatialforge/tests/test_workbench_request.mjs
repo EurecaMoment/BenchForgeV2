@@ -22,8 +22,15 @@ test('workbench submits full production once and requires visible consent for pr
     },
     useEffect() {},
   };
+  let sceneSelection = {schema: 'benchforge.scene-selection/v1', version: 2, allow_new_scenes: false,
+    selection_path: '/fixture/scene-library/selections/session-request.json', sources: [{id: 'sf_selected.scene0',
+      task_id: 'sf_selected.scene0', run_id: 'sf_selected', revision: 3, name: 'Selected historical room',
+      source_directory: '/captured/sf_selected.scene0/revision_3', program_path: '/captured/sf_selected.scene0/revision_3/program.json'}]};
+  let selectionReads = 0, selectionReadFailed = false;
   vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}},
-    localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date});
+    localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date,
+    fetch: async (url) => {assert.match(url, /view=scene_selection/); selectionReads++;
+      return {ok: !selectionReadFailed, json: async () => selectionReadFailed ? {error: 'fixture unavailable'} : sceneSelection};}});
   const {Workbench} = registration.factory(() => React);
   assert.equal(typeof Workbench, 'function', 'test seam must expose the actual component');
   const native = {draft: '保留的原草稿', attachmentIds: ['existing-attachment'], phase: 'plain', queue: []};
@@ -47,7 +54,7 @@ test('workbench submits full production once and requires visible consent for pr
   assert.equal(form.props.demand.count, '100');
   form.props.change({objective: '制作室内相对位置评测集', capability: '相对位置', count: '6'});
   form = render();
-  form.props.send();
+  await form.props.send();
   assert.equal(insertions, 0, 'preserved draft must not be changed before consent');
   assert.equal(native.draft, '保留的原草稿');
   assert.equal(submissions.length, 0);
@@ -58,20 +65,38 @@ test('workbench submits full production once and requires visible consent for pr
   form.props.onInclude(true);
   props.canSubmit = false;
   form = render();
-  form.props.send();
+  await form.props.send();
   assert.equal(insertions, 0, 'permission preparation blocks insertion and submission');
   props.canSubmit = true;
   form = render();
   const click = form.props.send;
-  click(); click();
+  await Promise.all([click(), click()]);
   assert.equal(insertions, 1);
   assert.equal(submissions.length, 1, 'a double click calls the official submission API once');
   assert.match(submissions[0].text, /完整完成五阶段/);
   assert.match(submissions[0].text, /目标题量：6 条/);
   assert.match(submissions[0].text, /不要只写计划/);
   assert.match(submissions[0].text, /保留的原草稿/);
+  assert.equal(selectionReads, 1, 'one official submission reads one saved selection snapshot');
+  assert.match(submissions[0].text, /sf_selected.scene0/);
+  assert.match(submissions[0].text, /"revision": 3/);
+  assert.match(submissions[0].text, /"allow_new_scenes": false/);
+  assert.match(submissions[0].text, /未勾选的已有场景不得用于本次任务/);
+  assert.match(submissions[0].text, /scene-library\/selections\/session-request.json/);
   assert.deepEqual(submissions[0].attachments, ['existing-attachment']);
   form = render();
   assert.equal(form.props.demand.objective, '');
   assert.equal(form.props.demand.mode, 'append');
+  form.props.change({objective: '继续出题'});
+  selectionReadFailed = true;
+  form = render();
+  await form.props.send();
+  assert.equal(submissions.length, 1, 'missing scene constraints block production submission');
+  assert.match(render().props.error, /sceneSelectionReadFailed/);
+  selectionReadFailed = false;
+  sceneSelection = {...sceneSelection, sources: []};
+  form = render();
+  await form.props.send();
+  assert.equal(submissions.length, 1, 'an empty explicit selection cannot silently use unchecked scenes');
+  assert.equal(render().props.error, 'chooseSceneRequired');
 });

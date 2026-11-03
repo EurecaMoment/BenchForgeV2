@@ -118,7 +118,54 @@ async function runProducts(id, root, directory, state, plan, scope) {
 
 function previewMediaKey(config, roots, url) {
   return JSON.stringify([config.productionConfig, roots.map((root) => root.path),
-    ...['session_id', 'scene', 'run', 'task', 'revision'].map((key) => url.searchParams.get(key) || '')]);
+    ...['session_id', 'scene', 'run', 'task', 'revision', 'library'].map((key) => url.searchParams.get(key) || '')]);
+}
+
+async function sceneLibrary(config, roots, url, signal, selection) {
+  const session = url.searchParams.get('session_id') || '';
+  if (roots.length !== 1 || !config.productionConfig || !/^session-[a-zA-Z0-9-]+$/.test(session)) {
+    throw new ApiError('A registered workspace and conversation are required for the scene library', 403);
+  }
+  const action = selection ? 'save' : url.searchParams.get('view') === 'scene_selection' ? 'selection' : 'list';
+  const helper = fileURLToPath(new URL('./scene_library.py', import.meta.url));
+  const args = ['-B', helper, '--config', config.productionConfig, '--workspace', roots[0].path,
+    '--session', session, '--action', action, '--page', String(Math.max(1, Number(url.searchParams.get('page')) || 1)),
+    '--query', (url.searchParams.get('q') || '').slice(0, 300), '--origin', url.searchParams.get('origin') || 'all'];
+  if (selection) args.push('--value', JSON.stringify(selection));
+  const key = JSON.stringify([roots[0].path, session, args.slice(9)]);
+  const cached = action === 'list' && config._libraryCache.get(key);
+  if (cached && cached.expires > Date.now()) return cached.value;
+  const previous = config._libraryQueue.get(roots[0].path) || Promise.resolve();
+  const job = previous.catch(() => {}).then(async () => {
+    if (action === 'list' && signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    // Finish atomic index/selection writes even if a search query or tab is replaced.
+    const {stdout} = await execute(config.productionPython, args, {timeout: 20000, maxBuffer: 3 * 1024 * 1024});
+    const result = JSON.parse(stdout);
+    if (result.error) throw new ApiError(result.error, result.status_code || 503);
+    return result;
+  });
+  config._libraryQueue.set(roots[0].path, job);
+  const value = await job;
+  if (action !== 'list') {config._libraryCache.clear(); return value;}
+  const scenes = [];
+  const result = {...value, items: value.items.map((row) => {
+    const link = (file) => workbenchUrl({view: 'stage_media', library: '1', scene: row.run_id, session_id: session,
+      task: row.task_id, revision: String(row.revision), file}, roots[0].path);
+    let video = null;
+    if (row.video) {
+      const {source_path, ...publicVideo} = row.video;
+      video = {...publicVideo, url: link(row.video.file)};
+      const mediaUrl = new URL(video.url, url);
+      config._previewMedia.set(previewMediaKey(config, roots, mediaUrl), {source_path,
+        content_type: 'video/mp4', expires: Date.now() + 30000});
+      if (config._previewMedia.size > 256) config._previewMedia.delete(config._previewMedia.keys().next().value);
+    } else if (row.available) scenes.push({run_id: row.run_id, tasks: [{id: row.id, revision: row.revision, state: 'SUCCEEDED'}]});
+    return {...row, frames: row.frames.map((frame) => ({...frame, url: link(frame.file)})), video};
+  })};
+  scheduleSceneMovies(config, session, scenes, [...new Set(scenes.map((row) => row.run_id))]);
+  if (config._libraryCache.size >= 24) config._libraryCache.delete(config._libraryCache.keys().next().value);
+  config._libraryCache.set(key, {expires: Date.now() + 30000, value: result});
+  return result;
 }
 
 function scheduleSceneMovies(config, session, scenes, runIds = []) {
@@ -148,10 +195,12 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
   if (!roots.length || !config.productionConfig || !/^session-[a-zA-Z0-9-]+$/.test(session) || !/^sf_[a-zA-Z0-9_-]+$/.test(scene)) {
     throw new ApiError('A registered workspace and session-owned scene are required', 403);
   }
-  const helper = fileURLToPath(new URL('./production_observer.py', import.meta.url));
+  const library = url.searchParams.get('library') === '1';
+  const helper = fileURLToPath(new URL(library ? './scene_library.py' : './production_observer.py', import.meta.url));
   const args = ['-B', helper, '--config', config.productionConfig, '--session', session,
-    '--action', media ? 'file' : 'artifacts', '--scene', scene];
+    '--action', media ? 'file' : 'artifacts', ...(library ? ['--workspace', roots[0].path] : ['--scene', scene])];
   const run = url.searchParams.get('run');
+  if (library && run) throw new ApiError('Library scenes use their saved catalog identity', 403);
   if (run) {
     const {root, directory} = await resolveToken(run, roots);
     await assertSessionDirectory(root, directory, scopeOf(url));
@@ -160,7 +209,8 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
     if (!sceneIds.includes(scene)) throw new ApiError('Scene is not referenced by this pipeline', 403);
     args.push('--run-ids', JSON.stringify(sceneIds));
   }
-  if (media) args.push('--task', url.searchParams.get('task') || '', '--revision', url.searchParams.get('revision') || '', '--file', url.searchParams.get('file') || '');
+  if (media || library) args.push('--task', url.searchParams.get('task') || '', '--revision', url.searchParams.get('revision') || '');
+  if (media) args.push('--file', url.searchParams.get('file') || '');
   const {stdout} = await execute(config.productionPython, args, {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
   const result = JSON.parse(stdout);
   if (result.error) throw new ApiError(result.error, result.status_code || 503);
@@ -177,7 +227,7 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
     scheduleSceneMovies(config, session, [{run_id: scene, tasks}], run ? [scene] : []);
   }
   return {...result, items: (result.items || []).map(({source_path, ...row}) => ({...row,
-    url: workbenchUrl({view: 'stage_media', scene, session_id: session, ...(run ? {run} : {}), task: row.task_id,
+    url: workbenchUrl({view: 'stage_media', scene, session_id: session, ...(library ? {library: '1'} : {}), ...(run ? {run} : {}), task: row.task_id,
       revision: String(row.revision), file: row.file}, roots[0].path)})), snapshot_at: new Date().toISOString()};
 }
 
@@ -580,13 +630,27 @@ async function readMedia(url, roots, signal) {
 export function createWorkbenchHandler(config, registered = () => []) {
   const limits = {maxRuns: 60, maxArtifacts: 300, ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
+  limits._libraryCache = new Map(); limits._libraryQueue = new Map();
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const scope = scopeOf(url);
       let value;
-      if (view === 'catalog') value = await templateCatalog(url);
+      if (request.method === 'POST') {
+        if (view !== 'scene_selection') throw new ApiError('This workbench operation is read-only', 405);
+        // DSH authorizes the connection before dispatch and constructs a virtual Request.
+        // Its virtual origin is not the browser's origin; reject an explicit cross-site fetch instead.
+        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site scene selection is not allowed', 403);
+        const body = await request.text();
+        if (body.length > 128000) throw new ApiError('Scene selection is too large', 413);
+        let selection;
+        try {selection = JSON.parse(body);} catch {throw new ApiError('Invalid scene selection JSON');}
+        if (!selection || typeof selection !== 'object' || Array.isArray(selection)) throw new ApiError('Invalid scene selection');
+        value = await sceneLibrary(limits, roots, url, request.signal, selection);
+      }
+      else if (view === 'scene_library' || view === 'scene_selection') value = await sceneLibrary(limits, roots, url, request.signal);
+      else if (view === 'catalog') value = await templateCatalog(url);
       else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
       else if (view === 'progress') value = await productionProgress(roots, limits, url, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
@@ -610,8 +674,8 @@ export function createWorkbenchHandler(config, registered = () => []) {
   };
 }
 export function apply(ctx, config) {
-  const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET'], requestBody: 'buffered',
+  const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
     fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list())});
-  ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated read API');
+  ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated artifacts and scene selection API');
 }
 

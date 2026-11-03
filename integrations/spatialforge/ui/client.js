@@ -23,6 +23,13 @@ window.__ModuleLoader__.load({
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
         requestNote: '要求提交到当前工作台会话，由 DSH 执行；实际进度和产物在下方更新。',
         productionRequest: '数据集生产需求', startProduction: '开始生产', appendRequest: '追加要求', newProduction: '新建生产任务',
+        sceneLibrary: '场景库', sceneLibraryHelp: '历史与本次生成的场景统一归档。先预览，再勾选本次要使用的场景。',
+        sceneSelected: '已选场景', useScene: '使用此场景', sceneSearch: '搜索场景名称或编号', sceneOrigin: '场景来源',
+        currentScenes: '当前会话', historyScenes: '历史及其他', selectScenePage: '选择本页', clearScenePage: '取消本页',
+        allowNewScenes: '允许生成新场景', sceneSelectionHelp: '未勾选的已有场景不会用于后续请求；新增场景也会进入此场景库。',
+        sceneSaving: '正在保存选择…', sceneSaved: '选择已保存', sceneLibraryLoading: '正在更新场景列表…', sceneSaveFailed: '场景选择保存失败，请重试。',
+        sceneUnavailable: '采集文件不可用', sceneStorage: '统一存放位置', chooseSceneRequired: '请在场景页勾选场景，或允许生成新场景。',
+        sceneChanged: '场景选择已在其他窗口更新，请确认最新选择后再次提交。', sceneSelectionReadFailed: '读取场景约束失败，尚未发送生产请求。',
         productionPlaceholder: '例如：生产室内物体相对位置与遮挡推理题，覆盖多种布局，公开观测足以作答。',
         capabilityRequest: '能力或模板要求（可选）', capabilityPlaceholder: '用自然语言描述能力，或填写已有模板编号；留空由 DSH 拆解。',
         productionRequirements: '生产要求', changeRequirements: '追加或修改要求', advancedOptions: '高级选项（可选）', sceneCount: '目标场景数',
@@ -126,6 +133,13 @@ window.__ModuleLoader__.load({
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
         requestNote: 'The current workbench session sends your request to DSH. Progress and real artifacts appear below.',
         productionRequest: 'Dataset production request', startProduction: 'Start production', appendRequest: 'Add requirements', newProduction: 'New production task',
+        sceneLibrary: 'Scene library', sceneLibraryHelp: 'Past and newly produced scenes share this library. Preview each scene, then select it for this request.',
+        sceneSelected: 'Selected scenes', useScene: 'Use this scene', sceneSearch: 'Search scene name or ID', sceneOrigin: 'Scene origin',
+        currentScenes: 'This conversation', historyScenes: 'Past and other scenes', selectScenePage: 'Select this page', clearScenePage: 'Clear this page',
+        allowNewScenes: 'Allow new scenes', sceneSelectionHelp: 'Unchecked existing scenes are excluded from subsequent requests. New scenes also enter this library.',
+        sceneSaving: 'Saving selection…', sceneSaved: 'Selection saved', sceneLibraryLoading: 'Updating scene list…', sceneSaveFailed: 'Could not save scene selection. Retry the change.',
+        sceneUnavailable: 'Capture files unavailable', sceneStorage: 'Shared storage location', chooseSceneRequired: 'Select scenes on the scene page or allow new scenes.',
+        sceneChanged: 'Another window updated the scene selection. Review it before submitting again.', sceneSelectionReadFailed: 'Could not read scene constraints. No production request was sent.',
         productionPlaceholder: 'For example: produce indoor relative-position and occlusion questions across varied layouts, answerable from public observations.',
         capabilityRequest: 'Capabilities or templates (optional)', capabilityPlaceholder: 'Describe capabilities or enter template IDs. Leave blank for DSH to decompose.',
         productionRequirements: 'Production requirements', changeRequirements: 'Additional or revised requirements', advancedOptions: 'Advanced options (optional)', sceneCount: 'Target scenes',
@@ -248,6 +262,7 @@ window.__ModuleLoader__.load({
 .bfw-demand-heading{justify-content:space-between}.bfw-demand-heading>.bfw-label{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-heading .bfw-select{inline-size:auto;padding:.25em .55em;font-size:.75rem;color:var(--dsw-alias-label-primary)}.bfw-demand form{display:grid;gap:.75rem}.bfw-demand-fields{display:grid;grid-template-columns:minmax(6rem,1fr) minmax(0,2.5fr);gap:.75rem;min-inline-size:0}.bfw-demand .bfw-label{font-size:.75rem;gap:.3rem}.bfw-demand .bfw-input{font-size:.8rem}.bfw-demand-footer{display:flex;align-items:flex-end;flex-wrap:wrap;justify-content:space-between;gap:.75rem}.bfw-demand-options{flex:1 1 20ch;min-inline-size:0;font-size:.7rem;color:var(--dsw-alias-label-secondary)}.bfw-demand-options p{margin:.35rem 0 0}.bfw-demand-options summary{width:fit-content;color:var(--dsw-alias-label-primary)}.bfw-demand-options .bfw-form{margin-block:.65rem;gap:.65rem}.bfw-demand-footer>.bfw-button{flex:0 0 auto;padding:.5em 1em;font-size:.8rem}.bfw-demand .bfw-draft-review{margin:0}
 .bfw-public-observation{min-inline-size:0;margin:1rem 0}.bfw-public-observation>figcaption{font-size:.75rem;color:var(--dsw-alias-label-secondary)}.bfw-public-observation[data-compact=true]{margin:0}.bfw-public-observation[data-compact=true] .bfw-observation{margin:0 0 .75rem;aspect-ratio:16/10}
 .bfw-scene-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,42ch),1fr));gap:1rem}.bfw-scene-project{max-inline-size:72ch}.bfw-scene-poster{position:relative;display:grid;place-items:center;background:var(--dsw-alias-bg-layer-2);aspect-ratio:16/10;overflow:hidden}.bfw-scene-poster img{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-play{position:absolute;display:grid;place-items:center;inline-size:3rem;block-size:3rem;border-radius:50%;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 .2rem 1rem #0002}.bfw-scene-video{display:grid;gap:.75rem;min-inline-size:0}.bfw-scene-video video,.bfw-scene-video canvas{display:block;inline-size:auto;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin-inline:auto}.bfw-scene-video progress{inline-size:100%}
+.bfw-library-controls{margin-block:1rem}.bfw-library-controls>.bfw-input{flex:1 1 24ch;min-inline-size:0}.bfw-library-policy{margin-block:1rem .5rem}.bfw-scene-select{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-block-end:1px solid var(--dsw-alias-border-l3);font-size:.8rem}.bfw-scene-select input,.bfw-library-policy input{accent-color:var(--dsw-alias-brand-primary);inline-size:1rem;block-size:1rem;flex:none}.bfw-scene-selected{border-color:var(--dsw-alias-brand-primary)}.bfw-scene-poster video{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-project>.bfw-code{font-size:.7rem;padding-inline:.85rem;overflow-wrap:anywhere}.bfw-library-location{margin-block-start:1rem;font-size:.75rem}.bfw-library-location p{overflow-wrap:anywhere}.bfw-demand-scene-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:.75rem}.bfw-demand-scene-summary>.bfw-button{padding:.3em .65em;margin-inline-start:auto}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -286,8 +301,17 @@ window.__ModuleLoader__.load({
       const saved = JSON.parse(localStorage.getItem('bfw:production-request:' + sessionId) || 'null');
       return saved?.version === 1 ? {...fallback, ...saved} : fallback;
     }
-    function productionRequest(demand) {
-      if (demand.mode === 'append') return '请将以下要求应用于当前会话的生产任务，保留已有产物和失败证据，并继续实际执行至完成：\n' + demand.objective.trim();
+    function sceneConstraint(selection) {
+      if (!selection) return '';
+      return '\n场景使用约束（以保存的场景选择为准）：\n' + JSON.stringify({schema: selection.schema,
+        selection_path: selection.selection_path, version: selection.version, selected_scenes: selection.sources || selection.selected,
+        allow_new_scenes: selection.allow_new_scenes}, null, 2) +
+        '\n只允许复用 selected_scenes 中勾选的场景，使用所列 task_id 与 revision 的采集、标注和场景程序。未勾选的已有场景不得用于本次任务。' +
+        (selection.allow_new_scenes ? '允许按需求生成新场景，生成后统一登记到场景库。' : '不允许通过新建、复制或重新生成场景绕过选择。') +
+        '若所选场景不足以满足要求，如实记录缺口，等待用户调整场景选择。\n';
+    }
+    function productionRequest(demand, selection) {
+      if (demand.mode === 'append') return '请将以下要求应用于当前会话的生产任务，保留已有产物和失败证据，并继续实际执行至完成：\n' + demand.objective.trim() + sceneConstraint(selection);
       return [
         '请实际执行一次 SpatialForge 评测数据集生产任务，完整完成五阶段：评测计划、场景生成或复用与采集、标注、按能力模板出题、质量检查与打包交付；不要只写计划。',
         '生产需求：' + demand.objective.trim(),
@@ -296,7 +320,7 @@ window.__ModuleLoader__.load({
         demand.sceneCount ? '目标场景数：' + Number(demand.sceneCount) + ' 个。' : '',
         demand.storageBudget ? '存储预算上限：' + Number(demand.storageBudget) + ' GB。' : '',
         '使用当前已接入工具。场景是出题前提，GT 仅来自官方、程序或仿真，公开题目不泄露答案。请将计划、场景、标注、题目表和最终报告关联到当前会话，使工作台实时展示实际回执和产物。',
-      ].filter(Boolean).join('\n');
+      ].filter(Boolean).join('\n') + sceneConstraint(selection);
     }
     function displayRef(value) {
       const parts = String(value || '').split(/[\\/]/).filter(Boolean);
@@ -640,6 +664,59 @@ window.__ModuleLoader__.load({
             button(t('nextPage'), () => setView((index) => index + 1), {disabled: view >= project.frames.length - 1}))),
         h('p', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
     }
+    function SceneLibrary({record, selection, saving, error, choose, query, search, origin, filter, page, refresh, preview, t}) {
+      const data = record.value;
+      if (!data) return h('div', null, record.error ? h('p', {className: 'bfw-error', role: 'alert'}, record.error) : empty(t('loading')),
+        button(t('retry'), refresh));
+      const selected = selection?.selected || [];
+      const busy = saving || record.loading;
+      const changePage = (checked) => {
+        const ids = new Set(data.items.map((row) => row.id));
+        const kept = selected.filter((row) => !ids.has(row.id));
+        choose(checked ? [...kept, ...data.items.filter((row) => row.available).map((row) => ({id: row.id, revision: row.revision}))] : kept,
+          selection.allow_new_scenes);
+      };
+      return h('section', {'data-scene-library': true},
+        h('div', {className: 'bfw-toolbar'}, h('h3', null, t('sceneLibrary')),
+          h('span', {className: 'bfw-pill'}, t('sceneSelected') + ': ' + selected.length + ' / ' + data.all),
+          h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'}, t(saving ? 'sceneSaving' : record.loading ? 'sceneLibraryLoading' : 'sceneSaved'))),
+        h('p', {className: 'bfw-muted'}, t('sceneLibraryHelp')),
+        h('div', {className: 'bfw-toolbar bfw-library-controls'},
+          h('input', {className: 'bfw-input', type: 'search', 'aria-label': t('sceneSearch'), placeholder: t('sceneSearch'), value: query,
+            onChange: (event) => search(event.target.value)}),
+          select(t('sceneOrigin'), origin, filter, [['all', t('all')], ['current', t('currentScenes')], ['history', t('historyScenes')]]),
+          button(t('selectScenePage'), () => changePage(true), {disabled: busy || !data.items.some((row) => row.available)}),
+          button(t('clearScenePage'), () => changePage(false), {disabled: busy || !selected.length})),
+        h('label', {className: 'bfw-consent bfw-library-policy'}, h('input', {type: 'checkbox', checked: !!selection?.allow_new_scenes,
+          disabled: busy, onChange: (event) => choose(selected, event.target.checked)}), t('allowNewScenes')),
+        h('p', {className: 'bfw-muted'}, t('sceneSelectionHelp')),
+        error && h('p', {className: 'bfw-error', role: 'alert'}, error),
+        h('div', {className: 'bfw-scene-projects'}, data.items.map((row) => {
+          const checked = selected.some((reference) => reference.id === row.id && reference.revision === row.revision);
+          const project = {...row, title: row.name, kind: 'scene'};
+          return h('article', {className: 'bfw-preview-card bfw-scene-project' + (checked ? ' bfw-scene-selected' : ''), key: row.id,
+            'data-scene-project': row.id, 'data-scene-selected': String(checked)},
+            h('label', {className: 'bfw-scene-select'}, h('input', {type: 'checkbox', checked, disabled: busy || !row.available,
+              'aria-label': t('useScene') + ' ' + row.name, onChange: (event) => choose(event.target.checked
+                ? [...selected.filter((reference) => reference.id !== row.id), {id: row.id, revision: row.revision}]
+                : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)}), t('useScene')),
+            h('button', {type: 'button', className: 'bfw-preview-open', disabled: !row.available, onClick: () => preview(project),
+              'aria-label': t('preview') + ' ' + row.name},
+              h('span', {className: 'bfw-scene-poster'}, row.video ? h('video', {src: row.video.url, poster: row.frames[0]?.url,
+                preload: 'metadata', muted: true, playsInline: true}) : row.frames.length ? h('img', {src: row.frames[0].url, alt: row.name, loading: 'lazy'}) :
+                  h('span', {className: 'bfw-muted'}, t('sceneUnavailable')),
+                row.available && h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, row.video ? '▶' : '↔')),
+              h('strong', null, row.name), h('span', {className: 'bfw-muted'}, t(row.origin_session === selection?.session_id ? 'currentScenes' : 'historyScenes') +
+                ' · ' + t('recordedViews') + ': ' + row.frame_count + ' · r' + row.revision)),
+            h('p', {className: 'bfw-code'}, row.id));
+        })),
+        !data.items.length && empty(t('noMatchingRuns')),
+        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => page(data.page - 1), {disabled: data.page <= 1}),
+          h('span', null, t('page') + ' ' + data.page + ' / ' + data.pages + ' · ' + t('matches') + ': ' + data.total),
+          button(t('nextPage'), () => page(data.page + 1), {disabled: data.page >= data.pages})),
+        h('details', {className: 'bfw-library-location'}, h('summary', null, t('sceneStorage')),
+          h('p', {className: 'bfw-code'}, data.catalog_path), h('p', {className: 'bfw-code'}, selection?.selection_path)));
+    }
     function PreviewDialog({item, close, t}) {
       const ref = React.useRef(null);
       const [content, setContent] = React.useState(null);
@@ -696,7 +773,7 @@ window.__ModuleLoader__.load({
         h('label', {className: 'bfw-consent'}, h('input', {type: 'checkbox', checked: included,
           onChange: (event) => onInclude(event.target.checked)}), t('includeDraft')));
     }
-    function DemandForm({demand, change, busy, error, send, draft, attachments, included, onInclude, t}) {
+    function DemandForm({demand, change, busy, error, send, draft, attachments, included, onInclude, sceneSelection, openScenes, t}) {
       const append = demand.mode === 'append';
       return h('section', {className: 'bfw-demand', 'data-production-request': true},
         h('div', {className: 'bfw-demand-heading'}, h('h2', null, t('productionRequest')),
@@ -712,6 +789,10 @@ window.__ModuleLoader__.load({
             h('label', {className: 'bfw-label'}, t('capabilityRequest'), h('input', {className: 'bfw-input', value: demand.capability,
               placeholder: t('capabilityPlaceholder'), onChange: (event) => change({capability: event.target.value})}))),
           h(DraftReview, {draft, attachments, included, onInclude, t}),
+          sceneSelection && h('div', {className: 'bfw-demand-scene-summary'},
+            h('span', {className: 'bfw-muted'}, t('sceneSelected') + ': ' + sceneSelection.selected.length +
+              ' · ' + t('allowNewScenes') + ': ' + (sceneSelection.allow_new_scenes ? '✓' : '—')),
+            button(t('sceneLibrary'), openScenes)),
           error && h('p', {className: 'bfw-error', role: 'alert'}, error),
           h('div', {className: 'bfw-demand-footer'},
             h('div', {className: 'bfw-demand-options'},
@@ -816,6 +897,15 @@ window.__ModuleLoader__.load({
       const [sendError, setSendError] = React.useState('');
       const [demand, setDemand] = React.useState(() => initialDemand(sessionId));
       const [demandError, setDemandError] = React.useState('');
+      const [sceneQuery, setSceneQuery] = React.useState('');
+      const [sceneOrigin, setSceneOrigin] = React.useState('all');
+      const [scenePage, setScenePage] = React.useState(1);
+      const [sceneChoice, setSceneChoice] = React.useState(null);
+      const [sceneSaving, setSceneSaving] = React.useState(false);
+      const [sceneError, setSceneError] = React.useState('');
+      const sceneSaveLock = React.useRef(false);
+      const selectionSubmitLock = React.useRef(false);
+      const lastSceneLibrary = React.useRef(null);
       const [draftConsent, setDraftConsent] = React.useState('');
       const [stopping, setStopping] = React.useState(false);
       const [stopError, setStopError] = React.useState('');
@@ -873,6 +963,27 @@ window.__ModuleLoader__.load({
         ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
       const dataset = useRecord(workspacePath && ['S4', 'S5'].includes(route.stage) && selectedDataset ?
         {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
+      const sceneLibrary = useRecord(workspacePath ? {view: 'scene_library', workspace_path: workspacePath, session_id: sessionId,
+        q: sceneQuery, origin: sceneOrigin, page: scenePage} : null, receiptsRevision, 30000, visible);
+      if (sceneLibrary.value) lastSceneLibrary.current = sceneLibrary.value;
+      const sceneLibraryView = sceneLibrary.value ? sceneLibrary : {...sceneLibrary, value: lastSceneLibrary.current};
+      const savedSceneSelection = sceneLibraryView.value?.selection;
+      const currentSceneSelection = sceneChoice && (!savedSceneSelection || sceneChoice.version >= savedSceneSelection.version)
+        ? sceneChoice : savedSceneSelection;
+      const chooseScenes = async (selected, allow_new_scenes) => {
+        if (sceneSaveLock.current || selectionSubmitLock.current || !currentSceneSelection) return;
+        sceneSaveLock.current = true; setSceneSaving(true); setSceneError('');
+        setSceneChoice({...currentSceneSelection, selected, allow_new_scenes});
+        try {
+          const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
+            workspace_path: workspacePath, session_id: sessionId}), {method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json'}, body: JSON.stringify({version: currentSceneSelection.version, selected, allow_new_scenes})});
+          const value = await response.json();
+          if (!response.ok || value.error) throw new Error(value.error || t('sceneSaveFailed'));
+          setSceneChoice(value);
+        } catch (error) {setSceneChoice(currentSceneSelection); setSceneError(t('sceneSaveFailed') + ' ' + error.message);}
+        finally {sceneSaveLock.current = false; setSceneSaving(false);}
+      };
       const sampleId = sample?.row_index;
       const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
         (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
@@ -958,17 +1069,35 @@ window.__ModuleLoader__.load({
           return false;
         } finally {submitLock.current = false; setSending(false);}
       };
-      const confirmSend = () => {
-        if (sendPayload && submitRequest(sendPayload, setSendError)) setSendPayload(null);
+      const submitWithScenes = async (payload, setError) => {
+        if (selectionSubmitLock.current || submitLock.current || sceneSaveLock.current) return false;
+        if (!canSubmit) {setError(t('permissionsPending')); return false;}
+        if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {setError(t('draftConsentRequired')); return false;}
+        selectionSubmitLock.current = true; setSending(true); setError('');
+        try {
+          const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
+            workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
+          const value = await response.json();
+          if (!response.ok || value.error) throw new Error(value.error || t('sceneSelectionReadFailed'));
+          if (currentSceneSelection && value.version !== currentSceneSelection.version) {
+            setSceneChoice(value); setError(t('sceneChanged')); return false;
+          }
+          if (!value.sources?.length && !value.allow_new_scenes) {setError(t('chooseSceneRequired')); return false;}
+          return submitRequest({...payload, text: payload.text + sceneConstraint(value)}, setError);
+        } catch (error) {setError(t('sceneSelectionReadFailed') + ' ' + error.message); return false;}
+        finally {selectionSubmitLock.current = false; setSending(false);}
       };
-      const submitDemand = () => {
+      const confirmSend = async () => {
+        if (sendPayload && await submitWithScenes(sendPayload, setSendError)) setSendPayload(null);
+      };
+      const submitDemand = async () => {
         if (!demand.objective.trim()) {setDemandError(t('requestRequired')); return;}
         if (demand.mode !== 'append') {
           if (!Number.isSafeInteger(Number(demand.count)) || Number(demand.count) <= 0) {setDemandError(t('positiveCount')); return;}
           if (demand.sceneCount && (!Number.isSafeInteger(Number(demand.sceneCount)) || Number(demand.sceneCount) <= 0)) {setDemandError(t('positiveSceneCount')); return;}
           if (demand.storageBudget && (!Number.isFinite(Number(demand.storageBudget)) || Number(demand.storageBudget) <= 0)) {setDemandError(t('positiveBudget')); return;}
         }
-        if (submitRequest({text: productionRequest(demand), inserted: false}, setDemandError)) {
+        if (await submitWithScenes({text: productionRequest(demand), inserted: false}, setDemandError)) {
           setDemand((old) => ({...old, objective: '', mode: 'append'}));
         }
       };
@@ -1071,6 +1200,11 @@ window.__ModuleLoader__.load({
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);
+        else if (stage.id === 'S2' && sceneLibraryView.value) product = h(SceneLibrary, {record: sceneLibraryView,
+          selection: currentSceneSelection, saving: sceneSaving || sending, error: sceneError, choose: chooseScenes,
+          query: sceneQuery, search: (query) => {setSceneQuery(query); setScenePage(1);}, origin: sceneOrigin,
+          filter: (origin) => {setSceneOrigin(origin); setScenePage(1);}, page: setScenePage,
+          refresh: () => setRevision((value) => value + 1), preview: setPreview, t});
         else if (['S2', 'S3'].includes(stage.id)) product = h(React.Fragment, null,
           stage.id === 'S3' && h('p', {className: 'bfw-muted'}, t('annotationNote')),
           filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
@@ -1135,8 +1269,9 @@ window.__ModuleLoader__.load({
               queueCount > 0 && h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount)),
             sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
               typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
-          h(DemandForm, {demand, change: changeDemand, busy: sending || inputState.phase !== 'plain' || !canSubmit, error: demandError, send: submitDemand,
-            draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft, t})),
+          h(DemandForm, {demand, change: changeDemand, busy: sending || sceneSaving || inputState.phase !== 'plain' || !canSubmit, error: demandError, send: submitDemand,
+            draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
+            sceneSelection: currentSceneSelection, openScenes: () => update({stage: 'S2'}), t})),
         permissionError && h('div', {className: 'bfw-error', role: 'alert'}, t('permissionFailed') + ': ' + permissionError,
           button(t('permissionRetry'), retryPermission)),
         stopError && h('p', {className: 'bfw-error', role: 'alert'}, stopError),

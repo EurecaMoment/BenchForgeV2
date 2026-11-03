@@ -77,6 +77,32 @@ An existing scene can be exported ahead of browsing with
 access retain the existing session and revision checks. While a new movie is
 unavailable, a scene's recorded views remain directly browsable.
 
+## Shared scene library and source selection
+
+The workbench registers completed captured scenes from the configured operator
+service in `<workspace>/scene-library/catalog.json`. This includes past and new
+productions, with a stable task ID, revision, name and original source directory.
+The index retains original media and scene programs in their existing locations.
+Only the displayed page loads capture-view metadata; the index uses one database
+metadata query and does not scan historical evidence trees or hash scene files.
+
+The scene page supports search, current-conversation/history filters, pagination,
+per-scene checkboxes and select/clear for the displayed page. Preview remains
+available for unchecked scenes. Selections are saved atomically to
+`scene-library/selections/<session-id>.json`, independently for each conversation.
+The first selection includes that conversation's available captures. An explicit
+selection never silently gains newly indexed scenes.
+
+Each production demand and stage-change request reads the saved selection before
+calling the native submission API. Its source contract includes exact task IDs,
+revisions, capture directories, scene-program paths and the selection file.
+Unchecked existing scenes are excluded. The separate **Allow new scenes** checkbox
+controls whether generation is permitted. Empty selections with generation disabled,
+missing scene files, changed revisions and failed constraint reads block submission.
+Concurrent windows use a version check to prevent lost changes. The authenticated
+DSH connection dispatches the selection POST; the browser's origin is not compared
+with the bridge's internal virtual Request origin.
+
 ## Test the code without production jobs
 
 For native Isaac video/trajectory data, see
