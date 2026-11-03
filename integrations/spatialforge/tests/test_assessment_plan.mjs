@@ -114,7 +114,7 @@ test('plan view displays saved model content, exports it and sends changes only 
   assert.equal(find(legacy, (node) => node.props?.['data-plan-continue']), undefined);
 });
 
-test('reopening a populated question page renders both table and gallery with readable template names', async () => {
+test('question page keeps a thumbnail grid when opening and closing details, including saved table routes', async () => {
   let registration,layout='table';
   let script=await fs.readFile(new URL('../ui/client.js',import.meta.url),'utf8');
   const start=script.indexOf('    function useRecord('),end=script.indexOf('    function usePanelVisible(',start);
@@ -126,7 +126,8 @@ test('reopening a populated question page renders both table and gallery with re
       facets:{templates:['C24-T01'],splits:['test']},total:1,all:1,pages:1}};
   const state=[];let index=0;
   const react={createElement:React.createElement,useEffect(){},useState(initial){const slot=index++;
-    if(!(slot in state))state[slot]=typeof initial==='function' ? initial() : initial;return [state[slot],()=>{}];},
+    if(!(slot in state))state[slot]=typeof initial==='function' ? initial() : initial;
+    return [state[slot],value=>state[slot]=typeof value==='function' ? value(state[slot]) : value];},
     useRef(value){return state[index++] ||= {current:value};}};
   vm.runInNewContext(script,{window:{records,__ModuleLoader__:{load:value=>registration=value}},
     localStorage:{getItem:key=>key.startsWith('bfw:spatialforge:') ? JSON.stringify({version:3,stage:'S4',dataset:'dataset-existing',layout}) : null},
@@ -137,9 +138,22 @@ test('reopening a populated question page renders both table and gallery with re
     useSession:read=>read({running:false,openState:'open',pendingSubmissions:[]}),
     useInput:read=>read({draft:'',attachmentIds:[],queue:[],phase:'plain'})};
   for(layout of ['table','grid']){
-    state.length=0;index=0;const view=Workbench(props);
+    state.length=0;
+    const render=()=>{index=0;return Workbench(props);};
+    const view=render();
     const browser=find(view,node=>node.props?.['data-dataset-browser']);
+    assert.ok(find(browser,node=>node.props?.['data-question-grid']));
+    assert.equal(find(browser,node=>node.type==='table'),undefined);
     assert.match(text(browser),/固定方向判断/);
     assert.match(text(browser),/图中椅子相对桌子在哪侧/);
+    find(browser,node=>node.props?.['data-sample-row']==='0').props.onClick();
+    const opened=render();
+    assert.ok(find(opened,node=>node.props?.['data-question-grid']),'opening details must retain the grid');
+    const dialog=find(opened,node=>typeof node.type==='function' && node.type.name==='QuestionDialog');
+    assert.ok(dialog,'a question opens in a dialog');
+    dialog.props.close();
+    const closed=render();
+    assert.ok(find(closed,node=>node.props?.['data-question-grid']));
+    assert.equal(find(closed,node=>typeof node.type==='function' && node.type.name==='QuestionDialog'),undefined);
   }
 });

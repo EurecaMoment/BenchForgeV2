@@ -304,6 +304,7 @@ window.__ModuleLoader__.load({
 .bfw-public-observation{min-inline-size:0;margin:1rem 0}.bfw-public-observation>figcaption{font-size:.75rem;color:var(--dsw-alias-label-secondary)}.bfw-public-observation[data-compact=true]{margin:0}.bfw-public-observation[data-compact=true] .bfw-observation{margin:0 0 .75rem;aspect-ratio:16/10}
 .bfw-scene-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,42ch),1fr));gap:1rem}.bfw-scene-project{max-inline-size:72ch}.bfw-scene-poster{position:relative;display:grid;place-items:center;background:var(--dsw-alias-bg-layer-2);aspect-ratio:16/10;overflow:hidden}.bfw-scene-poster img{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-play{position:absolute;display:grid;place-items:center;inline-size:3rem;block-size:3rem;border-radius:50%;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 .2rem 1rem #0002}.bfw-scene-video{display:grid;gap:.75rem;min-inline-size:0}.bfw-scene-video video,.bfw-scene-video canvas{display:block;inline-size:auto;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin-inline:auto}.bfw-scene-video progress{inline-size:100%}
 .bfw-library-controls{margin-block:.6rem}.bfw-library-controls>.bfw-input{flex:1 1 24ch;min-inline-size:0}.bfw-library-policy{margin-block:.4rem .2rem}.bfw-scene-select{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-block-end:1px solid var(--dsw-alias-border-l3);font-size:.8rem}.bfw-scene-select input,.bfw-library-policy input{accent-color:var(--dsw-alias-brand-primary);inline-size:1rem;block-size:1rem;flex:none}.bfw-scene-selected{border-color:var(--dsw-alias-brand-primary)}.bfw-scene-poster video{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-project>.bfw-code{font-size:.7rem;padding-inline:.85rem;overflow-wrap:anywhere}.bfw-library-location{margin-block-start:1rem;font-size:.75rem}.bfw-library-location p{overflow-wrap:anywhere}.bfw-demand-scene-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:.75rem}.bfw-demand-scene-summary>.bfw-button{padding:.3em .65em;margin-inline-start:auto}
+.bfw-question-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr));gap:.8rem}.bfw-question-grid .bfw-item{padding:.5rem;border-radius:.7rem;gap:.35rem}.bfw-question-grid .bfw-question-preview{font-size:.8rem;line-height:1.45;-webkit-line-clamp:3;margin:.15rem 0}.bfw-question-grid .bfw-muted{font-size:.7rem}.bfw-question-grid .bfw-public-observation{width:100%}.bfw-question-grid .bfw-observation{margin:0;aspect-ratio:16/10;width:100%;object-fit:contain;border-radius:.4rem;background:var(--dsw-alias-bg-layer-2)}.bfw-question-placeholder{display:grid;place-items:center;aspect-ratio:16/10;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-radius:.4rem}.bfw-question-dialog{width:min(92vw,60rem)}.bfw-question-dialog .bfw-preview-header{display:flex;position:sticky;top:0;background:var(--dsw-alias-bg-base);z-index:1}.bfw-question-dialog .bfw-observation{max-block-size:55vh}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -684,6 +685,22 @@ window.__ModuleLoader__.load({
       const index = item.media_types ? item.media_types.findIndex((type) => type.startsWith('image/')) : 0;
       return item.media?.[index];
     }
+    function QuestionDialog({item,close,t}) {
+      const ref=React.useRef(null);
+      React.useEffect(()=>{
+        const trigger=document.activeElement,dialog=ref.current;
+        dialog.showModal();
+        return ()=>{dialog.close();trigger?.focus();};
+      },[]);
+      const title='题目 '+(item.row_index+1);
+      return h('dialog',{ref,className:'bfw-preview-dialog bfw-question-dialog','data-question-dialog':true,'aria-label':title,
+        onCancel:event=>{event.preventDefault();close();},onClick:event=>{if(event.target===ref.current)close();}},
+        h('div',{className:'bfw-preview-header'},h('h2',null,title),button(t('previewClose'),close)),
+        h('p',{className:'bfw-question'},questionText(item.question)),
+        item.media?.length ? item.media.map((src,index)=>h(PublicObservation,{key:src,src,type:item.media_types?.[index],
+          label:t('media')+' '+(index+1),t})) : empty(t('noMedia')),
+        h('details',null,h('summary',null,t('details')),json({...item,media:undefined,media_types:undefined})));
+    }
     function sceneProjects(items) {
       const groups = new Map();
       for (const item of items.filter((row) => ['image', 'video'].includes(row.kind))) {
@@ -1036,8 +1053,6 @@ window.__ModuleLoader__.load({
     function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions, renderFactorySlot, canSubmit = false,
       permissionError = '', retryPermission, stopExecution}) {
       const panelRef = React.useRef(null);
-      const sampleHeadingRef = React.useRef(null);
-      const sampleTriggerRef = React.useRef(null);
       const visible = usePanelVisible(panelRef);
       const [route, setRoute] = React.useState(() => initialState(sessionId));
       const [revision, setRevision] = React.useState(0);
@@ -1165,14 +1180,7 @@ window.__ModuleLoader__.load({
         if (sample && dataset.value && !currentSample) {setSample(null); setNotice(t('sampleRemoved'));}
       }, [dataset.value, sample, currentSample]);
       React.useEffect(() => {
-        if (route.stage !== 'S4') return;
-        if (sample) sampleHeadingRef.current?.focus();
-        else if (sampleTriggerRef.current) {
-          const trigger = [...panelRef.current.querySelectorAll('[data-sample-row]')]
-            .find((element) => element.dataset.sampleRow === sampleTriggerRef.current);
-          (trigger || panelRef.current.querySelector('[aria-label="题目、ID 或任务"]'))?.focus();
-          sampleTriggerRef.current = null;
-        }
+        if (route.stage !== 'S4') setSample(null);
       }, [sampleId, route.stage]);
       React.useEffect(() => {
         if (!summary.value) return;
@@ -1302,7 +1310,7 @@ window.__ModuleLoader__.load({
       const openRun = (id) => update({run: id});
       const changeDataset = (id) => { update({dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
       const openDataset = (id) => {changeDataset(id); update({stage: 'S4'});};
-      const openSample = (item) => {sampleTriggerRef.current = String(item.row_index); setSample(item);};
+      const openSample = (item) => setSample(item);
       const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
       const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
         items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
@@ -1349,29 +1357,21 @@ window.__ModuleLoader__.load({
           h('button', {className: 'bfw-button', type: 'submit'}, t('apply'))),
         h('div', {className: 'bfw-toolbar'},
           select(t('pageSize'), String(route.size), (size) => update({size: Number(size), page: 1}), [24, 48, 96].map((size) => [String(size), String(size)])),
-          button(t('grid'), () => update({layout: 'grid'}), {'aria-pressed': route.layout === 'grid'}),
-          button(t('table'), () => update({layout: 'table'}), {'aria-pressed': route.layout === 'table'}),
           h('span', {className: 'bfw-muted'}, t('matches') + ': ' + (data?.total ?? '—') + ' / ' + t('total') + ': ' + (data?.all ?? '—'))),
-        dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : currentSample ? h(React.Fragment, null,
-          button(t('close'), () => setSample(null)), h('h3', {ref: sampleHeadingRef, tabIndex: -1},'题目 '+(currentSample.row_index+1)),
-          h('p', {className: 'bfw-question'}, questionText(currentSample.question)), h('h3', null, t('media')),
-          currentSample.media?.length ? currentSample.media.map((src, i) => h(PublicObservation,
-            {key: src, src, type: currentSample.media_types?.[i], label: t('media') + ' ' + (i + 1), t})) : empty(t('noMedia')),
-          h('details', null, h('summary', null, t('details')), json({...currentSample, media: undefined, media_types: undefined}))) :
+        dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() :
           !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
-            (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
-            table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
-              [item.row_index+1,templateName(item.template_id), item.split || '—', questionText(item.question),
-                button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
-            h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
-              'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
-              firstImage(item) && h(PublicObservation, {src: firstImage(item), compact: true, label: t('media'), t}),
+            (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) :
+            h('div', {className: 'bfw-items bfw-question-grid','data-question-grid':true}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
+              'data-sample-row': String(item.row_index),'aria-label':'查看题目 '+(item.row_index+1),onClick: () => openSample(item)},
+              firstImage(item) ? h(PublicObservation, {src: firstImage(item), compact: true, label:'题目 '+(item.row_index+1),t}) :
+                h('div',{className:'bfw-question-placeholder'},'文字题'),
               h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, questionText(item.question)),
               h('span', {className: 'bfw-muted'}, templateName(item.template_id) + ' · ' + (item.split || ''))))),
-        !currentSample && h('div', {className: 'bfw-pagination'},
+        h('div', {className: 'bfw-pagination'},
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
           h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
-          button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})));
+          button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})),
+        route.stage==='S4' && currentSample && h(QuestionDialog,{key:currentSample.row_index,item:currentSample,close:()=>setSample(null),t}));
         const planReceipt = plan ? {id: conversationPlan || !selectedRunId
           ? summary.value?.plan_source?.operation_id || 'saved-plan' : selectedRunId,
           state: 'completed', label: t('persistedPlan')} : null;
