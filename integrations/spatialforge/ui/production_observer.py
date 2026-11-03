@@ -6,6 +6,9 @@ import re
 from pathlib import Path
 import urllib.request
 from urllib.error import HTTPError
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sqlalchemy import create_engine, text
 
@@ -62,6 +65,8 @@ def observe(config, session, run_ids):
 
 def preview_kind(name):
     """Only produced scene imagery and operator-visible annotation summaries."""
+    if name == 'preview/scene.mp4':
+        return 'S2', 'video', 'video/mp4'
     if re.fullmatch(r'capture/(?:view_\d+|interaction_\d+_(?:before|after))\.png', name):
         return 'S2', 'image', 'image/png'
     if re.fullmatch(r'capture/interaction_\d+\.mp4', name):
@@ -106,6 +111,15 @@ def stage_artifacts(config, session, scene, task_id=None, revision=None, file=No
     if file:
         if not task_id or not task_id.startswith(scene + '.') or not preview_kind(file):
             return {'error': 'File is not a public stage preview', 'status_code': 403}
+        if file == 'preview/scene.mp4':
+            from scene_preview_video import cached_preview
+            observed = service_read(config, '/inspect', {'run_id': scene})
+            task = next((row for row in observed['tasks'] if row['id'] == task_id), None)
+            if not task or task['unit']['revision'] != revision:
+                return {'error': 'This preview is from an earlier revision; refresh the stage', 'status_code': 409}
+            saved = cached_preview(task_id, revision)
+            return {'source_path': saved['source_path'], 'content_type': 'video/mp4'} if saved else {
+                'error': 'The scene movie has not been exported', 'status_code': 404}
         value = service_read(config, '/evidence', {'task_id': task_id, 'revision': revision, 'file': file})
         if revision != value['latest_revision']:
             return {'error': 'This preview is from an earlier revision; refresh the stage', 'status_code': 409}
@@ -146,6 +160,11 @@ def stage_artifacts(config, session, scene, task_id=None, revision=None, file=No
             stage, kind, _ = preview_kind(row['file'])
             items.append({**row, 'stage': stage, 'kind': kind, 'title': Path(row['file']).name,
                           'task_id': task['id'], 'revision': rev})
+        from scene_preview_video import cached_preview
+        saved = cached_preview(task['id'], rev)
+        if saved:
+            items.append({key: saved[key] for key in ('file', 'task_id', 'revision', 'bytes', 'frame_count', 'purpose', 'source_path', 'content_type')})
+            items[-1].update(stage='S2', kind='video', title='scene.mp4', scene_name=task['unit'].get('intent', {}).get('name'))
     return {'scene': scene, 'state': observed['state'], 'items': items, 'truncated': truncated,
             'plan': {'title': '场景生产计划', 'objective': '\n'.join(row['description'] or row['name'] or '' for row in briefs),
                      'scenes': briefs, 'source': 'saved_scene_intents'},

@@ -55,6 +55,28 @@ Publish a complete new snapshot with the same `handoff_id` to update it. `list` 
 
 A receiving agent can use `spatialforge_status` or `spatialforge_wait` with a shared capture's `run_id`. When its session has no capture submission, this explicit observation lets the existing delivery review load that completed capture and its images. The submitting agent's conversation is not required. Repeated observations do not repeat the review; unrelated turns do not reopen the task. Generation and dataset operations keep their own behavior. A received handoff or review message does not establish that the user's requirements are complete.
 
+## Saved workbench scene movies
+
+The workbench exports an H.264 MP4 from each completed scene's declared public
+capture views. Export runs in the background when production is observed, with
+one encoder at a time. Movies are saved under `.deployment/scene-previews/` by
+task and revision and reused when a user opens, closes, or reloads the player.
+Playback serves an existing file with byte ranges; it never records a canvas or
+starts an encoder. These movies summarize the recorded viewpoints.
+
+Use a system `ffmpeg`, or install the optional encoder in the isolated UI runtime:
+
+```bash
+python3 -m pip install --target .deployment/preview-runtime --no-deps \
+  -r integrations/spatialforge/ui/requirements-preview.txt
+```
+
+An existing scene can be exported ahead of browsing with
+`ui/scene_preview_video.py --config <operator-config> --session <session-id>
+--scene <scene-run-id>` using the configured production Python. Export and media
+access retain the existing session and revision checks. While a new movie is
+unavailable, a scene's recorded views remain directly browsable.
+
 ## Test the code without production jobs
 
 For native Isaac video/trajectory data, see

@@ -17,7 +17,7 @@ window.__ModuleLoader__.load({
         executionProgress: '执行进展', productionHint: '五阶段自动执行，产物在下方更新。',
         blueprintNav: '计划', collectionNav: '场景', structureNav: '标注', synthesisNav: '题目', verificationNav: '报告', stageDone: '已完成',
         previewable: '可预览', savedStageProducts: '已保存产物', observationReadFailed: '公开观测加载失败，请重试。', unsupportedObservation: '暂不支持预览这种公开观测。',
-        sceneProject: '场景项目', sceneTour: '视角巡览视频', recordedViews: '已采集视角', prepareSceneVideo: '正在准备场景视频…', sceneVideoFailed: '场景视频准备失败，请重试。', pairedAnnotations: '场景图与标注已配对',
+        sceneProject: '场景项目', sceneTour: '视角巡览视频', sceneViews: '场景视角', recordedViews: '已采集视角', sceneVideoFailed: '场景视频读取失败，请重试。', pairedAnnotations: '场景图与标注已配对',
         currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
         toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
         queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
@@ -120,7 +120,7 @@ window.__ModuleLoader__.load({
         executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.',
         blueprintNav: 'Plan', collectionNav: 'Scenes', structureNav: 'Labels', synthesisNav: 'Items', verificationNav: 'Report', stageDone: 'Done',
         previewable: 'Preview available', savedStageProducts: 'Saved products', observationReadFailed: 'Public observation failed to load. Please retry.', unsupportedObservation: 'This public observation type cannot be previewed yet.',
-        sceneProject: 'Scene project', sceneTour: 'Recorded viewpoint video', recordedViews: 'Recorded views', prepareSceneVideo: 'Preparing scene video…', sceneVideoFailed: 'Scene video could not be prepared. Please retry.', pairedAnnotations: 'Scene images and annotations are paired',
+        sceneProject: 'Scene project', sceneTour: 'Recorded viewpoint video', sceneViews: 'Scene viewpoints', recordedViews: 'Recorded views', sceneVideoFailed: 'Scene video failed to load. Please retry.', pairedAnnotations: 'Scene images and annotations are paired',
         currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
         toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
         queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
@@ -604,7 +604,7 @@ window.__ModuleLoader__.load({
         const id = item.task_id || item.scene_id || 'scene';
         if (!groups.has(id)) groups.set(id, {id, title: item.scene_name || id, frames: [], video: null, kind: 'scene'});
         const project = groups.get(id);
-        if (item.kind === 'video') project.video ||= item;
+        if (item.kind === 'video' && (!project.video || item.purpose === 'scene_tour')) project.video = item;
         else project.frames.push(item);
       }
       for (const project of groups.values()) project.frames.sort((a, b) => (a.file || a.title || '').localeCompare(b.file || b.title || '', undefined, {numeric: true}));
@@ -617,94 +617,28 @@ window.__ModuleLoader__.load({
         className: 'bfw-preview-card bfw-scene-project', key: project.id, 'data-scene-project': project.id},
         h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(project),
           'aria-label': t('preview') + ' ' + t('sceneProject') + ' ' + (index + 1)},
-          h('span', {className: 'bfw-scene-poster'}, project.frames[0] ? h('img', {src: project.frames[0].url, alt: project.title}) :
-            h('video', {src: project.video.url, preload: 'metadata', muted: true}), h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, '▶')),
+          h('span', {className: 'bfw-scene-poster'}, project.video ? h('video', {src: project.video.url,
+            poster: project.frames[0]?.url, preload: 'auto', muted: true, playsInline: true, 'aria-label': project.title}) :
+            h('img', {src: project.frames[0].url, alt: project.title}),
+            h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, project.video ? '▶' : '↔')),
           h('strong', null, t('sceneProject') + ' ' + (index + 1)),
-          h('span', {className: 'bfw-muted'}, t('sceneTour') + ' · ' + t('recordedViews') + ': ' + project.frames.length)),
+          h('span', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length)),
         h('p', {className: 'bfw-code'}, displayRef(project.title)))));
     }
     function SceneVideo({project, t}) {
-      const canvasRef = React.useRef(null);
-      const [record, setRecord] = React.useState({url: project.video?.url || '', progress: 0, error: ''});
+      const [view, setView] = React.useState(0);
+      const [error, setError] = React.useState('');
       const [attempt, setAttempt] = React.useState(0);
-      React.useEffect(() => {
-        if (project.video) {setRecord({url: project.video.url, progress: 0, error: ''}); return;}
-        let stopped = false, stream, recorder, objectUrl;
-        const images = [];
-        const prepare = async () => {
-          setRecord({url: '', progress: 0, error: ''});
-          if (typeof MediaRecorder === 'undefined' || !canvasRef.current?.captureStream) throw new Error(t('sceneVideoFailed'));
-          const frames = await Promise.all(project.frames.map((frame) => new Promise((resolve, reject) => {
-            const image = new Image(); images.push(image);
-            image.onload = () => resolve(image);
-            image.onerror = () => reject(new Error(t('artifactReadFailed')));
-            image.src = frame.url;
-          })));
-          if (stopped) return;
-          const canvas = canvasRef.current;
-          canvas.width = frames[0].naturalWidth; canvas.height = frames[0].naturalHeight;
-          const context = canvas.getContext('2d');
-          const draw = (image, alpha = 1) => {
-            const scale = Math.min(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
-            context.globalAlpha = alpha;
-            context.drawImage(image, (canvas.width - image.naturalWidth * scale) / 2,
-              (canvas.height - image.naturalHeight * scale) / 2, image.naturalWidth * scale, image.naturalHeight * scale);
-            context.globalAlpha = 1;
-          };
-          draw(frames[0]);
-          const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find((type) => MediaRecorder.isTypeSupported(type));
-          stream = canvas.captureStream(24);
-          recorder = new MediaRecorder(stream, mimeType ? {mimeType} : undefined);
-          const chunks = [];
-          const finished = new Promise((resolve, reject) => {
-            recorder.ondataavailable = (event) => {if (event.data.size) chunks.push(event.data);};
-            recorder.onerror = () => reject(new Error(t('sceneVideoFailed')));
-            recorder.onstop = () => resolve(new Blob(chunks, {type: recorder.mimeType}));
-          });
-          recorder.start();
-          for (let index = 0; index < frames.length && !stopped; index++) {
-            for (let fade = 1; fade <= 8 && !stopped; fade++) {
-              draw(frames[Math.max(0, index - 1)]); draw(frames[index], fade / 8);
-              await new Promise((resolve) => setTimeout(resolve, 25));
-            }
-            await new Promise((resolve) => setTimeout(resolve, 800));
-            if (!stopped) setRecord({url: '', progress: index + 1, error: ''});
-          }
-          if (recorder.state !== 'inactive') recorder.stop();
-          const blob = await finished;
-          stream.getTracks().forEach((track) => track.stop());
-          if (stopped) return;
-          objectUrl = URL.createObjectURL(blob);
-          setRecord({url: objectUrl, progress: frames.length, error: ''});
-        };
-        prepare().catch((error) => {
-          if (recorder && recorder.state !== 'inactive') recorder.stop();
-          stream?.getTracks().forEach((track) => track.stop());
-          if (!stopped) setRecord({url: '', progress: 0, error: error.message});
-        });
-        return () => {
-          stopped = true;
-          if (recorder && recorder.state !== 'inactive') recorder.stop();
-          stream?.getTracks().forEach((track) => track.stop());
-          images.forEach((image) => {image.onload = image.onerror = null; image.src = '';});
-          if (objectUrl) URL.revokeObjectURL(objectUrl);
-        };
-      }, [project, attempt]);
-      return h('div', {className: 'bfw-scene-video'}, record.error ? h('div', {className: 'bfw-error', role: 'alert'},
-        t('sceneVideoFailed'), ' ' + record.error, button(t('retry'), () => {
-          setRecord({url: '', progress: 0, error: ''}); setAttempt((value) => value + 1);
-        })) : record.url ?
-        h('video', {src: record.url, controls: true, autoPlay: true, loop: true, muted: true, playsInline: true,
-          'aria-label': t('sceneTour'), onLoadedMetadata: (event) => {
-            const video = event.currentTarget;
-            if (video.duration !== Infinity) return;
-            video.addEventListener('durationchange', () => {video.currentTime = 0;}, {once: true});
-            video.currentTime = 1e10;
-          }, onError: () => setRecord({url: '', progress: 0, error: t('artifactReadFailed')})}) :
-        h(React.Fragment, null, h('canvas', {ref: canvasRef, role: 'img', 'aria-label': t('sceneTour')}),
-          h('p', {className: 'bfw-muted', role: 'status'}, t('prepareSceneVideo') + ' ' + record.progress + ' / ' + project.frames.length),
-          h('progress', {max: project.frames.length, value: record.progress, 'aria-label': t('prepareSceneVideo')})),
-        h('p', {className: 'bfw-muted'}, t('sceneTour') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
+      return h('div', {className: 'bfw-scene-video'}, error ? h('div', {className: 'bfw-error', role: 'alert'},
+        t('sceneVideoFailed'), ' ' + error, button(t('retry'), () => {setError(''); setAttempt((value) => value + 1);})) : project.video ?
+        h('video', {key: attempt, src: project.video.url, poster: project.frames[0]?.url, preload: 'auto',
+          controls: true, autoPlay: true, loop: true, muted: true, playsInline: true,
+          'aria-label': t('sceneTour'), onError: () => setError(t('artifactReadFailed'))}) :
+        h(React.Fragment, null, h('img', {src: project.frames[view]?.url, alt: project.title}),
+          h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setView((index) => index - 1), {disabled: view === 0}),
+            h('span', null, t('sceneViews') + ' ' + (view + 1) + ' / ' + project.frames.length),
+            button(t('nextPage'), () => setView((index) => index + 1), {disabled: view >= project.frames.length - 1}))),
+        h('p', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
     }
     function PreviewDialog({item, close, t}) {
       const ref = React.useRef(null);

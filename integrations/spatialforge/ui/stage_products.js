@@ -116,6 +116,33 @@ async function runProducts(id, root, directory, state, plan, scope) {
   return items;
 }
 
+function previewMediaKey(config, roots, url) {
+  return JSON.stringify([config.productionConfig, roots.map((root) => root.path),
+    ...['session_id', 'scene', 'run', 'task', 'revision'].map((key) => url.searchParams.get(key) || '')]);
+}
+
+function scheduleSceneMovies(config, session, scenes, runIds = []) {
+  if (!config.productionConfig || !config._previewJobs || !/^session-[a-zA-Z0-9-]+$/.test(session)) return;
+  for (const scene of scenes.filter((row) => /^sf_[a-zA-Z0-9_-]+$/.test(row.run_id) &&
+    row.tasks?.some((task) => task.state === 'SUCCEEDED'))) {
+    const key = JSON.stringify([session, scene.run_id, scene.tasks.filter((task) => task.state === 'SUCCEEDED').map((task) => [task.id, task.revision])]);
+    const previous = config._previewJobs.get(key);
+    if (previous && (!previous.error || Date.now() - previous.time < 60000)) continue;
+    const job = {time: Date.now(), error: false};
+    config._previewJobs.set(key, job);
+    if (config._previewJobs.size > 96) config._previewJobs.delete(config._previewJobs.keys().next().value);
+    // One CPU encoder at a time, started by the production observation rather than a preview click.
+    config._previewQueue = config._previewQueue.then(async () => {
+      const helper = fileURLToPath(new URL('./scene_preview_video.py', import.meta.url));
+      const {stdout} = await execute(config.productionPython, ['-B', helper, '--config', config.productionConfig,
+        '--session', session, '--scene', scene.run_id, '--run-ids', JSON.stringify(runIds)],
+      {timeout: 60000, maxBuffer: 2 * 1024 * 1024});
+      const value = JSON.parse(stdout);
+      if (value.error) throw new Error('Scene movie export did not complete');
+    }).catch(() => {job.error = true; job.time = Date.now();});
+  }
+}
+
 async function sceneArtifacts(config, roots, url, signal, media = false) {
   const session = url.searchParams.get('session_id') || '', scene = url.searchParams.get('scene') || '';
   if (!roots.length || !config.productionConfig || !/^session-[a-zA-Z0-9-]+$/.test(session) || !/^sf_[a-zA-Z0-9_-]+$/.test(scene)) {
@@ -138,13 +165,25 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
   const result = JSON.parse(stdout);
   if (result.error) throw new ApiError(result.error, result.status_code || 503);
   if (media) return result;
+  for (const row of result.items || []) if (row.file === 'preview/scene.mp4' && row.source_path && config._previewMedia) {
+    const mediaUrl = new URL(url);
+    mediaUrl.searchParams.set('task', row.task_id); mediaUrl.searchParams.set('revision', String(row.revision));
+    config._previewMedia.set(previewMediaKey(config, roots, mediaUrl), {source_path: row.source_path,
+      content_type: 'video/mp4', expires: Date.now() + 30000});
+  }
+  if (result.state === 'SUCCEEDED' && !(result.items || []).some((row) => row.file === 'preview/scene.mp4')) {
+    const tasks = [...new Map((result.items || []).map((row) => [row.task_id,
+      {id: row.task_id, revision: row.revision, state: 'SUCCEEDED'}])).values()];
+    scheduleSceneMovies(config, session, [{run_id: scene, tasks}], run ? [scene] : []);
+  }
   return {...result, items: (result.items || []).map(({source_path, ...row}) => ({...row,
     url: workbenchUrl({view: 'stage_media', scene, session_id: session, ...(run ? {run} : {}), task: row.task_id,
       revision: String(row.revision), file: row.file}, roots[0].path)})), snapshot_at: new Date().toISOString()};
 }
 
 async function sceneMedia(config, roots, url, request) {
-  const file = await sceneArtifacts(config, roots, url, request.signal, true);
+  const cached = url.searchParams.get('file') === 'preview/scene.mp4' && config._previewMedia?.get(previewMediaKey(config, roots, url));
+  const file = cached && cached.expires > Date.now() ? cached : await sceneArtifacts(config, roots, url, request.signal, true);
   if (file.data !== undefined) return Response.json(file.data, {headers: {'cache-control': 'no-store'}});
   const stat = await fs.stat(file.source_path), headers = {'content-type': file.content_type,
     'cache-control': 'private, max-age=30', 'x-content-type-options': 'nosniff', 'accept-ranges': 'bytes'};
@@ -229,6 +268,7 @@ async function productionProgress(roots, config, url, signal) {
         '--session', session, '--run-ids', JSON.stringify([...remoteIds].slice(0, 12))],
       {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
       scenes = JSON.parse(stdout);
+      scheduleSceneMovies(config, session, scenes.runs || [], [...remoteIds].slice(0, 12));
     } catch (error) {
       if (signal?.aborted) throw error;
       scenes = {status: 'unavailable', error: 'Production observer could not read the service (' + (error.code || error.name) + ')', runs: []};
@@ -539,6 +579,7 @@ async function readMedia(url, roots, signal) {
 
 export function createWorkbenchHandler(config, registered = () => []) {
   const limits = {maxRuns: 60, maxArtifacts: 300, ...config};
+  limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';

@@ -423,6 +423,32 @@ test('public JSON observations render as text and loading failures remain visibl
   assert.ok(find(render('image/png'), (node) => node.props.role === 'alert'));
 });
 
+test('scene playback uses its saved movie on the first render and after reopening', async () => {
+  let registration;
+  const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
+    useState: (value) => [value, () => {}]};
+  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
+    .replace(/return \{\s+inject:/, 'return {SceneVideo, sceneProjects}; return {inject:');
+  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}});
+  const {SceneVideo, sceneProjects} = registration.factory(() => React);
+  const project = sceneProjects([
+    {task_id: 'sf_one.scene0', kind: 'image', url: 'public/view_0.png'},
+    {task_id: 'sf_one.scene0', kind: 'video', url: 'public/interaction_0.mp4'},
+    {task_id: 'sf_one.scene0', kind: 'video', purpose: 'scene_tour', url: 'public/scene.mp4'},
+  ])[0];
+  const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
+    : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
+  for (let open = 0; open < 2; open++) {
+    const rendered = SceneVideo({project, t: (key) => key});
+    const movie = find(rendered, (node) => node.type === 'video');
+    assert.equal(movie.props.src, 'public/scene.mp4');
+    assert.equal(movie.props.preload, 'auto');
+    assert.equal(movie.props.controls, true);
+    assert.equal(movie.props.autoPlay, true);
+    assert.ok(!find(rendered, (node) => node.type === 'canvas' || node.type === 'progress'));
+  }
+});
+
 test('production observations follow persisted running/waiting/failed/completed transitions without changing records', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-progress-'));
   const operation = path.join(directory, 'operations', 'progress-fixture');
