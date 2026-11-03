@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
         previous: '上一页', nextPage: '下一页', page: '页', matches: '符合条件', total: '全集记录', pageSize: '每页',
         grid: '网格', table: '表格', question: '公开题目', noItems: '没有符合条件的记录。', item: '样本',
         details: '公开条件与输出格式', media: '公开观测', noMedia: '未声明公开媒体', close: '返回列表',
-        publicNote: '当前是公开题目视角，接口不读取 authority、答案或 oracle 文件。',
+        publicNote: '公开题目与配套媒体。',
         report: '生成质量报告', noReport: '该版本没有 quality_report.json，不能宣称已完成集合质量验收。',
         requested: '请求数', accepted: '生成接纳数', shortfall: '缺口', scene_groups: '场景组',
         approval: '评测验证通过', reportNote: '生成接纳数不等于已验证样本数；未收集模型响应时不显示 IRT。',
@@ -223,7 +223,7 @@ window.__ModuleLoader__.load({
         previous: 'Previous', nextPage: 'Next', page: 'Page', matches: 'Matches', total: 'All records', pageSize: 'Per page',
         grid: 'Grid', table: 'Table', question: 'Public question', noItems: 'No matching records.', item: 'Sample',
         details: 'Public conditions & output format', media: 'Public observations', noMedia: 'No declared public media', close: 'Back to list',
-        publicNote: 'Public view. The API does not read authority, answers or oracle files.',
+        publicNote: 'Public questions and supporting media.',
         report: 'Generation quality report', noReport: 'No quality_report.json. Collection acceptance cannot be inferred.',
         requested: 'Requested', accepted: 'Generation accepted', shortfall: 'Shortfall', scene_groups: 'Scene groups',
         approval: 'Benchmark validation passed', reportNote: 'Generation acceptance is not verified-item count. IRT is hidden without model responses.',
@@ -321,6 +321,10 @@ window.__ModuleLoader__.load({
       const version=label.match(/(?:^|_)v(\d+)(?:_|$)/);
       return rooms[matched]+(/probe/.test(label) ? ' · 校准版' : /archive/.test(label) ? ' · 归档版' : '')+(version ? ' · 版本 '+version[1] : '');
     }
+    function questionText(text) {
+      return String(text || '').replace(/场景「([^」]+)」/g,(match,name)=>{
+        const label=sceneName(name);return label.startsWith('场景 ') ? match : '场景「'+label+'」';});
+    }
     function planValue(value, edit, path = [], labels = {}) {
       const key = path[path.length - 1];
       if(key==='template_id') return labels[value] || '题型';
@@ -370,7 +374,7 @@ window.__ModuleLoader__.load({
         options.map(([id, text]) => h('option', {key: id, value: id}, text))));
     }
     function initialState(sessionId) {
-      const fallback = {version: 3, stage: 'S1', run: '', production: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'table',
+      const fallback = {version: 3, stage: 'S1', run: '', production: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'grid',
         runFilter: '', runListPage: 1, runListSize: 12, versionFilter: '', versionListPage: 1, versionListSize: 12};
       const saved = JSON.parse(localStorage.getItem('bfw:spatialforge:' + sessionId) || 'null');
       if (saved?.version === 3) {
@@ -1339,7 +1343,7 @@ window.__ModuleLoader__.load({
       const datasetBrowser = h('div', {'data-dataset-browser': true},
         h('small', {className: 'bfw-hint'}, t('publicNote')),
         h('form', {className: 'bfw-toolbar', onSubmit: (e) => {e.preventDefault(); update({q: search, page: 1});}},
-          select(t('template'), route.template, (id) => update({template: id, page: 1}), [['', t('all')], ...(data?.facets.templates || []).map((id) => [id, id])]),
+          select(t('template'), route.template, (id) => update({template: id, page: 1}), [['', t('all')], ...(data?.facets.templates || []).map((id) => [id,templateName(id)])]),
           select(t('split'), route.split, (id) => update({split: id, page: 1}), [['', t('all')], ...(data?.facets.splits || []).map((id) => [id, id])]),
           h('input', {className: 'bfw-input', 'aria-label': t('search'), placeholder: t('search'), value: search, onChange: (e) => setSearch(e.target.value)}),
           h('button', {className: 'bfw-button', type: 'submit'}, t('apply'))),
@@ -1350,19 +1354,19 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-muted'}, t('matches') + ': ' + (data?.total ?? '—') + ' / ' + t('total') + ': ' + (data?.all ?? '—'))),
         dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() : currentSample ? h(React.Fragment, null,
           button(t('close'), () => setSample(null)), h('h3', {ref: sampleHeadingRef, tabIndex: -1},'题目 '+(currentSample.row_index+1)),
-          h('p', {className: 'bfw-question'}, currentSample.question), h('h3', null, t('media')),
+          h('p', {className: 'bfw-question'}, questionText(currentSample.question)), h('h3', null, t('media')),
           currentSample.media?.length ? currentSample.media.map((src, i) => h(PublicObservation,
             {key: src, src, type: currentSample.media_types?.[i], label: t('media') + ' ' + (i + 1), t})) : empty(t('noMedia')),
           h('details', null, h('summary', null, t('details')), json({...currentSample, media: undefined, media_types: undefined}))) :
           !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
             (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) : route.layout === 'table' ?
             table([t('item'), t('template'), t('split'), t('question'), t('open')], data.items.map((item) =>
-              [item.row_index+1,templateName(item.template_id), item.split || '—', item.question,
+              [item.row_index+1,templateName(item.template_id), item.split || '—', questionText(item.question),
                 button(t('open'), () => openSample(item), {'data-sample-row': String(item.row_index), 'aria-label': t('open') + ' ' + (item.item_id || item.id)})])) :
             h('div', {className: 'bfw-items'}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
               'data-sample-row': String(item.row_index), onClick: () => openSample(item)},
               firstImage(item) && h(PublicObservation, {src: firstImage(item), compact: true, label: t('media'), t}),
-              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, item.question),
+              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, questionText(item.question)),
               h('span', {className: 'bfw-muted'}, templateName(item.template_id) + ' · ' + (item.split || ''))))),
         !currentSample && h('div', {className: 'bfw-pagination'},
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
