@@ -23,7 +23,7 @@ export const Config = z.object({
 const STATUSES = ['draft', 'candidate', 'verified', 'rejected', 'superseded'];
 const PUBLIC_FIELDS = ['item_id', 'id', 'task_id', 'template_id', 'protocol_id', 'protocol_version',
   'measurement_variant', 'primary_operation', 'catalog_capability_links', 'provided_information',
-  'scene_group_id', 'split', 'question', 'choices', 'media', 'output_schema', 'reference_frame', 'history_access_mode'];
+  'scene_group_id', 'split', 'question', 'question_presentation', 'choices', 'media', 'output_schema', 'reference_frame', 'history_access_mode'];
 const QUALITY_FIELDS = ['requested', 'accepted', 'shortfall', 'per_template', 'requested_per_template',
   'split', 'scene_groups', 'rejections', 'source', 'benchmark_approved', 'capability_scope', 'state'];
 
@@ -605,7 +605,10 @@ async function readDataset(url, roots, signal) {
     if (template && row.template_id !== template || split && row.split !== split) continue;
     if (query && ![row.item_id, row.id, row.question, row.task_id, row.template_id].some((value) => String(value || '').toLocaleLowerCase().includes(query))) continue;
     if (total >= (page - 1) * pageSize && items.length < pageSize) {
-      items.push({...pick(row, PUBLIC_FIELDS), row_index: index, media: mediaReferences(row, id, index, workspacePath, scope),
+      const projected=pick(row,PUBLIC_FIELDS);
+      if(projected.question_presentation) projected.question_presentation=pick(projected.question_presentation,
+        ['schema','stem','context','conditions','options','response','media_labels']);
+      items.push({...projected, row_index: index, media: mediaReferences(row, id, index, workspacePath, scope),
         media_types: (Array.isArray(row.media) ? row.media : []).map((reference) => typeof reference === 'string'
           ? PUBLIC_MEDIA_TYPES[path.extname(reference).toLowerCase()] || 'application/octet-stream' : 'application/octet-stream')});
     }

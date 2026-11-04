@@ -64,6 +64,7 @@ def relevance(row, query):
 
 def catalog(args, directory=None, config=None):
     from .adapters import supports
+    from .question_writing import contract
     section = args.get('section', 'pipelines')
     if section == 'plan_template':
         from .assessment import assessment_template
@@ -89,4 +90,5 @@ def catalog(args, directory=None, config=None):
     return {'section': section, 'items': rows[offset:offset+limit], 'total': len(rows),
             'next_offset': offset+limit if offset+limit < len(rows) else None,
             'source': document()['meta']['version'],
-            'capability_policy': 'Catalog links select candidates; task operation and measurement variant define measured scope.'}
+            'capability_policy': 'Catalog links select candidates; task operation and measurement variant define measured scope.',
+            'question_authoring': contract()}

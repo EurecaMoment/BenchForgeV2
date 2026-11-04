@@ -122,7 +122,8 @@ test('question page keeps a thumbnail grid when opening and closing details, inc
   script=script.replace(/return \{\s+inject:/,'return {Workbench}; return {inject:');
   const records={summary:{runs:[],datasets:[{id:'dataset-existing',report:{accepted:1}}],
     plan:{selections:[{template_ids:['C24-T01'],count:1,reason:'Direction'}],template_contracts:[{id:'C24-T01',title:'固定方向判断'}]}},
-    progress:{pipelines:[],scenes:{runs:[]}},dataset:{items:[{row_index:0,item_id:'private-looking-id',template_id:'C24-T01',split:'test',question:'图中椅子相对桌子在哪侧？',media:[]}],
+    progress:{pipelines:[],scenes:{runs:[]}},dataset:{items:[{row_index:0,item_id:'private-looking-id',template_id:'C24-T01',split:'test',question:'图中椅子相对桌子在哪侧？',
+      question_presentation:{stem:'看图1，椅子在桌子的哪一侧？',context:['图中名称对应真实物体。'],conditions:['以画面为参照，按中心标记判断。'],options:['左侧','右侧'],response:'提交一个方向标签。',media_labels:[]},media:[]}],
       facets:{templates:['C24-T01'],splits:['test']},total:1,all:1,pages:1}};
   const state=[];let index=0;
   const react={createElement:React.createElement,useEffect(){},useState(initial){const slot=index++;
@@ -145,12 +146,16 @@ test('question page keeps a thumbnail grid when opening and closing details, inc
     assert.ok(find(browser,node=>node.props?.['data-question-grid']));
     assert.equal(find(browser,node=>node.type==='table'),undefined);
     assert.match(text(browser),/固定方向判断/);
-    assert.match(text(browser),/图中椅子相对桌子在哪侧/);
+    assert.match(text(browser),/看图1，椅子在桌子的哪一侧/);
+    assert.doesNotMatch(text(browser),/按中心标记判断/,'the grid shows the short stem');
     find(browser,node=>node.props?.['data-sample-row']==='0').props.onClick();
     const opened=render();
     assert.ok(find(opened,node=>node.props?.['data-question-grid']),'opening details must retain the grid');
     const dialog=find(opened,node=>typeof node.type==='function' && node.type.name==='QuestionDialog');
     assert.ok(dialog,'a question opens in a dialog');
+    const detail=dialog.type(dialog.props);
+    assert.match(text(detail),/以画面为参照，按中心标记判断/);
+    assert.ok(find(detail,node=>node.props?.['data-question-section']==='conditions'),'required conditions stay visible');
     dialog.props.close();
     const closed=render();
     assert.ok(find(closed,node=>node.props?.['data-question-grid']));

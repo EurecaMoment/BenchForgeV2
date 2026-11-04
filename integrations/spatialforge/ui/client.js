@@ -304,7 +304,8 @@ window.__ModuleLoader__.load({
 .bfw-public-observation{min-inline-size:0;margin:1rem 0}.bfw-public-observation>figcaption{font-size:.75rem;color:var(--dsw-alias-label-secondary)}.bfw-public-observation[data-compact=true]{margin:0}.bfw-public-observation[data-compact=true] .bfw-observation{margin:0 0 .75rem;aspect-ratio:16/10}
 .bfw-scene-projects{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,42ch),1fr));gap:1rem}.bfw-scene-project{max-inline-size:72ch}.bfw-scene-poster{position:relative;display:grid;place-items:center;background:var(--dsw-alias-bg-layer-2);aspect-ratio:16/10;overflow:hidden}.bfw-scene-poster img{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-play{position:absolute;display:grid;place-items:center;inline-size:3rem;block-size:3rem;border-radius:50%;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 .2rem 1rem #0002}.bfw-scene-video{display:grid;gap:.75rem;min-inline-size:0}.bfw-scene-video video,.bfw-scene-video canvas{display:block;inline-size:auto;max-inline-size:100%;max-block-size:65vh;object-fit:contain;margin-inline:auto}.bfw-scene-video progress{inline-size:100%}
 .bfw-library-controls{margin-block:.6rem}.bfw-library-controls>.bfw-input{flex:1 1 24ch;min-inline-size:0}.bfw-library-policy{margin-block:.4rem .2rem}.bfw-scene-select{display:flex;align-items:center;gap:.6rem;padding:.65rem .85rem;border-block-end:1px solid var(--dsw-alias-border-l3);font-size:.8rem}.bfw-scene-select input,.bfw-library-policy input{accent-color:var(--dsw-alias-brand-primary);inline-size:1rem;block-size:1rem;flex:none}.bfw-scene-selected{border-color:var(--dsw-alias-brand-primary)}.bfw-scene-poster video{inline-size:100%;block-size:100%;object-fit:contain}.bfw-scene-project>.bfw-code{font-size:.7rem;padding-inline:.85rem;overflow-wrap:anywhere}.bfw-library-location{margin-block-start:1rem;font-size:.75rem}.bfw-library-location p{overflow-wrap:anywhere}.bfw-demand-scene-summary{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:.75rem}.bfw-demand-scene-summary>.bfw-button{padding:.3em .65em;margin-inline-start:auto}
-.bfw-question-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr));gap:.8rem}.bfw-question-grid .bfw-item{padding:.5rem;border-radius:.7rem;gap:.35rem}.bfw-question-grid .bfw-question-preview{font-size:.8rem;line-height:1.45;-webkit-line-clamp:3;margin:.15rem 0}.bfw-question-grid .bfw-muted{font-size:.7rem}.bfw-question-grid .bfw-public-observation{width:100%}.bfw-question-grid .bfw-observation{margin:0;aspect-ratio:16/10;width:100%;object-fit:contain;border-radius:.4rem;background:var(--dsw-alias-bg-layer-2)}.bfw-question-placeholder{display:grid;place-items:center;aspect-ratio:16/10;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-radius:.4rem}.bfw-question-dialog{width:min(92vw,60rem)}.bfw-question-dialog .bfw-preview-header{display:flex;position:sticky;top:0;background:var(--dsw-alias-bg-base);z-index:1}.bfw-question-dialog .bfw-observation{max-block-size:55vh}
+.bfw-question-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr));gap:.8rem}.bfw-question-grid .bfw-item{padding:.5rem;border-radius:.7rem;gap:.35rem}.bfw-question-grid .bfw-question-preview{font-size:.8rem;line-height:1.45;-webkit-line-clamp:3;margin:.15rem 0}.bfw-question-grid .bfw-muted{font-size:.7rem}.bfw-question-grid .bfw-public-observation{width:100%}.bfw-question-grid .bfw-observation{margin:0;aspect-ratio:16/10;width:100%;object-fit:contain;border-radius:.4rem;background:var(--dsw-alias-bg-layer-2)}.bfw-question-placeholder{display:grid;place-items:center;aspect-ratio:16/10;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);border-radius:.4rem}.bfw-question-dialog{width:min(92vw,60rem)}.bfw-question-dialog .bfw-preview-header{display:flex;position:sticky;top:0;background:var(--dsw-alias-bg-base);z-index:1}.bfw-question-dialog .bfw-observation{max-block-size:none;width:100%;height:auto}
+.bfw-question-section{margin-block:.75rem;font-size:.875rem;line-height:1.6}.bfw-question-section h3{margin:0 0 .25rem;font-size:.75rem;color:var(--dsw-alias-label-secondary);font-weight:500}.bfw-question-section ul{margin:0;padding-inline-start:1.2rem}.bfw-question-section[data-question-section=options] ul{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;padding:0}.bfw-question-section[data-question-section=options] li{padding:.2rem .65rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.4rem}.bfw-original-image{margin-inline-start:.75rem;font-size:.75rem;color:inherit}.bfw-question-response{font-size:.75rem;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 `;
 
     function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
@@ -673,7 +674,7 @@ window.__ModuleLoader__.load({
         return () => controller.abort();
       }, [src, type, attempt]);
       return h('figure', {className: 'bfw-public-observation', 'data-observation-type': type, 'data-compact': compact},
-        !compact && h('figcaption', null, label),
+        !compact && h('figcaption', null, label, type.startsWith('image/') && h('a',{href:src,target:'_blank',rel:'noopener noreferrer',className:'bfw-original-image'},'打开原图')),
         record.error ? h('div', {className: 'bfw-error', role: 'alert'}, t('observationReadFailed'), ' ' + record.error,
           button(t('retry'), () => setAttempt((value) => value + 1))) : type === 'application/json' ?
           record.loading ? empty(t('loading')) : json(record.data) : type.startsWith('image/') ?
@@ -687,6 +688,7 @@ window.__ModuleLoader__.load({
     }
     function QuestionDialog({item,close,t}) {
       const ref=React.useRef(null);
+      const presentation=item.question_presentation;
       React.useEffect(()=>{
         const trigger=document.activeElement,dialog=ref.current;
         dialog.showModal();
@@ -696,9 +698,16 @@ window.__ModuleLoader__.load({
       return h('dialog',{ref,className:'bfw-preview-dialog bfw-question-dialog','data-question-dialog':true,'aria-label':title,
         onCancel:event=>{event.preventDefault();close();},onClick:event=>{if(event.target===ref.current)close();}},
         h('div',{className:'bfw-preview-header'},h('h2',null,title),button(t('previewClose'),close)),
-        h('p',{className:'bfw-question'},questionText(item.question)),
-        item.media?.length ? item.media.map((src,index)=>h(PublicObservation,{key:src,src,type:item.media_types?.[index],
-          label:t('media')+' '+(index+1),t})) : empty(t('noMedia')),
+        h('p',{className:'bfw-question','data-question-stem':true},presentation?.stem || questionText(item.question)),
+        presentation && [['context','已知条件'],['conditions','作答规则'],['options','选项']].map(([key,label])=>
+          presentation[key]?.length > 0 && h('section',{key,className:'bfw-question-section','data-question-section':key},
+            h('h3',null,label),h('ul',null,presentation[key].map((value,index)=>h('li',{key:index},value))))),
+        presentation && h('p',{className:'bfw-question-response'},'作答方式：'+presentation.response),
+        item.media?.length ? item.media.map((src,index)=>{
+          const label=presentation?.media_labels?.[index] || t('media')+' '+(index+1);
+          const observation=h(PublicObservation,{key:src,src,type:item.media_types?.[index],label,t});
+          return item.media_types?.[index]==='application/json' ? h('details',{key:src},h('summary',null,label),observation) : observation;
+        }) : empty(t('noMedia')),
         h('details',null,h('summary',null,t('details')),json({...item,media:undefined,media_types:undefined})));
     }
     function sceneProjects(items) {
@@ -1365,7 +1374,7 @@ window.__ModuleLoader__.load({
               'data-sample-row': String(item.row_index),'aria-label':'查看题目 '+(item.row_index+1),onClick: () => openSample(item)},
               firstImage(item) ? h(PublicObservation, {src: firstImage(item), compact: true, label:'题目 '+(item.row_index+1),t}) :
                 h('div',{className:'bfw-question-placeholder'},'文字题'),
-              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, questionText(item.question)),
+              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, item.question_presentation?.stem || questionText(item.question)),
               h('span', {className: 'bfw-muted'}, templateName(item.template_id) + ' · ' + (item.split || ''))))),
         h('div', {className: 'bfw-pagination'},
           button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),

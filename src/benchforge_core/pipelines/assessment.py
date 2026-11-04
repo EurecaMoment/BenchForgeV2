@@ -6,7 +6,11 @@ from pathlib import Path
 
 
 def assessment_template():
-    return json.loads(Path(__file__).with_name('assessment_template.json').read_text(encoding='utf-8'))
+    from .question_writing import contract
+    value = json.loads(Path(__file__).with_name('assessment_template.json').read_text(encoding='utf-8'))
+    value['question_authoring'] = contract()
+    value['instructions'] += ' 题面写作约束：' + value['question_authoring']['instructions']
+    return value
 
 
 def validate_assessment(value, selections, inputs):
