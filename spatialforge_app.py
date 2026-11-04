@@ -13,8 +13,9 @@ from urllib.request import Request, urlopen
 import venv
 
 ROOT = Path(__file__).resolve().parent
+CONFIG = ROOT / 'config'
 STATE = ROOT / '.spatialforge'
-SERVER = STATE / 'server.local.json'
+SERVER = CONFIG / 'spatialforge-server.local.json'
 PYTHON = STATE / ('venv/Scripts/python.exe' if os.name == 'nt' else 'venv/bin/python')
 
 
@@ -78,38 +79,36 @@ def main():
                       harness=str(ROOT / 'components/benchclaw'),
                       database_url=f'postgresql+psycopg://spatialforge:{password}@127.0.0.1:{args.db_port}/spatialforge',
                       operator_token=secrets.token_urlsafe(32), worker_token=secrets.token_urlsafe(32),
-                      models_config=str(STATE / 'models.local.json'), gpu_candidates='0',
+                      models_config=str(CONFIG / 'models.local.json'), gpu_candidates='0',
                       task_root=str(STATE / 'artifacts/operator_workspaces'))
         write(SERVER, config)
-        env = STATE / 'database.env'
+        env = CONFIG / 'database.env'
         env.write_text(f'POSTGRES_PASSWORD={password}\nPOSTGRES_PORT={args.db_port}\n', encoding='utf8')
         if os.name != 'nt':
             env.chmod(0o600)
-        write(ROOT / 'spatialforge.local.json', {'service_url': f'http://127.0.0.1:{args.port}',
-                                               'operator_token_env': 'SPATIALFORGE_OPERATOR_TOKEN'})
-        shutil.copy2(ROOT / 'components/spatialforge/config/models.example.json', STATE / 'models.local.json')
-        worker = json.loads((ROOT / 'components/spatialforge/config/worker.example.json').read_text())
+        write(CONFIG / 'spatialforge.local.json', {'service_url': f'http://127.0.0.1:{args.port}',
+                                               'operator_token': config['operator_token']})
+        shutil.copy2(CONFIG / 'models.example.json', CONFIG / 'models.local.json')
+        worker = json.loads((CONFIG / 'worker.example.json').read_text())
         worker['worker_token'] = config['worker_token']
-        worker.pop('worker_token_env', None)
         worker['url'] = f'http://127.0.0.1:{args.port}'
         worker['ssh_forward'] = f'{args.port}:127.0.0.1:{args.port}'
-        write(STATE / 'worker.local.json', worker)
-        print(f'Configuration: {SERVER}; desktop configuration: {STATE / "worker.local.json"}')
+        write(CONFIG / 'worker.local.json', worker)
+        print(f'Configuration: {SERVER}; desktop configuration: {CONFIG / "worker.local.json"}')
     elif args.command == 'db':
-        subprocess.run(['docker', 'compose', '-p', args.project, '--env-file', str(STATE / 'database.env'),
+        subprocess.run(['docker', 'compose', '-p', args.project, '--env-file', str(CONFIG / 'database.env'),
                         '-f', str(ROOT / 'components/spatialforge/deploy/compose.yml'), 'up', '-d', '--wait'], check=True)
     elif args.command == 'serve':
         subprocess.run([str(PYTHON), '-m', 'spatialforge.service', '--config', str(SERVER)], check=True)
     elif args.command.startswith('dsh-'):
         command = [sys.executable, str(ROOT / 'benchforge.py'), args.command.removeprefix('dsh-')]
         if args.command == 'dsh-setup':
-            command += ['--spatialforge-config', str(ROOT / 'spatialforge.local.json')]
+            command += ['--spatialforge-config', str(CONFIG / 'spatialforge.local.json')]
             if args.dsh_root:
                 command += ['--dsh-root', str(args.dsh_root)]
         else:
             command += ['--port', str(args.port), *(['--no-open'] if args.no_open else [])]
-        subprocess.run(command, check=True,
-                       env={**os.environ, 'SPATIALFORGE_OPERATOR_TOKEN': read()['operator_token']})
+        subprocess.run(command, check=True)
     elif args.command == 'worker':
         if os.name != 'nt':
             p.error('The Isaac dispatcher runs on the Windows desktop only')

@@ -3,8 +3,10 @@
 __pycache__
 **/__pycache__
 runs
-config.local.json
-*.local.yml
+config/*.local.json
+config/*.local.yml
+config/*.env
+config/*.bak-*
 dist
 build
 *.egg-info

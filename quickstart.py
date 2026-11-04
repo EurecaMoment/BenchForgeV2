@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--workspace',type=Path,default=Path('runs/quickstart'))
     parser.add_argument('--dsh-root',type=Path,help='Optional existing deepseek-harness checkout')
     parser.add_argument('--profile',type=Path,help='Optional DSH profile patch to install this mode into; backs up before editing')
-    parser.add_argument('--config',type=Path,help='Existing machine config; otherwise creates config.local.json from example')
+    parser.add_argument('--config',type=Path,help='Existing machine config; otherwise creates config/benchforge.local.json from the example')
     args=parser.parse_args()
     root=Path(__file__).resolve().parent
     if args.profile and not args.dsh_root:
@@ -36,10 +36,11 @@ def main():
     if not python.exists():
         venv.EnvBuilder(with_pip=True).create(environment)
     subprocess.run([str(python),'-m','pip','install',str(root)+'[dsh,production,research]'],check=True)
-    config=(args.config or root/'config.local.json').resolve()
+    config=(args.config or root/'config/benchforge.local.json').resolve()
     if not config.exists():
-        config.write_text((root/'config.example.json').read_text(encoding='utf-8'),encoding='utf-8')
-    output=root/'benchforge.local.yml'
+        config.parent.mkdir(parents=True,exist_ok=True)
+        config.write_text((root/'config/benchforge.example.json').read_text(encoding='utf-8'),encoding='utf-8')
+    output=root/'config/benchforge.local.yml'
     subprocess.run([str(python),str(root/'integrations/dsh/build_preset.py'),
         '--dsh-root',str(dsh),'--python',str(python),'--config',str(config),'--output',str(output)],check=True)
     if args.profile:

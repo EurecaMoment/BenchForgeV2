@@ -19,8 +19,11 @@ def annotate(args,directory,config):
     # URLs are configured on every original client, including non-default schemes/ports.
     for name,prefix in [('sam3','SAM3'),('yoloe','YOLOE'),('depthanything3','DEPTHANYTHING3')]:
         env[prefix+'_BASE_URL']=services[name]['url']
-    if services['llm_local'].get('token_env'):
-        env['BENCHFORGE_ANNOTATION_TOKEN']=os.environ[services['llm_local']['token_env']]
+    token = services['llm_local'].get('token')
+    if not token and services['llm_local'].get('token_env'):
+        token = os.environ.get(services['llm_local']['token_env'])
+    if token:
+        env['BENCHFORGE_ANNOTATION_TOKEN']=token
     records=rows(args['input']);output=[];review=[]
     script=VENDOR/'annotation-tool/default-annotation/run_image_to_semantic_depth.py'
     for i,row in enumerate(records):

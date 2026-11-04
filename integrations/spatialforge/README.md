@@ -31,13 +31,13 @@ This client never starts a second worker, simulator, tunnel or model service;
 do not configure both workers to claim the same queue without an explicit server
 capacity policy.
 
-Copy `config.example.json` to a private `spatialforge.local.json`. Set
-`SPATIALFORGE_OPERATOR_TOKEN` in the environment used to launch DSH, then:
+Copy `config/spatialforge.example.json` to a private `config/spatialforge.local.json` and put the
+service `operator_token` in it, then:
 
 ```bash
-python integrations/spatialforge/cli.py status --config spatialforge.local.json
-python integrations/spatialforge/cli.py status --config spatialforge.local.json --run-id sf_YOUR_RUN
-python benchforge.py setup --spatialforge-config spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json --run-id sf_YOUR_RUN
+python benchforge.py setup --spatialforge-config config/spatialforge.local.json
 python benchforge.py start
 ```
 

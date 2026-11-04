@@ -130,7 +130,7 @@ class Runtime:
                   "llm_local": {"infer": ("POST", "/v1/chat/completions"), "models": ("GET", "/v1/models")}}
         cfg = self.config.get('services', {}).get(tool)
         if not cfg:
-            raise ValueError(f'Configure services.{tool}.url in config.local.json and pass --config; core tools do not require this backend.')
+            raise ValueError(f'Configure services.{tool}.url in config/benchforge.local.json and pass --config; core tools do not require this backend.')
         action = args.get("action", "infer")
         method, route = routes[tool][action]
         if action == "task":
@@ -138,8 +138,11 @@ class Runtime:
             route += quote(args["task_id"], safe="")
         body = json.dumps(args.get("payload", {})).encode() if method == "POST" else None
         headers = {"Content-Type": "application/json"}
-        if cfg.get("token_env"):
-            headers["Authorization"] = "Bearer " + os.environ[cfg["token_env"]]
+        token = cfg.get("token")
+        if not token and cfg.get("token_env"):
+            token = os.environ.get(cfg["token_env"])
+        if token:
+            headers["Authorization"] = "Bearer " + token
         request = urllib.request.Request(cfg["url"].rstrip("/") + route, data=body, headers=headers, method=method)
         from urllib.parse import urlsplit
         local = urlsplit(cfg['url']).hostname in ('localhost', '127.0.0.1', '::1')
@@ -152,7 +155,7 @@ class Runtime:
     def collect(self, tool, args, directory):
         cfg = self.config.get('collectors', {}).get(tool)
         if not cfg:
-            raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config.example.json.')
+            raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config/benchforge.example.json.')
         output = directory / "capture"
         output.mkdir()
         if tool == "isaac":

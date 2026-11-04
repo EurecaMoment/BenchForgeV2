@@ -55,8 +55,8 @@ def main():
         if args.spatialforge_config:
             python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
             run([python,ROOT/'integrations/spatialforge/build_preset.py',
-                 '--dsh-root',dsh,'--python',python,'--config',ROOT/'config.local.json',
-                 '--service-config',args.spatialforge_config.resolve(),'--output',ROOT/'benchforge.local.yml'])
+                 '--dsh-root',dsh,'--python',python,'--config',ROOT/'config/benchforge.local.json',
+                 '--service-config',args.spatialforge_config.resolve(),'--output',ROOT/'config/benchforge.local.yml'])
         saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
         print('Ready. Run: python benchforge.py start')
         return
@@ -66,7 +66,7 @@ def main():
     env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
     # An overlay and isolated home keep official presets and other installations untouched.
     command=[config['node'],str(Path(config['dsh_root'])/'apps/cli/lib/bin.js'),
-             '--profile','web','--patch',str(ROOT/'benchforge.local.yml'),'--host','127.0.0.1','--port',str(args.port)]
+             '--profile','web','--patch',str(ROOT/'config/benchforge.local.yml'),'--host','127.0.0.1','--port',str(args.port)]
     if args.no_open:
         command.append('--no-open')
     run(command,cwd=ROOT,env=env)
