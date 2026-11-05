@@ -9,11 +9,12 @@ import test from 'node:test';
 import {createSynthesisSessions} from '../ui/synthesis_sessions.js';
 
 async function fixture(t, batchSize = 3) {
-  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-synthesis-factory-'));
+  const temporaryRoot = await fs.realpath(os.tmpdir());
+  const temporary = await fs.mkdtemp(path.join(temporaryRoot, 'benchforge-synthesis-factory-'));
   const workspace = path.join(temporary, 'workspace');
   await fs.mkdir(workspace);
   t.after(async () => {
-    const resolved = path.resolve(temporary), relative = path.relative(path.resolve(os.tmpdir()), resolved);
+    const resolved = path.resolve(temporary), relative = path.relative(temporaryRoot, resolved);
     assert.ok(relative && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
     assert.ok(path.basename(resolved).startsWith('benchforge-synthesis-factory-'));
     await fs.rm(resolved, {recursive: true, force: true});

@@ -6,7 +6,7 @@ import test from 'node:test';
 import {createWorkbenchHandler} from '../ui/stage_products.js';
 
 test('native preparation is bound to the saved current-parent plan',async () => {
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'benchforge-synthesis-scope-'));
+  const root=await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()),'benchforge-synthesis-scope-'));
   try {
     const operation=path.join(root,'operations','plan');
     await fs.mkdir(operation,{recursive:true});
