@@ -196,8 +196,9 @@ def run(args, directory, config=None, client=service_call):
     def plan_guard():
         owner_plan = scope['plan'] if scope else str(plan_path)
         active=active_plan(args['_workspace'],session) if session else None
-        if active and (active['plan']!=owner_plan or active['pending']):
-            state.update(state='needs_plan_application' if active['plan']==owner_plan else 'plan_superseded',
+        same_plan = bool(active) and Path(active['plan']).resolve() == Path(owner_plan).resolve()
+        if active and (not same_plan or active['pending']):
+            state.update(state='needs_plan_application' if same_plan else 'plan_superseded',
                 active_plan=active['plan'],changed_sections=active['changes'],
                 next='Read the saved edited assessment, update scene/task code and executable steps, and call pipeline_plan with applies_edit='+active['plan']+'. Retain its assessment, allocation and inputs. Use a new run; do not execute the old plan.')
             write(state_path,state)

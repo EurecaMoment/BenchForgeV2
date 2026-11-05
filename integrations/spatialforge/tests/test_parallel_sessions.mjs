@@ -37,3 +37,35 @@ test('parent catalog and immutable headers scope children without scanning sessi
 test('normal workbench remains available without a subagent provider', async () => {
   assert.deepEqual(await sessionFamilyReader({get: () => undefined})('session-parent'), []);
 });
+
+test('more than eight children retain active residents and newest work without opening the historical corpus', async () => {
+  const entries = Array.from({length: 12}, (_, index) => ({id: 'session-child-' + index,
+    createdAt: Date.UTC(2026, 10, 5, 0, index)})).reverse();
+  const calls = [], residents = new Map(['session-child-10', 'session-child-11'].map((id) =>
+    [id, {header: {parentSession: 'session-parent'}}]));
+  const services = {
+    subagents: {listChildren: async () => entries}, sessions: {get: (id) => residents.get(id)},
+    sessionQuery: {observeSession: async (id, options) => {
+      calls.push({id, options});
+      return {header: {parentSession: 'session-parent'},
+        projections: {values: {subagentTiming: {active: id === 'session-child-11'}}}, [Symbol.dispose]() {}};
+    }},
+  };
+  const family = sessionFamilyReader({get: (name) => services[name]});
+  const first = await family('session-parent');
+  assert.deepEqual(first.map((row) => row.id), [11, 10, 9, 8, 7, 6, 5, 4].map((index) => 'session-child-' + index));
+  assert.equal(first[0].state, 'running');
+  assert.ok(first.slice(1).every((row) => row.state === 'inactive'));
+  assert.equal(calls.length, 8);
+  assert.equal(calls.find((row) => row.id === 'session-child-9').options.projectionMode, 'none');
+  for (let index = 12; index < 22; index++) {
+    const entry = {id: 'session-child-' + index, createdAt: new Date(Date.UTC(2026, 10, 5, 0, index)).toISOString()};
+    entries.push(entry); residents.set(entry.id, {header: {parentSession: 'session-parent'}});
+  }
+  const second = await family('session-parent');
+  assert.equal(second[0].id, 'session-child-11', 'a running resident must survive newer inactive resident entries');
+  assert.equal(second[0].state, 'running');
+  assert.equal(second.length, 8);
+  assert.equal(calls.length, 16, 'each poll must remain bounded to eight exact child observations');
+  assert.ok(calls.every((row) => !['session-child-0', 'session-child-1', 'session-child-2', 'session-child-3'].includes(row.id)));
+});

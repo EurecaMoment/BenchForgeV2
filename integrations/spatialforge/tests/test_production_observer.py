@@ -1,5 +1,6 @@
 """Exercise the session artifact projection without services or model calls."""
 import importlib.util
+import io
 from pathlib import Path
 import unittest
 import tempfile
@@ -16,6 +17,30 @@ import json
 
 
 class StageArtifactsTest(unittest.TestCase):
+    def test_old_service_report_projection_error_preserves_failed_native_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);capture=root/'sf_failed.scene0/revision_0/capture';capture.mkdir(parents=True)
+            (capture/'report.json').write_text(json.dumps({'status':'captured','frames':4,'renderable':True}))
+            (capture.parent/'scene_review.json').write_text(json.dumps({'passed':False,'issues':['unsupported shelf']}))
+            snapshot={'state':'FAILED_FINAL','tasks':[{'id':'sf_failed.scene0','state':'FAILED_FINAL',
+                'unit':{'phase':'review','revision':0,'intent':{'capture_only':True}},
+                'result':{'directory':str(capture.parent),'answer':'PRIVATE_ORACLE'},'failure':{'data_exported':False}}]}
+            def service(_config,route,_args):
+                if route=='/observe':raise HTTPError('http://service/observe',400,'projection failed',{},
+                    io.BytesIO(b'{"error":"KeyError","detail":"\'report\'"}'))
+                self.assertEqual(route,'/inspect');return snapshot
+            with patch.object(observer,'session_runs',return_value=[]),patch.object(observer,'service_read',side_effect=service):
+                value=observer.observe({'artifacts':str(root)},'session-parent',['sf_failed'])
+            self.assertEqual(value['status'],'connected')
+            row=value['runs'][0]['tasks'][0]
+            self.assertEqual(row['state'],'FAILED_FINAL')
+            self.assertFalse(row['quality']['scene_quality_passed'])
+            self.assertEqual(row['next_action'],'inspect_quality_gaps')
+            self.assertFalse(row['failure']['data_exported'])
+            self.assertNotIn('PRIVATE_ORACLE',str(value))
+            with patch.object(observer,'service_read',side_effect=HTTPError('http://service',401,'unauthorized',{},None)):
+                with self.assertRaises(HTTPError):observer.production_observation({'artifacts':str(root)},'sf_failed')
+
     def test_saved_movie_is_reused_and_playback_never_invokes_the_encoder(self):
         with tempfile.TemporaryDirectory(prefix='benchforge-preview-') as directory:
             cache = Path(directory)

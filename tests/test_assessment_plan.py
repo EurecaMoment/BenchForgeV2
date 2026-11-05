@@ -213,7 +213,7 @@ class AssessmentPlanTests(unittest.TestCase):
                     'user_markdown':revised_markdown,'markdown_resolution':resolution,'applies_edit':edited['plan']}
                 with self.assertRaisesRegex(ValueError,'cover every changed assessment field'):
                     runtime.call('pipeline_plan',{**apply_args,'markdown_resolution':resolution[:1]})
-                bad_quote=copy.deepcopy(resolution);bad_quote[0]['instruction']='数据集规模为 5 题。'
+                bad_quote=copy.deepcopy(resolution);bad_quote[0]['instruction']='# Fixture design condition'
                 with self.assertRaisesRegex(ValueError,'newly added or changed Markdown prose'):
                     runtime.call('pipeline_plan',{**apply_args,'markdown_resolution':bad_quote})
                 bad_input=copy.deepcopy(apply_args);bad_input['inputs']['target_items']=6
@@ -245,6 +245,82 @@ class AssessmentPlanTests(unittest.TestCase):
                 self.assertTrue(reports)
                 self.assertEqual(read(reports[0])['accepted'],7)
                 self.assertEqual(read(original['plan'])['assessment']['dataset']['target_items'],5)
+            finally:runtime.close()
+
+    def test_deleted_quantity_rule_can_update_assessment_without_invented_new_prose(self):
+        document=assessment_fixture()
+        document['questions']['authority']={'answer':'private fixture answer'}
+        removed='数据集规模固定为 5 题。'
+        original_markdown='# '+document['title']+'\n\n'+removed+'\n'
+        edited_markdown='# '+document['title']+'\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime=Runtime(tmp);runtime.dsh_context={'session_id':'session-delete-normalize'}
+            try:
+                original=runtime.call('pipeline_plan',{'objective':document['summary'],'assessment':document,
+                    'selections':self.selections,'inputs':self.inputs,'user_markdown':original_markdown})
+                draft=save_edit(tmp,'session-delete-normalize',original['plan'],markdown=edited_markdown,
+                                base_markdown=original_markdown)
+                saved=read(draft['plan'])
+                resolved=copy.deepcopy(saved['assessment'])
+                for row,count in zip(resolved['coverage'],(4,3)):
+                    row['count']=count
+                resolved['dataset']['target_items']=7
+                selections=[{'template_ids':[row['template_id']],'count':row['count'],'reason':row['selection_reason']}
+                            for row in resolved['coverage']]
+                inputs=copy.deepcopy(saved['inputs']);inputs.update(selections=selections,target_items=7)
+                resolution=[{'path':f'coverage.{index}.count','before':saved['assessment']['coverage'][index]['count'],
+                             'after':row['count'],'instruction':removed} for index,row in enumerate(resolved['coverage'])]
+                resolution.append({'path':'dataset.target_items','before':5,'after':7,'instruction':removed})
+                applied=runtime.call('pipeline_plan',{'objective':resolved['summary'],'pipeline_id':saved['pipeline_id'],
+                    'assessment':resolved,'selections':selections,'inputs':inputs,'steps':saved['steps'],
+                    'user_markdown':edited_markdown,'markdown_resolution':resolution,'applies_edit':draft['plan']})
+                accepted=read(applied['plan'])
+                self.assertEqual(accepted['assessment']['dataset']['target_items'],7)
+                self.assertEqual([row['count'] for row in accepted['inputs']['selections']],[4,3])
+                self.assertEqual(accepted['steps'],saved['steps'])
+                self.assertEqual(accepted['user_markdown'],edited_markdown)
+                self.assertEqual(accepted['markdown_resolution'],resolution)
+                self.assertEqual(accepted['assessment']['questions']['authority'],document['questions']['authority'])
+                self.assertEqual(accepted['inputs'].get('scene_selection'),saved['inputs'].get('scene_selection'))
+                self.assertFalse(current(tmp,'session-delete-normalize')['pending'])
+            finally:runtime.close()
+
+    def test_deleted_rule_rejects_unchanged_missing_and_unrelated_references(self):
+        document=assessment_fixture()
+        removed='数据集规模固定为 5 题。'
+        unrelated='报告附带成像来源说明。'
+        title='# '+document['title']
+        original_markdown=title+'\n\n'+removed+'\n\n'+unrelated+'\n'
+        edited_markdown=title+'\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            runtime=Runtime(tmp);runtime.dsh_context={'session_id':'session-delete-bad-reference'}
+            try:
+                original=runtime.call('pipeline_plan',{'objective':document['summary'],'assessment':document,
+                    'selections':self.selections,'inputs':self.inputs,'user_markdown':original_markdown})
+                draft=save_edit(tmp,'session-delete-bad-reference',original['plan'],markdown=edited_markdown,
+                                base_markdown=original_markdown)
+                saved=read(draft['plan'])
+                resolved=copy.deepcopy(saved['assessment'])
+                for row,count in zip(resolved['coverage'],(4,3)):
+                    row['count']=count
+                resolved['dataset']['target_items']=7
+                selections=[{'template_ids':[row['template_id']],'count':row['count'],'reason':row['selection_reason']}
+                            for row in resolved['coverage']]
+                inputs=copy.deepcopy(saved['inputs']);inputs.update(selections=selections,target_items=7)
+                resolution=[{'path':f'coverage.{index}.count','before':saved['assessment']['coverage'][index]['count'],
+                             'after':row['count'],'instruction':removed} for index,row in enumerate(resolved['coverage'])]
+                resolution.append({'path':'dataset.target_items','before':5,'after':7,'instruction':removed})
+                arguments={'objective':resolved['summary'],'pipeline_id':saved['pipeline_id'],'assessment':resolved,
+                    'selections':selections,'inputs':inputs,'steps':saved['steps'],'user_markdown':edited_markdown,
+                    'applies_edit':draft['plan']}
+                for reference in (title,'正文从未出现的要求。'):
+                    with self.subTest(reference=reference), self.assertRaisesRegex(ValueError,'newly added or changed Markdown prose'):
+                        runtime.call('pipeline_plan',{**arguments,'markdown_resolution':[
+                            {**row,'instruction':reference} for row in resolution]})
+                with self.assertRaisesRegex(ValueError,'Narrative rules.*updated executable steps'):
+                    runtime.call('pipeline_plan',{**arguments,'markdown_resolution':[
+                        {**row,'instruction':unrelated} for row in resolution]})
+                self.assertTrue(current(tmp,'session-delete-bad-reference')['pending'])
             finally:runtime.close()
 
 

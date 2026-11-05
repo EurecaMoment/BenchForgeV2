@@ -20,6 +20,12 @@ VISUAL_CHECKS = {'object_identity', 'realistic_scale', 'support_and_attachment',
                  'functional_layout', 'access_and_clearance', 'materials_and_lighting'}
 
 
+def captured_observation(row, frames):
+    """A real view and useful text are required; verbosity is not evidence."""
+    return (isinstance(row,dict) and isinstance(row.get('view'),str) and row['view'] in frames and
+            isinstance(row.get('observation'),str) and bool(row['observation'].strip()))
+
+
 def detailed_construction(obj):
     """A modeled table/fixture is distinct from a single envelope placeholder.
 
@@ -268,7 +274,7 @@ def capture_acceptance(root, program, report, evidence, review, capture):
         if len(rows) != 1 or rows[0].get('passed') is not True:
             issues.append('Visual/life check failed or missing: ' + name);continue
         observations = rows[0].get('evidence', [])
-        if not observations or any(not isinstance(item,dict) or item.get('view') not in frames or len(str(item.get('observation','')).strip()) < 8 for item in observations):
+        if not observations or any(not captured_observation(item,frames) for item in observations):
             issues.append('Life check lacks a concrete captured-view observation: ' + name)
     style=admission.get('scene_style','realistic_assets')
     brief = admission.get('scene_brief')
@@ -321,9 +327,9 @@ def capture_acceptance(root, program, report, evidence, review, capture):
         if alignment.get('passed') is not True or alignment.get('hard_requirements_preserved') is not True:
             issues.append('Captured scene does not satisfy the saved scene brief and protected requirements')
         observed = alignment.get('observations', [])
-        if not observed or any(not isinstance(row, dict) or row.get('view') not in frames or len(str(row.get('observation', '')).strip()) < 8 for row in observed):
+        if not observed or any(not captured_observation(row,frames) for row in observed):
             issues.append('Scene brief alignment needs actual per-view observations')
-        if not expected <= {row.get('view') for row in observed if isinstance(row, dict)}:
+        if not expected <= {row['view'] for row in observed if captured_observation(row,frames)}:
             issues.append('Scene brief alignment must account for every captured camera view')
         if alignment.get('unresolved') != []:
             issues.append('Scene brief has unresolved spatial or functional contradictions')
@@ -332,11 +338,11 @@ def capture_acceptance(root, program, report, evidence, review, capture):
             checks = alignment.get(key, [])
             # Physical relations are already measured above. Visual opinions
             # about hidden shelf bottoms must not replace those native checks.
-            relevant=[row for row in checks if isinstance(row,dict) and row.get('index') in expected_indices] if isinstance(checks,list) else []
+            relevant=[row for row in checks if isinstance(row,dict) and type(row.get('index')) is int and
+                      row['index'] in expected_indices] if isinstance(checks,list) else []
             if (not isinstance(checks, list) or len(relevant) != len(expected_indices) or
                     {row.get('index') for row in relevant} != expected_indices or
-                    any(not isinstance(row, dict) or row.get('passed') is not True or row.get('view') not in frames or
-                        len(str(row.get('observation', '')).strip()) < 8 for row in relevant)):
+                    any(row.get('passed') is not True or not captured_observation(row,frames) for row in relevant)):
                 issues.append('Scene brief needs complete captured evidence for ' + key)
     expected_status='matches_declared_geometry' if style=='simplified_geometry' else 'visually_plausible'
     if review.get('acceptable') is not True or review.get('visual_realism', {}).get('status') != expected_status:

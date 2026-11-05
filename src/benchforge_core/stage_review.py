@@ -72,7 +72,7 @@ def call(args, directory, config=None):
     options = {k:args[k] for k in ('stage','key','artifact','review_id','instruction') if k in args}
     if action != 'wait':
         return review(workspace,session,action,**options)
-    timeout = args.get('timeout_seconds',300)
+    timeout = args.get('timeout_seconds',60)
     if type(timeout) not in (int,float) or not 0 <= timeout <= 300:
         raise ValueError('Wait timeout must be between 0 and 300 seconds')
     end = time.monotonic()+timeout

@@ -8,6 +8,43 @@ from spatialforge.progress import record_progress
 
 
 class OperatorObservation(unittest.TestCase):
+    def test_failed_capture_observation_reads_retained_report_and_preserves_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);folder=root/'sf_failed.scene0/revision_0';(folder/'capture').mkdir(parents=True)
+            result={'directory':str(folder)}
+            failure={'data_exported':False,'next_action':'repair_complete_program_and_resubmit'}
+            (folder/'capture/report.json').write_text(json.dumps({'status':'captured','frames':4,'renderable':True}))
+            (folder/'scene_review.json').write_text(json.dumps({'passed':False,'issues':['unsupported shelf']}))
+            class Store:
+                def __init__(self):self.root=root
+                def snapshot(self,rid):return {'state':'FAILED_FINAL','tasks':[{
+                    'id':rid+'.scene0','state':'FAILED_FINAL','result':result,'failure':failure,
+                    'unit':{'workflow':'scene','phase':'review','revision':0,'intent':{'capture_only':True}}}]}
+            value=wait_for_change(Store(),'sf_failed');row=value['tasks'][0]
+            self.assertTrue(value['terminal'])
+            self.assertEqual(row['state'],'FAILED_FINAL')
+            self.assertEqual(row['failure'],failure)
+            self.assertEqual(row['result']['report']['frames'],4)
+            self.assertTrue(row['result']['report']['available'])
+            self.assertFalse(row['quality']['scene_quality_passed'])
+            self.assertEqual(row['next_action'],'inspect_quality_gaps')
+            self.assertEqual(result,{'directory':str(folder)})
+            self.assertNotIn('scene_quality_assessed',row['result'])
+
+    def test_failed_capture_without_report_keeps_missing_evidence_visible(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            class Store:
+                def __init__(self):self.root=root
+                def snapshot(self,rid):return {'state':'FAILED_FINAL','tasks':[{
+                    'id':rid+'.scene0','state':'FAILED_FINAL','result':{'directory':str(root)},
+                    'unit':{'phase':'capture','revision':0,'intent':{'capture_only':True}}}]}
+            value=observe(Store(),'sf_missing');row=value['tasks'][0]
+            self.assertTrue(value['terminal'])
+            self.assertFalse(row['result']['report']['available'])
+            self.assertNotIn('status',row['result']['report'])
+            self.assertEqual(row['next_action'],'inspect_evidence')
+
     def test_capture_status_exposes_white_view_without_repeating_asset_inventory(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);folder=root/'sf_capture.scene0/revision_0';(folder/'capture').mkdir(parents=True)
