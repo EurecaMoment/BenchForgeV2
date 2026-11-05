@@ -16,6 +16,7 @@ const { createDeliveryReview, createCaptureReviewStep, productionReviewApplies }
 const { createDeliveryFileReview } = await import(new URL('./delivery_files.mjs' + revision, import.meta.url));
 const { createDeliveryVisuals } = await import(new URL('./delivery_visuals.mjs' + revision, import.meta.url));
 const { createPreparationHandler } = await import(new URL('./preparation.mjs' + revision, import.meta.url));
+const { createObservationBridge } = await import(new URL('./observation_bridge.mjs' + revision, import.meta.url));
 export const name='spatialforge-tools';
 // Delivery visual feedback resolves the active model route and stores image
 // attachments while the turn-stopping hook is running. Declare both services
@@ -58,11 +59,14 @@ async function api(path,args,signal){
   }
   const response=await fetch(serviceUrl+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(args),signal});
   // Isaac camera matrices contain -0.0; DSH's JSON transport rejects signed zero.
-  const data=JSON.parse(await response.text(),(_key,value)=>Object.is(value,-0)?0:value);if(!response.ok)throw new Error(JSON.stringify(data));return data;
+  const data=JSON.parse(await response.text(),(_key,value)=>Object.is(value,-0)?0:value);
+  if(!response.ok){const error=new Error(JSON.stringify(data));error.status=response.status;error.response=data;throw error;}
+  return data;
 }
+const readObservation=createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.policyPython});
 async function observation(path,args,signal){
   const {cursor:ignored,...request}=args;
-  const {cursor,...value}=await api(path,request,signal);
+  const {cursor,...value}=await readObservation(path,request,signal);
   return value;
 }
 async function submit(path,args,exec){
