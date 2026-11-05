@@ -12,6 +12,14 @@ def scene_design_parser():
     try:
         from spatialforge import scene_design as module
     except ImportError:
+        # Normal installs use the validator bundled from the same source at
+        # wheel build time. SpatialForge itself requires Python >=3.11 and is
+        # intentionally optional for the core's Python 3.10 support.
+        try:
+            from . import _scene_design as module
+            return module
+        except ImportError:
+            pass
         import importlib.util
         file=Path(__file__).resolve().parents[3]/'components/spatialforge/src/spatialforge/scene_design.py'
         spec=importlib.util.spec_from_file_location('scene_design_policy',file)
