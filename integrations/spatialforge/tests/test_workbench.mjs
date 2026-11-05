@@ -435,7 +435,7 @@ test('public JSON observations render as text and loading failures remain visibl
 test('scene playback uses its saved movie on the first render and after reopening', async () => {
   let registration;
   const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
-    useState: (value) => [value, () => {}]};
+    useState: (value) => [value, () => {}], useEffect: (effect) => effect()};
   const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
     .replace(/return \{\s+inject:/, 'return {SceneVideo, sceneProjects}; return {inject:');
   vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}});
