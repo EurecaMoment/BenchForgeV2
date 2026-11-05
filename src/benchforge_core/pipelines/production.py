@@ -25,7 +25,15 @@ def counts_for(selections):
     return counts
 
 
+def _require_production_evidence(value):
+    # Old records may omit these flags. An explicit preparation/smoke marker
+    # must be checked before binding discards record metadata or selects GT.
+    if isinstance(value, dict) and (value.get('non_production') is True or value.get('production_eligible') is False):
+        raise ValueError('Non-production evidence cannot enter a production pipeline; provide accepted production evidence')
+
+
 def bind_record(template, row, base):
+    _require_production_evidence(row)
     source = row['provenance']
     if source['kind'] not in ('program', 'simulation', 'official'):
         raise ValueError('Template GT must come from program, simulation or official evidence')
@@ -33,9 +41,11 @@ def bind_record(template, row, base):
     if not path.is_absolute():
         path = base/path
     raw = read(path)
+    _require_production_evidence(raw)
     answer = select(raw, row['answer_selector'])
     # Source stores actual checks and the instantiated protocol version, not model votes.
     admission = select(raw, row['admission_selector'])
+    _require_production_evidence(admission)
     if admission.get('protocol_id') != template['protocol_id'] or admission.get('template_id') != template['id']:
         raise ValueError('Evidence admission must bind this exact protocol and template')
     required = ('information_sufficient', 'oracle_executed', 'media_consistent', 'no_answer_leakage')
@@ -65,6 +75,7 @@ def produce(args, directory, config=None):
     policy = load_policy(args['_workspace'])
     if evidence_path:check_source(policy,source_path=evidence_path)
     for record in records:
+        _require_production_evidence(record)
         source = record.get('provenance', {})
         check_source(policy, task_id=source.get('task_id'), run_id=source.get('run_id'),
                      scene_group=record.get('scene_group_id'), source_path=source.get('path'))
