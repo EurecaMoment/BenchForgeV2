@@ -81,6 +81,15 @@ class ScenePolicyTests(unittest.TestCase):
                     {**selection,'selected':[{'id':task['id'],'revision':0}],'allow_new_scenes':False})
                 file.write_text(file.read_text()+'\n')
                 catalog=library.sync_catalog({'artifacts':str(runtime)},root/'scene-library')
+                self.assertTrue(catalog['items'][0]['production_eligible'])
+                self.assertEqual(len(library.load_selection(root/'scene-library','session-geometry',catalog)['selected']),1)
+                value['scoring']['summary']='Only scoring prose changed; scene geometry is unchanged'
+                file.write_text(json.dumps({'assessment':value},indent=2))
+                catalog=library.sync_catalog({'artifacts':str(runtime)},root/'scene-library')
+                self.assertTrue(catalog['items'][0]['production_eligible'])
+                value['scenes']['designs'][0]['hard_requirements'].append('A new scene support requirement')
+                file.write_text(json.dumps({'assessment':value}))
+                catalog=library.sync_catalog({'artifacts':str(runtime)},root/'scene-library')
                 self.assertFalse(catalog['items'][0]['production_eligible'])
                 self.assertEqual(library.load_selection(root/'scene-library','session-geometry',catalog)['selected'],[])
             with self.assertRaises(ValueError):

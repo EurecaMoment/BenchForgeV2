@@ -65,10 +65,11 @@ def update_profile(profile, root, python, mode_config, service_config, revision)
             if name == "spatialforge-tools":
                 row["config"]["serviceConfig"] = str(service_config)
             if name == "persona":
-                row["config"]["prefix"] = development.PERSONA
+                row["config"]["prefix"] = development.PERSONA + "\n" + development.PARALLEL_SYNTHESIS
             if isinstance(row.get("config"), list):
                 walk(row["config"])
     walk(config["plugins"])
+    development.configure_synthesis_delegation(config["plugins"])
     return result
 
 

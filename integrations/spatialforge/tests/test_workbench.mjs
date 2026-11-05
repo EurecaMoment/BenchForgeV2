@@ -508,6 +508,39 @@ test('production observations follow persisted running/waiting/failed/completed 
   } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}
 });
 
+test('parent progress and products include verified children while browser query cannot add another session', async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-ui-family-'));
+  const db = new DatabaseSync(path.join(directory, 'runs.sqlite'));
+  try {
+    db.exec('CREATE TABLE operations (id TEXT PRIMARY KEY,tool TEXT,state TEXT,artifact TEXT,error TEXT)');
+    for (const [id, owner] of [['parent', 'session-parent'], ['child', 'session-child'], ['other', 'session-other']]) {
+      const operation = path.join(directory, 'operations', id), run = path.join(operation, 'pipeline_run');
+      await fs.mkdir(run, {recursive: true});
+      db.prepare('INSERT INTO operations VALUES (?,?,?,?,?)').run(id, 'pipeline_run', 'completed', operation, null);
+      await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({arguments: {}, context: {session_id: owner}}));
+      await fs.writeFile(path.join(run, 'plan.json'), JSON.stringify({steps: [
+        {id: 'native_capture_review', uses: 'spatialforge.observe', review_stage: 'S2', await_terminal: true}]}));
+      await fs.writeFile(path.join(run, 'state.json'), JSON.stringify({state: 'completed',
+        context: {session_ids: [owner]}, steps: {native_capture_review: {state: 'completed', result: {state: 'SUCCEEDED'}}}}));
+    }
+    const handler = createWorkbenchHandler({}, () => [{id: 'workspace', path: directory}],
+      async (parent) => parent === 'session-parent' ? [{id: 'session-child', label: '场景设计', state: 'inactive'}] : []);
+    const request = (extra) => handler(new Request('http://dsh.test/api/benchforge/workbench?' +
+      new URLSearchParams({workspace_path: directory, session_id: 'session-parent', session_ids: 'session-other', ...extra})));
+    const progress = await (await request({view: 'progress'})).json();
+    assert.deepEqual(progress.operations.map((row) => row.id).sort(), ['child', 'parent']);
+    assert.equal(progress.pipelines.length, 2);
+    assert.ok(progress.pipelines.every((row) => row.steps[0].stage === 'S2'));
+    assert.equal(progress.parallel_tasks[0].state, 'inactive');
+    assert.equal(progress.association, 'parent_and_verified_child_context');
+    const child = progress.pipelines.find((row) => row.session_id === 'session-child');
+    assert.equal((await request({view: 'run_product', product: 'plan', run: child.id})).status, 200);
+    const other = Buffer.from(JSON.stringify(['workspace', 'operations/other/pipeline_run'])).toString('base64url');
+    assert.equal((await request({view: 'run', run: other})).status, 403);
+    assert.ok(!(await (await request({view: 'summary'})).json()).runs.some((row) => row.id === other));
+  } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}
+});
+
 test('production workbench replaces only the active SpatialForge main conversation', async () => {
   let registration;
   vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'),

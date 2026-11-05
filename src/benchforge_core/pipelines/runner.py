@@ -7,7 +7,7 @@ from ..runtime import read, write
 from .artifact_graph import ArtifactGraph, binding_roots, make_record
 from .repair import create_plan
 from .production import produce, package
-from ..stage_review import gate, review
+from ..stage_review import STAGES, gate, review
 from .plan_versions import current as active_plan
 from .scene_policy import check_submission, check_source, load_policy
 
@@ -74,7 +74,8 @@ def execute_step(step, arguments, directory, environment, client):
         if saved.exists():
             write(nested_path, read(saved))
         return run({'plan': str(nested_path), 'run': str(nested_root), '_workspace': environment['_workspace'], 'bindings': inputs,
-                    '_dsh_context': environment.get('_dsh_context', {}), '_review_nested':True}, directory, client=client)
+                    '_dsh_context': environment.get('_dsh_context', {}), '_review_nested':True,
+                    '_review_scope': environment.get('_review_scope')}, directory, client=client)
     if operation == 'templates.produce':
         return produce({**arguments, '_workspace': environment['_workspace']}, directory)
     if operation == 'data.package':
@@ -100,6 +101,71 @@ def stage_of(step):
             'templates.produce':'S4','data.package':'S5'}.get(step['uses'])
 
 
+def review_scope(plan, run_root, plan_path):
+    """One review owner for the leaf artifacts of a composed production run."""
+    members = {stage: [] for stage in STAGES[1:]}
+    recipes = None
+
+    def expand(steps, root, prefix=''):
+        nonlocal recipes
+        consumed = set()
+        for step in steps:
+            for source in binding_roots(step.get('arguments', {})):
+                consumed.add(source)
+        for step in steps:
+            step_root = root/'steps'/step['id']
+            label = prefix+step['id']
+            if step['uses'] == 'pipeline':
+                nested_root = step_root/'nested-run'
+                saved = nested_root/'plan.json'
+                if saved.exists():
+                    nested_steps = read(saved)['steps']
+                else:
+                    if recipes is None:
+                        from .catalog import pipeline_files
+                        recipes = {recipe['id']: recipe for recipe in pipeline_files()}
+                    nested_steps = recipes[step['pipeline_id']]['steps']
+                expand(nested_steps, nested_root, label+'/')
+            else:
+                stage = stage_of(step)
+                if stage in members:
+                    members[stage].append({'step': step['id'], 'label': label, 'uses': step['uses'],
+                        'run': str(root.resolve()), 'result_path': str((step_root/'result.json').resolve()),
+                        'terminal': step['id'] not in consumed})
+
+    expand(plan['steps'], run_root)
+    return {'run': str(run_root.resolve()), 'plan': str(plan_path), 'members': members, 'continued_stages': []}
+
+
+def completed_stage(scope, stage):
+    """Receipts are retained, but a review needs every planned stage artifact."""
+    members = scope['members'][stage]
+    if not members:
+        return None
+    states = {}
+    # The last planned artifact is usually unfinished; check it first so large
+    # scene batches do not reread every completed scene on each submission.
+    for member in reversed(members):
+        root = member['run']
+        if root not in states:
+            path = Path(root)/'state.json'
+            states[root] = read(path).get('steps', {}) if path.exists() else {}
+        prior = states[root].get(member['step'])
+        if not prior or prior['state'] != 'completed':
+            return None
+    outputs = []
+    for member in members:
+        result_path = Path(member['result_path'])
+        if not result_path.is_file():
+            return None
+        result = read(result_path)
+        if member['terminal'] and result.get('state') in ('RUNNING', 'READY'):
+            return None
+        outputs.append({'step': member['label'], 'uses': member['uses'],
+                        'result_path': member['result_path'], 'result': result})
+    return outputs
+
+
 def run(args, directory, config=None, client=service_call):
     plan_path = Path(args['plan']).resolve()
     check_source(load_policy(args['_workspace']), source_path=plan_path)
@@ -114,6 +180,8 @@ def run(args, directory, config=None, client=service_call):
     state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
     state.setdefault('run_id', f'run-{run_root.name}')
     context = args.get('_dsh_context', {})
+    session = context.get('session_id')
+    scope = args.get('_review_scope') or (review_scope(plan, run_root, plan_path) if session else None)
     if context.get('session_id'):
         sessions = state.setdefault('context', {}).setdefault('session_ids', [])
         if context['session_id'] not in sessions:
@@ -124,17 +192,17 @@ def run(args, directory, config=None, client=service_call):
     # The full persisted run path distinguishes nested recipes in separate plans
     # and stays the same when an interrupted submission is resumed.
     environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_dsh_context': context,
-                   '_run_key': 'pipeline:'+run_root.as_posix()}
-    session = context.get('session_id')
+                   '_run_key': 'pipeline:'+run_root.as_posix(), '_review_scope': scope}
     def plan_guard():
-        active=active_plan(args['_workspace'],session) if session and not args.get('_review_nested') else None
-        if active and (active['plan']!=str(plan_path) or active['pending']):
-            state.update(state='needs_plan_application' if active['plan']==str(plan_path) else 'plan_superseded',
+        owner_plan = scope['plan'] if scope else str(plan_path)
+        active=active_plan(args['_workspace'],session) if session else None
+        if active and (active['plan']!=owner_plan or active['pending']):
+            state.update(state='needs_plan_application' if active['plan']==owner_plan else 'plan_superseded',
                 active_plan=active['plan'],changed_sections=active['changes'],
                 next='Read the saved edited assessment, update scene/task code and executable steps, and call pipeline_plan with applies_edit='+active['plan']+'. Retain its assessment, allocation and inputs. Use a new run; do not execute the old plan.')
             write(state_path,state)
             return {'run':str(run_root.resolve()),**state}
-        if active:
+        if active and not args.get('_review_nested'):
             for key in ('seed','split','target_items','selections','scene_selection','target_scene_count'):
                 if key in args.get('bindings',{}) and args['bindings'][key]!=plan['inputs'].get(key):
                     raise ValueError('Run bindings must honor the active edited '+key)
@@ -153,15 +221,26 @@ def run(args, directory, config=None, client=service_call):
             initial = gate(args['_workspace'],session,'S1',str(plan_path),str(plan_path))
             if not initial['can_continue']:
                 return waiting(initial)
-    def checkpoint(index, step, result):
-        stage = stage_of(step)
-        next_stage = stage_of(plan['steps'][index+1]) if index+1 < len(plan['steps']) else None
-        if not session or not stage or stage == next_stage or result.get('state') in ('RUNNING','READY'):
+    def checkpoint():
+        if not session:
             return None
-        value = gate(args['_workspace'],session,stage,str(run_root.resolve())+':'+step['id'],
-                     str((run_root/'steps'/step['id']/'result.json').resolve()))
-        return waiting(value) if not value['can_continue'] else None
-    for index, step in enumerate(plan['steps']):
+        for stage in STAGES[1:]:
+            if not scope['members'][stage] or stage in scope['continued_stages']:
+                continue
+            outputs = completed_stage(scope, stage)
+            if outputs is None:
+                return None
+            artifact_path = Path(scope['run'])/'reviews'/(stage+'.json')
+            artifact = {'schema': 'spatialforge.stage-review/v1', 'stage': stage,
+                        'plan': scope['plan'], 'outputs': outputs}
+            if not artifact_path.exists() or read(artifact_path) != artifact:
+                write(artifact_path, artifact)
+            value = gate(args['_workspace'],session,stage,scope['run']+':stage:'+stage,str(artifact_path))
+            if not value['can_continue']:
+                return waiting(value)
+            scope['continued_stages'].append(stage)
+        return None
+    for step in plan['steps']:
         blocked=plan_guard()
         if blocked:return blocked
         prior = state['steps'].get(step['id'])
@@ -173,7 +252,7 @@ def run(args, directory, config=None, client=service_call):
             prior_artifact = prior.get('artifact')
             if prior_artifact:
                 artifact_ids[step['id']] = prior_artifact.get('artifact_id')
-            pending = checkpoint(index,step,prior['result'])
+            pending = checkpoint()
             if pending:
                 return pending
             continue
@@ -193,10 +272,13 @@ def run(args, directory, config=None, client=service_call):
                                   operation=operation, arguments=arguments, result=result,
                                   parent_ids=parent_ids, declared_type=step.get('artifact_type'),
                                   result_path=str(result_path.resolve()))
-            if result.get('state') in ('needs_evidence', 'needs_input', 'waiting','waiting_user','paused'):
+            if result.get('state') in ('needs_evidence', 'needs_input', 'waiting','waiting_user','paused',
+                                       'needs_plan_application', 'plan_superseded'):
                 state['steps'][step['id']] = {'state': result['state'], 'result': result, 'artifact': artifact}
                 state['state'] = result['state']
-                state['next'] = 'Read exact template conditions, generate/source evidence and rerun with bindings.evidence. Completed upstream steps remain reusable.'
+                state['next'] = result.get('next') or 'Read exact template conditions, generate/source evidence and rerun with bindings.evidence. Completed upstream steps remain reusable.'
+                if result.get('stage_review'):
+                    state['stage_review'] = result['stage_review']
                 write(state_path, state)
                 return {'run': str(run_root.resolve()), **state}
             if step.get('await_terminal'):
@@ -213,7 +295,7 @@ def run(args, directory, config=None, client=service_call):
             artifact_ids[step['id']] = artifact['artifact_id']
             state['state'] = 'running'
             write(state_path, state)
-            pending = checkpoint(index,step,result)
+            pending = checkpoint()
             if pending:
                 return pending
         except MissingBinding as error:

@@ -70,6 +70,84 @@ class PlanFileSubmissionTests(unittest.TestCase):
             finally:
                 runtime.close()
 
+    def test_preflight_combines_missing_sections_scene_fields_and_allocation_errors(self):
+        value = assessment_fixture()
+        del value['scoring']
+        del value['risks']
+        del value['questions']['answerability']
+        value['dataset']['target_items'] = 6
+        design = value['scenes']['designs'][0]
+        design.update(summary='杯子位于桌面，椅子面向桌子。', hard_requirements=['杯子正立'],
+                      physical_assumptions=['静态支撑'],
+                      object_roles=[{'object_id': 'desk'}, {'role': '椅子'}],
+                      relations=[{'source': 'chair', 'type': 'facing', 'target': 'desk'},
+                                 {'type': 'near', 'target': 'desk', 'description': '便于取用'}])
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / 'assessment.json'
+            original = json.dumps(value, ensure_ascii=False)
+            source.write_text(original, encoding='utf-8')
+            runtime = Runtime(tmp)
+            try:
+                result = runtime.call('pipeline_plan', {'assessment_path': source.name, 'validate_only': True,
+                    'selections': fixtures.AssessmentPlanTests.selections, 'inputs': fixtures.AssessmentPlanTests.inputs})
+                self.assertEqual(result['state'], 'needs_plan_revision')
+                for path in ('assessment.scoring', 'assessment.risks', 'assessment.questions.answerability',
+                             'assessment.scenes.designs[0].object_roles[0].role',
+                             'assessment.scenes.designs[0].object_roles[1].object_id',
+                             'assessment.scenes.designs[0].relations[0].description',
+                             'assessment.scenes.designs[0].relations[1].source', 'assessment.dataset.target_items'):
+                    with self.subTest(path=path):
+                        self.assertTrue(any(path in issue for issue in result['issues']), result['issues'])
+                self.assertEqual(source.read_text(encoding='utf-8'), original)
+                self.assertFalse((Path(result['artifact_dir']) / 'plan.json').exists())
+                self.assertEqual(result['authoring_sources']['assessment_path'], str(source.resolve()))
+            finally:
+                runtime.close()
+
+    def test_preflight_handles_malformed_fields_without_hiding_independent_errors(self):
+        value = assessment_fixture()
+        value['objectives'][0]['id'] = []
+        value['coverage'][0]['count'] = None
+        value['execution'][0]['stage'] = {}
+        value['scoring']['metrics'][0] = []
+        value['delivery']['artifacts'][0]['stage'] = []
+        value['dataset']['seed'] = 'seed'
+        value['scenes']['allow_new_scenes'] = 'yes'
+        value['questions']['answerability'] = None
+        before = copy.deepcopy(value)
+        with self.assertRaises(AssessmentValidationError) as raised:
+            validate_assessment(value, fixtures.AssessmentPlanTests.selections, fixtures.AssessmentPlanTests.inputs)
+        for path in ('assessment.objectives[0].id', 'assessment.coverage[0].count', 'assessment.execution[0].stage',
+                     'assessment.scoring.metrics[0]', 'assessment.delivery.artifacts[0].stage',
+                     'assessment.dataset.seed', 'assessment.scenes.allow_new_scenes', 'assessment.questions.answerability'):
+            with self.subTest(path=path):
+                self.assertTrue(any(path in issue for issue in raised.exception.issues), raised.exception.issues)
+        self.assertEqual(value, before)
+
+    def test_concise_scene_brief_is_accepted_without_optional_design_advice(self):
+        value = assessment_fixture()
+        value['scenes']['designs'][0].update(name='书桌', summary='杯子位于桌面。',
+            hard_requirements=['杯子正立'], physical_assumptions=['静态支撑'],
+            object_roles=[{'object_id': 'desk', 'role': '书桌'}, {'object_id': 'cup', 'role': '水杯'}],
+            relations=[{'source': 'cup', 'type': 'supported_by', 'target': 'desk', 'description': '桌面支撑'}])
+        result = validate_assessment(value, fixtures.AssessmentPlanTests.selections, fixtures.AssessmentPlanTests.inputs)
+        self.assertEqual(result, value)
+        self.assertIsNot(result, value)
+        self.assertNotIn('geometry_exceptions', result['scenes'])
+        self.assertNotIn('revision_history', result['scenes']['designs'][0])
+
+    def test_declared_geometry_placeholders_are_reported_together_at_their_fields(self):
+        value = assessment_fixture()
+        fields = ('purpose', 'reason', 'simplifications', 'retained_constraints', 'excluded_claims')
+        value['scenes']['geometry_exceptions'] = [{
+            'scene_design_id': value['scenes']['designs'][0]['id'], 'scene_id': 'declared-experiment',
+            'object_ids': ['cube'], **{key: 'none' for key in fields}}]
+        with self.assertRaises(AssessmentValidationError) as raised:
+            validate_assessment(value, fixtures.AssessmentPlanTests.selections, fixtures.AssessmentPlanTests.inputs)
+        for key in fields:
+            self.assertTrue(any(f'assessment.scenes.geometry_exceptions[0].{key}' in issue
+                                for issue in raised.exception.issues), raised.exception.issues)
+
     def test_invalid_files_do_not_create_a_plan(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / 'bad.json'

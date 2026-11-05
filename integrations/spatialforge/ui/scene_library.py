@@ -9,7 +9,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
 from production_observer import service_read, stage_artifacts
-from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION
+from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION, scene_design_parser
 
 SCHEMA = 'benchforge.scene-library/v1'
 SELECTION_SCHEMA = 'benchforge.scene-selection/v1'
@@ -137,8 +137,7 @@ def sync_catalog(config, folder):
             version = [stat.st_size, stat.st_mtime_ns]
             cached = prior.get(task['id'], {}).get('scene_admission', {})
             declaration = cached.get('geometry_exception')
-            plan = Path(declaration['plan_path']) if declaration else None
-            plan_current = not declaration or plan.is_file() and declaration.get('plan_version') == [plan.stat().st_size, plan.stat().st_mtime_ns]
+            plan_current = not declaration or scene_design_parser().plan_declaration_current(declaration)
             try:
                 admission = cached if cached.get('program_version') == version and cached.get('classifier_version') == CLASSIFIER_VERSION and plan_current else {**classify_planned(read_json(program, {}), policy), 'program_version': version}
             except (ValueError, OSError, KeyError, TypeError):
@@ -154,8 +153,7 @@ def sync_catalog(config, folder):
         if (policy.get('require_scene_brief') or policy.get('enforce_realism')) and not receipt.get('scene_brief'):accepted=False
         for declaration in (receipt.get('geometry_exception'), receipt.get('scene_brief')):
             if not accepted or not declaration:continue
-            plan = Path(declaration['plan_path'])
-            accepted = plan.is_file() and declaration.get('plan_version') == [plan.stat().st_size, plan.stat().st_mtime_ns]
+            accepted = scene_design_parser().plan_declaration_current(declaration)
         for name,version in receipt.get('mesh_versions',{}).items():
             mesh=Path(name)
             if not mesh.is_file() or [mesh.stat().st_size,mesh.stat().st_mtime_ns]!=version:accepted=False

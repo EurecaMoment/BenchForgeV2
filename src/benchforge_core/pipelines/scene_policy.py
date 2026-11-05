@@ -160,9 +160,8 @@ def check_evidence(workspace, record, evidence_path):
             raise ValueError('Scene needs a saved brief and capture alignment before question production')
         for declaration in (receipt.get('geometry_exception'), receipt.get('scene_brief')):
             if not declaration:continue
-            plan=Path(declaration['plan_path'])
-            if not plan.is_file() or declaration.get('plan_version')!=[plan.stat().st_size,plan.stat().st_mtime_ns]:
-                raise ValueError('Scene simplification plan changed since acceptance')
+            if not scene_design_parser().plan_declaration_current(declaration):
+                raise ValueError('Scene design changed since acceptance; recapture and review the changed scene')
         for relative in ('program.json','capture/report.json','capture/evidence.json'):
             path=directory/relative
             if not path.is_file() or receipt.get('evidence_versions',{}).get(relative) != [path.stat().st_size,path.stat().st_mtime_ns]:

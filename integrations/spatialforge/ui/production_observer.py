@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sqlalchemy import create_engine, text
 
 
-def session_runs(config, session):
+def session_runs(config, session, sessions=()):
     database = json.loads((Path(config['harness']) / 'deployment.local.json').read_text())['database_url']
     engine = create_engine(database, hide_parameters=True)
     try:
@@ -21,12 +21,14 @@ def session_runs(config, session):
             if engine.dialect.name == 'postgresql':
                 connection.exec_driver_sql('SET TRANSACTION READ ONLY')
                 connection.exec_driver_sql("SET LOCAL statement_timeout = '2000ms'")
-            prefix = 'dsh:' + session + ':'
+            ids = list(dict.fromkeys([session, *sessions]))[:9]
+            prefixes = {'prefix' + str(i): 'dsh:' + value + ':' for i, value in enumerate(ids)}
+            conditions = ' OR '.join('substr(k.id,1,length(:'+key+'))=:'+key for key in prefixes)
             rows = connection.execute(text(
                 "SELECT DISTINCT r.id,r.created_at,r.plan->>'workflow' AS workflow,CASE WHEN r.state IN ('SUCCEEDED','FAILED_FINAL','CANCELED') THEN 1 ELSE 0 END AS priority "
                 'FROM spatialforge_request_keys k JOIN runs r ON r.id=k.run_id '
-                'WHERE substr(k.id,1,:length)=:prefix ORDER BY priority,r.created_at DESC LIMIT 12'),
-                {'prefix': prefix, 'length': len(prefix)}).mappings().all()
+                'WHERE ('+conditions+') ORDER BY priority,r.created_at DESC LIMIT 12'),
+                prefixes).mappings().all()
     finally:
         engine.dispose()
     return rows
@@ -41,8 +43,8 @@ def service_read(config, route, value):
         return json.load(response)
 
 
-def observe(config, session, run_ids):
-    rows = session_runs(config, session)
+def observe(config, session, run_ids, sessions=()):
+    rows = session_runs(config, session, sessions)
     ids = list(dict.fromkeys([row['id'] for row in rows] + run_ids))[:12]
     workflows = {row['id']: row['workflow'] or 'scene' for row in rows}
 
@@ -102,11 +104,11 @@ def optional_evidence(config, arguments):
         return {}
 
 
-def stage_artifacts(config, session, scene, task_id=None, revision=None, file=None, run_ids=()):
+def stage_artifacts(config, session, scene, task_id=None, revision=None, file=None, run_ids=(), sessions=()):
     # A caller-supplied run ID never grants cross-session access to scene artifacts.
     # run_ids are extracted server-side from the resolved workspace pipeline state.
     # They are never accepted as an arbitrary browser query parameter.
-    if scene not in run_ids and scene not in {row['id'] for row in session_runs(config, session)}:
+    if scene not in run_ids and scene not in {row['id'] for row in session_runs(config, session, sessions)}:
         return {'error': 'Scene is not registered to this session', 'status_code': 403}
     if file:
         if not task_id or not task_id.startswith(scene + '.') or not preview_kind(file):
@@ -177,6 +179,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', required=True)
     parser.add_argument('--session', required=True)
+    parser.add_argument('--sessions', default='[]', help='Additional child scopes verified by the server')
     parser.add_argument('--run-ids', default='[]')
     parser.add_argument('--action', choices=('observe', 'artifacts', 'file'), default='observe')
     parser.add_argument('--scene')
@@ -187,9 +190,10 @@ if __name__ == '__main__':
     try:
         config = json.loads(Path(args.config).read_text())
         if args.action == 'observe':
-            result = observe(config, args.session, json.loads(args.run_ids))
+            result = observe(config, args.session, json.loads(args.run_ids), json.loads(args.sessions))
         else:
-            result = stage_artifacts(config, args.session, args.scene, args.task, args.revision, args.file, json.loads(args.run_ids))
+            result = stage_artifacts(config, args.session, args.scene, args.task, args.revision, args.file,
+                                     json.loads(args.run_ids), json.loads(args.sessions))
     except Exception as error:
         # Never serialize connection strings, tokens, or exception text from database drivers.
         result = {'status': 'unavailable', 'error': type(error).__name__, 'runs': []}

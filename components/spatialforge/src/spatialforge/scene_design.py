@@ -146,7 +146,7 @@ def validate_brief_revision(design, path):
     changes=latest.get('changes')
     if (type(latest.get('revision')) is not int or latest['revision'] < 1 or
             not isinstance(changes,list) or not changes or
-            any(not isinstance(change,str) or len(change.strip()) < 8 for change in changes)):
+            any(not isinstance(change,str) or not change.strip() for change in changes)):
         raise ValueError('Scene brief revision needs a numbered revision and concrete changes')
     if previous_history and (not isinstance(previous_history[-1],dict) or
             type(previous_history[-1].get('revision')) is not int or
@@ -154,7 +154,7 @@ def validate_brief_revision(design, path):
         raise ValueError('Scene brief revision number must advance beyond its previous revision')
     unresolved=latest.get('unresolved')
     if (not isinstance(unresolved,list) or
-            any(not isinstance(item,str) or len(item.strip()) < 8 for item in unresolved)):
+            any(not isinstance(item,str) or not item.strip() for item in unresolved)):
         raise ValueError('Scene brief revision must record unresolved issues, or an empty array')
     refs=latest.get('evidence_refs')
     if not isinstance(refs,list) or not refs:
@@ -162,7 +162,7 @@ def validate_brief_revision(design, path):
     resolved=[]
     for ref in refs:
         if (not isinstance(ref,dict) or not isinstance(ref.get('path'),str) or
-                not isinstance(ref.get('observation'),str) or len(ref['observation'].strip()) < 12):
+                not isinstance(ref.get('observation'),str) or not ref['observation'].strip()):
             raise ValueError('Scene brief evidence references need a relative path and concrete observation')
         evidence_path=Path(ref['path'])
         if evidence_path.is_absolute() or '..' in evidence_path.parts:
@@ -197,6 +197,34 @@ def review_retry_directory(root, task_id):
     if not report.is_file() or json.loads(report.read_text()).get('status')!='captured' or not (directory/'scene_admission.json').is_file():
         raise ValueError('Unreviewed scene retries require an admitted native capture')
     return directory
+
+
+def plan_declaration_current(declaration):
+    """Reuse acceptance after edits that do not change this scene's design.
+
+    File versions remain the cheap fast path. A changed plan is compared with
+    the saved scene snapshot directly; formatting, scoring and other scenes
+    must not invalidate unchanged native capture evidence.
+    """
+    try:
+        path = Path(declaration['plan_path'])
+        if not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
+            return False
+        if declaration.get('plan_version') == [path.stat().st_size, path.stat().st_mtime_ns]:
+            return True
+        plan = json.loads(path.read_text(encoding='utf-8-sig'))
+        scenes = plan.get('assessment', plan).get('scenes', {})
+        if 'scene_design_id' in declaration:
+            values = scenes.get('geometry_exceptions', [])
+            saved = next((row for row in values if row.get('scene_design_id') == declaration['scene_design_id']
+                          and row.get('scene_id') == declaration.get('scene_id')), None)
+        else:
+            saved = next((row for row in scenes.get('designs', []) if row.get('id') == declaration.get('id')), None)
+        metadata = {'plan_path', 'plan_version', 'authority', 'iteration_rule', 'scene_style'}
+        expected = {key: value for key, value in declaration.items() if key not in metadata}
+        return saved is not None and saved == expected
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return False
 
 
 def scene_brief(program, policy=None, root=None):

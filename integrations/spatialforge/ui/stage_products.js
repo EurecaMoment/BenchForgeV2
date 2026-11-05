@@ -8,6 +8,7 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
+import {sessionFamilyReader} from './parallel_sessions.js';
 
 export const name = 'benchforge-spatialforge-ui';
 export const inject = ['connection', 'workspaceRegistry'];
@@ -42,10 +43,11 @@ const STAGE_OPERATIONS = [
   ['S5', /^(score|screen|evaluat|verif|quality|report|package|(?:templates|data)\.package)/],
 ];
 const stageOf = (operation) => STAGE_OPERATIONS.find(([, pattern]) => pattern.test(operation || ''))?.[0] || null;
-const scopeOf = (url) => ({session_id: url.searchParams.get('session_id') || '', history: url.searchParams.get('scope') === 'workspace'});
+const scopeOf = (url, sessions = []) => ({session_id: url.searchParams.get('session_id') || '', session_ids: sessions,
+  history: url.searchParams.get('scope') === 'workspace'});
 const scopeParams = (scope) => scope.history ? {scope: 'workspace'} : {session_id: scope.session_id};
 const matchesSession = (context, scope) => scope.history || !!scope.session_id &&
-  (context?.session_id === scope.session_id || context?.session_ids?.includes(scope.session_id));
+  [scope.session_id, ...(scope.session_ids || [])].some((id) => context?.session_id === id || context?.session_ids?.includes(id));
 
 async function assertSessionDirectory(root, directory, scope) {
   const policy=await readJson(path.join(root.path,'scene-library','policy.json'));
@@ -216,11 +218,12 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
   const helper = fileURLToPath(new URL(library ? './scene_library.py' : './production_observer.py', import.meta.url));
   const args = ['-B', helper, '--config', config.productionConfig, '--session', session,
     '--action', media ? 'file' : 'artifacts', ...(library ? ['--workspace', roots[0].path] : ['--scene', scene])];
+  if (!library && config._sessionIds?.length) args.push('--sessions', JSON.stringify(config._sessionIds));
   const run = url.searchParams.get('run');
   if (library && run) throw new ApiError('Library scenes use their saved catalog identity', 403);
   if (run) {
     const {root, directory} = await resolveToken(run, roots);
-    await assertSessionDirectory(root, directory, scopeOf(url));
+    await assertSessionDirectory(root, directory, scopeOf(url, config._sessionIds));
     const state = await readJson(path.join(directory, 'state.json'));
     const sceneIds = pipelineSceneIds(state);
     if (!sceneIds.includes(scene)) throw new ApiError('Scene is not referenced by this pipeline', 403);
@@ -271,7 +274,7 @@ async function sceneMedia(config, roots, url, request) {
 async function productionProgress(roots, config, url, signal) {
   const operations = [], pipelines = [], sources = [], remoteIds = new Set();
   let unassociatedRecords = 0;
-  const scope = scopeOf(url);
+  const scope = scopeOf(url, config._sessionIds);
   const seen = new Set();
   for (const root of roots) {
     const database = path.join(root.path, 'runs.sqlite');
@@ -290,7 +293,7 @@ async function productionProgress(roots, config, url, signal) {
         const request = await readJson(path.join(directory, 'request.json')) || {};
         if (!matchesSession(request.context, scope)) { if (!request.context?.session_id) unassociatedRecords++; continue; }
         operations.push({...pick(row, ['id', 'tool', 'state', 'error']), stage: stageOf(row.tool),
-          workspace: root.title, started_at: request.time || null});
+          workspace: root.title, session_id: request.context?.session_id, started_at: request.time || null});
         if (!['pipeline_run', 'pipeline_status', 'pipeline_artifacts', 'pipeline_repair_plan'].includes(row.tool)) continue;
         const result = await readJson(path.join(directory, 'result.json')) || {};
         const requested = request.arguments?.run || result.run || path.join(directory, 'pipeline_run');
@@ -310,13 +313,16 @@ async function productionProgress(roots, config, url, signal) {
           if (actual?.result?.run_id?.startsWith('sf_')) remoteIds.add(actual.result.run_id);
           const captureWait = step.uses === 'spatialforge.observe' && step.await_terminal && planned.some((producer) =>
             producer.uses === 'spatialforge.capture' && step.arguments?.run_id === '$' + producer.id + '.run_id');
-          return {id: step.id, uses: step.uses, stage: captureWait ? 'S2' : stageOf(step.uses), state: actual?.state || 'unknown',
+          return {id: step.id, uses: step.uses,
+            stage: ['S1','S2','S3','S4','S5'].includes(step.review_stage) ? step.review_stage : captureWait ? 'S2' : stageOf(step.uses),
+            state: actual?.state || 'unknown',
             error: actual?.error || null};
         });
         const completed = steps.filter((step) => step.state === 'completed').length;
         // The runner persists results after a step; an unrecorded step is not a measured execution.
         const current = steps.find((step) => step.id === state.step) || steps.find((step) => step.state !== 'completed');
         pipelines.push({id, label: path.relative(root.path, folder).split(path.sep).join('/'),
+          session_id: request.context?.session_id,
           state: state.state, completed, total: plan ? planned.length : null, current,
           next: state.next, missing_binding: state.missing_binding, steps,
           updated_at: (await fs.stat(path.join(folder, 'state.json'))).mtime.toISOString()});
@@ -332,7 +338,8 @@ async function productionProgress(roots, config, url, signal) {
     try {
       const helper = fileURLToPath(new URL('./production_observer.py', import.meta.url));
       const {stdout} = await execute(config.productionPython, ['-B', helper, '--config', config.productionConfig,
-        '--session', session, '--run-ids', JSON.stringify([...remoteIds].slice(0, 12))],
+        '--session', session, '--sessions', JSON.stringify(config._sessionIds || []),
+        '--run-ids', JSON.stringify([...remoteIds].slice(0, 12))],
       {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
       scenes = JSON.parse(stdout);
       const removed=new Set();
@@ -347,8 +354,21 @@ async function productionProgress(roots, config, url, signal) {
       scenes = {status: 'unavailable', error: 'Production observer could not read the service (' + (error.code || error.name) + ')', runs: []};
     }
   }
-  return {operations, pipelines, scenes, sources, snapshot_at: new Date().toISOString(),
-    scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only', association: scope.session_id ? 'exact_session_context' : 'no_session',
+  const parallel_tasks = (config._family || []).map((child, index) => {
+    const owned = operations.filter((row) => row.session_id === child.id);
+    const saved = pipelines.filter((row) => row.session_id === child.id);
+    const public_artifacts = saved.filter((row) => row.completed > 0).map((row) => ({
+      title: (child.label || '子任务') + '计划', url: workbenchUrl({view: 'run_product', product: 'plan', run: row.id, session_id: session}, roots[0]?.path),
+      revision: row.steps.filter((step) => step.state === 'completed').map((step) => step.id).join(','),
+    }));
+    return {id: child.id, display_name: child.label || '子任务 ' + (index + 1), state: child.state || 'unknown',
+      stage: owned.find((row) => row.stage)?.stage || (/标注|annotation/i.test(child.label || '') ? 'S3' :
+        /题目|question/i.test(child.label || '') ? 'S4' : /场景|scene/i.test(child.label || '') ? 'S2' : null),
+      artifact_count: public_artifacts.length, public_artifacts};
+  });
+  return {operations, pipelines, scenes, parallel_tasks, sources, snapshot_at: new Date().toISOString(),
+    scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only',
+    association: scope.session_id ? config._sessionIds?.length ? 'parent_and_verified_child_context' : 'exact_session_context' : 'no_session',
     unassociated_records: unassociatedRecords};
 }
 
@@ -605,9 +625,9 @@ function mediaReferences(row, id, index, workspacePath, scope) {
     return 'api/benchforge/workbench?' + params;
   });
 }
-async function readDataset(url, roots, signal) {
+async function readDataset(url, roots, signal, sessions = []) {
   const id = url.searchParams.get('dataset');
-  const scope = scopeOf(url);
+  const scope = scopeOf(url, sessions);
   const {directory, questions} = await datasetFiles(id, roots, scope);
   const page = integer(url.searchParams.get('page'), 1, 1000000);
   const pageSize = integer(url.searchParams.get('page_size'), 24, 96);
@@ -637,9 +657,9 @@ async function readDataset(url, roots, signal) {
     facets: {templates: [...templates].sort(), splits: [...splits].sort()}, report: report ? pick(report, QUALITY_FIELDS) : null,
     authority_exposed: false};
 }
-async function readMedia(url, roots, signal) {
+async function readMedia(url, roots, signal, sessions = []) {
   const id = url.searchParams.get('dataset');
-  const {root, publicRoot, questions} = await datasetFiles(id, roots, scopeOf(url));
+  const {root, publicRoot, questions} = await datasetFiles(id, roots, scopeOf(url, sessions));
   const item = Number(url.searchParams.get('item')), media = Number(url.searchParams.get('media'));
   if (![item, media].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new ApiError('Invalid media reference');
   let reference;
@@ -657,7 +677,7 @@ async function readMedia(url, roots, signal) {
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
 }
 
-export function createWorkbenchHandler(config, registered = () => []) {
+export function createWorkbenchHandler(config, registered = () => [], family = async () => []) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
@@ -665,7 +685,11 @@ export function createWorkbenchHandler(config, registered = () => []) {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
-      const scope = scopeOf(url);
+      const parentScope = scopeOf(url);
+      const related = !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
+        ? await family(parentScope.session_id, request.signal) : [];
+      const sessions = related.map((row) => row.id);
+      const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
       let value;
       if (view === 'plan_edit') {
         if (request.method !== 'POST') throw new ApiError('Plan editing requires POST',405);
@@ -679,7 +703,7 @@ export function createWorkbenchHandler(config, registered = () => []) {
             !(typeof edit.markdown === 'string' && edit.markdown.trim() || edit.assessment && typeof edit.assessment === 'object'))
           throw new ApiError('A saved plan and complete edited Markdown document are required');
         const file=await inside(roots[0],edit.plan_path);
-        await assertSessionDirectory(roots[0],path.dirname(file),scope);
+        await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
         const helper=fileURLToPath(new URL('./plan_edit_cli.py',import.meta.url));
         const process=execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--plan',file],
           {signal:request.signal,timeout:20000,maxBuffer:256000});
@@ -715,7 +739,7 @@ export function createWorkbenchHandler(config, registered = () => []) {
       else if (view === 'catalog') value = await templateCatalog(url);
       else if (view === 'plan_template') value = await readJson(fileURLToPath(new URL('../../../src/benchforge_core/pipelines/assessment_template.json', import.meta.url)));
       else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
-      else if (view === 'progress') value = await productionProgress(roots, limits, url, request.signal);
+      else if (view === 'progress') value = await productionProgress(roots, scoped, url, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
       else if (view === 'run_product') {
         const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
@@ -724,10 +748,10 @@ export function createWorkbenchHandler(config, registered = () => []) {
           : product === 'report' ? run.stage_artifacts.find((row) => row.stage === 'S5' && row.step_id === step)?.data : null;
         if (!value) throw new ApiError('Stage product was not found', 404);
       }
-      else if (view === 'stage_artifacts') value = await sceneArtifacts(limits, roots, url, request.signal);
-      else if (view === 'stage_media') return await sceneMedia(limits, roots, url, request);
-      else if (view === 'dataset') value = await readDataset(url, roots, request.signal);
-      else if (view === 'media') return await readMedia(url, roots, request.signal);
+      else if (view === 'stage_artifacts') value = await sceneArtifacts(scoped, roots, url, request.signal);
+      else if (view === 'stage_media') return await sceneMedia(scoped, roots, url, request);
+      else if (view === 'dataset') value = await readDataset(url, roots, request.signal, sessions);
+      else if (view === 'media') return await readMedia(url, roots, request.signal, sessions);
       else throw new ApiError('Unsupported workbench view');
       return Response.json(value, {headers: {'cache-control': 'no-store'}});
     } catch (error) {
@@ -738,7 +762,7 @@ export function createWorkbenchHandler(config, registered = () => []) {
 }
 export function apply(ctx, config) {
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list())});
+    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx))});
   ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated artifacts and scene selection API');
 }
 

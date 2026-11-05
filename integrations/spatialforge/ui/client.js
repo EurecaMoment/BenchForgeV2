@@ -122,6 +122,8 @@ window.__ModuleLoader__.load({
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
         workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
         productionProgress: '生产进度', progressUpload: '产物上传', progressItems: '已完成数量', progressStages: '已完成阶段', progressUpdated: '更新', progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '执行中', progressWaiting: '等待回执', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
+        parallelTasks: '并行任务', parallelTask: '合成任务', parallelCompleted: '已完成子任务', parallelRunning: '正在执行', parallelArtifacts: '公开产物', parallelOpenArtifact: '查看产物',
+        inactive: '等待后续任务', unavailable: '状态暂不可用',
         keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
         planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
         selectionTotal: '本组总题数',
@@ -240,6 +242,8 @@ window.__ModuleLoader__.load({
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
         workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
         productionProgress: 'Production progress', progressUpload: 'Artifact upload', progressItems: 'Completed items', progressStages: 'Completed stages', progressUpdated: 'Updated', progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Awaiting receipt', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
+        parallelTasks: 'Parallel tasks', parallelTask: 'Synthesis task', parallelCompleted: 'Completed subtasks', parallelRunning: 'Running tasks', parallelArtifacts: 'Public artifacts', parallelOpenArtifact: 'View artifact',
+        inactive: 'Awaiting next task', unavailable: 'Status unavailable',
         keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
         planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
         selectionTotal: 'Total items in this selection',
@@ -291,6 +295,7 @@ window.__ModuleLoader__.load({
 .bfw-progress-rail{position:relative;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:color-mix(in srgb,var(--dsw-alias-label-primary,#20252c) 12%,var(--dsw-alias-bg-base,#fff));overflow:hidden}.bfw-stage-progress progress,.bfw-progress-track{display:block;width:100%;height:.75rem;border:0;border-radius:1rem;overflow:hidden;background:transparent;accent-color:var(--bfw-progress-fill)}.bfw-stage-progress progress::-webkit-progress-bar{background:transparent}.bfw-stage-progress progress::-webkit-progress-value{background:var(--bfw-progress-fill);border-radius:1rem;transition:width .3s ease}.bfw-stage-progress progress::-moz-progress-bar{background:var(--bfw-progress-fill);border-radius:1rem}
 .bfw-progress-activity{position:absolute;inset-block:0;inset-inline-start:0;inline-size:30%;border-radius:1rem;background:var(--bfw-progress-fill);opacity:.22;animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate;pointer-events:none}.bfw-progress-sweep{display:block;width:30%;height:100%;border-radius:1rem;background:var(--bfw-progress-fill);animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate}@keyframes bfw-progress-sweep{from{transform:translateX(0)}to{transform:translateX(233%)}}@media(prefers-reduced-motion:reduce){.bfw-progress-sweep,.bfw-progress-activity{animation:none}}
 .bfw-progress-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .75rem;margin-top:.4rem;font-size:.72rem;font-variant-numeric:tabular-nums}.bfw-progress-current{max-inline-size:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}.bfw-progress-details{margin-inline-start:auto}.bfw-progress-details summary{color:var(--dsw-alias-label-secondary)}.bfw-progress-details[open]{flex-basis:100%;margin:0}.bfw-progress-detail-body{padding-top:.5rem}.bfw-hint{display:block;color:var(--dsw-alias-label-secondary);font-size:.72rem;line-height:1.4;margin:.2rem 0;overflow-wrap:anywhere}
+.bfw-parallel{margin-top:.6rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-top:.55rem;font-size:.75rem}.bfw-parallel-heading,.bfw-parallel-task-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.bfw-parallel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:.45rem;margin-top:.4rem}.bfw-parallel-task{min-inline-size:0;padding:.45rem .6rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem}.bfw-parallel-task-heading strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bfw-parallel-task .bfw-pill{flex-shrink:0;font-size:.65rem}.bfw-parallel-task progress{height:.35rem;margin-top:.35rem}.bfw-parallel-task-count{display:block;font-size:.7rem;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}.bfw-parallel-links{display:flex;flex-wrap:wrap;gap:.25rem .6rem;margin-top:.25rem}.bfw-parallel-links a{color:var(--dsw-alias-brand-primary);overflow-wrap:anywhere}.bfw-parallel-completed{margin-top:.35rem}.bfw-parallel-completed summary{color:var(--dsw-alias-label-secondary)}
 
 .bfw-stage-heading{display:flex;align-items:flex-start;gap:.7rem;margin-block:.85rem}.bfw-stage-heading h2{font-size:clamp(1.05rem,2cqi,1.3rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{display:grid;place-items:center;inline-size:2rem;block-size:2rem;flex:0 0 auto;border-radius:.55rem;background:var(--dsw-alias-bg-layer-2);font:.8rem ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}
 .bfw-product{min-inline-size:0;min-block-size:0;border:1px solid var(--dsw-alias-border-l3);border-radius:.85rem;background:var(--dsw-alias-bg-layer-1);padding:clamp(.75rem,1.4cqi,1rem);margin-block:.65rem}.bfw-product>h3{font-size:1rem;margin-block:0 1rem}.bfw-product .bfw-card{background:transparent}.bfw-stage-footer{display:flex;justify-content:space-between;gap:.5rem;margin-block:1rem}.bfw-stage-actions{display:flex;flex-wrap:wrap;justify-content:space-between;gap:.75rem;align-items:center;margin-block:1rem}.bfw-tools{margin-block:1.25rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-block-start:.75rem}
@@ -545,6 +550,22 @@ window.__ModuleLoader__.load({
     }
     const lifecycle = (value) => ({SUCCEEDED: 'completed', FAILED_FINAL: 'failed', CANCELED: 'canceled',
       READY: 'waiting', PENDING: 'waiting', RUNNING: 'running'}[value] || value || 'unknown');
+    function productionProductsRevision(value) {
+      const terminal = (state) => ['completed', 'failed', 'canceled'].includes(lifecycle(state)) ? lifecycle(state) : null;
+      const sorted = (rows) => rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+      const artifacts = (row) => [row.artifact_revision ?? null, row.artifact_count ?? null,
+        sorted((row.public_artifacts || []).map((file) => [file.url, file.revision ?? file.version ?? null]))];
+      // Live counters and observation timestamps do not invalidate saved products.
+      return JSON.stringify([
+        sorted((value?.operations || []).filter((row) => terminal(row.state)).map((row) => [row.id, terminal(row.state)])),
+        sorted((value?.pipelines || []).map((row) => [row.id, terminal(row.state), row.revision ?? null, artifacts(row),
+          sorted((row.steps || []).filter((step) => terminal(step.state)).map((step) => [step.id, terminal(step.state), step.artifact_revision ?? null]))])),
+        sorted((value?.scenes?.runs || []).map((row) => [row.run_id, terminal(row.state),
+          sorted((row.tasks || []).map((task) => [task.id, task.revision ?? null, terminal(task.state), artifacts(task)]))])),
+        sorted((value?.parallel_tasks || []).filter((row) => terminal(row.state) || row.artifact_revision != null ||
+          row.artifact_count > 0 || row.public_artifacts?.length).map((row) => [row.id, row.revision ?? null, terminal(row.state), artifacts(row)])),
+      ]);
+    }
     const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
       ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
     function pipelineForStage(id, pipelines) {
@@ -559,6 +580,18 @@ window.__ModuleLoader__.load({
       return usable.find((scene) => !scene.terminal && scene.state !== 'FAILED_FINAL') ||
         usable.find((scene) => scene.state === 'SUCCEEDED') || usable[0] || candidates[0];
     }
+    function progressSceneForStage(id, selected, scenes = []) {
+      const active = scenes.filter((row) => !row.terminal && !['SUCCEEDED', 'FAILED_FINAL', 'CANCELED'].includes(row.state) &&
+        row.tasks?.some((task) => sceneStage(task) === id));
+      if (!active.length) return selected;
+      const seen = new Set();
+      const tasks = active.flatMap((row) => row.tasks || []).filter((task) => {
+        const key = task.id + ':' + task.revision;
+        if (seen.has(key)) return false;
+        seen.add(key); return true;
+      });
+      return {state: active.some((row) => row.state === 'RUNNING') ? 'RUNNING' : active[0].state, tasks};
+    }
     function annotationProducts(artifacts) {
       return artifacts.filter((row) => row.stage === 'S3' && row.kind === 'json' && artifacts.some((image) =>
         image.kind === 'image' && image.task_id === row.task_id && image.revision === row.revision &&
@@ -570,8 +603,12 @@ window.__ModuleLoader__.load({
       if (current.length) {
         if (scene.state === 'CANCELED' && current.some((row) => row.state !== 'SUCCEEDED')) return 'canceled';
         if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
-        if (current.some((row) => row.queue)) return 'waiting';
-        if (current.every((row) => row.state === 'SUCCEEDED')) return 'completed';
+        if (current.some((row) => row.queue) && !current.some((row) => row.state === 'RUNNING' && !row.queue)) return 'waiting';
+        if (current.every((row) => row.state === 'SUCCEEDED')) {
+          const parentSteps = (pipeline?.steps || []).filter((row) => row.stage === id);
+          return parentSteps.some((row) => row.state !== 'completed')
+            ? stageState(id, pipeline, null, operations, planReceipt, artifacts) : 'completed';
+        }
         if (current.some((row) => row.state === 'RUNNING')) return 'running';
         return lifecycle(scene.state);
       }
@@ -645,9 +682,11 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
-    function executionStage(viewed, states, running) {
-      if (!running) return viewed;
+    function executionStage(viewed, states, running, parallelTasks = []) {
+      const active = parallelTasks.filter((row) => lifecycle(row.state) === 'running');
+      if (!running && !active.length) return viewed;
       return STAGES.find((row) => states[row.id] === 'running') ||
+        STAGES.find((row) => active.some((task) => task.stage === row.id)) ||
         STAGES.find((row) => states[row.id] === 'waiting') || {id: 'execution', key: 'productionProgress'};
     }
     function reportedProgress(value) {
@@ -661,7 +700,46 @@ window.__ModuleLoader__.load({
       }
       return null;
     }
+    function progressAmount(detail) {
+      return detail.bytes ? (detail.done / 1048576).toFixed(1) + ' / ' + (detail.total / 1048576).toFixed(1) + ' MB' :
+        detail.done + ' / ' + detail.total;
+    }
+    function ParallelProgress({tasks = [], stage, titleKey = 'parallelTasks', t}) {
+      const rows = tasks.filter((row) => !row.stage || stage.id === 'execution' || row.stage === stage.id).map((row, index) => ({...row,
+        display_name: row.display_name || row.label || row.name || t('parallelTask') + ' ' + (index + 1)}));
+      if (!rows.length) return null;
+      const completed = rows.filter((row) => lifecycle(row.state) === 'completed');
+      const active = rows.filter((row) => lifecycle(row.state) !== 'completed');
+      const caption = completed.length ? t('parallelCompleted') + ' ' + completed.length :
+        t('parallelRunning') + ' ' + rows.filter((row) => lifecycle(row.state) === 'running').length;
+      const publicFiles = (row) => (row.public_artifacts || []).filter((file) => {
+        if (typeof file.url !== 'string' || file.url.includes('\\')) return false;
+        const match = /^\/?api\/benchforge\/workbench\?(.+)$/.exec(file.url);
+        return match && ['run_product', 'stage_media', 'media'].includes(new URLSearchParams(match[1]).get('view'));
+      });
+      const renderTask = (row) => {
+        const state = lifecycle(row.state);
+        const detail = reportedProgress(row.progress) || reportedProgress(row);
+        const files = publicFiles(row);
+        const count = Number.isSafeInteger(row.artifact_count) && row.artifact_count >= 0 ? row.artifact_count : files.length;
+        const name = row.display_name;
+        return h('article', {className: 'bfw-parallel-task', key: row.id, 'data-parallel-task': row.id, 'data-task-state': state},
+          h('div', {className: 'bfw-parallel-task-heading'}, h('strong', {title: name}, name), status(state, t)),
+          detail && h('progress', {max: detail.total, value: detail.done, 'aria-label': name + ' · ' + t(detail.label)}),
+          detail && h('small', {className: 'bfw-parallel-task-count'}, t(detail.label) + ' ' + progressAmount(detail)),
+          count > 0 && h('small', {className: 'bfw-parallel-task-count'}, t('parallelArtifacts') + ' ' + count),
+          files.length > 0 && h('div', {className: 'bfw-parallel-links'}, files.slice(0, 3).map((file, i) =>
+            h('a', {key: file.url, href: file.url, target: '_blank', rel: 'noopener noreferrer'}, file.title || t('parallelOpenArtifact') + ' ' + (i + 1)))));
+      };
+      return h('div', {className: 'bfw-parallel', 'data-parallel-tasks': true, 'aria-label': t(titleKey)},
+        h('div', {className: 'bfw-parallel-heading'}, h('strong', null, t(titleKey)),
+          h('span', {className: 'bfw-muted'}, caption + ' / ' + rows.length)),
+        active.length > 0 && h('div', {className: 'bfw-parallel-grid'}, active.map(renderTask)),
+        completed.length > 0 && h('details', {className: 'bfw-parallel-completed', open: !active.length},
+          h('summary', null, t('parallelCompleted') + ' ' + completed.length), h('div', {className: 'bfw-parallel-grid'}, completed.map(renderTask))));
+    }
     function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
+      scene = progressSceneForStage(stage.id, scene, record.value?.scenes?.runs || []);
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
       const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
@@ -673,15 +751,25 @@ window.__ModuleLoader__.load({
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
       const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
-      const state = recordedState === 'unknown' && conversationRunning ? 'running' : recordedState;
+      const currentChildren = (record.value?.parallel_tasks || []).filter((row) => lifecycle(row.state) === 'running' &&
+        (stage.id === 'execution' || row.stage === stage.id));
+      const state = recordedState === 'unknown' && (conversationRunning || currentChildren.length) ||
+        recordedState === 'completed' && currentChildren.length ? 'running' : recordedState;
+      const parallelUnknown = currentChildren.length > 0 && !current;
       const products = stage.id === 'S3' && !steps.length ? annotationProducts(artifacts) : [];
       const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
         /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
       const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
       // A list of recent operations is history, not a declared workload total.
-      const detail = current && !['failed', 'canceled'].includes(state) ? reportedProgress(current.progress) : null;
+      const readings = tasks.map((row) => reportedProgress(row.progress));
+      const sharedMeasure = tasks.length > 1 && readings.every(Boolean) && readings.every((row) =>
+        row.label === readings[0].label && row.bytes === readings[0].bytes) &&
+        new Set(tasks.map((row) => row.progress?.stage || row.phase)).size === 1;
+      const detail = current && !parallelUnknown && !['failed', 'canceled'].includes(state) ? sharedMeasure
+        ? {...readings[0], done: readings.reduce((sum, row) => sum + row.done, 0), total: readings.reduce((sum, row) => sum + row.total, 0)}
+        : tasks.length > 1 ? null : reportedProgress(current.progress) : null;
       // A whole-task count cannot describe work still occurring within that task.
-      const activeUnknown = state === 'running' && current && !detail;
+      const activeUnknown = state === 'running' && (parallelUnknown || current && !detail);
       const total = detail?.total || (activeUnknown || operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal);
       const done = detail?.done ?? (steps.length ? completed : products.length);
       const measured = total > 0;
@@ -704,7 +792,8 @@ window.__ModuleLoader__.load({
           measured && state === 'running' && h('span', {className: 'bfw-progress-activity', 'aria-hidden': true})),
         h('div', {className: 'bfw-progress-footer'},
           h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'},
-            measured ? unit + ' ' + amount : stage.id === 'execution' ? t('progressStages') + ' ' + completedStages + ' / 5' :
+            measured ? unit + ' ' + amount : parallelUnknown ? t('parallelRunning') + ' ' + currentChildren.length :
+              stage.id === 'execution' ? t('progressStages') + ' ' + completedStages + ' / 5' :
               steps.length ? unit + ' ' + completed + ' / ' + steps.length : t('waitingForReceipt')),
           current && h('span', {className: 'bfw-progress-current', title: current.id}, current.label || current.id),
           conversationRunning && record.updatedAt && h('small', {className: 'bfw-muted', 'data-progress-updated': record.updatedAt},
@@ -716,7 +805,13 @@ window.__ModuleLoader__.load({
               table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))))),
         stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
         current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
-        current?.queue && h('small', {className: 'bfw-hint'}, t('waiting') + ': ' + current.queue.reason));
+        current?.queue && h('small', {className: 'bfw-hint'}, t('waiting') + ': ' + current.queue.reason),
+        h(ParallelProgress, {tasks: record.value?.parallel_tasks || [], stage, t}),
+        tasks.length > 1 && h(ParallelProgress, {stage, titleKey: 'progressTasks', t, tasks: tasks.map((row, index) => ({
+          id: row.id, stage: stage.id, display_name: row.display_name || row.name || row.summary?.name || row.summary?.title ||
+            t('progressTasks') + ' ' + (index + 1), state: row.queue && row.state !== 'FAILED_FINAL' ? 'waiting' : lifecycle(row.state),
+          progress: row.progress, public_artifacts: artifacts.filter((file) => file.task_id === row.id && file.url),
+        }))}));
     }
     function PublicObservation({src, type = 'image/*', label, compact = false, t}) {
       const [record, setRecord] = React.useState({loading: type === 'application/json', data: null, error: ''});
@@ -1173,12 +1268,7 @@ window.__ModuleLoader__.load({
         sessionError ? 'failed' : sessionState.openState === 'loading' ? 'loading' : 'idle';
       const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
       const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
-      const receiptsRevision = revision + ':' + sessionStatus + ':' + JSON.stringify([
-        (progress.value?.operations || []).map((row) => [row.id, row.state]),
-        (progress.value?.pipelines || []).map((row) => [row.id, row.updated_at]),
-        (progress.value?.scenes?.runs || []).map((row) => [row.run_id, row.state,
-          row.tasks?.map((task) => [task.id, task.state, task.revision])]),
-      ]);
+      const receiptsRevision = revision + ':' + productionProductsRevision(progress.value);
       const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
       const rows = summary.value?.runs || [];
       const pipelines = progress.value?.pipelines || [];
@@ -1447,11 +1537,12 @@ window.__ModuleLoader__.load({
         const filesError = sceneArtifacts.error || run.error;
         const productFiles = stageFiles.filter((row) => (row.url || row.data) && !(separatePlan &&
           (row.title === '评测计划' && row.stage === 'S1' || row.title === '评测配置' && row.stage === 'S4')));
-        const navigationState = (id) => stageState(id, navigationPipeline(id), navigationScene(id), progress.value?.operations,
+        const navigationState = (id) => stageState(id, navigationPipeline(id), progressSceneForStage(id, navigationScene(id), sceneJobs), progress.value?.operations,
           planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
             navigationPipeline(id)?.id === selectedRunId ? allStageFiles : []);
         const progressStates = Object.fromEntries(STAGES.map((row) => [row.id, navigationState(row.id)]));
-        const liveProgressStage = executionStage(stage, progressStates, conversationRunning);
+        const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === 'running');
+        const liveProgressStage = executionStage(stage, progressStates, conversationRunning, progress.value?.parallel_tasks || []);
         const liveProgressPipeline = liveProgressStage.id === 'execution' ? null : navigationPipeline(liveProgressStage.id);
         const liveProgressScene = liveProgressStage.id === 'execution' ? null : navigationScene(liveProgressStage.id);
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
@@ -1523,7 +1614,7 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
             t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
         h(StageProgress, {stage: liveProgressStage, pipeline: liveProgressPipeline, scene: liveProgressScene, record: progress,
-          planReceipt, artifacts: allStageFiles, conversationRunning,
+          planReceipt, artifacts: allStageFiles, conversationRunning: progressRunning,
           completedStages: Object.values(progressStates).filter((state) => state === 'completed').length, t}),
         h(StageReviewPanel,{value:reviewRecord.value,t,change:() => prepare(''),act:async (action) => {
           try {await reviewAction(action); if (action === 'pause' && conversationRunning) await stopExecution(); if (action === 'continue' && !conversationRunning) {
