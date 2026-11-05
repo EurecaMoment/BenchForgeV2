@@ -233,7 +233,8 @@ def model_eval(args,directory,config):
             body={'model':cfg['model'],'messages':[{'role':'user','content':content}],
                   'temperature':cfg.get('temperature',0),'max_tokens':cfg.get('max_tokens',4096),'stream':False,**cfg.get('parameters',{})}
             headers={'Content-Type':'application/json'}
-            if cfg.get('token_env'):headers['Authorization']='Bearer '+os.environ[cfg['token_env']]
+            token=cfg.get('token') or os.environ.get(cfg.get('token_env',''))
+            if token:headers['Authorization']='Bearer '+token
             url=cfg['url'].rstrip('/')
             if not url.endswith('/chat/completions'):url+=('/chat/completions' if url.endswith('/v1') else '/v1/chat/completions')
             last=None

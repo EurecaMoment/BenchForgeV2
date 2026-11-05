@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
@@ -20,18 +22,37 @@ export const name='spatialforge-tools';
 export const inject=['tools','llm','attachments'];
 export const Config=z.object({
   serviceConfig:z.string().required().description('Path to the SpatialForge service JSON configuration.'),
+  scenePolicyWorkspace:z.string().default(''),
+  policyPython:z.string().default('python3'),
   dshRoot:z.string().description('Legacy preset field, retained for compatibility; public DSH packages are resolved normally.'),
 });
 export async function apply(ctx, config) {
   const cfg = JSON.parse(await fs.promises.readFile(config.serviceConfig, 'utf8'));
   const tokenName = cfg.operator_token_env || 'SPATIALFORGE_OPERATOR_TOKEN';
-  // Keep the existing launch precedence explicit, including trusted project
-  // and user defaults. Later process.env mutation cannot change this token.
-  const token = launchEnvironmentOf(ctx).getFrom(tokenName, ['process','project-env','user-env'])?.value;
-  if (!token) throw new Error(`Set ${tokenName} before starting the SpatialForge mode`);
+  // An explicitly configured environment variable has the same precedence as
+  // the service and worker loaders. Inline tokens still support local installs.
+  const environmentToken = () => launchEnvironmentOf(ctx).getFrom(tokenName, ['process','project-env','user-env'])?.value;
+  const token = cfg.operator_token_env ? environmentToken() : cfg.operator_token || environmentToken();
+  if (!token) throw new Error(`Configure operator_token or set ${tokenName}`);
+  const scenePolicyWorkspace=config.scenePolicyWorkspace || cfg.task_root || '';
   const serviceUrl = (cfg.service_url || `http://127.0.0.1:${cfg.port || 3841}`).replace(/\/$/, '');
 const output=objectOutput;
 async function api(path,args,signal){
+  if(scenePolicyWorkspace && ['/start','/capture','/refine','/extend','/retry','/dataset'].includes(path)) {
+    await new Promise((resolve,reject)=>{
+      const child=spawn(config.policyPython,['-B',fileURLToPath(new URL('../scene_policy_gate.py',import.meta.url)),
+        '--workspace',scenePolicyWorkspace,'--route',path],{stdio:['pipe','pipe','pipe'],signal});
+      let output='',errors='';
+      const timer=setTimeout(()=>child.kill(),10000);
+      child.stdout.on('data',value=>output+=value);child.stderr.on('data',value=>errors+=value);
+      child.on('error',error=>{clearTimeout(timer);reject(error);});
+      child.on('close',code=>{clearTimeout(timer);try {
+        if(code!==0)throw new Error('Scene admission unavailable: '+errors.slice(-500));
+        const result=JSON.parse(output);if(!result.allowed)throw new Error(result.error);resolve();
+      }catch(error){reject(error);}});
+      child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify(args));
+    });
+  }
   const response=await fetch(serviceUrl+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(args),signal});
   // Isaac camera matrices contain -0.0; DSH's JSON transport rejects signed zero.
   const data=JSON.parse(await response.text(),(_key,value)=>Object.is(value,-0)?0:value);if(!response.ok)throw new Error(JSON.stringify(data));return data;
@@ -97,7 +118,7 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
     source_image:{type:'string',required:true},input_size:{type:'integer',description:'Legacy V2 inference size; resident DA3 preserves 1024x1024 input.'},intrinsics:{type:'array',items:{type:'array',items:{type:'number'}},description:'Calibrated 3x3 camera matrix in input-image pixel coordinates.'},focal_length_px:{type:'number'},intrinsics_source:{type:'string'}});
   stage('spatialforge_mesh_import','/mesh-import','Convert and register an existing mesh for SceneProgram use without model inference or visual review. Returns asset_id and bounds. For SAM3D output use source_frame=sam3d_camera; its paired Gaussian sidecar is imported automatically. source_gaussian can supply an explicit paired NPZ.',{
     source_mesh:{type:'string',required:true},source_gaussian:{type:'string',description:'Paired activated Gaussian NPZ; coordinates match source_mesh or include local_to_source.'},label:{type:'string',required:true},source_up_axis:{type:'string',enum:['Y','Z']},source_frame:{type:'string',enum:['sam3d_camera','y_up','z_up']},size_hint_m:{type:'array',items:{type:'number'}}});
-  stage('spatialforge_capture','/capture','Render and simulate your complete SceneProgram on the desktop Isaac queue. Returns actual images, geometry and declared action traces. Does not plan or automatically revise the scene, run model review or export a dataset. Inspect the captures and decide the next step. When matching a separately generated diffusion reference, link that exact image with layout={mode:"reference",source_image:<returned source_path>} so the reference accompanies the renders at delivery review; reuse it without regenerating.',{
+  stage('spatialforge_capture','/capture','Render and simulate your complete SceneProgram on the desktop Isaac queue. Returns actual images, geometry and declared action traces. With strict scene policy enabled, physical and per-view life acceptance is mandatory even for capture-only; inspect scene_admission.json and scene_acceptance.json. A captured frame is not completion. Failed acceptance cannot export and needs a revised complete program through capture/refine. Does not automatically revise your program or export a dataset. When matching a separately generated diffusion reference, link that exact image with layout={mode:"reference",source_image:<returned source_path>} so the reference accompanies the renders at delivery review; reuse it without regenerating.',{
     scene_program_path:{type:'string',required:true},name:{type:'string'},layout:layoutInput,
     capture_options:{type:'object',description:'Optional output selection for local iteration; defaults to every view and a USD export. Keeps the full program, physics and action recordings.',additionalProperties:false,properties:{view_indices:{type:'array',items:{type:'integer'},description:'Zero-based program camera indices. Original view_N filenames are retained. [] skips final scene views.'},export_scene:{type:'boolean',description:'Set false to skip USD/resource export for this capture; default true.'}}}});
   ctx.tools.register(defineTool({name:'spatialforge_preview',description:'Compute placement bounds, support gaps and geometry advice from your SceneProgram without starting Isaac or a model. Use capture for actual images and physics.',parameters:{scene_program_path:{type:'string',required:true}},output,execute:(args,exec)=>api('/preview',args,exec.signal)}));
@@ -119,7 +140,7 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
   ctx.tools.register(defineTool({name:'spatialforge_catalog',description:"Discover tool capabilities, SceneProgram format and assets. Choose a section; query filters, item_id selects detail, next_offset continues. workspace_id copies all matches for task-code inspection. scene_schema fragments concatenate into the complete format.",parameters:{section:{type:'string',enum:['overview','contracts','scene_schema','native_assets','generated_assets','generation_tools','materials','environments','dataset_sources','dataset_templates','dataset_recipes','dataset_processing','dataset_guidance','knowledge']},query:{type:'string'},item_id:{type:'string'},offset:{type:'integer'},limit:{type:'integer'},workspace_id:{type:'string'}},output,execute:(args,exec)=>api('/catalog',args,exec.signal)}));
   ctx.tools.register(defineTool({name:'spatialforge_run',description:"Produce a scene and dataset from natural-language requirements or scene_program_path. The pipeline prepares a diffusion reference unless one is supplied, then builds, captures, reviews and exports through desktop Isaac. Returns a durable run ID.",parameters:{request_key:requestKey,intents:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{name:{type:'string',required:true},description:{type:'string',required:true},split:{type:'string',enum:['train','dev'],required:true},target_items:{type:'integer',description:'Number of dataset questions to export; this is not the scene entity count.'},layout:layoutInput,scene_program_path:programInput}}}},output:runOutput,execute:(args,exec)=>submit('/start',args,exec)}));
   ctx.tools.register(defineTool({name:'spatialforge_asset',description:"Generate with diffusion/SAM3/SAM3D, reconstruct source_image, import source_mesh, or reuse catalog asset_id. Optional texture_baking gives reconstructed meshes UV color textures. Inputs use registered source paths; returns a durable run ID.",parameters:{request_key:requestKey,intent:{type:'object',required:true,additionalProperties:false,properties:{name:{type:'string',required:true},description:{type:'string',required:true},label:{type:'string',description:'Semantic subject for SAM3 segmentation and asset registration; defaults to name.'},source_image:{type:'string'},source_mask:{type:'string'},source_mesh:{type:'string'},source_gaussian:{type:'string'},asset_id:{type:'string'},seed:{type:'integer'},source_up_axis:{type:'string',enum:['Y','Z']},size_hint_m:{type:'array',items:{type:'number'}},subject_box:{type:'array',items:{type:'number'},description:'Pixel xyxy box selecting the subject.'},edit_reference:{type:'boolean'},texture_baking:{type:'boolean',description:'Optional SAM3D UV color baking during reconstruction; slower, with possible inferred-surface artifacts. Omitted/false keeps vertex colors. Reusing or importing a mesh retains its existing appearance.'}}}},output:runOutput,execute:(args,exec)=>submit('/asset',args,exec)}));
-  ctx.tools.register(defineTool({name:'spatialforge_extend',description:"Add objects to a captured scene while retaining its existing entities and train/dev family. Use refine when existing objects also need changes.",parameters:{request_key:requestKey,parent_task_id:{type:'string',required:true},name:{type:'string',required:true},description:{type:'string',required:true},target_items:{type:'integer',description:'Number of dataset questions to export; this is not the scene entity count.'},layout:layoutInput},output:runOutput,execute:(args,exec)=>submit('/extend',args,exec)}));
+  ctx.tools.register(defineTool({name:'spatialforge_extend',description:"Add objects to an accepted captured scene while retaining its existing entities and train/dev family. With strict scene policy, provide a complete scene_program_path that preserves all parent objects unchanged and includes the saved scene brief.",parameters:{request_key:requestKey,parent_task_id:{type:'string',required:true},name:{type:'string',required:true},description:{type:'string',required:true},target_items:{type:'integer',description:'Number of dataset questions to export; this is not the scene entity count.'},layout:layoutInput,scene_program_path:programInput},output:runOutput,execute:(args,exec)=>submit('/extend',args,exec)}));
   ctx.tools.register(defineTool({name:'spatialforge_dataset',description:"Produce data from registered sources and recipes, or a complete DatasetSpec. Supports overrides and train/dev split; preserves source GT.",parameters:{request_key:requestKey,intent:{type:'object',required:true,additionalProperties:true,properties:{recipe:{type:'string'},spec:{type:'object',additionalProperties:true},overrides:{type:'object',additionalProperties:true},review:{type:'boolean'},split:{type:'string',enum:['train','dev']}}}},output:runOutput,execute:(args,exec)=>submit('/dataset',args,exec)}));
   ctx.tools.register(defineTool({name:'spatialforge_retry',description:"Resume a failed task with optional repair feedback. Reuses completed stages and retains prior artifacts.",parameters:{task_id:{type:'string',required:true},feedback:{type:'string',description:'Optional concrete scene repair guidance for a failed planning stage, up to 12000 characters.'}},output:taskOutput,execute:(args,exec)=>api('/retry',args,exec.signal)}));
   ctx.tools.register(defineTool({name:'spatialforge_status',description:"Read current progress, available evidence, assessed quality and exports. run_id excludes .sceneN. detail=true includes full task reports. Lifecycle completion and scene quality are separate fields.",parameters:{run_id:{type:'string',required:true},detail:{type:'boolean'}},output:observationOutput,execute:(args,exec)=>observation(args.detail?'/inspect':'/observe',args,exec.signal)}));

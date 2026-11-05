@@ -33,6 +33,8 @@ class PresetBuilderTest(unittest.TestCase):
         self.assertEqual(learning['name'],'@eurecamoment/benchforge-dsh/benchforge-tools')
         self.assertEqual(next(p for p in plugins if p['id']=='spatialforge-tools')['name'],
                          '@eurecamoment/benchforge-dsh/spatialforge-tools')
+        self.assertEqual(next(p for p in plugins if p['id']=='spatialforge-evaluation-ui')['name'],
+                         '@eurecamoment/benchforge-spatialforge-ui')
 
     def test_preserves_official_presets_and_persistent_configuration(self):
         import copy
@@ -45,8 +47,8 @@ class PresetBuilderTest(unittest.TestCase):
             if row['id'] in ('persistent-bash','persistent-pwsh'):
                 row['config'].update(backendType='shell',maxOutputChars=8192)
         before=copy.deepcopy(sources)
-        result=builder.build(sources,None,'python3',Path('config.local.json'),
-                             Path('spatialforge.local.json'),package_imports=True)
+        result=builder.build(sources,None,'python3',Path('config/benchforge.local.json'),
+                             Path('config/spatialforge.local.json'),package_imports=True)
         self.assertEqual(sources,before)
         row=result[0]['insert'][0]
         self.assertEqual(row['id'],'preset-benchforgev2')

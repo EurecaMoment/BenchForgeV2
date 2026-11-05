@@ -89,6 +89,27 @@ def refine_scene_request(store,value):
     return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','operation':'capture_only' if intent.get('capture_only') else 'scene_pipeline','inherited_split':intent['split'],'source_revision':intent['refine_revision'],'program_handoff':'validated_frozen_snapshot' if submission else 'planner_refinement'}
 
 
+def extend_scene_request(store,value):
+    parent=value['parent_task_id'];snap=store.snapshot(parent.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==parent)
+    if task['state']!='SUCCEEDED' or task['unit'].get('workflow','scene')!='scene':raise ValueError('extend an available captured scene task')
+    revision=task['unit']['revision'];directory=store.directory(parent,revision)
+    from .scene_acceptance import policy_for, require_accepted
+    strict=bool(policy_for(store.root))
+    if strict:require_accepted(store.root,directory)
+    intent=scene_intent({'name':value['name'],'description':value['description'],
+        'split':task['unit']['intent']['split'],'target_items':value.get('target_items',24),
+        **({'scene_program_path':value['scene_program_path']} if value.get('scene_program_path') else {})})
+    if 'layout' in value:intent['layout']=validate_layout(value['layout'])
+    submission=read_program_submission(store.root,value['scene_program_path']) if value.get('scene_program_path') else None
+    if strict and not submission:raise ValueError('Realistic scene extension requires a complete SceneProgram')
+    intent.update(parent_task_id=parent,parent_revision=revision,extend_task_id=parent,extend_revision=revision,
+                  scene_family=task['unit']['intent'].get('scene_family',parent))
+    require_prior_reference(store,intent,directory)
+    rid=store.submit(value['request_key'],[intent],submitted_programs=[submission] if submission else None)
+    return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','inherited_split':intent['split'],
+            'source_revision':revision,'program_handoff':'validated_frozen_snapshot' if submission else 'planner_extension'}
+
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',required=True);args=parser.parse_args()
     faulthandler.enable()
@@ -155,6 +176,8 @@ def main():
                     validate_capture(directory,job,store)
                     self.reply(store.commit_capture(job,directory));return
                 value=json.loads(raw or b'{}')
+                from .scene_acceptance import check_request
+                check_request(store.root,self.path,value)
                 if self.path=='/catalog':
                     from .operator_catalog import catalog_response
                     self.reply(catalog_response(store,value))
@@ -179,12 +202,7 @@ def main():
                     if not isinstance(intent['description'],str) or not 1<=len(intent['description'])<=12000:raise ValueError('invalid asset description')
                     self.reply({'run_id':store.submit(value['request_key'],[intent],'asset'),'state':'accepted'})
                 elif self.path=='/extend':
-                    parent=value['parent_task_id'];snap=store.snapshot(parent.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==parent)
-                    if task['state']!='SUCCEEDED' or task['unit'].get('workflow','scene')!='scene':raise ValueError('extend an available captured scene task')
-                    intent=scene_intent({'name':value['name'],'description':value['description'],'split':task['unit']['intent']['split'],'target_items':value.get('target_items',24)})
-                    if 'layout' in value:intent['layout']=validate_layout(value['layout'])
-                    intent.update(parent_task_id=parent,parent_revision=task['unit']['revision'],scene_family=task['unit']['intent'].get('scene_family',parent))
-                    self.reply({'run_id':store.submit(value['request_key'],[intent]),'state':'accepted','inherited_split':intent['split']})
+                    self.reply(extend_scene_request(store,value))
                 elif self.path=='/refine':
                     self.reply(refine_scene_request(store,value))
                 elif self.path=='/dataset':

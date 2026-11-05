@@ -1,6 +1,6 @@
 {
   "url": "http://127.0.0.1:3841",
-  "worker_token_env": "SPATIALFORGE_WORKER_TOKEN",
+  "worker_token": "",
   "worker_id": "desktop-isaac-main",
   "isaac_root": "D:/isaac-sim",
   "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",

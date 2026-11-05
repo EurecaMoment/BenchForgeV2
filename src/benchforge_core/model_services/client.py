@@ -23,8 +23,11 @@ class ModelService:
 
     def rpc(self, route, payload=None, method=None, *, base_url=None, timeout_seconds=None):
         headers = {"Content-Type": "application/json"}
-        if self.config.get("token_env"):
-            headers["Authorization"] = "Bearer " + os.environ[self.config["token_env"]]
+        token = self.config.get("token")
+        if not token and self.config.get("token_env"):
+            token = os.environ.get(self.config["token_env"])
+        if token:
+            headers["Authorization"] = "Bearer " + token
         body = None if payload is None else json.dumps(payload).encode()
         request = Request((base_url or self.url) + route, data=body, headers=headers, method=method)
         with self.opener.open(request, timeout=timeout_seconds or self.config.get("http_timeout_seconds", 30)) as response:

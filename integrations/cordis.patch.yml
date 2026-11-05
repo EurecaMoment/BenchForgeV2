@@ -330,10 +330,10 @@
         name: '@eurecamoment/benchforge-dsh/benchforge-tools'
         config:
           python: python3
-          configPath: config.local.json
+          configPath: config/benchforge.local.json
       - id: spatialforge-tools
         name: '@eurecamoment/benchforge-dsh/spatialforge-tools'
         config:
-          serviceConfig: spatialforge.local.json
+          serviceConfig: config/spatialforge.local.json
       name: BenchForgev2
       description: Composable benchmark construction, annotation, simulation and evidence.

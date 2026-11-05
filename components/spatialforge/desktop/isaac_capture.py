@@ -16,6 +16,7 @@ from spatialforge.support_graph import objects_in_support_order
 from spatialforge.material_catalog import load_native_materials
 from scene_runtime import render_options, room_metadata, light_specs, material_for, part_material_for, interaction_plan, select_interaction_camera, evaluate_force_trajectory, transform_mesh_geometry
 from camera_controls import camera_matrix, apply_camera_optics, camera_evidence
+from spatialforge.camera_trajectory import sampled_camera
 from primitive_geometry import define_textured_primitive
 from spatialforge.environment_catalog import apply_environment_texture
 from spatialforge.mesh_geometry import transform_mesh_normals
@@ -404,6 +405,10 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
             matrix=UsdGeom.XformCache().GetLocalToWorldTransform(stage.GetPrimAtPath(e['prim_path']))
             p=matrix.ExtractTranslation();return [float(v) for v in p]
 
+        def world_transform(e,cache):
+            matrix=cache.GetLocalToWorldTransform(stage.GetPrimAtPath(e['prim_path']))
+            return [[float(value) for value in row] for row in matrix]
+
         def define_camera(path,c):
             camera=UsdGeom.Camera.Define(stage,path)
             matrix=camera_matrix(c)
@@ -439,6 +444,8 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
             return rgb,diagnostic
 
         def interaction_rgb(name,object_id):
+            # Endpoints retain the original action camera even when the video moves.
+            capture_camera_transform.Set(camera_matrix(action_camera));apply_camera_optics(capture_camera,action_camera)
             rgb,diagnostic=capture_rgb(name)
             Image.fromarray(rgb.astype(np.uint8)).save(output/name)
             if not diagnostic['valid_rgb']:raise RuntimeError(f'{name}: RGB remains all zero after bounded render warmup; interaction evidence unavailable')
@@ -448,6 +455,15 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
         def recording_for(index, action):
             if 'recording' not in action:return None
             from interaction_recording import InteractionRecording
+            recording_camera=next(c for c in program['cameras'] if c.get('id')==action['camera_id']) if action['action']=='record_trajectory' else action_camera
+            recording_start_step=None
+            camera_path=action['recording'].get('camera_path')
+            def set_recording_camera(step):
+                nonlocal recording_start_step
+                if recording_start_step is None:recording_start_step=step
+                if camera_path:
+                    camera_spec=sampled_camera(recording_camera,camera_path,step-recording_start_step)
+                    capture_camera_transform.Set(camera_matrix(camera_spec));apply_camera_optics(capture_camera,camera_spec)
             def frame(name):
                 # Rendering freezes simulation time; resume the existing context
                 # after saving this state, without replaying or moving the target.
@@ -457,8 +473,61 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
                 # repeating startup warmup for every video frame wastes renders.
                 rgb,_=capture_rgb(name,render_steps=1)
                 Image.fromarray(rgb.astype(np.uint8)).save(output/name)
+                if 'spatialtree' not in action['recording']:sim.play()
+
+            def trajectory_frame(step, phase, image_path):
+                """Persist all native annotators for one recorded interaction frame."""
+                stem=image_path.with_suffix('')
+                depth_path=stem.with_name(stem.name+'_depth.npy')
+                semantic_path=stem.with_name(stem.name+'_semantic.npy')
+                instance_path=stem.with_name(stem.name+'_instance.npy')
+                depth=np.asarray(annot['distance_to_image_plane'].get_data()).squeeze()
+                semantic=annot['semantic_segmentation'].get_data()
+                instance=annot['instance_segmentation'].get_data()
+                np.save(depth_path,depth)
+                def label_array(data):
+                    array=np.asarray(data)
+                    return array.view(np.uint32).reshape((settings['height'],settings['width'])) if array.dtype==np.uint8 else array.squeeze()
+                np.save(semantic_path,label_array(semantic['data']))
+                np.save(instance_path,label_array(instance['data']))
+                camera_spec=recording_camera
+                if camera_path:
+                    camera_spec=sampled_camera(recording_camera,camera_path,step-recording_start_step)
+                focal=float(capture_camera.GetFocalLengthAttr().Get())
+                aperture=float(capture_camera.GetHorizontalApertureAttr().Get())
+                fx=focal/aperture*settings['width']
+                cache=UsdGeom.XformCache()
+                matrix=cache.GetLocalToWorldTransform(capture_camera.GetPrim())
+                camera={**camera_evidence(capture_camera,camera_spec,matrix),
+                        'intrinsics':{'fx':fx,'fy':fx,'cx':settings['width']/2.,'cy':settings['height']/2.,
+                                      'source':'authored Isaac camera optics'},
+                        'image_size':[settings['width'],settings['height']]}
+                objects=[]
+                for eid,entity in entities.items():
+                    visibility=object_visibility(instance,eid,entity['prim_path'],(settings['height'],settings['width']))
+                    objects.append({'object_id':eid,'label':entity['label'],
+                                    'prim_path':entity['prim_path'],'T_world_object':world_transform(entity,cache),
+                                    'visible_pixels':visibility['visible_pixels'],
+                                    'bbox_2d':visibility['bbox_xyxy']})
+                payload={'step':step,'timestamp_sim':step*settings['dt'],'rgb_path':image_path,
+                        'depth_path':depth_path,'semantic_path':semantic_path,'instance_path':instance_path,
+                        'camera':camera,'objects':objects,
+                        'metadata':{'phase':phase,'action_id':action['id'],'source':'isaac_native',
+                                    'semantic_info':semantic.get('info',{}),'instance_info':instance.get('info',{})}}
                 sim.play()
-            return InteractionRecording(output,index,action['recording'],settings['dt'],frame)
+                return payload
+
+            recording=InteractionRecording(output,index,action['recording'],settings['dt'],frame,
+                                           trajectory_frame=trajectory_frame,before_capture=set_recording_camera,
+                                           width=settings['width'],height=settings['height'])
+            if recording.spatialtree is not None:
+                recording.spatialtree_action_id=recording.spatialtree.add_action(
+                    step=simulation_step,
+                    timestamp_sim=simulation_step*settings['dt'],
+                    action={**{key:value for key,value in action.items() if key not in {'supported','recording'}},
+                            'type':action['action'],'phase':'interaction','recording':action['recording']},
+                )['action_id']
+            return recording
 
         rigid_views={};robots={};robot_views={};robot_witnesses={};force_contact_counts={}
         if has_robot:
@@ -514,6 +583,23 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
         for ai,action in enumerate(actions):
             if not action['supported']:
                 action_results.append({'id':action['id'],'action':action['action'],'status':'unsupported','success':False,'reason':action['reason']})
+                continue
+            if action['action']=='record_trajectory':
+                recording_camera=next(c for c in program['cameras'] if c.get('id')==action['camera_id'])
+                capture_camera_transform.Set(camera_matrix(recording_camera));apply_camera_optics(capture_camera,recording_camera)
+                recording=recording_for(ai,action)
+                recording.sample(simulation_step,'trajectory_start',{'position':recording_camera['position']})
+                start_step=simulation_step
+                sim.play()
+                for elapsed in range(1,action['duration_steps']+1):
+                    sim.step(render=False)
+                    simulation_step=start_step+elapsed
+                    recording.sample(simulation_step,'trajectory',{})
+                sim.pause()
+                receipt=recording.finish(simulation_step)
+                action_results.append({'id':action['id'],'action':'record_trajectory','status':'recorded',
+                    'trajectory_complete':True,'checks':{'native_trajectory_written':True,'captured_frames':receipt['spatialtree']['frame_count']},
+                    'sample_count':receipt['spatialtree']['frame_count'],'recording':receipt})
                 continue
             if action['action']=='robot_push':
                 center=robot_views[action['id']].get_world_poses()[0][0]
@@ -592,11 +678,18 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
                                    'trajectory_file':trajectory_name,'before_image':before_image,'after_image':after_image,
                                    'visual_evidence':visual_evidence,**({'recording':record['recording']} if recording else {}),
                                    **({'object_contacts':{k:v for k,v in record['object_contacts'].items() if k!='trace'}} if contact_trace else {})})
-        interaction={'validated':bool(action_results) and all(row['success'] for row in action_results),
+        physical_results=[row for row in action_results if row['action']!='record_trajectory']
+        trajectory_only=bool(action_results) and all(row['action']=='record_trajectory' for row in action_results)
+        interaction={'validated':bool(physical_results) and all(row['success'] for row in physical_results),
                      'test_kind':'external_force_response','action_results':action_results,
                      'evidence_source':'Isaac physics states and rendered before/after images',
                      'limitations':['external force response; no robot, grasp or contact-manipulation success is claimed',
-                                    'synthetic contact parameters are uncalibrated; sim2real gap is not measured']}
+                                     'synthetic contact parameters are uncalibrated; sim2real gap is not measured'] if not trajectory_only else
+                                     ['recording completeness is not a perception or navigation performance result',
+                                      'all labels describe synthetic Isaac state and render; they do not establish real-world calibration']}
+        if trajectory_only:
+            interaction['test_kind']='native_trajectory_recording'
+            interaction['evidence_source']='Isaac physics states, rendered frame annotators and camera/object transforms'
         if not actions:interaction['reason']='no executable interaction requested'
         if has_robot:
             interaction['test_kind']='robot_contact' if all(a['action']=='robot_push' for a in actions) else 'mixed_physics_actions'

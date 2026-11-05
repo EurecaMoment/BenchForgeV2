@@ -31,10 +31,10 @@ def _json_text(value):
         raise
 
 
-def completion(prompt, trace_dir, images=(), max_tokens=10000):
+def completion(prompt, trace_dir, images=(), max_tokens=10000, *, bounded_review=False):
     """Retry malformed JSON without replaying a poisoned completed-response cache."""
     for attempt in range(3):
-        try:return _completion_once(prompt,trace_dir,images,max_tokens)
+        try:return _completion_once(prompt,trace_dir,images,max_tokens,bounded_review=bounded_review)
         except json.JSONDecodeError:
             if attempt==2:raise
 
@@ -46,7 +46,7 @@ def _parse_saved(saved, path):
         raise
 
 
-def _completion_once(prompt, trace_dir, images, max_tokens):
+def _completion_once(prompt, trace_dir, images, max_tokens, *, bounded_review=False):
     trace_dir=Path(trace_dir); trace_dir.mkdir(parents=True,exist_ok=True)
     previous=list(trace_dir.rglob('response.json'))
     invalid_json=False
@@ -74,28 +74,47 @@ def _completion_once(prompt, trace_dir, images, max_tokens):
     body={'model':model_id,'messages':[{'role':'user','content':content}],
           'reasoning_effort':'xhigh','max_tokens':max(4096,max_tokens+thinking_budget),'thinking_token_budget':thinking_budget,'temperature':.7,'top_p':.9,
           'chat_template_kwargs':{'enable_thinking':True,'preserve_thinking':True},'stream':True,'stream_options':{'include_usage':True}}
+    if bounded_review:
+        # Structured observation already has an explicit checklist. Bound latency
+        # without changing its acceptance criteria or the running model service.
+        body.update(reasoning_effort='none', max_tokens=max_tokens, temperature=.2,
+                    chat_template_kwargs={'enable_thinking':False})
+        body.pop('thinking_token_budget',None)
     (trace_dir/'request.json').write_text(json.dumps({**body,'messages':[{'role':'user','content':prompt}], 'image_files':[str(p) for p in images]},ensure_ascii=False,indent=2),encoding='utf8')
     base=model_url.rstrip('/')
     url=base if base.endswith('/chat/completions') else base+'/chat/completions'
     request=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+os.environ.get(os.environ.get('SPATIALFORGE_MODEL_API_KEY_ENV','QWEN_RELAY_API_KEY'),'local')})
     pieces=[];thinking=[];usage={};finish=None;done=False;start=time.time()
-    with (trace_dir/'stream.jsonl').open('w',encoding='utf8') as trace, urllib.request.urlopen(request,timeout=600) as response:
-        for raw in response:
-            if time.time()-start>900: raise TimeoutError('model wall-time budget exceeded')
-            line=raw.decode().strip()
-            if not line.startswith('data:'): continue
-            data=line[5:].strip()
-            if data=='[DONE]': done=True; break
-            event=json.loads(data)
-            trace.write(json.dumps(event,ensure_ascii=False)+'\n');trace.flush()
-            if event.get('usage'): usage=event['usage']
-            for choice in event.get('choices',[]):
-                delta=choice.get('delta',{})
-                pieces.append(delta.get('content') or '')
-                thinking.append(delta.get('reasoning_content') or delta.get('reasoning') or '')
-                if choice.get('finish_reason'): finish=choice['finish_reason']
+    last_progress=0;characters=0;error=None
+    scene_review=bounded_review and (trace_dir.name=='scene_review' or any(p.name=='scene_review' for p in trace_dir.parents))
+    try:
+        with (trace_dir/'stream.jsonl').open('w',encoding='utf8') as trace, urllib.request.urlopen(request,timeout=90 if bounded_review else 600) as response:
+            for raw in response:
+                now=time.time()
+                if now-start>(420 if bounded_review else 900): raise TimeoutError('model wall-time budget exceeded')
+                line=raw.decode().strip()
+                if not line.startswith('data:'): continue
+                data=line[5:].strip()
+                if data=='[DONE]': done=True; break
+                event=json.loads(data)
+                trace.write(json.dumps(event,ensure_ascii=False)+'\n');trace.flush()
+                if event.get('usage'): usage=event['usage']
+                for choice in event.get('choices',[]):
+                    delta=choice.get('delta',{})
+                    part=delta.get('content') or '';pieces.append(part);characters+=len(part)
+                    thinking.append(delta.get('reasoning_content') or delta.get('reasoning') or '')
+                    if choice.get('finish_reason'): finish=choice['finish_reason']
+                if scene_review:
+                    if now-last_progress>=2:
+                        from .progress import record_progress
+                        record_progress(trace_dir,'scene_review',generated_characters=characters,elapsed_seconds=round(now-start),message='正在逐图审阅')
+                        last_progress=now
+    except Exception as exc:
+        error=exc
+    finally:
+        (trace_dir/'response.json').write_text(json.dumps({'model':body['model'],'content':''.join(pieces),'reasoning':''.join(thinking),'usage':usage,'finish_reason':finish,'done':done,'seconds':time.time()-start,'error':type(error).__name__ if error else None},ensure_ascii=False,indent=2),encoding='utf8')
+    if error:raise error
     text=''.join(pieces)
-    (trace_dir/'response.json').write_text(json.dumps({'model':body['model'],'content':text,'reasoning':''.join(thinking),'usage':usage,'finish_reason':finish,'done':done,'seconds':time.time()-start},ensure_ascii=False,indent=2),encoding='utf8')
     if not done or finish!='stop' or not text:
         raise ValueError(f'model response incomplete: done={done}, finish_reason={finish}, completion_tokens={usage.get("completion_tokens")}, max_tokens={body["max_tokens"]}. If length-limited, return compact JSON or field edits when the task accepts them.')
     return _parse_saved({'content':text},trace_dir/'response.json')

@@ -84,6 +84,9 @@ class PipelineTests(unittest.TestCase):
             # This exercises exact source extraction; it is not a real-scene acceptance claim.
             template = next(t for t in all_templates() if t['id'] == 'C63-T01')
             record = {'template_id': template['id'], 'provenance': {'kind': 'program', 'path': str(source)}, 'parameters': {p['name']: 'explicit fixture' for p in template['parameters']}, 'provided_information': ['fixture'], 'media': [], 'answer_selector': '/result', 'admission_selector': '/admission', 'oracle_version': 'fixture-v1', 'reference_frame': 'fixture', 'scene_group_id': 'source-family-1'}
+            record['question_spec'] = {'schema': 'benchforge.question-writing/v1', 'stem': '观察者能看到目标物体吗？',
+                'context': [], 'conditions': ['本测试使用固定的公开观察条件。'], 'options': ['能', '不能'],
+                'response': '按模板输出字段作答。', 'media_labels': [], 'parameter_bindings': record['parameters']}
             evidence = root/'evidence.jsonl'
             jsonl(evidence, [record])
             runtime = Runtime(root)

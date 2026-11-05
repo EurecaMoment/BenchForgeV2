@@ -115,8 +115,7 @@ try {
   ctx.llm.registerAdapter(['fixture'],adapter);
   ctx.on('agent/turn-stopping',({agent}) => {snapshots.set(agent.id,agent.session);});
   const config = path.join(workspace,'service.json');
-  await fs.writeFile(config,JSON.stringify({port:9}));
-  process.env.SPATIALFORGE_OPERATOR_TOKEN = 'scripted-unused-token';
+  await fs.writeFile(config,JSON.stringify({port:9,operator_token:'test-token'}));
   // Only the shared-workspace tool is registered; no producer, network call or
   // simulator entry point exists in this replay context.
   await spatialforge.apply({on:()=>{},llm:ctx.llm,get:ctx.get.bind(ctx),tools:{register:tool => {

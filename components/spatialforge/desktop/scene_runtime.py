@@ -114,6 +114,10 @@ def interaction_plan(program):
         item=dict(declaration)
         if item.get('id') in ids:raise ValueError('duplicate interaction ID')
         ids.add(item.get('id'))
+        if item.get('action') == 'record_trajectory':
+            total_steps += item['duration_steps']
+            result.append({**item, 'supported': True})
+            continue
         if item.get('action')=='robot_push':
             from spatialforge.robot_contact import robot_step_count
             total_steps+=robot_step_count(item)

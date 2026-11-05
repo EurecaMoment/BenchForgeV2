@@ -4,6 +4,7 @@ import traceback
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
+from sqlalchemy.exc import TimeoutError as DatabaseTimeout, OperationalError
 from benchclaw.store import write_json
 from .contracts import SCENE_SCHEMA_DESCRIPTION,validate_program,merge_scene_extension,normalize_native_asset_references
 from .model import completion
@@ -16,6 +17,7 @@ from .design import design_directory,execute_design
 from .progress import record_progress
 from .geometry_preview import preview_scene_geometry,compact_preview,GUIDANCE as GEOMETRY_GUIDANCE
 from .program_submission import handoff_receipt
+from .scene_acceptance import policy_for, admit_program, capture_acceptance
 from .repair_context import build_repair_context,bound_repair_context,scene_changes,GUIDANCE as REPAIR_GUIDANCE
 
 
@@ -62,7 +64,9 @@ def plan_scene(store,task,stop):
     record_progress(directory,'scene_planning')
     submission=unit.get('submitted_program')
     direct=bool(submission) and not unit.get('quality_repairs',0) and not unit.get('operator_feedback')
-    prompt='' if direct else 'You plan scenes for an embodied dataset. Actively realize the requirement: combine available assets, primitives and composite geometry creatively. Use multiple parts for unfamiliar objects, choose useful alternative geometry, and preserve the requested function. Prefer concrete attempts and iterate from feedback over declaring inability. Produce a readable coherent scene for this frozen requirement. '+json.dumps(unit['intent'],ensure_ascii=False)+'\n'+SCENE_SCHEMA_DESCRIPTION
+    strict=bool(policy_for(store.root))
+    if strict and not submission:raise ValueError('Unchecked scene planners are disabled; submit a complete SceneProgram')
+    prompt='' if direct else 'You plan scenes for an embodied dataset. Realize the requested function with recognizable registered or generated assets, plausible scale, supports, access paths and functional layout. Never substitute cubes, primitives or composite proxies for real objects. Missing assets or execution evidence must cause an explicit failure. Produce a coherent scene for this frozen requirement. '+json.dumps(unit['intent'],ensure_ascii=False)+'\n'+SCENE_SCHEMA_DESCRIPTION
     tools=GenerationTools(store.root)
     @lru_cache(maxsize=8)
     def load_preview_mesh(asset_id):
@@ -132,6 +136,12 @@ def plan_scene(store,task,stop):
     if direct:
         p=deepcopy(submission['program'])
         validate_program(p)
+        if base:
+            submitted={obj['id']:obj for obj in normalize_native_asset_references(p)['objects']}
+            existing={obj['id'] for obj in base['objects']}
+            if (any(submitted.get(obj['id'])!=obj for obj in base['objects']) or
+                    not set(submitted)-existing):
+                raise ValueError('A submitted scene extension must preserve every existing parent object unchanged')
         write_json(directory/'proposal.json',p)
     elif (directory/'proposal.json').exists():
         p=json.loads((directory/'proposal.json').read_text())
@@ -217,6 +227,9 @@ def plan_scene(store,task,stop):
             obj.pop('generation',None)
     p=normalize_native_asset_references(p)
     validate_program(p)
+    admission=admit_program(store.root,p)
+    if admission.get('enforced'):write_json(directory/'scene_admission.json',admission)
+    if admission.get('scene_brief'):write_json(directory/'scene_brief.json',admission['scene_brief'])
     if store.snapshot(task['run_id'])['state']=='CANCELED':return
     record_progress(directory,'geometry_preparation',object_count=len(p['objects']))
     geometry=preview_scene_geometry(p,mesh_loader=load_preview_mesh)
@@ -232,15 +245,16 @@ def plan_scene(store,task,stop):
     store.update(task['id'],state='READY',unit={**unit,'phase':'capture'},attempt=task['attempt']+1)
 
 
-def review_scene(store,task,stop):
+def review_scene(store,task,stop,*,capture_only=False):
     unit=task['unit'];directory=store.directory(task['id'],unit['revision']);capture=directory/'capture'
     record_progress(directory,'scene_review')
     report=json.loads((capture/'report.json').read_text())
     program=json.loads((directory/'program.json').read_text())
     evidence=json.loads((capture/'evidence.json').read_text()) if (capture/'evidence.json').is_file() else {}
-    if report['status']=='captured':
+    physical_issues=capture_acceptance(store.root,program,report,evidence,{},capture).get('physical_issues',[]) if policy_for(store.root) else []
+    if report['status']=='captured' and not physical_issues:
         prompt='检查实际 Isaac 视图和执行证据是否满足原始场景需求：'+json.dumps(unit['intent'],ensure_ascii=False)+'''。
-返回 JSON：{"acceptable":boolean,"visual_quality":1到5,"semantic_fidelity":1到5,"issues":[string],"repair_suggestions":[string],"visual_realism":{"status":"needs_improvement"|"visually_plausible"|"not_requested","issues":[string],"prioritized_repairs":[string],"basis":"rendered_views_only"}}。
+返回 JSON：{"acceptable":boolean,"visual_quality":1到5,"semantic_fidelity":1到5,"issues":[string],"repair_suggestions":[string],"visual_realism":{"status":"needs_improvement"|"visually_plausible"|"matches_declared_geometry"|"not_requested","issues":[string],"prioritized_repairs":[string],"basis":"rendered_views_only"}}。
 依据任务判断物体身份、尺度、支撑、功能分区、材质、采光和机位。逼真室内要求还应检查建筑围合、连接细节、间接光、接触阴影及亮部纹理；明确可见的实质缺陷应影响 acceptable。每项问题标出对应视图或执行记录，建议具体的资产、程序或采集调整。
 执行回执说明实际使用的资产、尺寸、姿态和材质；视觉评价说明是否可辨识且符合任务，两者分别陈述。采用最终世界姿态和实际尺寸；组合体的 size 是整体布局包络，geometry_parts 记录执行器实际创建的局部零件及 USD 类型，零件尺寸和偏移来自执行程序。区分几何构成与图片中的可辨识程度。AABB 是保守包围盒，预览警告不能单独证明穿透。材质 applied/skipped、纹理 fallback、未校准参数按回执解释。
 physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动作结束后的视图，动作前后另有独立图片。建议采用已支持的程序字段；能力缺口直接说明。
@@ -248,11 +262,51 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
 模型意见不写入 GT，也不等同人审、照片真实感认证或正式 benchmark 通过。
 '''
         prompt+='\n沉降记录：'+json.dumps(report.get('physics',{}),ensure_ascii=False)
+        if policy_for(store.root):
+            prompt+='''\n严格生产验收：默认要求真实可辨识的场景资产和符合生活常识的布局。简化几何只有保存计划明确声明的实验范围才可合格，不能以几何形状冒充真实家具。逐一检查物体身份、正常尺度、支撑与安装、房间用途与物品关系、通行与操作空间、材质与照明。任何不确定、缺图或问题必须 passed=false；不得仅凭名字、设计图或全静态 stable=true 宣称物理合理。额外返回 life_review:{checks:[{check:object_identity|realistic_scale|support_and_attachment|functional_layout|access_and_clearance|materials_and_lighting,passed:boolean,evidence:[{view:"view_0.png",observation:"该实际视图中的具体可见现象"}]}]}。六项分别恰好一条，每条给出真实已附图片文件名和具体观察；不合格给出可执行修改。visual_realism.status 必须根据实拍作出判断。模型意见不是物理测量或GT。'''
+        if policy_for(store.root):
+            admission = admit_program(store.root, program)
+            if admission.get('scene_brief'):
+                brief=admission['scene_brief']
+                context={k:brief[k] for k in ('name','summary','hard_requirements','object_roles','physical_assumptions')}
+                if brief.get('spatial_reference'):context['spatial_reference']=brief['spatial_reference']
+                context['visual_relations']=[{'index':i,**r} for i,r in enumerate(brief['relations']) if r['type'] not in {'supported_by','mounted_to'}]
+                prompt += '\n必须对照的场景标题、摘要、角色及空间关系：' + json.dumps(context, ensure_ascii=False)
+                prompt += ('\n额外返回 brief_alignment:{passed:boolean,hard_requirements_preserved:boolean,observations:[{view:"view_0.png",observation:"实际可见依据"}],'
+                           'unresolved:[string],proposed_summary_revision:{reason:string,summary:string,changes:[string]}}。'
+                           '检查摘要中的每个关键物体角色、支撑、邻接、朝向、取用与通行关系。功能布局须适合人在此实际使用。'
+                           '对照全部机位发现椅子翻倒、柜门冲突、桌面穿物、悬空、失衡、比例扭曲或不合用途摆放均须失败。'
+                           '摘要有遗漏或自身矛盾时提出具体修订，保留用户硬要求；不能通过改写摘要为已有缺陷开脱。'
+                           '修订建议只是待执行设计，未重新采集验收不得把它当成修复证据。')
+                prompt += ('\nbrief_alignment 另须完整返回 requirement_checks 与 relation_checks 数组：'
+                           '分别按 hard_requirements 的0起始索引和 visual_relations 的原始index逐项检查，每条 {index:整数,passed:boolean,view:"view_0.png",observation:"具体可见依据"}。'
+                           '不得遗漏、重复或仅笼统声称全部通过。实际图无法确认的要求应失败并留在unresolved。')
+                prompt += '\n支撑和固定安装已按原生回执逐项校验并单独留证；不重复输出物理relation_checks。仍须检查图中可见的悬空、穿插和姿态缺陷，不能根据物体名字认为合格。'
+                prompt += '\nbrief_alignment.observations 须逐一覆盖本次全部 view_N.png，每个视角写具体观察，不能只挑最好的一张。'
+            declaration = admission.get('geometry_exception')
+            if declaration:
+                prompt += '\n保存计划声明的简化几何实验：' + json.dumps(declaration, ensure_ascii=False)
+                prompt += ('\n按该声明检查几何身份、测量尺度、支撑与安装、实验布局、通行/操作空间和材质照明；'
+                           '生活合理性采用声明的实验设定，不要求实验方块长得像日常家具。'
+                           '六项逐图检查仍须通过，例外不替代物理证据。实拍符合声明时 visual_realism.status=matches_declared_geometry；'
+                           '不符合时 needs_improvement 且 acceptable=false。不得将此实验标为真实生活场景。')
         prompt+='\n渲染执行记录：'+json.dumps(report.get('render_settings',{}),ensure_ascii=False)
         entity_fields={'shadow_settings','render_representation','appearance_scope','id','kind','label','prim_path','size','requested_size','initial_center','settled_center','final_center','current_center','declared_yaw_deg','world_transform','world_transform_convention','spatial_evidence_step','orientation_wxyz','world_aabb','support','dynamic','parameter_origin','physics','collision','appearance','geometry_parts'}
         dependency_fields={'appearance_scope','render_representation','gaussian','entity_id','kind','asset_id','asset_kind','embedded_geometry','vertices','triangles','source_frame','world_frame','source_up_axis','normalization','normalization_scale_xyz','uniform_scale','scale_mode','requested_size_limits_m','actual_size_m','source_bounds','oriented_bounds_before_scale','orientation_deg_xyz','orientation_source','source_watertight','appearance','appearance_overrides','transported_materials','transported_uvs','bound_texture_materials','texture_sampling','native_colliders_preserved','portability'}
         material_fields={'appearance_scope','entity_id','prim_path','kind','texture_id','texture_tint','uv_scale_m','color_space','normal_convention','calibration','source','roughness','metallic','applied','skipped'}
         receipt={'origin':evidence.get('origin'),'entities':[{key:value for key,value in entity.items() if key in entity_fields} for entity in evidence.get('entities',{}).values() if isinstance(entity,dict)],'asset_dependencies':[{key:value for key,value in dependency.items() if key in dependency_fields} for dependency in evidence.get('asset_dependencies',[]) if isinstance(dependency,dict)],'material_dependencies':[{key:value for key,value in dependency.items() if key in material_fields} for dependency in evidence.get('material_dependencies',[]) if isinstance(dependency,dict)],'realism':evidence.get('realism',{})}
+        if policy_for(store.root):
+            # Full native receipts remain saved and are checked deterministically.
+            # Repeating all material paths and primitive parts in a visual prompt
+            # makes complex rooms time out without adding visible observations.
+            visual_fields={'id','kind','label','size','current_center','settled_center','final_center',
+                           'world_aabb','support','dynamic','orientation_wxyz','parameter_origin'}
+            receipt={'origin':evidence.get('origin'),
+                     'entities':[{k:v for k,v in entity.items() if k in visual_fields} for entity in evidence.get('entities',{}).values()],
+                     'asset_dependencies':[{k:v for k,v in dependency.items() if k in {'entity_id','asset_id','actual_size_m','orientation_deg_xyz','render_representation','scale_mode'}}
+                                           for dependency in evidence.get('asset_dependencies',[])],
+                     'scope':'compact visual context; full collider, part, support and material receipts remain in capture/evidence.json and acceptance checks'}
+            prompt+='\n紧凑返回：每条观察只写一个具体可见事实（约20到45个汉字），不重复摘要；不确定仍须失败。只返回规定字段，禁止长篇重述程序。'
         prompt+='\n实体与资产执行记录：'+json.dumps(receipt,ensure_ascii=False)
         geometry_path=directory/'geometry_preview.json'
         changes_path=directory/'repair_changes.json'
@@ -261,7 +315,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
             changes={**changes,'comparison_recorded_at':'before_capture','capture_status':report['status'],
                      'capture_token':report.get('token')}
             prompt+='\n本次程序改动对照：'+json.dumps(changes,ensure_ascii=False)
-        if geometry_path.is_file():
+        if geometry_path.is_file() and not policy_for(store.root):
             prompt+='\n仿真前的程序几何建议：'+json.dumps(compact_preview(json.loads(geometry_path.read_text())),ensure_ascii=False)
         camera_receipts=[{'frame_id':frame.get('frame_id'),'image':frame.get('image'),'camera':frame.get('camera'),'step_id':frame.get('step_id')} for frame in evidence.get('frames',[])]
         prompt+='\n相机执行记录：'+json.dumps(camera_receipts,ensure_ascii=False)
@@ -274,12 +328,19 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
                 name=action_result.get(key)
                 if name and (capture/name).is_file():review_images.append(capture/name)
         prompt+='\n实际图片顺序：'+json.dumps([image.name for image in review_images],ensure_ascii=False)
+        prompt+='\n实拍相机位置、朝向与图片对应：'+json.dumps([{'view':f'view_{i}.png',**c} for i,c in enumerate(program['cameras'])],ensure_ascii=False)
+        prompt+='\n关系判断须区分画面坐标、世界坐标及使用者视角；左右前后按摘要明确参照判断，不得随相机换位而改变场景关系。未定义参照时指出文字歧义，不臆造世界方向。相机高度以执行位置为准，不能仅凭俯视构图判断拍摄高度。外观名称须由实际形态和材质支持，禁止把未观察到的颜色或品牌当事实。'
+        prompt+='\n全部机位共同覆盖场景，不要求每张照片同时看见所有物体。单一视角遮挡不能证明物体缺失、穿插或悬空；须检查其它对应机位和原生姿态证据。全部机位仍无法辨认或验证的项目应失败并列为未解；清晰可见的缺陷必须保留，不能由程序名称替代外观。'
         layout_reference=directory/'layout_reference.png'
         if layout_reference.is_file():
             review_images.append(layout_reference)
             prompt+='\n最后一张是扩散设计参考，其余是实际 Isaac 视图。额外返回 design_alignment:{status:"aligned"|"partial"|"diverged",issues:[string]}，比较功能分区、主要物体、材质、采光和氛围；参考仅用于设计比较，不是仿真成品、GT 或像素匹配目标。'
-        review=completion(prompt,directory/'model_calls'/'scene_review',review_images,5000)
-    else: review={'acceptable':False,'issues':report['errors'],'repair_suggestions':['resolve execution error without changing pipeline code']}
+        review=completion(prompt,directory/'model_calls'/'scene_review',review_images,
+                          10000 if policy_for(store.root).get('require_scene_brief') else 5000,
+                          bounded_review=bool(policy_for(store.root)))
+    else: review={'acceptable':False,'issues':physical_issues or report.get('errors',[]),
+                 'repair_suggestions':['Repair the actual support, attachment or layout issue in a new complete program and capture again.'],
+                 'visual_review_skipped':bool(physical_issues)}
     review['physical_stable']=report.get('physics',{}).get('stable',False);review['renderable']=report.get('renderable',False)
     frames=evidence.get('frames',[])
     native=evidence.get('origin')=='isaac_native'
@@ -308,11 +369,27 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         review.setdefault('repair_suggestions',[]).append('Repair action force, duration, surface clearance or dynamic support using the captured action trace')
     review['interaction_requested']=bool(requested_actions)
     review['interaction_passed']=interaction_passed
-    passed=review.get('acceptable') is True and review['physical_stable'] and review['renderable'] and interaction_passed is not False
+    acceptance=capture_acceptance(store.root,program,report,evidence,review,capture)
+    if acceptance.get('enforced'):
+        review['production_acceptance']=acceptance
+        write_json(directory/'scene_acceptance.json',acceptance)
+        if acceptance.get('scene_brief'):
+            write_json(directory/'scene_brief_alignment.json', {'brief': acceptance['scene_brief'],
+                       'observation': review.get('brief_alignment', {}), 'passed': acceptance['passed'],
+                       'iteration_required': not acceptance['passed'], 'hard_requirements_may_be_relaxed': False})
+        review.setdefault('issues',[]).extend(acceptance['issues'])
+    passed=review.get('acceptable') is True and review['physical_stable'] and review['renderable'] and interaction_passed is not False and acceptance['passed']
     review['passed']=passed
     review['publication_status']='pilot_candidate' if passed else 'exploration_requires_improvement'
     write_json(directory/'scene_review.json',review)
     if not passed:
+        if acceptance.get('enforced'):
+            # Strict production never exports exploration/failed scenes. DSH can
+            # read these receipts and submit a revised, fully checked program.
+            record_progress(directory,'scene_acceptance_failed',issues=review.get('issues',[]))
+            store.update(task['id'],state='FAILED_FINAL',failure={'scene_review':review,'artifacts_preserved':str(directory),
+                'next_action':'repair_complete_program_and_resubmit','data_exported':False},result={'directory':str(directory)})
+            return
         # The operator owns revisions of a submitted SceneProgram. Keep its
         # capture/review and export eligible observations without a second planner.
         if not unit.get('submitted_program') and unit.get('quality_repairs',0)<2 and report['status']=='captured':
@@ -324,6 +401,11 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         # Exploration keeps useful observations even when scene-wide aesthetics or
         # dynamics still need work; product eligibility records the actual evidence.
     if store.snapshot(task['run_id'])['state']=='CANCELED':return
+    if capture_only:
+        record_progress(directory,'complete',scene_acceptance='passed')
+        store.update(task['id'],state='SUCCEEDED',result={'operation':'capture_only','directory':str(directory),
+            'report':report,'scene_review':review,'scene_quality_assessed':True,'data_exported':False},unit={**unit,'phase':'complete'})
+        return
     record_progress(directory,'data_export')
     summary=produce(directory,unit['intent'].get('split','dev'),unit['intent'])
     record_progress(directory,'complete')
@@ -371,6 +453,8 @@ def coordinate(store,stop):
                     from .integration import run_dataset
                     result=run_dataset(store,task,stop=task_stop)
                     store.update(task['id'],state='SUCCEEDED',result=result,unit={**task['unit'],'phase':'complete'})
+                elif phase=='review' and task['unit']['intent'].get('capture_only') and policy_for(store.root):
+                    review_scene(store,task,task_stop,capture_only=True)
                 elif phase=='review' and task['unit']['intent'].get('capture_only'):
                     directory=store.directory(task['id'],task['unit']['revision'])
                     report=json.loads((directory/'capture/report.json').read_text())
@@ -392,12 +476,21 @@ def coordinate(store,stop):
         while not stop.is_set():
             active={key:future for key,future in active.items() if not future.done()}
             handoffs={key:future for key,future in handoffs.items() if not future.done()}
-            for task in store.all_work():
+            try:work=store.all_work()
+            except (DatabaseTimeout,OperationalError):
+                traceback.print_exc();stop.wait(2);continue
+            for task in work:
                 if task['id'] in active or task['id'] in handoffs:continue
                 if task['unit']['phase'] not in {'plan','review','asset','dataset','layout','generation'} or task['state'] not in {'PENDING','READY'} or (task.get('ready_at') or 0)>time.time():continue
                 lightweight=_capture_handoff(task['unit'])
+                if task['unit']['phase']=='review' and policy_for(store.root):
+                    # A model review is CPU/network work, not a short capture
+                    # handoff. It must not block preparing the next real scene.
+                    lightweight=False
                 pending=handoffs if lightweight else active
                 if len(pending)>=(1 if lightweight else 3):continue
                 store.update(task['id'],state='RUNNING',failure=None)
                 pending[task['id']]=(capture_pool if lightweight else pool).submit(execute,task)
-            store.settle_runs();stop.wait(2)
+            try:store.settle_runs()
+            except (DatabaseTimeout,OperationalError):traceback.print_exc()
+            stop.wait(2)

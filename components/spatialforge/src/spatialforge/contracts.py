@@ -44,6 +44,7 @@ LIGHT_KINDS = {'point', 'spot', 'area', 'directional', 'sun', 'environment'}
 LIGHT_FIELDS = {'id', 'kind', 'position', 'direction', 'color', 'intensity', 'temperature', 'size', 'angle', 'inner_cone_deg', 'outer_cone_deg', 'cast_shadows', 'enabled', 'environment_id'}
 RENDER_ENVIRONMENT_FIELDS = {'renderer', 'samples_per_pixel', 'exposure'}
 RENDERERS = {'RaytracedLighting', 'PathTracing'}
+SPATIALTREE_RECORDING_FIELDS = {'scenario_id', 'split'}
 
 
 def require(ok, message):
@@ -57,9 +58,10 @@ def ident(value):
 
 
 def numbers(value, length, lo, hi, context='vector'):
-    require(isinstance(value, list) and len(value) == length, f'{context}: expected {length} numbers; got {value!r}')
+    label = 'invalid vector' if context == 'vector' else context
+    require(isinstance(value, list) and len(value) == length, f'{label}: expected {length} numbers; got {value!r}')
     require(all(type(v) in (float, int) and math.isfinite(v) and lo <= v <= hi for v in value),
-            f'{context}: expected finite numbers in [{lo}, {hi}]; got {value!r}')
+            f'{label}: expected finite numbers in [{lo}, {hi}]; got {value!r}')
 
 
 def dimensions(value, context='size'):
@@ -154,6 +156,34 @@ def _optional_string(value, message='invalid string', max_len=200):
 
 def _bounded_list(value, max_len, message):
     require(isinstance(value, list) and len(value) <= max_len, message)
+
+
+def _validate_spatialtree_recording(recording):
+    """Validate the opt-in native trajectory recording settings."""
+    require(isinstance(recording, dict), 'recording.spatialtree must be an object')
+    require(set(recording) <= SPATIALTREE_RECORDING_FIELDS,
+            'recording.spatialtree accepts scenario_id and split; image size and fps come from actual capture settings')
+    if 'scenario_id' in recording:
+        _optional_string(recording['scenario_id'], 'recording.spatialtree.scenario_id must be a non-empty string', 160)
+    if 'split' in recording:
+        require(isinstance(recording['split'], str) and recording['split'] in {'train', 'dev', 'test', 'sealed'},
+                'recording.spatialtree.split must be train, dev, test or sealed')
+
+
+def _validate_camera_path(path):
+    require(isinstance(path, list) and len(path) >= 2, 'recording.camera_path needs at least two keyframes')
+    previous = -1
+    for frame in path:
+        require(isinstance(frame, dict) and set(frame) == {'step', 'position', 'target'},
+                'camera path keyframes need step, position and target')
+        require(type(frame['step']) is int and previous < frame['step'] <= 10000,
+                'camera path steps must increase within 0..10000')
+        numbers(frame['position'], 3, -1000, 1000, 'camera path position')
+        numbers(frame['target'], 3, -1000, 1000, 'camera path target')
+        require(sum((p-t)**2 for p,t in zip(frame['position'], frame['target'])) > 1e-8,
+                'camera path position and target must differ')
+        previous = frame['step']
+    require(path[0]['step'] == 0, 'camera path must begin at step 0 relative to the first recording sample')
 
 
 def _validate_bounds(value, message='invalid bounds'):
@@ -326,12 +356,26 @@ def _validate_scene_extensions(p):
             require(action['id'] not in action_ids, 'duplicate interaction ID'); action_ids.add(action['id'])
             if 'object_id' in action: require(action['object_id'] in objects, 'affordance object must exist')
             if 'target_id' in action: require(action['target_id'] in objects, 'affordance target must exist')
-            if field == 'interactions': require(action['action'] in {'apply_force','robot_push'}, 'unsupported executable interaction; use affordances for declarations')
+            if field == 'interactions': require(action['action'] in {'apply_force','robot_push','record_trajectory'}, 'unsupported executable interaction; use affordances for declarations')
             if 'recording' in action:
                 recording = action['recording']
-                require(isinstance(recording, dict) and set(recording) <= {'every_steps'}, 'recording accepts optional every_steps')
+                require(isinstance(recording, dict) and set(recording) <= {'every_steps', 'spatialtree', 'camera_path'}, 'recording accepts every_steps, spatialtree and camera_path')
                 if 'every_steps' in recording:
                     require(type(recording['every_steps']) is int and recording['every_steps'] > 0, 'recording.every_steps must be a positive integer')
+                if 'spatialtree' in recording:
+                    _validate_spatialtree_recording(recording['spatialtree'])
+                if 'camera_path' in recording:
+                    _validate_camera_path(recording['camera_path'])
+            if action['action'] == 'record_trajectory':
+                require({'id','action','camera_id','duration_steps','recording'} == set(action),
+                        'record_trajectory needs id, action, camera_id, duration_steps and recording')
+                require(action['camera_id'] in [c.get('id') for c in p['cameras'] if c.get('id')], 'trajectory camera_id must name an existing camera')
+                require(type(action['duration_steps']) is int and 1 <= action['duration_steps'] <= 10000,
+                        'record_trajectory.duration_steps must be 1..10000')
+                require('spatialtree' in action['recording'], 'record_trajectory requires recording.spatialtree')
+                require(action['recording'].get('every_steps', 1) <= action['duration_steps'], 'recording interval exceeds trajectory duration')
+                if 'camera_path' in action['recording']:
+                    require(action['recording']['camera_path'][-1]['step'] <= action['duration_steps'], 'camera path exceeds trajectory duration')
             if action['action'] == 'robot_push' and (field == 'interactions' or 'interactions' not in p):
                 from .robot_contact import validate_robot_action
                 validate_robot_action(action, objects)
@@ -348,7 +392,8 @@ def _validate_scene_extensions(p):
     require(sum(action.get('duration_steps', 30) + action.get('observe_steps', 90) for action in executable) <= 10000, 'interaction step budget exceeded')
     from .robot_contact import robot_step_count
     robot_actions=[a for a in p.get('interactions',p.get('affordances',[])) if a['action']=='robot_push']
-    require(sum(robot_step_count(a) for a in robot_actions)+sum(a.get('duration_steps',30)+a.get('observe_steps',90) for a in executable)<=10000,'interaction step budget exceeded')
+    camera_steps = sum(a['duration_steps'] for a in p.get('interactions',p.get('affordances',[])) if a['action']=='record_trajectory')
+    require(camera_steps+sum(robot_step_count(a) for a in robot_actions)+sum(a.get('duration_steps',30)+a.get('observe_steps',90) for a in executable)<=10000,'interaction step budget exceeded')
     robots={}
     for action in robot_actions:
         placement=(action['robot_base_position'],action.get('robot_base_orientation_wxyz',[1.,0.,0.,0.]))
@@ -597,6 +642,7 @@ SCENE_SCHEMA_DESCRIPTION += '\nRegistered texture materials accept optional appe
 SCENE_SCHEMA_DESCRIPTION += '\nThere is no generic opacity/transmission parameter. Registered native assets with supports_native_opacity_multiplier=true accept appearance.native_opacity_multiplier in 0..1, applied only to existing unconnected MDL Opacity_Multiply inputs. It multiplies native alpha, not measured optical transmittance; preserve textures, geometry and colliders. Other materials in the same object remain unchanged unless separately supported. Check actual appearance_overrides and rendered views. All entries in cameras are final scene snapshots after interactions. Camera IDs such as before/after do not change capture time. Separate interaction_*_before/after.png files record the real action. Distinct-view requests require different useful camera poses; duplicate poses do not add coverage.'
 SCENE_SCHEMA_DESCRIPTION += '\nAn executable action may set camera_id to an existing camera for its before/after images. Otherwise the executor selects the authored camera aimed closest to the target object. The pose stays fixed across that action; visual_evidence records the camera and target pixel bounds in both images. Use those images and visibility to assess the action.'
 SCENE_SCHEMA_DESCRIPTION += '\nFor an interaction demonstration, an apply_force or robot_push action can add recording:{every_steps:4}. The executor renders actual simulation states at that step interval and exports an MP4, original PNG frames and a timeline with simulation timestamps and target positions. Empty recording:{} selects approximately 30 fps from physics dt; omitting recording keeps endpoint-only captures. This adds rendering work but no physics steps, interpolated motion or extra simulator. FPS is 1/(every_steps*physics_dt); the final after image remains available when the action ends between video samples. Use the returned recording receipt for filenames and timing.'
+SCENE_SCHEMA_DESCRIPTION += '\nNative video GT: add recording.spatialtree:{scenario_id?,split?}, split=train/dev/test/sealed. Resolution comes from capture options and FPS from every_steps and the actual physics dt. An optional recording.camera_path:[{step:0,position:[x,y,z],target:[x,y,z]},...] linearly moves the camera at recorded simulation steps; steps are relative to the first sample and poses after the last keyframe hold. For standalone camera motion or fixed-camera video, use an interaction {id,action:"record_trajectory",camera_id,duration_steps,recording:{every_steps:4,spatialtree:{},camera_path:[...]}}; camera_path is optional. This advances physics without applying object forces or pose commands. Combined camera/object motion uses camera_path on apply_force or robot_push recording. Exported interaction_N_spatialtree.zip contains RGB, optical-axis metric depth, semantic/instance arrays and mappings, camera intrinsics/poses, rigid object poses, visibility/boxes, native motion and identity correspondence. Read the summary through spatialforge_evidence and copy the ZIP to the task workspace; no tracking model supplies GT. This is a BenchForge native synthetic contract, not the official SpatialTree dataset format.'
 SCENE_SCHEMA_DESCRIPTION += '\nAn apply_force or robot_push action may set contact_object_ids:[other_scene_object_ids] to observe target-object collisions, including static objects. object_contacts records each physics step at the actual physics rate (120 Hz for robot_push): force on the target from each named object, target and other object world positions, and any robot hand/finger forces in separate columns (empty for external-force actions). The summary reports first/last nonzero contact, peak force and displacement without deciding task success. These objects need not stay still; witness_object_ids retains its separate stationary-witness meaning. Ordinary robot trajectory is sampled every 3 physics steps (40 Hz), plus its final sample; recording FPS is independent.'
 SCENE_SCHEMA_DESCRIPTION += '\nExecutable robot_push actions: {id,action:"robot_push",object_id,robot_id,robot_base_position:[x,y,z],waypoints:[{id,position:[x,y,z],duration_s}],optional robot_base_orientation_wxyz,end_effector_orientation_wxyz,witness_object_ids,contact_object_ids,observe_seconds,camera_id,recording}. Uses installed official Franka Panda, closed fingers and Lula IK joint targets. Waypoints describe the right_gripper IK frame in world meters; this differs from the reported right-finger body origin. Default base orientation [1,0,0,0], end-effector orientation [0,1,0,0], observation 1.5 seconds. A shared robot_id keeps the same base pose. Target and any witness objects must be dynamic. Robot captures run physics at 120 Hz and preserve ordinary apply_force step counts. Mass, friction and mesh collision approximation stay scene-authored. Success requires >=.04m target translation, >=3 sampled hand contacts above .05N, <=.005m movement before contact threshold, <=.01m witness movement and final target root-Z tilt <=20 degrees, <=.02m vertical displacement throughout the trajectory, and target visibility in both endpoint images; checks and raw trajectories remain visible on failure. No target force or pose commands, grasp, measured dynamics or general motion-planning claim. Place the robot on a support, author reachable collision-aware waypoints, inspect actual before/after evidence, and revise task content when needed. Total action steps stay within the existing 10000-step budget.'
 SCENE_SCHEMA_DESCRIPTION += '\nEnvironment lights may additionally select environment_id from this registry: '+json.dumps({key:{k:v for k,v in record.items() if k!='path'} for key,record in ENVIRONMENTS.items()})+'. The HDR texture affects illumination and visible sky, not scene geometry. An optional direction sets the world direction of the HDR lower pole, tilting the whole environment after stage-up-axis alignment; it does not specify the sun position. Omit direction to retain the level horizon. HDR brightness must be verified in the actual renderer and exposure. Preserve texture provenance and compare actual rendered sky before selecting intensity. An HDR image does not supply outdoor geometry or metric GT. You may explicitly create outdoor objects using supported SceneProgram kinds and registered assets, respecting bounds and recording synthetic/program provenance. Never claim uncreated or merely pictured background geometry was simulated.'
@@ -646,7 +692,13 @@ def scene_contract_capabilities():
         'outdoor_geometry':{'allowed':True,'method':'explicitly create outdoor objects with supported kinds and registered assets',
             'limits':'respect scene bounds; preserve synthetic/program provenance; HDR images alone are not geometry or GT'},
         'layout_guidance':{'design_tool':'spatialforge_layout','file_handoff':'an existing reference is optional; the pipeline generates one when omitted. To use a reference while authoring task code, generate and inspect it first','prepared_source':{'mode':'reference','design_task_id':'completed layout task ID'},'modes':['generate','edit','reference'],'source':'registered image or captured parent source_view','generator':'FLUX.2-klein-9B','authority':'design reference only; native Isaac provides GT','generated_objects':'diffusion/SAM3/SAM3D via generated kind'},
-        'executable_interactions': ['apply_force','robot_push'],
+        'executable_interactions': ['apply_force','robot_push','record_trajectory'],
+        'native_trajectories': {'schema':'spatialtree.trajectory/v1', 'recording':'spatialtree:{scenario_id?,split?}',
+            'camera_motion':'recording.camera_path with step-relative position/target keyframes; fixed camera when omitted',
+            'source':'Isaac native synthetic state, not SpatialTracker predictions',
+            'artifacts':['interaction_N_spatialtree.json','interaction_N_spatialtree.zip'],
+            'retrieval':'spatialforge_evidence; ZIP contains GT and must remain outside model evaluation inputs',
+            'resolution_and_fps':'actual capture resolution and physics sampling interval'},
         'program_submission': {'parameter':'scene_program_path','tools':['spatialforge_capture','spatialforge_run','spatialforge_refine'],
             'source':'Complete JSON written with standard file tools under the configured task root, or source_path returned by spatialforge_task_code; either input route is accepted','max_bytes':1048576,
             'validation':'existing scene contract, native alias compatibility and registered mesh availability before queueing',

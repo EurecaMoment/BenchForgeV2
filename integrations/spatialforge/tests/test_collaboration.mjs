@@ -4,19 +4,17 @@ import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
 import {apply} from '../plugin/tools.mjs';
-import {createLaunchEnvironmentSnapshot} from '@deepseek-ai/dsh-launch-environment';
 
 test('SpatialForge plugin exposes shared handoffs without service calls', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'spatialforge-collab-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const config = path.join(root, 'service.json');
-  await fs.writeFile(config, JSON.stringify({port: 9}));
-  const environment=createLaunchEnvironmentSnapshot([{source:'process',values:{SPATIALFORGE_OPERATOR_TOKEN:'test-token'}}]);
+  await fs.writeFile(config, JSON.stringify({port: 9, operator_token: 'test-token'}));
   const registered = new Map();
   await apply({
     tools: {register: tool => registered.set(tool.name, tool)},
     on: () => {},
-    get: name => name==='launchEnvironment'?environment:undefined,
+    get: () => undefined,
     attachments: {saveImage: async () => ({})},
     llm: {resolveModelInfo: async () => ({inputModalities: []})},
   }, {serviceConfig: config});

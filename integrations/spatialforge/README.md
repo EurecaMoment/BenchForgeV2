@@ -31,13 +31,13 @@ This client never starts a second worker, simulator, tunnel or model service;
 do not configure both workers to claim the same queue without an explicit server
 capacity policy.
 
-Copy `config.example.json` to a private `spatialforge.local.json`. Set
-`SPATIALFORGE_OPERATOR_TOKEN` in the environment used to launch DSH, then:
+Copy `config/spatialforge.example.json` to a private `config/spatialforge.local.json` and put the
+service `operator_token` in it, then:
 
 ```bash
-python integrations/spatialforge/cli.py status --config spatialforge.local.json
-python integrations/spatialforge/cli.py status --config spatialforge.local.json --run-id sf_YOUR_RUN
-python benchforge.py setup --spatialforge-config spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/spatialforge.local.json --run-id sf_YOUR_RUN
+python benchforge.py setup --spatialforge-config config/spatialforge.local.json
 python benchforge.py start
 ```
 
@@ -55,7 +55,61 @@ Publish a complete new snapshot with the same `handoff_id` to update it. `list` 
 
 A receiving agent can use `spatialforge_status` or `spatialforge_wait` with a shared capture's `run_id`. When its session has no capture submission, this explicit observation lets the existing delivery review load that completed capture and its images. The submitting agent's conversation is not required. Repeated observations do not repeat the review; unrelated turns do not reopen the task. Generation and dataset operations keep their own behavior. A received handoff or review message does not establish that the user's requirements are complete.
 
+## Saved workbench scene movies
+
+The workbench exports an H.264 MP4 from each completed scene's declared public
+capture views. Export runs in the background when production is observed, with
+one encoder at a time. Movies are saved under `.deployment/scene-previews/` by
+task and revision and reused when a user opens, closes, or reloads the player.
+Playback serves an existing file with byte ranges; it never records a canvas or
+starts an encoder. These movies summarize the recorded viewpoints.
+
+Use a system `ffmpeg`, or install the optional encoder in the isolated UI runtime:
+
+```bash
+python3 -m pip install --target .deployment/preview-runtime --no-deps \
+  -r integrations/spatialforge/ui/requirements-preview.txt
+```
+
+An existing scene can be exported ahead of browsing with
+`ui/scene_preview_video.py --config <operator-config> --session <session-id>
+--scene <scene-run-id>` using the configured production Python. Export and media
+access retain the existing session and revision checks. While a new movie is
+unavailable, a scene's recorded views remain directly browsable.
+
+## Shared scene library and source selection
+
+The workbench registers completed captured scenes from the configured operator
+service in `<workspace>/scene-library/catalog.json`. This includes past and new
+productions, with a stable task ID, revision, name and original source directory.
+The index retains original media and scene programs in their existing locations.
+Only the displayed page loads capture-view metadata; the index uses one database
+metadata query and does not scan historical evidence trees or hash scene files.
+
+The scene page supports search, current-conversation/history filters, pagination,
+per-scene checkboxes and select/clear for the displayed page. Preview remains
+available for unchecked scenes. Selections are saved atomically to
+`scene-library/selections/<session-id>.json`, independently for each conversation.
+The first selection includes that conversation's available captures. An explicit
+selection never silently gains newly indexed scenes.
+
+Each production demand and stage-change request reads the saved selection before
+calling the native submission API. Its source contract includes exact task IDs,
+revisions, capture directories, scene-program paths and the selection file.
+Unchecked existing scenes are excluded. The separate **Allow new scenes** checkbox
+controls whether generation is permitted. Empty selections with generation disabled,
+missing scene files, changed revisions and failed constraint reads block submission.
+Concurrent windows use a version check to prevent lost changes. The authenticated
+DSH connection dispatches the selection POST; the browser's origin is not compared
+with the bridge's internal virtual Request origin.
+
 ## Test the code without production jobs
+
+For native Isaac video/trajectory data, see
+[the SpatialTree trajectory contract](../../docs/SPATIALTREE_TRAJECTORIES.md).
+It is an opt-in extension of action recordings and exports RGB, depth,
+semantic/instance annotators, camera/object poses and action timestamps from the
+same simulator state.
 
 For focused iteration, `spatialforge_capture` accepts optional
 `capture_options: {view_indices: [2], export_scene: false}`. This captures the

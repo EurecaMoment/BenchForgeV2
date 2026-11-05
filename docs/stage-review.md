@@ -1,0 +1,9 @@
+# Stage review windows
+
+In a DSH conversation, every completed production stage opens a durable 300-second user instruction window. S1 opens when `pipeline_plan` saves the plan. `pipeline_run` stops at completed stage boundaries and before final completion; resumed calls reuse the saved step artifacts. Direct scene or annotation workflows open the corresponding S2–S5 window with `stage_review` after the actual stage artifact is available. Workbench submissions and the SpatialForge persona carry the same rule.
+
+The model calls `stage_review(action="wait", review_id=..., timeout_seconds=300)` and resumes the existing run when `can_continue` becomes true. The backend stores the original deadline in `stage-reviews.sqlite`, scoped to the conversation and production key. Reopening a window or refreshing the page does not reset its deadline. CLI workflows without a DSH session keep their existing execution behavior.
+
+The workbench shows a compact countdown and offers immediate continuation, pause, and additional instructions. A submitted instruction is saved before the current assistant is stopped, so it prevents expiry from silently continuing dependent work. A paused window has no automatic continuation. Pending instructions must be applied before acknowledgement or a revised plan is saved. Existing captures started before the policy was added retain their own lifecycle; review windows do not cancel remote jobs or occupy the Isaac device.
+
+`worker_cancellation.py` and `dsh_a800_worker-late-cancel.patch` repair the separate late-cancellation path in the external A800 dispatcher. A succeeded remote capture canceled before or during upload receives `/worker/finish` after both terminal job state and released remote executor ownership are verified. The service remains responsible for checking the attempt identity and releasing only that device lease. Local capture files are preserved.

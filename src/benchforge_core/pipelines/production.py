@@ -10,6 +10,8 @@ from pathlib import Path
 from ..runtime import read, write, rows, jsonl, select
 from .catalog import all_templates, document
 from .adapters import BUILTINS, generate
+from .question_writing import builtin_spec, contract, question_text, validate_spec
+from .scene_policy import load_policy, check_source, check_evidence
 
 
 def counts_for(selections):
@@ -47,7 +49,8 @@ def bind_record(template, row, base):
     return {'parameters': row['parameters'], 'media': media, 'source': raw, 'oracle': answer,
             'provided_information': row['provided_information'], 'oracle_version': row['oracle_version'],
             'reference_frame': row['reference_frame'], 'source_provenance': {**source, 'path': str(path.resolve()), 'answer_selector': row['answer_selector'], 'admission_selector': row['admission_selector']},
-            'history_access_mode': row.get('history_access_mode'), 'admission': admission}
+            'history_access_mode': row.get('history_access_mode'), 'admission': admission,
+            'question_spec': row.get('question_spec')}
 
 
 def produce(args, directory, config=None):
@@ -59,6 +62,13 @@ def produce(args, directory, config=None):
     root.mkdir(parents=True, exist_ok=True)
     evidence_path = Path(args['evidence']).resolve() if args.get('evidence') else None
     records = rows(evidence_path) if evidence_path else []
+    policy = load_policy(args['_workspace'])
+    if evidence_path:check_source(policy,source_path=evidence_path)
+    for record in records:
+        source = record.get('provenance', {})
+        check_source(policy, task_id=source.get('task_id'), run_id=source.get('run_id'),
+                     scene_group=record.get('scene_group_id'), source_path=source.get('path'))
+        check_evidence(args['_workspace'],record,evidence_path)
     public, authority, rejected = [], [], []
     usage = Counter()
     seed = args.get('seed', 20261013)
@@ -102,9 +112,9 @@ def produce(args, directory, config=None):
             missing = {p['name'] for p in template['parameters']}-set(sample['parameters'])
             if missing:
                 raise ValueError(f'{tid} parameters missing: {sorted(missing)}')
-            question = template['prompt_template'].format_map({k: json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else str(v) for k, v in sample['parameters'].items()})
-            if re.search(r'\{[A-Za-z_][\w]*\}', question):
-                raise ValueError('Unbound template parameter')
+            spec = sample.get('question_spec') if using_source else builtin_spec(template, sample)
+            presentation = validate_spec(spec, sample['parameters'], len(sample['media']))
+            question = question_text(presentation)
             # Workspace ledger prevents train/test reassignment across resumed or separate plans.
             ledger = Path(args['_workspace'])/'pipeline-groups.sqlite'
             with closing(sqlite3.connect(ledger)) as db, db:
@@ -129,7 +139,7 @@ def produce(args, directory, config=None):
                            'measurement_variant': template['measurement_variant'], 'primary_operation': template['operation'],
                            'catalog_capability_links': template['catalog_capability_links'],
                            'provided_information': sample['provided_information'], 'scene_group_id': group,
-                           'split': item_split, 'question': question, 'media': media,
+                           'split': item_split, 'question': question, 'question_presentation': presentation, 'media': media,
                            'output_schema': template['output_schema'], 'reference_frame': sample['reference_frame'],
                            'history_access_mode': sample.get('history_access_mode')})
             authority.append({'item_id': item_id, 'template_id': tid, 'answer': sample['oracle'],
@@ -154,7 +164,7 @@ def produce(args, directory, config=None):
     if report['shortfall']:
         specification = root/'production_spec.json'
         write(specification, {'templates': [templates[tid] | {'missing_items': counts[tid]-usage[tid]} for tid in counts if counts[tid] > usage[tid]],
-                             'common_protocol': document()['common_protocol'],
+                             'common_protocol': document()['common_protocol'], 'question_authoring': contract(),
                              'evidence_record': {'template_id': 'exact imported template ID', 'parameters': 'all prompt parameters; answers and hidden state excluded', 'media': 'public observation paths', 'provided_information': 'explicit public information list', 'provenance': {'kind': 'program|simulation|official', 'path': 'source JSON path'}, 'answer_selector': 'JSON Pointer into source oracle result', 'admission_selector': 'JSON Pointer into source admission record', 'oracle_version': 'implemented oracle version', 'reference_frame': 'explicit axes/units', 'scene_group_id': 'underlying scene/history/trajectory group, not just per-question seed', 'split': split},
                              'required_admission_fields': ['template_id', 'protocol_id', 'information_sufficient', 'oracle_executed', 'media_consistent', 'no_answer_leakage'],
                              'interactive_addition': 'episode_executed=true with recorded real action/observation/terminal trace; history tasks freeze history_access_mode',

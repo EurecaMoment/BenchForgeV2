@@ -27,15 +27,27 @@ class RuntimeConfig:
 def load_service_config(path):
     path = Path(path).expanduser().resolve()
     config = json.loads(path.read_text(encoding='utf8'))
+    if config.get('scene_policy_path'):
+        scene_policy = Path(config['scene_policy_path']).expanduser()
+        if not scene_policy.is_absolute():
+            scene_policy = path.parent / scene_policy
+        os.environ['SPATIALFORGE_SCENE_POLICY'] = str(scene_policy.resolve())
+    else:
+        candidates = (path.parent / 'scene-library/policy.json',
+                     path.parent.parent / 'scene-library/policy.json')
+        scene_policy = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if scene_policy:
+            os.environ['SPATIALFORGE_SCENE_POLICY'] = str(scene_policy.resolve())
     for key in ('artifacts', 'harness', 'models_config', 'task_root'):
         if key in config:
             config[key] = str((path.parent / Path(config[key]).expanduser()).resolve())
     for name in ('operator', 'worker'):
-        if name + '_token_env' in config:
-            config[name + '_token'] = os.environ[config[name + '_token_env']]
+        token_env = config.get(name + '_token_env')
+        if token_env:
+            config[name + '_token'] = os.environ[token_env]
         if not config[name + '_token']:
             raise ValueError(f'{name}_token must not be empty')
-    if 'database_url_env' in config:
+    if config.get('database_url_env'):
         config['database_url'] = os.environ[config['database_url_env']]
     for key, env in [('models_config', 'SPATIALFORGE_MODELS_CONFIG'),
                      ('task_root', 'SPATIALFORGE_TASK_ROOT'),

@@ -11,6 +11,16 @@ or the separately configured **SpatialForge** development preset. Their existing
 deployment bindings remain owned by the user profile. These are three modes in
 one DSH installation, not three maintained application repositories.
 
+## Evaluation workbench UI
+
+`spatialforge/ui` is a separate root UI plugin in this same repository. It adds
+the DSH sidebar workbench with persisted runs/artifacts, version-isolated dataset
+browsing, server-side pagination and generation quality reports. It does not edit
+official DSH source or start model/simulator services. Install or refresh it in an
+already running DSH with `python integrations/spatialforge/install_workbench.py`.
+See [the workbench guide](../docs/frontend-workbench-v2.md) for data boundaries,
+configuration and acceptance requirements.
+
 ## Current FIT simulation route
 
 The current production route is:
@@ -65,8 +75,8 @@ It never edits DSH source or official presets, restarts DSH, or starts model/GPU
 services. Already-bound sessions keep their previous revision; a new SpatialForge
 session uses the update. To use code already deployed, omit `--pull`.
 
-The private files `.deployment/model-services.json`,
-`.deployment/spatialforge.local.json` and `.deployment/python-development`
+The private files `config/benchforge.local.json`,
+`config/spatialforge.local.json` and `.deployment/python-development`
 must already exist. See [independent model clients](../docs/MODEL_SERVICES.md)
 for endpoint configuration and the eight callable interfaces.
 
@@ -95,8 +105,8 @@ dsh plugin --profile web add ./integrations
 dsh --profile web --dump-config
 ```
 
-The portable bundle expects `python3`, `config.local.json` and
-`spatialforge.local.json` in the DSH launch working directory. Copy the appropriate
+The portable bundle expects `python3`, `config/benchforge.local.json` and
+`config/spatialforge.local.json` relative to the DSH launch working directory. Copy the appropriate
 example configs and use the existing service endpoint; credentials belong in
 the DSH launch environment, not this package. To select another Python
 environment or absolute config paths, generate a deployment overlay:

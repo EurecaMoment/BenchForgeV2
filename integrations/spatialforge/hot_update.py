@@ -1,4 +1,4 @@
-"""Hot-update only the SpatialForge preset in a running, unmodified DSH."""
+"""Hot-update the SpatialForge preset and its gated workbench in unmodified DSH."""
 import argparse
 from copy import deepcopy
 import http.cookiejar
@@ -23,10 +23,27 @@ PRESET_ID = "spatialforge-standard-ptc"
 
 def update_profile(profile, root, python, mode_config, service_config, revision):
     result = deepcopy(profile)
-    preset = next(row for patch in result for row in patch.get("insert", [])
+    preset_patch = next(patch for patch in result if any(isinstance(row.get("config"), dict)
+                        and row["config"].get("id") == PRESET_ID for row in patch.get("insert", [])))
+    preset = next(row for row in preset_patch["insert"]
                   if isinstance(row.get("config"), dict) and row["config"].get("id") == PRESET_ID)
     config = preset["config"]
     config["description"] = "SpatialForge development, runtime revision " + revision
+    # The root plugin serves the live read API. Its client retains the explicit
+    # SpatialForge preset gate; a preset-local copy must not register it again.
+    ui = next((row for patch in result for row in patch.get("insert", [])
+               if row.get("id") == "benchforge-workbench-ui"), None)
+    if ui is None:
+        ui = next((row for row in config["plugins"] if row.get("id") == "spatialforge-evaluation-ui"),
+                  {"config": {}})
+        ui = deepcopy(ui)
+        ui["id"] = "benchforge-workbench-ui"
+        preset_patch["insert"].append(ui)
+    ui["name"] = str(root / "integrations/spatialforge/ui/stage_products.js")
+    ui_config = ui.setdefault("config", {})
+    ui_config.update(uiRevision=revision)
+    ui_config.setdefault("productionConfig", str(service_config))
+    ui_config.setdefault("productionPython", str(python))
     plugins = {
         "spatial-learning-tools": root / "integrations/dsh/tools.mjs",
         "spatialforge-tools": root / "integrations/spatialforge/plugin/tools.mjs",
@@ -35,10 +52,13 @@ def update_profile(profile, root, python, mode_config, service_config, revision)
     }
 
     def walk(rows):
+        rows[:] = [row for row in rows if row.get("id") != "spatialforge-evaluation-ui"]
         for row in rows:
             name = row.get("id")
             if name in plugins:
-                row["name"] = str(plugins[name]) + "?spatialforge_revision=" + revision
+                # DSH HMR indexes source files by their canonical URL. A query
+                # leaves the loaded tools outside that cache invalidation key.
+                row["name"] = str(plugins[name])
             if name == "spatial-learning-tools":
                 row["config"].update(python=str(python), configPath=str(mode_config),
                                      includeTools=development.LEARNING_TOOLS)
@@ -92,17 +112,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", type=Path, default=Path.home() / ".local/share/dsh-qwen/home/profiles/web/cordis.patch.yml")
     parser.add_argument("--python", type=Path, default=ROOT / ".deployment/python-development")
-    parser.add_argument("--mode-config", type=Path, default=ROOT / ".deployment/model-services.json")
-    parser.add_argument("--service-config", type=Path, default=ROOT / ".deployment/spatialforge.local.json")
+    parser.add_argument("--mode-config", type=Path, default=ROOT / "config/benchforge.local.json")
+    parser.add_argument("--service-config", type=Path, default=ROOT / "config/spatialforge.local.json")
     parser.add_argument("--dsh-service", default="dsh-qwen.service")
     parser.add_argument("--dsh-url", default="http://127.0.0.1:3080")
-    parser.add_argument("--pull", action="store_true", help="First fast-forward the existing SpatialForge checkout")
+    parser.add_argument("--pull", action="store_true", help="First fast-forward the checkout's current branch")
     args = parser.parse_args()
     if args.pull:
         branch = subprocess.check_output(["git", "branch", "--show-current"], cwd=ROOT, text=True).strip()
-        if branch != "SpatialForge":
-            raise RuntimeError("--pull requires the SpatialForge branch")
-        subprocess.run(["git", "pull", "--ff-only", "origin", "SpatialForge"], cwd=ROOT, check=True)
+        if not branch:
+            raise RuntimeError("--pull requires a checked-out branch")
+        subprocess.run(["git", "pull", "--ff-only", "origin", branch], cwd=ROOT, check=True)
     for file in [args.profile, args.python, args.mode_config, args.service_config]:
         if not file.is_file():
             raise FileNotFoundError(file)

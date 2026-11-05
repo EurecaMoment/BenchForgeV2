@@ -14,9 +14,9 @@ def load_config(path=None):
 
 def status(config, run_id=None):
     token_name = config.get('operator_token_env', 'SPATIALFORGE_OPERATOR_TOKEN')
-    token = os.environ.get(token_name)
+    token = config.get('operator_token') or os.environ.get(token_name)
     if not token:
-        raise ValueError(f'Set {token_name} to the service operator token')
+        raise ValueError(f'Configure operator_token or set {token_name}')
     route, payload = ('/observe', {'run_id': run_id}) if run_id else ('/catalog', {})
     request = Request(config['service_url'].rstrip('/') + route,
                       data=json.dumps(payload).encode(),
