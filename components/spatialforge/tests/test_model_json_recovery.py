@@ -16,6 +16,37 @@ def stream(content):
 
 @patch.dict(os.environ, {'SPATIALFORGE_MODEL_ID':'fixture-model','SPATIALFORGE_MODEL_URL':'http://fixture.invalid/v1'})
 class ModelJsonRecoveryTest(unittest.TestCase):
+    def test_bounded_scene_review_preserves_valid_rejection_and_handles_length_limit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch('spatialforge.model.urllib.request.urlopen',return_value=stream('{"acceptable":false,"issues":["chair is inverted"]}')) as request:
+                result=completion('Inspect every view.',tmp,max_tokens=1200,bounded_review=True)
+                self.assertFalse(result['acceptable'])
+                body=json.loads(request.call_args.args[0].data)
+                self.assertTrue(body['stream']);self.assertFalse(body['chat_template_kwargs']['enable_thinking'])
+                self.assertEqual(body['max_tokens'],1200)
+        with tempfile.TemporaryDirectory() as tmp:
+            reply={'choices':[{'delta':{'content':'{"acceptable":false}'},'finish_reason':'length'}]}
+            response=io.BytesIO(('data: '+json.dumps(reply)+'\n\ndata: [DONE]\n').encode())
+            with patch('spatialforge.model.urllib.request.urlopen',return_value=response):
+                with self.assertRaisesRegex(ValueError,'incomplete'):completion('Inspect.',tmp,bounded_review=True)
+
+    def test_bounded_disconnect_keeps_partial_evidence_and_does_not_pass(self):
+        class Disconnected(io.BytesIO):
+            def __iter__(self):
+                yield b'data: {"choices":[{"delta":{"content":"{\\"acceptable\\":"}}]}\n'
+                raise TimeoutError('connection stalled')
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp)/'revision_0/model_calls/scene_review'
+            with patch('spatialforge.model.urllib.request.urlopen',return_value=Disconnected()) as request:
+                with self.assertRaisesRegex(TimeoutError,'stalled'):
+                    completion('Inspect every view.',directory,bounded_review=True)
+            self.assertEqual(request.call_count,1)
+            saved=json.loads((directory/'response.json').read_text())
+            self.assertFalse(saved['done']);self.assertEqual(saved['content'],'{"acceptable":')
+            self.assertEqual(saved['error'],'TimeoutError')
+            progress=json.loads((directory.parents[1]/'progress.json').read_text())
+            self.assertEqual(progress['generated_characters'],len(saved['content']))
+
     def test_invalid_cache_is_preserved_and_valid_rejection_is_reused(self):
         with tempfile.TemporaryDirectory() as tmp:
             directory=Path(tmp)

@@ -9,9 +9,10 @@ from .repair import create_plan
 from .production import produce, package
 from ..stage_review import gate, review
 from .plan_versions import current as active_plan
+from .scene_policy import check_submission, check_source, load_policy
 
 SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
-                  'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine',
+                  'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine', 'spatialforge.extend': '/extend',
                   'spatialforge.observe': '/inspect', 'spatialforge.evidence': '/evidence',
                   'spatialforge.task_code': '/task-code'}
 
@@ -79,7 +80,8 @@ def execute_step(step, arguments, directory, environment, client):
     if operation == 'data.package':
         return package(arguments, directory)
     if operation in SERVICE_ROUTES:
-        if operation in ('spatialforge.start', 'spatialforge.capture', 'spatialforge.asset', 'spatialforge.refine'):
+        check_submission(environment['_workspace'], SERVICE_ROUTES[operation], arguments)
+        if operation in ('spatialforge.start', 'spatialforge.capture', 'spatialforge.asset', 'spatialforge.refine', 'spatialforge.extend'):
             arguments.setdefault('request_key', environment['_run_key']+'.'+step['id'])
         if not environment['inputs'].get('service_config'):
             raise MissingBinding('$inputs.service_config')
@@ -94,12 +96,13 @@ def stage_of(step):
     if step.get('review_stage') in ('S1','S2','S3','S4','S5'):
         return step['review_stage']
     return {'spatialforge.start':'S2','spatialforge.capture':'S2','spatialforge.observe':'S2',
-            'spatialforge.refine':'S2','spatialforge.asset':'S2','spatialforge.evidence':'S3',
+            'spatialforge.refine':'S2','spatialforge.extend':'S2','spatialforge.asset':'S2','spatialforge.evidence':'S3',
             'templates.produce':'S4','data.package':'S5'}.get(step['uses'])
 
 
 def run(args, directory, config=None, client=service_call):
     plan_path = Path(args['plan']).resolve()
+    check_source(load_policy(args['_workspace']), source_path=plan_path)
     plan = read(plan_path)
     run_root = Path(args['run']).resolve() if args.get('run') else Path(directory)/'pipeline_run'
     run_root.mkdir(parents=True, exist_ok=True)

@@ -11,7 +11,7 @@ from PIL import Image
 from spatialforge import engine
 from spatialforge.storage import Store,runs,tasks
 from spatialforge.program_submission import read_program_submission,MAX_PROGRAM_BYTES
-from spatialforge.service import start_scene_request,start_capture_request,refine_scene_request
+from spatialforge.service import start_scene_request,start_capture_request,refine_scene_request,extend_scene_request
 from spatialforge.operator_evidence import evidence
 from test_contracts import sample
 
@@ -162,6 +162,30 @@ class ProgramSubmission(unittest.TestCase):
         self.assertNotIn('capture_only',intent)
         self.assertEqual(intent['target_items'],8)
         self.assertEqual(expanded['operation'],'scene_pipeline')
+
+    def test_extend_hands_off_complete_scene_and_keeps_parent_objects_unchanged(self):
+        parent=self.submit();directory=self.store.directory(parent['id'],0);(directory/'capture').mkdir()
+        (directory/'capture/evidence.json').write_text('{}');(directory/'program.json').write_text(json.dumps(self.program))
+        with self.store.repo.transaction() as c:
+            c.execute(runs.update().where(runs.c.id==parent['run_id']).values(state='SUCCEEDED'))
+            c.execute(tasks.update().where(tasks.c.id==parent['id']).values(state='SUCCEEDED'))
+        extension=deepcopy(self.program)
+        added=deepcopy(extension['objects'][0]);added.update(id='added_cup',xy=[1,0])
+        extension['objects'].append(added);self.save(extension)
+        request={'request_key':'extended','parent_task_id':parent['id'],'name':'add a second cup',
+                 'description':'Add one supported cup to the captured scene','scene_program_path':str(self.path)}
+        reply=extend_scene_request(self.store,request);task=self.store.snapshot(reply['run_id'])['tasks'][0]
+        self.assertEqual(task['unit']['intent']['parent_task_id'],parent['id'])
+        self.assertEqual(task['unit']['intent']['scene_family'],parent['id'])
+        self.assertEqual(reply['source_revision'],0)
+        self.plan(task,side_effect=AssertionError('authored extension must not invoke planner'))
+        captured=json.loads((self.store.directory(task['id'],0)/'program.json').read_text())
+        self.assertEqual(captured['objects'],extension['objects'])
+        changed=deepcopy(extension);changed['objects'][0]['xy']=[2,1];self.save(changed)
+        reply=extend_scene_request(self.store,{**request,'request_key':'invalid-extension'})
+        task=self.store.snapshot(reply['run_id'])['tasks'][0]
+        with self.assertRaisesRegex(ValueError,'preserve every existing parent object'):
+            self.plan(task)
 
     def test_later_quality_repair_uses_previous_program_and_receipt(self):
         task=self.submit();self.plan(task)

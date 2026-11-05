@@ -34,6 +34,21 @@ class DeploymentConfig(unittest.TestCase):
             self.assertEqual(os.environ['SPATIALFORGE_GPU_CANDIDATES'], '2')
             self.assertEqual(config['artifacts'], str(root / 'artifacts'))
 
+    def test_config_directory_keeps_workspace_scene_policy_visible(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config_dir = root / 'config'
+            config_dir.mkdir()
+            policy = root / 'scene-library' / 'policy.json'
+            policy.parent.mkdir()
+            policy.write_text('{}')
+            path = config_dir / 'server.json'
+            path.write_text(json.dumps({'operator_token':'operator','worker_token':'worker'}))
+            with patch.dict(os.environ):
+                os.environ.pop('SPATIALFORGE_SCENE_POLICY', None)
+                load_service_config(path)
+                self.assertEqual(os.environ['SPATIALFORGE_SCENE_POLICY'], str(policy))
+
 
 if __name__ == '__main__':
     unittest.main()

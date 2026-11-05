@@ -27,6 +27,17 @@ class RuntimeConfig:
 def load_service_config(path):
     path = Path(path).expanduser().resolve()
     config = json.loads(path.read_text(encoding='utf8'))
+    if config.get('scene_policy_path'):
+        scene_policy = Path(config['scene_policy_path']).expanduser()
+        if not scene_policy.is_absolute():
+            scene_policy = path.parent / scene_policy
+        os.environ['SPATIALFORGE_SCENE_POLICY'] = str(scene_policy.resolve())
+    else:
+        candidates = (path.parent / 'scene-library/policy.json',
+                     path.parent.parent / 'scene-library/policy.json')
+        scene_policy = next((candidate for candidate in candidates if candidate.is_file()), None)
+        if scene_policy:
+            os.environ['SPATIALFORGE_SCENE_POLICY'] = str(scene_policy.resolve())
     for key in ('artifacts', 'harness', 'models_config', 'task_root'):
         if key in config:
             config[key] = str((path.parent / Path(config[key]).expanduser()).resolve())

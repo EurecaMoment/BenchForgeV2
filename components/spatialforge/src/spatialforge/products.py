@@ -149,6 +149,8 @@ def _package_capture(directory, release, evidence):
 
 def produce(directory,split='dev',intent=None):
     """Commit a complete release atomically; keep partial export attempts for audit."""
+    from .scene_acceptance import require_accepted
+    require_accepted(directory.parent.parent,directory)
     if split not in {'dev','train'}:raise ValueError('split must be dev or train')
     published=directory/'release'
     with _PUBLISH_LOCK:

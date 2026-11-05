@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from sqlalchemy import select
 from spatialforge.storage import Store, runs, tasks
 
@@ -37,6 +38,42 @@ class LifecycleTests(unittest.TestCase):
 
     def tearDown(self):
         self.store.repo.engine.dispose();self.temp.cleanup()
+
+    def test_idle_claim_uses_only_its_transaction_connection(self):
+        with self.store.repo.transaction() as c:
+            c.execute(self.store.device.update().values(record={'active':False}))
+        connect=self.store.repo.engine.connect
+        calls=[]
+        def single_connection(*args,**kwargs):
+            calls.append(True)
+            if len(calls)>1:raise AssertionError('Claim acquired another connection while holding the queue lock')
+            return connect(*args,**kwargs)
+        with patch.object(self.store.repo.engine,'connect',side_effect=single_connection):
+            self.assertEqual(self.store.claim_desktop('test-worker'),{'waiting':'no_jobs'})
+        self.assertEqual(len(calls),1)
+
+    def test_verified_transport_recovery_restores_bounded_retries_without_admitting_quality_failures(self):
+        directory=self.store.directory(JOB['task_id'],0);(directory/'program.json').write_text('{}')
+        (directory/'capture').mkdir();(directory/'capture/report.json').write_text('{"status":"captured"}')
+        unit={'revision':0,'phase':'review','review_transport_retries':2}
+        def fail(error,record=unit):
+            with self.store.repo.transaction() as c:
+                c.execute(runs.update().values(state='FAILED_FINAL'))
+                c.execute(tasks.update().values(state='FAILED_FINAL',unit=record,failure={'error':error}))
+        fail('RemoteDisconnected')
+        with patch('spatialforge.scene_acceptance.policy_for',return_value={'enabled':True}), \
+             patch('spatialforge.scene_acceptance.admit_program'), \
+             patch('spatialforge.scene_design.review_retry_directory',return_value=directory):
+            with self.assertRaisesRegex(ValueError,'budget exhausted'):self.store.retry(JOB['task_id'])
+            (self.store.root/'model_transport_recovery.json').write_text(json.dumps({'status':'transport_verified','recovery_id':'restored-tunnel'}))
+            self.store.retry(JOB['task_id'])
+            restored=self.store.snapshot('sf_test')['tasks'][0]['unit']
+            self.assertEqual(restored['review_transport_retries'],1)
+            self.assertEqual(restored['review_transport_recovery_id'],'restored-tunnel')
+            fail('TimeoutError',{**restored,'review_transport_retries':2})
+            with self.assertRaisesRegex(ValueError,'budget exhausted'):self.store.retry(JOB['task_id'])
+            fail('SceneQualityError')
+            with self.assertRaisesRegex(ValueError,'Only review transport'):self.store.retry(JOB['task_id'])
 
     def test_cancel_requires_process_ack_and_duplicate_cannot_release_new_owner(self):
         with self.assertRaisesRegex(ValueError,'stopped'):self.store.worker_update(JOB,outcome='canceled')

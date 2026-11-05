@@ -41,6 +41,18 @@ jobs:
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -p test_scene_preflight.py -v
       - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_scene_acceptance.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_native_round_support.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_desktop_lifecycle.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_queue_recovery.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s components/spatialforge/tests -p test_model_json_recovery.py -v
+      - if: matrix.python == '3.12'
+        run: python -m unittest discover -s integrations/spatialforge/tests -p test_repair_baseline.py -v
+      - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -p test_force_contacts.py -v
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s components/spatialforge/tests -p test_capture_transfer.py -v

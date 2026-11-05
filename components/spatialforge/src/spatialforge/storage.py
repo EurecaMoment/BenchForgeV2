@@ -23,6 +23,20 @@ class Store:
         meta.create_all(self.repo.engine)
 
     def submit(self,key,intents,workflow='scene',submitted_programs=None):
+        from .scene_acceptance import policy_for, check_references, admit_program
+        policy=policy_for(self.root)
+        if policy:
+            check_references(intents,policy)
+            if workflow=='scene':
+                if not submitted_programs or len(submitted_programs)!=len(intents) or any(not row for row in submitted_programs):
+                    raise ValueError('Realistic production requires complete SceneProgram snapshots; no planner fallback')
+                for intent,submission in zip(intents,submitted_programs):
+                    admission=admit_program(self.root,submission['program'],allow_generated=True)
+                    lineage_task_id=intent.get('refine_task_id') or intent.get('extend_task_id')
+                    if lineage_task_id:
+                        from .scene_design import require_prior_brief
+                        require_prior_brief(admission.get('scene_brief') or {},
+                            self.root/lineage_task_id/('revision_'+str(intent.get('refine_revision',intent.get('extend_revision')))))
         submitted_programs=submitted_programs or []
         if submitted_programs and (workflow!='scene' or len(submitted_programs)!=len(intents)):
             raise ValueError('SceneProgram snapshots must align with scene intents')
@@ -60,6 +74,9 @@ class Store:
             old=c.execute(select(tasks).where(tasks.c.id==tid).with_for_update()).mappings().one()
             run=c.execute(select(runs).where(runs.c.id==old['run_id'])).mappings().one()
             if run['state']=='CANCELED' and fields.get('state')!='CANCELED':return
+            if fields.get('state')=='SUCCEEDED' and old['unit'].get('workflow','scene')=='scene':
+                from .scene_acceptance import require_accepted
+                require_accepted(self.root,self.directory(tid,old['unit']['revision']))
             if 'unit' in fields:fields['unit']={**old['unit'],**fields['unit']}
             c.execute(tasks.update().where(tasks.c.id==tid).values(**fields))
             self.repo.event(c,old['run_id'],tid,'spatialforge.transition',{'state':fields.get('state',old['state']),'phase':fields.get('unit',old['unit']).get('phase')})
@@ -72,9 +89,28 @@ class Store:
             c.exec_driver_sql('SELECT pg_advisory_xact_lock(7420391)')
             task=c.execute(select(tasks).where(tasks.c.id==tid).with_for_update()).mappings().one()
             run=c.execute(select(runs).where(runs.c.id==task['run_id']).with_for_update()).mappings().one()
+            recovery_id=None
+            from .scene_acceptance import policy_for
+            if policy_for(self.root) and task['unit'].get('workflow','scene')=='scene':
+                if (task['unit']['phase']!='review' or feedback is not None or
+                        (task.get('failure') or {}).get('error') not in {'TimeoutError','URLError','ConnectionError','OSError','RemoteDisconnected','ConnectionResetError','ConnectionAbortedError'}):
+                    raise ValueError('Only review transport failures can reuse a frozen capture; repair scene quality through capture/refine')
+                from .scene_acceptance import admit_program
+                from .scene_design import review_retry_directory
+                directory=review_retry_directory(self.root,tid)
+                admit_program(self.root,json.loads((directory/'program.json').read_text()))
+                if task['unit'].get('review_transport_retries',0)>=2:
+                    marker=self.root/'model_transport_recovery.json'
+                    recovery=json.loads(marker.read_text()) if marker.is_file() and marker.stat().st_size<4096 else {}
+                    recovery_id=recovery.get('recovery_id') if recovery.get('status')=='transport_verified' else None
+                    if not isinstance(recovery_id,str) or not recovery_id or recovery_id==task['unit'].get('review_transport_recovery_id'):
+                        raise ValueError('Review transport recovery budget exhausted')
             if run['state'] in {'CANCELED','SUCCEEDED'}:raise ValueError('cannot retry a canceled or successful run')
             if task['state']!='FAILED_FINAL':raise ValueError('only failed tasks need retry')
             unit=dict(task['unit']);phase=unit['phase'];old=self.directory(tid,unit['revision'])
+            if recovery_id:
+                unit.update(review_transport_recovery_id=recovery_id,previous_review_transport_retries=unit.get('review_transport_retries',0),review_transport_retries=0)
+            if policy_for(self.root) and phase=='review':unit['review_transport_retries']=unit.get('review_transport_retries',0)+1
             if phase=='capture' and (task.get('failure') or {}).get('stage')=='capture_transport':
                 # An explicit operator retry resumes the same native files and transfer offsets.
                 ended=unit.pop('worker_end',{})
@@ -110,9 +146,12 @@ class Store:
             self.repo.event(c,run['id'],tid,'spatialforge.retry',{'phase':unit['phase'],'revision':unit['revision'],'operator_feedback':feedback})
         return {'task_id':tid,'revision':unit['revision'],'phase':unit['phase']}
 
-    def all_work(self):
+    def all_work(self, connection=None):
+        query=select(tasks).join(runs,tasks.c.run_id==runs.c.id).where(runs.c.code_revision=='spatialforge-0.2.0',runs.c.state.notin_(['CANCELED','SUCCEEDED','FAILED_FINAL']))
+        if connection is not None:
+            return [dict(r) for r in connection.execute(query).mappings()]
         with self.repo.engine.connect() as c:
-            return [dict(r) for r in c.execute(select(tasks).join(runs,tasks.c.run_id==runs.c.id).where(runs.c.code_revision=='spatialforge-0.2.0',runs.c.state.notin_(['CANCELED','SUCCEEDED','FAILED_FINAL']))).mappings()]
+            return [dict(r) for r in c.execute(query).mappings()]
 
     def directory(self,tid,revision):
         directory=safe_path(self.root,f'{tid}/revision_{revision}')
@@ -128,7 +167,7 @@ class Store:
                 if record['worker']!=worker: return {'waiting':'device_owned_by_other_worker'}
                 task=c.execute(select(tasks).where(tasks.c.id==record['task_id'])).mappings().one()
                 return self._job(task,record['token'])
-            for task in self.all_work():
+            for task in self.all_work(c):
                 if task['state']=='READY' and task['unit']['phase']=='capture':
                     unit=dict(task['unit']);token=unit.pop('resume_capture_token',None) or uid('attempt'); record={'active':True,'worker':worker,'task_id':task['id'],'token':token,'time':time.time()}
                     if device:c.execute(self.device.update().where(self.device.c.id=='desktop-isaac').values(record=record))

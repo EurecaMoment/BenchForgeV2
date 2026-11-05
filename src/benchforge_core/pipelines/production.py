@@ -11,6 +11,7 @@ from ..runtime import read, write, rows, jsonl, select
 from .catalog import all_templates, document
 from .adapters import BUILTINS, generate
 from .question_writing import builtin_spec, contract, question_text, validate_spec
+from .scene_policy import load_policy, check_source, check_evidence
 
 
 def counts_for(selections):
@@ -61,6 +62,13 @@ def produce(args, directory, config=None):
     root.mkdir(parents=True, exist_ok=True)
     evidence_path = Path(args['evidence']).resolve() if args.get('evidence') else None
     records = rows(evidence_path) if evidence_path else []
+    policy = load_policy(args['_workspace'])
+    if evidence_path:check_source(policy,source_path=evidence_path)
+    for record in records:
+        source = record.get('provenance', {})
+        check_source(policy, task_id=source.get('task_id'), run_id=source.get('run_id'),
+                     scene_group=record.get('scene_group_id'), source_path=source.get('path'))
+        check_evidence(args['_workspace'],record,evidence_path)
     public, authority, rejected = [], [], []
     usage = Counter()
     seed = args.get('seed', 20261013)
