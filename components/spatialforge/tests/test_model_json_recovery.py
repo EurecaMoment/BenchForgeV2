@@ -41,10 +41,10 @@ class ModelJsonRecoveryTest(unittest.TestCase):
                 with self.assertRaisesRegex(TimeoutError,'stalled'):
                     completion('Inspect every view.',directory,bounded_review=True)
             self.assertEqual(request.call_count,1)
-            saved=json.loads((directory/'response.json').read_text())
+            saved=json.loads((directory/'response.json').read_text(encoding='utf-8'))
             self.assertFalse(saved['done']);self.assertEqual(saved['content'],'{"acceptable":')
             self.assertEqual(saved['error'],'TimeoutError')
-            progress=json.loads((directory.parents[1]/'progress.json').read_text())
+            progress=json.loads((directory.parents[1]/'progress.json').read_text(encoding='utf-8'))
             self.assertEqual(progress['generated_characters'],len(saved['content']))
 
     def test_invalid_cache_is_preserved_and_valid_rejection_is_reused(self):
