@@ -4,9 +4,12 @@ from contextlib import contextmanager
 import json
 from pathlib import Path
 import re
+import sys
 import time
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
 from production_observer import service_read, stage_artifacts
+from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION
 
 SCHEMA = 'benchforge.scene-library/v1'
 SELECTION_SCHEMA = 'benchforge.scene-selection/v1'
@@ -104,22 +107,72 @@ def sync_catalog(config, folder):
     if previous.get('schema') != SCHEMA:
         raise LibraryError('This scene catalog uses an unsupported format', 409)
     source_root = Path(config['artifacts']).resolve()
+    policy = load_policy(folder.parent)
+    prior = {row['id']: row for row in previous['items']}
+    repaired = read_json(folder / 'repairs.json', {})
+    repaired_from = {value['task_id']: key for key, value in repaired.items()}
     items = []
     for task in completed_tasks(config):
+        if task['id'] in repaired:continue
         if not re.fullmatch(r'sf_[a-zA-Z0-9_-]+\.scene\d+', task['id']):
             continue
         unit = json.loads(task['unit']) if isinstance(task['unit'], str) else task['unit']
+        try:
+            check_source(policy, task_id=task['id'], run_id=task['run_id'])
+        except ValueError:
+            continue
         revision = unit['revision']
         source = source_root / task['id'] / ('revision_' + str(revision))
         if source.is_symlink() or not source.resolve().is_relative_to(source_root):
             continue
         intent = unit.get('intent', {})
+        admission = None
+        if policy.get('enabled'):
+            program = source / 'program.json'
+            if not program.is_file():
+                program = source / 'capture/program.json'
+            if not program.is_file():
+                continue
+            stat = program.stat()
+            version = [stat.st_size, stat.st_mtime_ns]
+            cached = prior.get(task['id'], {}).get('scene_admission', {})
+            declaration = cached.get('geometry_exception')
+            plan = Path(declaration['plan_path']) if declaration else None
+            plan_current = not declaration or plan.is_file() and declaration.get('plan_version') == [plan.stat().st_size, plan.stat().st_mtime_ns]
+            try:
+                admission = cached if cached.get('program_version') == version and cached.get('classifier_version') == CLASSIFIER_VERSION and plan_current else {**classify_planned(read_json(program, {}), policy), 'program_version': version}
+            except (ValueError, OSError, KeyError, TypeError):
+                continue
+            if not admission['allowed']:
+                continue
         origin = re.match(r'dsh:(session-[a-zA-Z0-9-]+):', task['request_key'] or '')
+        receipt=read_json(source/'scene_acceptance.json',{})
+        accepted=receipt.get('passed') is True and receipt.get('enforced') is True
+        if accepted:
+            accepted=all((source/relative).is_file() and receipt.get('evidence_versions',{}).get(relative)==[(source/relative).stat().st_size,(source/relative).stat().st_mtime_ns]
+                for relative in ('program.json','capture/report.json','capture/evidence.json'))
+        if (policy.get('require_scene_brief') or policy.get('enforce_realism')) and not receipt.get('scene_brief'):accepted=False
+        for declaration in (receipt.get('geometry_exception'), receipt.get('scene_brief')):
+            if not accepted or not declaration:continue
+            plan = Path(declaration['plan_path'])
+            accepted = plan.is_file() and declaration.get('plan_version') == [plan.stat().st_size, plan.stat().st_mtime_ns]
+        for name,version in receipt.get('mesh_versions',{}).items():
+            mesh=Path(name)
+            if not mesh.is_file() or [mesh.stat().st_size,mesh.stat().st_mtime_ns]!=version:accepted=False
+        brief = receipt.get('scene_brief') or {}
         items.append({'id': task['id'], 'task_id': task['id'], 'run_id': task['run_id'], 'revision': revision,
-                      'name': intent.get('name') or task['id'], 'description': (intent.get('description') or '')[:1200],
+                      'name': brief.get('name') or intent.get('name') or task['id'],
+                      'description': (brief.get('summary') or intent.get('description') or '')[:1200],
                       'split': intent.get('split'), 'scene_family': intent.get('scene_family'),
                       'origin_session': origin.group(1) if origin else None, 'created_at': task['created_at'],
-                      'source_directory': str(source), 'available': (source / 'capture').is_dir()})
+                      'source_directory': str(source), 'available': (source / 'capture').is_dir(),
+                      'scene_style': (admission or {}).get('scene_style', 'realistic_assets'),
+                      'geometry_purpose': ((admission or {}).get('geometry_exception') or {}).get('purpose'),
+                      'production_eligible':accepted if policy.get('enforce_realism') else True})
+        if task['id'] in repaired_from:
+            items[-1]['repaired_from'] = repaired_from[task['id']]
+        if admission is not None:
+            items[-1]['scene_admission'] = admission
     if previous.get('items') != items:
         previous = {'schema': SCHEMA, 'updated_at': time.time(), 'items': items,
                     'scope': 'shared captured scenes from this operator service; original files retained'}
@@ -156,6 +209,8 @@ def selected_sources(catalog, selected):
         row = by_id.get(reference['id'])
         if not row or row['revision'] != reference['revision']:
             raise LibraryError('A selected scene changed or is unavailable; select its current version again', 409)
+        if row.get('production_eligible') is False:
+            raise LibraryError('场景尚未通过物理与生活合理性验收，请重新采集验收后使用。',409)
         media = public_media(row)
         if not media['available']:
             raise LibraryError('A selected scene has no available captured media', 409)
@@ -171,10 +226,18 @@ def load_selection(folder, session, catalog):
         raise LibraryError('Invalid saved scene selection', 409)
     if saved is None:
         selected = [{'id': row['id'], 'revision': row['revision']} for row in catalog['items']
-                    if row['origin_session'] == session and row['available']]
+                    if row['origin_session'] == session and row['available'] and row.get('production_eligible') is not False]
         saved = {'schema': SELECTION_SCHEMA, 'session_id': session, 'version': 1, 'selected': selected,
                  'allow_new_scenes': not bool(selected), 'updated_at': time.time()}
         write_json(path, saved)
+    else:
+        removed = set(load_policy(folder.parent).get('excluded_tasks', []))
+        eligible={row['id'] for row in catalog['items'] if row.get('production_eligible') is not False}
+        selected = [row for row in saved['selected'] if row['id'] not in removed and row['id'] in eligible]
+        if selected != saved['selected']:
+            saved = {**saved, 'selected': selected, 'version': saved['version'] + 1, 'updated_at': time.time(),
+                     'notice': '已移除不符合场景要求的历史选择，请重新选择。'}
+            write_json(path, saved)
     return {**saved, 'selection_path': str(path), 'catalog_path': str(folder / 'catalog.json')}
 
 
@@ -202,6 +265,10 @@ def operate(config, workspace, session, action='list', value=None, page=1, size=
     if action in {'file', 'artifacts'}:
         catalog = read_json(folder / 'catalog.json', {'items': []})
         row = next((row for row in catalog['items'] if row['id'] == task_id), None)
+        try:
+            check_source(load_policy(workspace), task_id=task_id)
+        except ValueError as error:
+            raise LibraryError(str(error), 410) from error
         if not row or not row['available']:
             raise LibraryError('The scene is not in this workspace library', 403)
         if revision is not None and row['revision'] != revision:

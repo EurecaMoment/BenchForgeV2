@@ -1,34 +1,278 @@
 {
   "schema": "spatialforge.assessment-template/v1",
   "scene_binding": "如果请求包含保存的场景选择，将该约束对象一并传入 pipeline_plan.inputs.scene_selection，服务端将校验 assessment.scenes 的勾选场景、版本、selection_path 和 allow_new_scenes；设计新场景写入 designs，不写成已采集场景。",
-  "instructions": "你负责撰写可执行、可审阅的评测计划，前端只展示与操作真实落盘内容。先读取用户需求、保存的场景选择及 pipeline_catalog 中准确的模板合同，再填写下面 assessment 的所有章节。用用户的语言写具体内容，不得照抄空值、占位符或泛泛而谈。计划中的目标和阈值是设计值，不得写成已完成结果；无法确定的事项在 risks 中列出影响、解决方式和待确认状态。coverage 必须逐模板填写实际分配题数，严格对应 selections 的均分和余数分配规则；总数必须等于 dataset.target_items。场景来源严格遵守 selected_scenes、revision 和 allow_new_scenes，不得绕过用户勾选。公开观测必须足以作答，不能把隐藏 GT 当公开条件。给出不含真实答案的公开题目示例、输出格式、每模板评分规则和可执行验收条件。execution 覆盖 S1 到 S5，delivery 为每一阶段声明可查看的产物。调用 pipeline_plan 时将完整对象传入 assessment，并传入一致的 objective、selections 和 inputs；保存后引用返回的计划路径继续已有生产流程。修改计划时重新保存新版本并保留原产物。没有实际采集、验收或模型响应时不得编造其结果，也不得调用未授权的目标模型评测接口。 通用展示要求：计划、场景、标注、题目和报告以真实图像、可直接播放的视频或可操作全景及有效文字为主体；使用可读题型、场景名称和用途，技术ID与路径留在详情。参考图必须来自已保存的真实采集并注明参考性质，不能把未执行设计当作完成场景。",
+  "instructions": "你负责撰写可执行、可审阅的评测计划，前端只展示与操作真实落盘内容。先读取用户需求、保存的场景选择及 pipeline_catalog 中准确的模板合同，再填写下面 assessment 的所有章节。用用户的语言写具体内容，不得照抄空值、占位符或泛泛而谈。计划中的目标和阈值是设计值，不得写成已完成结果；无法确定的事项在 risks 中列出影响、解决方式和待确认状态。coverage 必须逐模板填写实际分配题数，严格对应 selections 的均分和余数分配规则；总数必须等于 dataset.target_items。场景来源严格遵守 selected_scenes、revision 和 allow_new_scenes，不得绕过用户勾选。公开观测必须足以作答，不能把隐藏 GT 当公开条件。给出不含真实答案的公开题目示例、输出格式、每模板评分规则和可执行验收条件。execution 覆盖 S1 到 S5，delivery 为每一阶段声明可查看的产物。先将完整 assessment 保存为 JSON 文件，用 assessment_path 提交并传入一致的 objective、selections 和 inputs；完整请求也可保存后仅传 request_path。先用 validate_only=true 一次获取缺项清单，只修改原文件中列出的字段，再以同一路径提交，禁止为补字段重写整份大对象；保存后引用返回的计划路径继续已有生产流程。修改计划时重新保存新版本并保留原产物。没有实际采集、验收或模型响应时不得编造其结果，也不得调用未授权的目标模型评测接口。 通用展示要求：计划、场景、标注、题目和报告以真实图像、可直接播放的视频或可操作全景及有效文字为主体；使用可读题型、场景名称和用途，技术ID与路径留在详情。参考图必须来自已保存的真实采集并注明参考性质，不能把未执行设计当作完成场景。 文字长度是写作建议，明确简洁的角色、关系和描述允许短写；真实性依据实际图像与物理回执，不能靠凑字数证明。",
   "sections": [
-    {"key": "objectives", "title": "评测目标与边界", "guidance": "逐项说明测量的能力、具体问题、成功条件及不覆盖的范围。"},
-    {"key": "coverage", "title": "能力、模板与题量分配", "guidance": "逐模板绑定目标、分配题数、难度、测量条件和选择理由，遵守准确模板合同。"},
-    {"key": "scenes", "title": "场景与采集设计", "guidance": "一个项目一个场景，声明复用约束、布局、物体、视角、变化维度和可直接播放的视频或交互全景产物。"},
-    {"key": "annotations", "title": "标注与真值来源", "guidance": "定义标注字段、单位坐标、来源推导、媒体对齐与校验；模型预测不可充当 GT。"},
-    {"key": "questions", "title": "出题规则与公开样例", "guidance": "说明公开条件、可回答性、输出格式、难度与捷径检查，给出具体题目样例，不能泄露真实答案。"},
-    {"key": "dataset", "title": "数据集规模与分区", "guidance": "声明目标题量、随机种子、场景分组分区、去重与分布平衡策略。"},
-    {"key": "scoring", "title": "评分方法与对照", "guidance": "逐模板定义指标、单位、容差和聚合方式，处理无效或缺失响应，说明基线及本次是否实际评测模型。"},
-    {"key": "quality_gates", "title": "质量检查与验收", "guidance": "给出可执行检查、具体阈值、证据路径和失败处置，覆盖可回答性、GT、覆盖量、分区泄漏与媒体有效性。"},
-    {"key": "execution", "title": "五阶段执行安排", "guidance": "覆盖 S1–S5，逐阶段写清动作、输入、输出、完成条件，不把设计目标当作执行结果。"},
-    {"key": "delivery", "title": "交付物与验收入口", "guidance": "每阶段至少一个可查看的产物，明确格式、内容、相对保存位置和交付条件。"},
-    {"key": "risks", "title": "风险与待解决事项", "guidance": "列出具体限制、影响、应对方式与状态；无已知风险也应明确检查范围。"}
+    {
+      "key": "objectives",
+      "title": "评测目标与边界",
+      "guidance": "逐项说明测量的能力、具体问题、成功条件及不覆盖的范围。"
+    },
+    {
+      "key": "coverage",
+      "title": "能力、模板与题量分配",
+      "guidance": "逐模板绑定目标、分配题数、难度、测量条件和选择理由，遵守准确模板合同。"
+    },
+    {
+      "key": "scenes",
+      "title": "场景与采集设计",
+      "guidance": "一个项目一个场景，声明复用约束、布局、物体、视角、变化维度和可直接播放的视频或交互全景产物。"
+    },
+    {
+      "key": "annotations",
+      "title": "标注与真值来源",
+      "guidance": "定义标注字段、单位坐标、来源推导、媒体对齐与校验；模型预测不可充当 GT。"
+    },
+    {
+      "key": "questions",
+      "title": "出题规则与公开样例",
+      "guidance": "说明公开条件、可回答性、输出格式、难度与捷径检查，给出具体题目样例，不能泄露真实答案。"
+    },
+    {
+      "key": "dataset",
+      "title": "数据集规模与分区",
+      "guidance": "声明目标题量、随机种子、场景分组分区、去重与分布平衡策略。"
+    },
+    {
+      "key": "scoring",
+      "title": "评分方法与对照",
+      "guidance": "逐模板定义指标、单位、容差和聚合方式，处理无效或缺失响应，说明基线及本次是否实际评测模型。"
+    },
+    {
+      "key": "quality_gates",
+      "title": "质量检查与验收",
+      "guidance": "给出可执行检查、具体阈值、证据路径和失败处置，覆盖可回答性、GT、覆盖量、分区泄漏与媒体有效性。"
+    },
+    {
+      "key": "execution",
+      "title": "五阶段执行安排",
+      "guidance": "覆盖 S1–S5，逐阶段写清动作、输入、输出、完成条件，不把设计目标当作执行结果。"
+    },
+    {
+      "key": "delivery",
+      "title": "交付物与验收入口",
+      "guidance": "每阶段至少一个可查看的产物，明确格式、内容、相对保存位置和交付条件。"
+    },
+    {
+      "key": "risks",
+      "title": "风险与待解决事项",
+      "guidance": "列出具体限制、影响、应对方式与状态；无已知风险也应明确检查范围。"
+    }
   ],
   "assessment": {
     "schema": "spatialforge.assessment/v1",
     "title": "",
     "summary": "",
-    "objectives": [{"id": "", "capability": "", "research_question": "", "success_criterion": "", "exclusions": ""}],
-    "coverage": [{"objective_id": "", "template_id": "", "count": null, "difficulty": "", "conditions": "", "selection_reason": ""}],
-    "scenes": {"source_policy": "", "selection_path": "", "selected_scenes": [], "allow_new_scenes": null, "target_scene_count": null, "designs": [{"id": "", "name": "", "purpose": "", "layout": "", "objects": "", "cameras": "", "variation": "", "artifact": ""}], "reuse_constraints": "", "preview_policy": ""},
-    "annotations": {"authority_source": "", "fields": "", "derivation": "", "alignment": "", "validation": ""},
-    "questions": {"public_observations": "", "answerability": "", "output_contract": "", "difficulty_design": "", "anti_shortcut_checks": "", "example": ""},
-    "dataset": {"target_items": null, "split_policy": "", "seed": null, "grouping": "", "deduplication": "", "balance": ""},
-    "scoring": {"metrics": [{"template_id": "", "metric": "", "unit": "", "tolerance": "", "aggregation": ""}], "missing_response": "", "baselines": "", "model_evaluation": ""},
-    "quality_gates": [{"id": "", "check": "", "threshold": "", "evidence": "", "on_failure": ""}],
-    "execution": [{"stage": "S1", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S2", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S3", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S4", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}, {"stage": "S5", "action": "", "inputs": "", "outputs": "", "completion_condition": ""}],
-    "delivery": {"artifacts": [{"stage": "", "path": "", "format": "", "contents": ""}], "acceptance": ""},
-    "risks": [{"issue": "", "impact": "", "mitigation": "", "status": ""}]
+    "objectives": [
+      {
+        "id": "",
+        "capability": "",
+        "research_question": "",
+        "success_criterion": "",
+        "exclusions": ""
+      }
+    ],
+    "coverage": [
+      {
+        "objective_id": "",
+        "template_id": "",
+        "count": null,
+        "difficulty": "",
+        "conditions": "",
+        "selection_reason": ""
+      }
+    ],
+    "scenes": {
+      "source_policy": "",
+      "selection_path": "",
+      "selected_scenes": [],
+      "allow_new_scenes": null,
+      "target_scene_count": null,
+      "designs": [
+        {
+          "id": "",
+          "name": "",
+          "purpose": "",
+          "layout": "",
+          "objects": "",
+          "cameras": "",
+          "variation": "",
+          "artifact": ""
+        }
+      ],
+      "reuse_constraints": "",
+      "preview_policy": ""
+    },
+    "annotations": {
+      "authority_source": "",
+      "fields": "",
+      "derivation": "",
+      "alignment": "",
+      "validation": ""
+    },
+    "questions": {
+      "public_observations": "",
+      "answerability": "",
+      "output_contract": "",
+      "difficulty_design": "",
+      "anti_shortcut_checks": "",
+      "example": ""
+    },
+    "dataset": {
+      "target_items": null,
+      "split_policy": "",
+      "seed": null,
+      "grouping": "",
+      "deduplication": "",
+      "balance": ""
+    },
+    "scoring": {
+      "metrics": [
+        {
+          "template_id": "",
+          "metric": "",
+          "unit": "",
+          "tolerance": "",
+          "aggregation": ""
+        }
+      ],
+      "missing_response": "",
+      "baselines": "",
+      "model_evaluation": ""
+    },
+    "quality_gates": [
+      {
+        "id": "",
+        "check": "",
+        "threshold": "",
+        "evidence": "",
+        "on_failure": ""
+      }
+    ],
+    "execution": [
+      {
+        "stage": "S1",
+        "action": "",
+        "inputs": "",
+        "outputs": "",
+        "completion_condition": ""
+      },
+      {
+        "stage": "S2",
+        "action": "",
+        "inputs": "",
+        "outputs": "",
+        "completion_condition": ""
+      },
+      {
+        "stage": "S3",
+        "action": "",
+        "inputs": "",
+        "outputs": "",
+        "completion_condition": ""
+      },
+      {
+        "stage": "S4",
+        "action": "",
+        "inputs": "",
+        "outputs": "",
+        "completion_condition": ""
+      },
+      {
+        "stage": "S5",
+        "action": "",
+        "inputs": "",
+        "outputs": "",
+        "completion_condition": ""
+      }
+    ],
+    "delivery": {
+      "artifacts": [
+        {
+          "stage": "",
+          "path": "",
+          "format": "",
+          "contents": ""
+        }
+      ],
+      "acceptance": ""
+    },
+    "risks": [
+      {
+        "issue": "",
+        "impact": "",
+        "mitigation": "",
+        "status": ""
+      }
+    ]
+  },
+  "scene_authoring": {
+    "default": "真实可辨识资产；简化几何用于计划明确声明的空间实验。",
+    "optional_field": "assessment.scenes.geometry_exceptions (省略或空数组均可)",
+    "declaration": {
+      "scene_design_id": "对应 scenes.designs[].id",
+      "scene_id": "对应 SceneProgram.scene_id",
+      "object_ids": [
+        "精确对应简化物体的 id"
+      ],
+      "purpose": "具体测量目的",
+      "reason": "该测量为何需要简化",
+      "simplifications": "简化内容及使用范围",
+      "retained_constraints": "保留的物理规律及实验布局约束",
+      "excluded_claims": "不声称的实景、生活真实性等能力"
+    },
+    "program_reference": {
+      "kind": "scene_plan",
+      "path": "保存计划的绝对路径",
+      "scene_design_id": "对应的设计 id"
+    },
+    "instructions": "每项说明填写具体内容（至少8字符）。SceneProgram.provenance.sources 引用保存的计划；口头声明或只在程序中写用途不构成例外。前端优先展示目的、简化范围和约束，标识放在技术详情。",
+    "scene_brief": {
+      "location": "assessment.scenes.designs[]",
+      "name": "清晰的场景标题",
+      "summary": "先写200到400字的详细段落，说明用途、空间、物体、朝向、支撑、光照、动线和取用关系。",
+      "spatial_reference": "使用左右前后时，明确是世界坐标、固定机位还是使用者视角；同一关系不能随拍摄机位变化。颜色材质和形态根据资产观察及回执描述，不凭名称杜撰。",
+      "hard_requirements": [
+        "用户原始硬要求，自动修复不得降低或删去"
+      ],
+      "object_roles": [
+        {
+          "object_id": "实际物体 id",
+          "role": "物体在场景中的作用与位置"
+        }
+      ],
+      "relations": [
+        {
+          "source": "实际物体 id",
+          "type": "supported_by|mounted_to|clearance|near|facing|inside",
+          "target": "实际物体 id 或 ground",
+          "description": "具体空间关系与使用理由"
+        }
+      ],
+      "physical_assumptions": [
+        "明确质量、摩擦、支撑、固定安装的先验与验证限制"
+      ],
+      "previous_capture_directory": "修订已有场景时填写上一版实际采集目录；继承该目录冻结的全部硬要求",
+      "revision_history": [
+        {
+          "revision": 1,
+          "changes": [
+            "根据实拍或回执发现的问题修改具体设计"
+          ],
+          "evidence_directory": "实际依据目录",
+          "evidence_refs": [
+            {
+              "path": "capture/view_0.png",
+              "observation": "实际视图中可见的空间或使用问题"
+            },
+            {
+              "path": "capture/evidence.json",
+              "observation": "原生支撑、姿态或物理回执中的具体发现"
+            }
+          ]
+        }
+      ],
+      "iteration": "按摘要生产并比对实拍；发现遗漏可基于实拍修订软设计与摘要。每次保存新版本、依据、改动和待解问题；硬要求受保护。修订记录必须同时引用旧版真实视角图片和原生物理/验收回执。修订摘要不能代替修正程序、重新采集和验收。"
+    }
   }
 }

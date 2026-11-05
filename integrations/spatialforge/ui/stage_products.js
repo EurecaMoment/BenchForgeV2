@@ -48,6 +48,9 @@ const matchesSession = (context, scope) => scope.history || !!scope.session_id &
   (context?.session_id === scope.session_id || context?.session_ids?.includes(scope.session_id));
 
 async function assertSessionDirectory(root, directory, scope) {
+  const policy=await readJson(path.join(root.path,'scene-library','policy.json'));
+  if(policy?.enabled && (policy.excluded_paths || []).some(folder=>directory===folder || directory.startsWith(folder+path.sep)))
+    throw new ApiError('此产物使用的立方体场景已删除，请重新制作。',410);
   if (scope.history) return;
   let current = directory;
   while (current !== root.path) {
@@ -74,9 +77,16 @@ const planTemplateTitles = new Map(JSON.parse(await fs.readFile(fileURLToPath(ne
 function publicPlan(plan) {
   if (!plan) return null;
   const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).filter(([key]) => key === 'authority_source' || !/^(?:answer|answers|authority|gold|oracle|token|password|api_key)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
-  return {...pick(plan, ['pipeline_id', 'version', 'objective', 'edit_revision', 'applies_edit']),
-    assessment: plan.assessment ? clean(plan.assessment) : undefined,
+    ? Object.fromEntries(Object.entries(value).filter(([key]) => key === 'authority_source' || !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
+  const assessment = plan.assessment ? clean(plan.assessment) : undefined;
+  // Markdown carries the same public assessment as the structured response.
+  const markdown = typeof plan.user_markdown === 'string' ? plan.user_markdown.replace(
+    /^```assessment-yaml\s*\r?\n[\s\S]*?^```\s*$/gm,
+    () => '```assessment-yaml\n' + JSON.stringify(assessment || {}, null, 2) + '\n```\n') : undefined;
+  return {...pick(plan, ['pipeline_id', 'version', 'objective', 'edit_revision', 'applies_edit',
+    'user_markdown_path']),
+    ...(markdown === undefined ? {} : {user_markdown: markdown}),
+    assessment,
     selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
     inputs: pick(plan.inputs || {}, ['seed', 'split', 'target_items']),
     template_contracts: (plan.template_contracts || []).map((row) => ({...pick(row, ['id', 'task_id', 'task_name',
@@ -89,7 +99,7 @@ const REPORT_FIELDS = [...QUALITY_FIELDS, 'per_template', 'model_api_calls', 'sc
 
 function publicReport(report) {
   const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).filter(([key]) => !/^(?:answer|answers|authority|gold|oracle|token|password|api_key)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
+    ? Object.fromEntries(Object.entries(value).filter(([key]) => !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
   return clean(pick(report, REPORT_FIELDS));
 }
 
@@ -325,6 +335,12 @@ async function productionProgress(roots, config, url, signal) {
         '--session', session, '--run-ids', JSON.stringify([...remoteIds].slice(0, 12))],
       {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
       scenes = JSON.parse(stdout);
+      const removed=new Set();
+      for(const root of roots) {
+        const policy=await readJson(path.join(root.path,'scene-library','policy.json'));
+        if(policy?.enabled)for(const id of policy.excluded_tasks || [])removed.add(id);
+      }
+      scenes.runs=(scenes.runs || []).map(row=>({...row,tasks:(row.tasks || []).filter(task=>!removed.has(task.id))})).filter(row=>row.tasks.length);
       scheduleSceneMovies(config, session, scenes.runs || [], [...remoteIds].slice(0, 12));
     } catch (error) {
       if (signal?.aborted) throw error;
@@ -438,6 +454,8 @@ async function discover(roots, config, signal, scope) {
   let unassociatedRecords = 0;
   const addDataset = async (root, directory, producer, runId) => {
     if (!directory) return;
+    const policy=await readJson(path.join(root.path,'scene-library','policy.json'));
+    if(policy?.enabled && (policy.excluded_paths || []).some(folder=>directory===folder || directory.startsWith(folder+path.sep)))return;
     const resolved = await inside(root, directory);
     let questionFile = path.join(resolved, 'questions.jsonl');
     if (!await exists(questionFile)) questionFile = path.join(resolved, 'public', 'items.jsonl');
@@ -657,14 +675,17 @@ export function createWorkbenchHandler(config, registered = () => []) {
         if (body.length > 512000) throw new ApiError('Plan edit is too large',413);
         let edit;
         try {edit=JSON.parse(body);} catch {throw new ApiError('Invalid plan edit JSON');}
-        if (!edit?.assessment || typeof edit.plan_path !== 'string') throw new ApiError('A saved plan and edited assessment are required');
+        if (typeof edit?.plan_path !== 'string' ||
+            !(typeof edit.markdown === 'string' && edit.markdown.trim() || edit.assessment && typeof edit.assessment === 'object'))
+          throw new ApiError('A saved plan and complete edited Markdown document are required');
         const file=await inside(roots[0],edit.plan_path);
         await assertSessionDirectory(roots[0],path.dirname(file),scope);
         const helper=fileURLToPath(new URL('./plan_edit_cli.py',import.meta.url));
         const process=execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--plan',file],
           {signal:request.signal,timeout:20000,maxBuffer:256000});
         process.child.stdin.on('error',()=>{});
-        process.child.stdin.end(JSON.stringify({assessment:edit.assessment,split:edit.split}));
+        process.child.stdin.end(JSON.stringify({assessment:edit.assessment,markdown:edit.markdown,
+          base_markdown:edit.base_markdown,split:edit.split}));
         value=JSON.parse((await process).stdout);
         if (value.error) throw new ApiError(value.error,value.status_code || 400);
       }

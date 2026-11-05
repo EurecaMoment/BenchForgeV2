@@ -12,8 +12,14 @@ test('pipeline tools expose exact template selection and composable recipe schem
   await apply({tools:{register:tool=>tools.set(tool.name,tool)},effect(){},get(){}},{includeTools});
   assert.equal(tools.size,7);
   const tool=tools.get('benchforge_pipeline_plan');
+  assert.deepEqual(validateJsonSchemaValue(tool.parameters,{workspace:'/workspace',request_path:'plan/request.json',validate_only:true},''),[]);
+  assert.deepEqual(validateJsonSchemaValue(tool.parameters,{workspace:'/workspace',assessment_path:'plan/assessment.json'},''),[]);
   const request={workspace:'/workspace',objective:'距离和面积数据',selections:[{template_ids:['C01-T01','P001-T01'],count:30,reason:'separate measurement'}],steps:[{id:'capture',uses:'pipeline',pipeline_id:'scene.capture',arguments:{scene_program_path:'/workspace/scene.json'}}]};
   assert.deepEqual(validateJsonSchemaValue(tool.parameters,request,''),[]);
+  const numericResolution={...request,user_markdown:'# Plan\n\n改为7题。',markdown_resolution:[
+    {path:'dataset.target_items',before:5,after:7,instruction:'改为7题。'}]};
+  assert.deepEqual(validateJsonSchemaValue(tool.parameters,numericResolution,''),[]);
+  assert.ok(tool.parameters.properties.markdown_resolution.items.properties.before.oneOf.some(({type})=>type==='number'));
   assert.notDeepEqual(validateJsonSchemaValue(tool.parameters,{workspace:'/workspace',selections:[{template_ids:['C01-T01'],count:30}]},''),[]);
   assert.ok(tools.get('benchforge_pipeline_run').parameters.properties.bindings);
   assert.ok(tools.get('benchforge_pipeline_catalog').parameters.properties.capability);

@@ -7,7 +7,7 @@ import http from 'node:http';
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools';
 import { apply, Config } from '../plugin/tools.mjs';
 
-async function fixture(t,{saveImage=async()=>({id:'fixture-image'})}={}){
+async function fixture(t,{saveImage=async()=>({id:'fixture-image'}),scenePolicy=false,tokenConfig={},launchEnvironment}={}){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'sf-plugin-contract-'));
   const replies=new Map(),requests=[];
   const server=http.createServer(async(req,res)=>{
@@ -18,18 +18,45 @@ async function fixture(t,{saveImage=async()=>({id:'fixture-image'})}={}){
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});});
   const serviceConfig=path.join(root,'service.json');
-  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token:'test-token'}));
+  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token:'test-token',...tokenConfig}));
   const tools=new Map();
   const ctx={
     tools:{register:tool=>tools.set(tool.name,tool)},on(){},
     llm:{resolveModelInfo:async()=>({inputModalities:['image']})},
-    attachments:{saveImage},
+    attachments:{saveImage},launchEnvironment,
     get(name){return this[name];},
   };
-  await apply(ctx,Config({serviceConfig,dshRoot:'/ignored/legacy/source/path'}));
+  const policyConfig=scenePolicy ? {scenePolicyWorkspace:root,policyPython:process.env.PYTHON || 'python'} : {};
+  await apply(ctx,Config({serviceConfig,dshRoot:'/ignored/legacy/source/path',...policyConfig}));
   const exec=(signal=new AbortController().signal)=>({signal,callId:'fixture-call',agent:{session:{id:'fixture-session',requestHeader:()=>({config:{provider:'fixture',model:'fixture'}})},options:{}}});
   return {root,tools,replies,requests,exec};
 }
+
+test('explicit token environment agrees with service precedence over inline token',async(t)=>{
+  const launchEnvironment={getFrom:()=>({value:'environment-token'})};
+  for(const explicit of [false,true]){
+    const f=await fixture(t,{tokenConfig:explicit?{operator_token_env:'OPERATOR_TOKEN'}:{},launchEnvironment});
+    f.replies.set('/inspect',{run_id:'r',state:'SUCCEEDED',tasks:[]});
+    await f.tools.get('spatialforge_status').execute({run_id:'r',detail:true},f.exec());
+    assert.equal(f.requests.at(-1).authorization,'Bearer '+(explicit?'environment-token':'test-token'));
+  }
+});
+
+test('scene policy rejects cube capture and unchecked generation before any service request',async(t)=>{
+  const f=await fixture(t,{scenePolicy:true});
+  await fs.mkdir(path.join(f.root,'scene-library'));
+  await fs.writeFile(path.join(f.root,'scene-library/policy.json'),JSON.stringify({enabled:true,excluded_tasks:['sf_removed.scene0']}));
+  const program=path.join(f.root,'program.json');
+  await fs.writeFile(program,JSON.stringify({objects:[{id:'chair',kind:'box'}]}));
+  await assert.rejects(f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec()),/Scene rejected/);
+  await assert.rejects(f.tools.get('spatialforge_run').execute({intents:[{name:'living room',description:'Indoor scene',split:'train'}]},f.exec()),/unchecked default planner/);
+  await assert.rejects(f.tools.get('spatialforge_dataset').execute({intent:{source_task_id:'sf_removed.scene0'}},f.exec()),/removed by the user/);
+  assert.equal(f.requests.length,0);
+  await fs.writeFile(program,JSON.stringify({objects:[{id:'chair',kind:'mesh'}]}));
+  f.replies.set('/capture',{run_id:'r',task_id:'r.scene0',state:'accepted'});
+  await f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec());
+  assert.equal(f.requests.length,1);
+});
 
 test('Config rejects missing or mistyped service config and accepts the legacy preset field',async(t)=>{
   assert.throws(()=>Config({}),/serviceConfig/);

@@ -179,17 +179,18 @@ python3.11 spatialforge_app.py setup
   `worker_token` 相同。
 - `database.env` 的 `POSTGRES_PORT` = 服务端 `database_url` 中的端口。
 
-### 3. 模型提供方（本项目已配置）
+### 3. 模型提供方（按环境选择）
 
-`config/benchforge.local.yml` 由 `build_preset.py` 生成，末尾追加了本项目覆盖项：
+`config/benchforge.local.yml` 由 `build_preset.py` 生成。若当前环境提供本地 Qwen
+中转，可在生成后的本地文件中追加覆盖项；仓库不把该服务作为通用生产默认值：
 
 - `hmr: disabled`：本机 inotify 配额已满，关闭文件热更新，避免 DSH 卡在启动阶段。
 - `llm-pi-ai` 的 `qwen-flash`：`baseURL: http://127.0.0.1:29002/v1`，模型
   `Qwen/Qwen3.8-Flash-Next`，key 由 `config/dsh.env` 的 `QWEN_RELAY_API_KEY` 注入。
-- `agent-default-model`：新会话默认使用 `qwen-flash`。
+- `agent-default-model`：只有在确认本地 Qwen 服务、模型和密钥均已配置后，才将新会话默认切到 `qwen-flash`。
 
-因此 DSH 不再要求 DeepSeek 官方 API Key。旧会话会保留创建时的模型选择，需要在
-会话底部的模型选择器切到 Qwen；新会话默认即为 Qwen。
+未配置本地 Qwen 时，继续使用环境已有的模型提供方；旧会话会保留创建时的模型选择。
+本地 Qwen 的配置只影响当前项目，不改变 FIT 或其他生产部署。
 
 重新执行 `build_preset.py` 会覆盖这些追加项，建议先备份为
 `config/benchforge.local.yml.bak-<日期>`，生成后再把追加项补回。由于已禁用 hmr，
@@ -278,8 +279,8 @@ PostgreSQL）。这也是示例配置使用 `3856`/`55546`/`3081` 的原因。
   使用 `start.sh` 本次输出的地址。
 - 插件加载报 `Cannot find module '@deepseek-ai/...'`：执行
   `npm ci --prefix integrations` 后重启 DSH。
-- 页面模型仍显示 DeepSeek：旧会话保留历史选择，新建会话或在模型选择器里切到
-  Qwen；若新会话仍如此，检查 `config/benchforge.local.yml` 的 `agent-default-model`。
+- 页面模型仍显示已有提供方：这是默认行为；只有在本地 Qwen 服务可用并完成配置后，
+  才在模型选择器中切换或设置 `agent-default-model`。
 - `config/benchforge.local.yml` 是“生成物 + 追加覆盖”，重新生成后需要把追加项补回。
 
 ## 验证与文档

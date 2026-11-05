@@ -33,6 +33,11 @@ window.__ModuleLoader__.load({
       inputs: '输入', outputs: '输出', completion_condition: '完成条件', artifacts: '交付文件', path: '保存位置', format: '格式',
       contents: '内容', acceptance: '交付验收', issue: '风险或限制', impact: '影响', mitigation: '应对方式', status: '状态',
       task_id: '场景任务', revision: '版本', run_id: '运行', program_path: '场景程序', source_directory: '来源目录',
+      geometry_exceptions: '简化几何实验声明', reason: '简化原因', simplifications: '简化内容与范围',
+      retained_constraints: '保留的物理与实验约束', excluded_claims: '能力边界',
+      summary: '场景摘要', hard_requirements: '必须满足的要求', object_roles: '物体用途', role: '用途与位置',
+      relations: '空间与使用关系', description: '具体说明', physical_assumptions: '物理假设与验证范围',
+      revision_history: '设计修订依据', changes: '修改内容', type: '关系',
     };
     const dictionaries = {
       zh: {
@@ -127,6 +132,8 @@ window.__ModuleLoader__.load({
         persistedPlan: '已落盘评测计划', planSteps: '计划步骤', reportPending: '最终报告尚未生成；执行完成不等于评测通过。',
         completePlan: '完整评测设计', legacyPlan: '当前仅有执行摘要，尚缺完整评测设计。', completePlanRequest: '按模板补全计划',
         revisePlan: '修改计划', continuePlan: '按此计划继续生产', exportPlan: '导出计划', exportPlanText: '导出 Markdown',
+        planMarkdownEditor: '完整计划 Markdown', planEditNote: '编辑整篇文档，保存后由生产代理同步题量、规则和执行步骤。',
+        savePlan: '保存并应用', cancelPlanEdit: '取消', savingPlan: '保存中…',
         planDesignNote: '以下数量和阈值为计划目标；执行结果见各阶段产物。', templateReadFailed: '评测计划模板读取失败，尚未发送请求。',
         planTemplate: '大模型评测计划模板', planTemplateNote: '提交需求后由大模型填写并保存，计划页显示真实内容。',
         knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
@@ -243,6 +250,8 @@ window.__ModuleLoader__.load({
         persistedPlan: 'Persisted evaluation plan', planSteps: 'Planned steps', reportPending: 'No final report yet. Execution completion is not benchmark approval.',
         completePlan: 'Assessment design', legacyPlan: 'This execution summary needs a complete assessment design.', completePlanRequest: 'Complete from template',
         revisePlan: 'Revise plan', continuePlan: 'Continue production from plan', exportPlan: 'Export plan', exportPlanText: 'Export Markdown',
+        planMarkdownEditor: 'Full plan Markdown', planEditNote: 'Edit the complete document. After saving, the production agent updates item counts, rules and execution steps.',
+        savePlan: 'Save and apply', cancelPlanEdit: 'Cancel', savingPlan: 'Saving…',
         planDesignNote: 'Counts and thresholds are design targets. Execution results appear in stage artifacts.', templateReadFailed: 'Could not read the assessment template. Nothing was submitted.',
         planTemplate: 'Model assessment template', planTemplateNote: 'The model fills and saves the template after submission. This page shows its saved content.',
         knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
@@ -313,7 +322,7 @@ window.__ModuleLoader__.load({
     function card(title, children) { return h('section', {className: 'bfw-card'}, h('h2', null, title), h('div', {className: 'bfw-body'}, children)); }
     function empty(text) { return h('div', {className: 'bfw-empty'}, text); }
     function json(value) { return h('pre', {className: 'bfw-json'}, JSON.stringify(value, null, 2)); }
-    const PLAN_TECHNICAL=new Set(['id','objective_id','task_id','run_id','selection_path','source_directory','program_path','path','artifact','revision','evidence']);
+    const PLAN_TECHNICAL=new Set(['id','objective_id','task_id','run_id','scene_id','scene_design_id','object_ids','object_id','source','target','evidence_directory','previous_attempt','selection_path','source_directory','program_path','path','artifact','revision','evidence']);
     function sceneName(name,index=0) {
       const label=String(name || '');
       if(/[\u4e00-\u9fff]/.test(label))return label;
@@ -362,9 +371,59 @@ window.__ModuleLoader__.load({
         : value && typeof value === 'object' ? Object.entries(value).map(([key, child]) => '  '.repeat(depth) + (PLAN_FIELDS[key] || key) + ': ' +
           (typeof child === 'object' && child !== null ? '\n' + format(child, depth + 1) : child === true ? '是' : child === false ? '否' : child ?? '—')).join('\n') : String(value ?? '—');
       const document = plan.assessment;
+      if (typeof plan.user_markdown === 'string') return plan.user_markdown;
       if (!document) return '# ' + (plan.objective || '评测计划') + '\n\n执行摘要\n\n```json\n' + JSON.stringify(plan, null, 2) + '\n```\n';
       return '# ' + document.title + '\n\n' + document.summary + '\n\n' + PLAN_SECTIONS.filter(([key]) => document[key]).map(([key, title]) =>
         '## ' + title + '\n\n' + format(document[key])).join('\n\n') + '\n';
+    }
+    function planMarkdownView(markdown) {
+      const inline = (value) => value.split(/(!?\[[^\]]*\]\([^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g).map((part,index) => {
+        const link = part.match(/^(!?)\[([^\]]*)\]\(([^\s)]+)\)$/);
+        if (link && /^(?:https?:\/\/|\/[^/]|\.\.?\/)/i.test(link[3])) return link[1]
+          ? h('img',{key:index,src:link[3],alt:link[2],loading:'lazy',style:{maxWidth:'100%'}})
+          : h('a',{key:index,href:link[3],target:'_blank',rel:'noreferrer'},link[2]);
+        if (part.startsWith('`') && part.endsWith('`')) return h('code',{key:index},part.slice(1,-1));
+        if (part.startsWith('**') && part.endsWith('**')) return h('strong',{key:index},part.slice(2,-2));
+        return part;
+      });
+      const rows = String(markdown).replace(/\r\n?/g,'\n').split('\n'), blocks=[];
+      let index=0;
+      const isBlock = (line) => /^(?:#{1,6}\s|```|\s*[-*+]\s|\s*\d+[.)]\s|>\s|\s*$)/.test(line);
+      while (index<rows.length) {
+        const line=rows[index++];
+        if (!line.trim()) continue;
+        const heading=line.match(/^(#{1,6})\s+(.+)$/), fence=line.match(/^```([^\s]*)\s*$/);
+        if (heading) {blocks.push(h('h'+heading[1].length,{key:blocks.length},inline(heading[2])));continue;}
+        if (fence) {
+          const code=[];while(index<rows.length && !/^```\s*$/.test(rows[index]))code.push(rows[index++]);index++;
+          const content=h('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},h('code',null,code.join('\n')));
+          blocks.push(fence[1]==='assessment-yaml' ? h('details',{key:blocks.length},h('summary',null,'可执行计划数据'),content)
+            : h('div',{key:blocks.length},content));continue;
+        }
+        const list=line.match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+        if (list) {
+          const ordered=/^\d/.test(list[1]),items=[list[2]];
+          while(index<rows.length) {const next=rows[index].match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+            if(!next || /^\d/.test(next[1])!==ordered)break;items.push(next[2]);index++;}
+          blocks.push(h(ordered?'ol':'ul',{key:blocks.length},items.map((value,item)=>h('li',{key:item},inline(value)))));continue;
+        }
+        if (/^>\s/.test(line)) {blocks.push(h('blockquote',{key:blocks.length},inline(line.replace(/^>\s/,''))));continue;}
+        if (/^\s*(?:---+|\*\*\*+)\s*$/.test(line)) {blocks.push(h('hr',{key:blocks.length}));continue;}
+        if (line.includes('|') && index<rows.length && /^\s*\|?\s*:?-{3,}/.test(rows[index])) {
+          const cells=(value)=>value.trim().replace(/^\||\|$/g,'').split('|').map(cell=>inline(cell.trim()));
+          const headers=cells(line),body=[];index++;
+          while(index<rows.length && rows[index].includes('|') && rows[index].trim())body.push(cells(rows[index++]));
+          blocks.push(h('div',{key:blocks.length},table(headers,body)));continue;
+        }
+        const paragraph=[line];while(index<rows.length && !isBlock(rows[index]))paragraph.push(rows[index++]);
+        blocks.push(h('p',{key:blocks.length,style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},inline(paragraph.join('\n'))));
+      }
+      return h('div',{className:'bfw-plan-markdown-view','data-plan-markdown-view':true},blocks);
+    }
+    function planEditInstruction(path) {
+      return '用户已编辑计划 Markdown，已保存的新版本：'+path+
+        '\n必须读取该 Markdown 正文与其 _plan_edit.base_plan 指向的原计划，逐项落实所有改动并以新计划继续生产。调用 pipeline_plan(applies_edit="'+path+
+        '") 时提供 markdown_resolution 数组；每个规范化字段变更一项，格式为 {path, before, after, instruction}：path 是 assessment 相对点路径（数组用十进制索引），before 必须等于原 assessment 值，after 是规范化后的新值，instruction 必须逐字引用正文中提出该变更的原句。不得从旧正文或代码块取引文。题量、题型、场景数等要同步更新 assessment、selections、inputs 和相关执行步骤，并通过已有校验。split 与场景选择保持锁定。Markdown 中其他制作规则要落实到场景方案、任务代码、校验及执行步骤；不得只复述文档。保存新执行计划后使用新的 run 继续生产，复用仍符合新合同的已有产物和已提交采集。';
     }
     function table(headers, rows) {
       return h('div', {className: 'bfw-scroll'}, h('table', {className: 'bfw-table'},
@@ -742,15 +801,21 @@ window.__ModuleLoader__.load({
       const [view, setView] = React.useState(0);
       const [error, setError] = React.useState('');
       const [attempt, setAttempt] = React.useState(0);
-      return h('div', {className: 'bfw-scene-video'}, error ? h('div', {className: 'bfw-error', role: 'alert'},
-        t('sceneVideoFailed'), ' ' + error, button(t('retry'), () => {setError(''); setAttempt((value) => value + 1);})) : project.video ?
-        h('video', {key: attempt, src: project.video.url, poster: project.frames[0]?.url, preload: 'auto',
+      const videoUrl=project.video?.url || '';
+      React.useEffect(() => {setError('');setView(0);}, [project.id, videoUrl]);
+      const hasVideo=!!project.video && !error;
+      const frameViews=project.frames.length ? h(React.Fragment, null,
+        h('img', {src: project.frames[view]?.url, alt: project.title}),
+        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setView((index) => index - 1), {disabled: view === 0}),
+          h('span', null, t('sceneViews') + ' ' + (view + 1) + ' / ' + project.frames.length),
+          button(t('nextPage'), () => setView((index) => index + 1), {disabled: view >= project.frames.length - 1}))) : null;
+      return h('div', {className: 'bfw-scene-video'},
+        error && h('div', {className: 'bfw-error', role: 'alert'},
+          t('sceneVideoFailed'), ' ' + error, button(t('retry'), () => {setError(''); setAttempt((value) => value + 1);}),
+          project.frames.length > 0 && h('span', {className: 'bfw-muted'}, ' · 已切换到实拍视角')),
+        hasVideo ? h('video', {key: videoUrl + ':' + attempt, src: videoUrl, poster: project.frames[0]?.url, preload: 'auto',
           controls: true, autoPlay: true, loop: true, muted: true, playsInline: true,
-          'aria-label': t('sceneTour'), onError: () => setError(t('artifactReadFailed'))}) :
-        h(React.Fragment, null, h('img', {src: project.frames[view]?.url, alt: project.title}),
-          h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setView((index) => index - 1), {disabled: view === 0}),
-            h('span', null, t('sceneViews') + ' ' + (view + 1) + ' / ' + project.frames.length),
-            button(t('nextPage'), () => setView((index) => index + 1), {disabled: view >= project.frames.length - 1}))),
+          'aria-label': t('sceneTour'), onLoadedData: () => setError(''), onError: () => setError(t('artifactReadFailed'))}) : frameViews,
         h('p', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
     }
     function SceneLibrary({record, selection, saving, error, choose, query, search, origin, filter, page, refresh, preview, t}) {
@@ -762,7 +827,7 @@ window.__ModuleLoader__.load({
       const changePage = (checked) => {
         const ids = new Set(data.items.map((row) => row.id));
         const kept = selected.filter((row) => !ids.has(row.id));
-        choose(checked ? [...kept, ...data.items.filter((row) => row.available).map((row) => ({id: row.id, revision: row.revision}))] : kept,
+        choose(checked ? [...kept, ...data.items.filter((row) => row.available && row.production_eligible!==false).map((row) => ({id: row.id, revision: row.revision}))] : kept,
           selection.allow_new_scenes);
       };
       return h('section', {'data-scene-library': true},
@@ -779,17 +844,19 @@ window.__ModuleLoader__.load({
         h('label', {className: 'bfw-consent bfw-library-policy'}, h('input', {type: 'checkbox', checked: !!selection?.allow_new_scenes,
           disabled: busy, onChange: (event) => choose(selected, event.target.checked)}), t('allowNewScenes')),
         h('small', {className: 'bfw-hint'}, t('sceneSelectionHelp')),
+        selection?.notice && h('small', {className: 'bfw-hint', role: 'status'}, selection.notice),
         error && h('p', {className: 'bfw-error', role: 'alert'}, error),
         h('div', {className: 'bfw-scene-projects'}, data.items.map((row) => {
           const checked = selected.some((reference) => reference.id === row.id && reference.revision === row.revision);
           const name=sceneName(row.name,data.items.indexOf(row));
-          const project = {...row, title: name, kind: 'scene'};
+          const project = {...row, title: name, kind: 'scene', library: true};
           return h('article', {className: 'bfw-preview-card bfw-scene-project' + (checked ? ' bfw-scene-selected' : ''), key: row.id,
             'data-scene-project': row.id, 'data-scene-selected': String(checked)},
-            h('label', {className: 'bfw-scene-select'}, h('input', {type: 'checkbox', checked, disabled: busy || !row.available,
+            h('label', {className: 'bfw-scene-select'}, h('input', {type: 'checkbox', checked, disabled: busy || !row.available || row.production_eligible===false,
               'aria-label': t('useScene') + ' ' + name, onChange: (event) => choose(event.target.checked
                 ? [...selected.filter((reference) => reference.id !== row.id), {id: row.id, revision: row.revision}]
-                : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)}), t('useScene')),
+                : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)}), row.production_eligible===false ? '待物理与生活合理性验收' : t('useScene')),
+            row.scene_style==='simplified_geometry' ? h('p', {className: 'bfw-muted'}, '简化几何实验 · ' + (row.geometry_purpose || '按计划测量')) : null,
             h('button', {type: 'button', className: 'bfw-preview-open', disabled: !row.available, onClick: () => preview(project),
               'aria-label': t('preview') + ' ' + name},
               h('span', {className: 'bfw-scene-poster'}, row.video ? h('video', {src: row.video.url, poster: row.frames[0]?.url,
@@ -798,6 +865,7 @@ window.__ModuleLoader__.load({
                 row.available && h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, row.video ? '▶' : '↔')),
               h('strong', null, name), h('span', {className: 'bfw-muted'}, t(row.origin_session === selection?.session_id ? 'currentScenes' : 'historyScenes') +
                 ' · ' + t('recordedViews') + ': ' + row.frame_count)),
+            row.description ? h('details',null,h('summary',null,'场景摘要'),h('p',null,row.description)) : null,
             h('details',null,h('summary',null,'技术详情'),h('p', {className: 'bfw-code'}, row.id+' · 采集版本 '+row.revision)));
         })),
         !data.items.length && empty(t('noMatchingRuns')),
@@ -947,28 +1015,15 @@ window.__ModuleLoader__.load({
       const [pending,setPending]=React.useState(null);
       const draftRef=React.useRef(null);
       const lock=React.useRef(false);
-      const begin=()=>{const value={assessment:JSON.parse(JSON.stringify(plan.assessment)),split:plan.inputs?.split || 'train',base:source?.plan_path};
+      const begin=()=>{const markdown=planMarkdown(plan),value={markdown,base_markdown:markdown,split:plan.inputs?.split || 'train',base:source?.plan_path};
         draftRef.current=value;setDraft(value);setError('');};
-      const change=(path,value)=>{
-        const copy=JSON.parse(JSON.stringify(draftRef.current));
-        let parent=copy.assessment;for(const key of path.slice(0,-1)) parent=parent[key];parent[path[path.length-1]]=value;
-        if(path[0]==='coverage' && path[2]==='count') copy.assessment.dataset.target_items=copy.assessment.coverage.reduce((sum,row)=>sum+(row.count || 0),0);
-        if(path.join('.')==='dataset.target_items' && Number.isInteger(value) && value>=copy.assessment.coverage.length) {
-          const rows=copy.assessment.coverage,total=rows.reduce((sum,row)=>sum+row.count,0),remaining=value-rows.length;
-          const allocation=rows.map((row,index)=>({index,share:remaining*(total ? row.count/total : 1/rows.length)}));
-          let left=value;allocation.forEach((row)=>{rows[row.index].count=1+Math.floor(row.share);left-=rows[row.index].count;});
-          allocation.sort((a,b)=>(b.share%1)-(a.share%1)).slice(0,left).forEach((row)=>rows[row.index].count++);
-        }
-        draftRef.current=copy;
-        if(typeof value!=='string') setDraft(copy);
-      };
       const apply=async(path)=>{let message='',ok=false;
         try{ok=await applyEdit(path,(value)=>{message=value;});}catch(error){message=error.message;}
         if(!ok) setError('计划已保存，制作变更尚未提交。'+(message || '请点击“应用已保存修改”重试。'));
         else {setPending(null);setError('');}return ok;};
       const commit=async()=>{
         if(lock.current)return;lock.current=true;setBusy(true);setError('');
-        try {const value=draftRef.current;const result=await save({plan_path:value.base,assessment:value.assessment,split:value.split});
+        try {const value=draftRef.current;const result=await save({plan_path:value.base,markdown:value.markdown,base_markdown:value.base_markdown,split:value.split});
           setDraft(null);draftRef.current=null;
           if(result.state!=='unchanged'){setPending(result.plan);if(applyEdit)await apply(result.plan);}
         }catch(error){setError(error.message);}finally{lock.current=false;setBusy(false);}
@@ -976,7 +1031,7 @@ window.__ModuleLoader__.load({
       if (!plan) return h('div', null, empty(t('planPending')), h('details', null, h('summary', null, t('planTemplate')),
         h('small', {className: 'bfw-hint'}, t('planTemplateNote')),
         h('ol', null, (template?.sections || PLAN_SECTIONS.map(([key, title]) => ({key, title}))).map((row) => h('li', {key: row.key}, row.title)))));
-      const document = draft?.assessment || plan.assessment;
+      const document = plan.assessment;
       const labels=Object.fromEntries((plan.template_contracts || []).map((row)=>[row.id,row.title || row.task_name]));
       const sections = PLAN_SECTIONS.filter(([key]) => document?.[key]);
       const operate = (text) => request('本次操作对象是当前页面展示的已保存计划：' +
@@ -985,35 +1040,39 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
           document && h('span', {className: 'bfw-pill'}, t('completePlan') + ' · ' + sections.length + '/' + PLAN_SECTIONS.length),
           !draft && (document ? save && button(t('revisePlan'),begin,{'data-plan-revise':true}) : request && button(t('completePlanRequest'),()=>operate('请按照完整评测计划模板补全并保存 assessment，复用当前场景约束。'),{'data-plan-revise':true})),
-          draft && button(busy ? '保存中…' : '保存并应用',commit,{'data-plan-save':true,disabled:busy}),
-          draft && button('取消',()=>{setDraft(null);draftRef.current=null;setError('');},{'data-plan-cancel':true,disabled:busy}),
+          draft && button(t(busy ? 'savingPlan' : 'savePlan'),commit,{'data-plan-save':true,disabled:busy}),
+          draft && button(t('cancelPlanEdit'),()=>{setDraft(null);draftRef.current=null;setError('');},{'data-plan-cancel':true,disabled:busy}),
           !draft && (pending || (plan.edit_revision && !plan.applies_edit)) && applyEdit && button('应用已保存修改',()=>apply(pending || source.plan_path),{'data-plan-apply':true}),
           !draft && !pending && !plan.edit_revision && document && request && button(t('continuePlan'), () => operate('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
           h('a', {className: 'bfw-button', href: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(plan, null, 2)), download: 'assessment-plan.json'}, t('exportPlan')),
           h('a', {className: 'bfw-button', href: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(planMarkdown(plan)), download: 'assessment-plan.md'}, t('exportPlanText'))),
         error && h('p',{className:'bfw-error',role:'alert'},error),
-        draft && h('small',{className:'bfw-hint'},'直接点击正文修改。题量会同步到制作参数；保存后按新计划更新制作。'),
+        draft && h('small',{className:'bfw-hint'},t('planEditNote')),
         draft && select('制作分区',draft.split,(value)=>{draftRef.current={...draftRef.current,split:value};setDraft({...draftRef.current});},['train','dev','test','sealed'].map(value=>[value,value])),
-        h('h3', null, document ? planValue(document.title,draft ? change : null,['title'],labels) : (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
+        typeof plan.user_markdown !== 'string' && h('h3', null, document ? planValue(document.title,null,['title'],labels) : (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
         scenes.length>0 && h('div',{className:'bfw-plan-scenes','data-plan-scene-previews':true},scenes.slice(0,3).map((row)=>h('button',{
           type:'button',className:'bfw-plan-scene',key:row.id,onClick:()=>preview({...row,title:row.name,kind:'scene'})},
           row.frames?.[0]?.url && h('img',{src:row.frames[0].url,alt:sceneName(row.name),loading:'lazy'}),h('span',null,sceneName(row.name)),h('small',null,row.planCurrent ? '本会话已采集场景' : '已采集参考场景')))),
-        document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, planValue(document.summary,draft ? change : null,['summary'],labels)),
+        draft ? h('textarea', {className:'bfw-input bfw-plan-markdown-editor', 'data-plan-markdown-editor':true,
+          'aria-label':t('planMarkdownEditor'), rows:32, spellCheck:false,
+          style:{minHeight:'min(70vh, 50rem)',fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:'.8rem',lineHeight:1.55,whiteSpace:'pre',overflow:'auto'},
+          value:draft.markdown,
+          onChange:(event)=>{const value={...draftRef.current,markdown:event.target.value};draftRef.current=value;setDraft(value);}}) : typeof plan.user_markdown === 'string' ? planMarkdownView(plan.user_markdown) : document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, planValue(document.summary,null,['summary'],labels)),
           h('small', {className: 'bfw-hint'}, t('planDesignNote')),
           h('nav', {className: 'bfw-plan-toc', 'aria-label': t('completePlan')}, sections.map(([key, title], index) =>
             h('a', {key, href: '#bfw-plan-' + key}, String(index + 1).padStart(2, '0') + ' ' + title))),
           sections.map(([key, title], index) => h('section', {key, id: 'bfw-plan-' + key, className: 'bfw-plan-section', 'data-plan-section': key},
-            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key],draft ? change : null,[key],labels))))
+            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key],null,[key],labels))))
           : h('p', {className: 'bfw-hint'}, t('legacyPlan')),
-        h(document ? 'details' : React.Fragment, document ? {} : null, document && h('summary', null, t('planSteps')),
+        !draft && h(document ? 'details' : React.Fragment, document ? {} : null, document && h('summary', null, t('planSteps')),
         plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
           h('dt', null, key), h('dd', null, typeof value === 'object' ? JSON.stringify(value) : String(value))))),
         plan.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
           plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
         plan.steps?.length ? table([t('steps'), t('operator'), t('details')], plan.steps.map((row) =>
           [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null),
-        artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
-        h('details', null, h('summary', null, t('plan')), json(plan)));
+        !draft && artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
+        !draft && h('details', null, h('summary', null, t('plan')), json(plan)));
     }
     function ReportProduct({item, observedAt, t}) {
       const [data, setData] = React.useState(item?.data || null);
@@ -1181,7 +1240,7 @@ window.__ModuleLoader__.load({
       React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
       React.useEffect(() => {localStorage.setItem('bfw:production-request:' + sessionId, JSON.stringify(demand));}, [demand, sessionId]);
       React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
-      React.useEffect(() => {setPreview(null);}, [selectedRunId, sourceScene?.run_id]);
+      React.useEffect(() => {setPreview((current) => current?.library ? current : null);}, [selectedRunId, sourceScene?.run_id]);
       React.useEffect(() => {
         if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({page: Math.max(1, dataset.value.pages)});
       }, [dataset.value, route.page]);
@@ -1284,6 +1343,7 @@ window.__ModuleLoader__.load({
             '\n每个阶段 S1 计划、S2 场景、S3 标注、S4 题目、S5 报告完成后，展示真实产物并等待用户 5 分钟。使用 stage_review 打开及等待持久关口；无新指令到期继续，有指令先处理，暂停后不得自动继续。\n' +
             '\n制定或修改评测计划时必须遵守以下完整模板；已有完整计划且本次只要求继续执行时，复用已有计划。\n' +
             template.instructions + '\n' + template.scene_binding + '\n各章节要求：\n' + JSON.stringify(template.sections, null, 2) +
+            (template.scene_authoring ? '\n场景标题、摘要、空间关系与双向修订合同：\n' + JSON.stringify(template.scene_authoring, null, 2) : '') +
             '\n传入 pipeline_plan.assessment 的填写结构：\n' + JSON.stringify(template.assessment, null, 2)}, setError);
         } catch (error) {setError(t(readError) + ' ' + error.message); return false;}
         finally {selectionSubmitLock.current = false; setSending(false);}
@@ -1297,9 +1357,7 @@ window.__ModuleLoader__.load({
       };
       const applyPlanEdit=async(path,setError)=>{
         if(conversationRunning)await stopExecution();
-        return submitWithScenes({text:'用户已在计划正文中完成编辑，已保存的新计划：'+path+
-          '\n必须先读取该文件，比较 edit_revision.base_plan，并按修改后的正文更新场景方案、任务代码、校验和可执行步骤。调用 pipeline_plan(applies_edit="'+path+
-          '")，原样保留该文件的 assessment、selections 和 inputs 中的题量、种子、分区及场景约束。文字规则必须落实到制作代码和步骤，不能只复述文档。新执行计划保存后使用新的 run 继续生产，复用仍符合新合同的已有产物和已提交采集。',
+        return submitWithScenes({text:planEditInstruction(path),
           inserted:false,reviewContinued:true},setError);
       };
       const confirmSend = async () => {
@@ -1412,7 +1470,7 @@ window.__ModuleLoader__.load({
           h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
             capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
           runHistory);
-        else if (stage.id === 'S2' && sceneLibraryView.value) product = h(SceneLibrary, {record: sceneLibraryView,
+        else if (stage.id === 'S2' && (sceneLibraryView.value || sceneLibraryView.error || sceneLibraryView.loading)) product = h(SceneLibrary, {record: sceneLibraryView,
           selection: currentSceneSelection, saving: sceneSaving || sending, error: sceneError, choose: chooseScenes,
           query: sceneQuery, search: (query) => {setSceneQuery(query); setScenePage(1);}, origin: sceneOrigin,
           filter: (origin) => {setSceneOrigin(origin); setScenePage(1);}, page: setScenePage,
