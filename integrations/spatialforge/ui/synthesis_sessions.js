@@ -3,6 +3,8 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 
 const queues = new Map();
+const nativeIdleProbes = new WeakMap();
+const NATIVE_ACTIVITY_PROBE_MS = 50;
 const SCHEMA = 'benchforge.synthesis-sessions/v1';
 const PARENT_TOOLS = ['pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', 'pipeline_evaluate',
   'stage_review', 'spatial_export', 'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine',
@@ -11,6 +13,7 @@ const PARENT_TOOLS = ['pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', '
 const PERSONA = `You are a SpatialForge preparation worker for one self-contained artifact assignment. Read the supplied frozen plan, contracts and relevant saved evidence. Write only inside the assigned output directory. Start file operations by changing to that directory and using explicit paths; preserve parent plans, scene selections, runner state, accepted artifacts and other workers' files.
 At the start of file work, batch-copy the supplied source scripts or programs into your directory and save manifest.json with status preparing, the working artifact paths and known missing inputs. Use the supplied source paths instead of rediscovering the workspace or checking the whole production chain first. On recovery, preserve saved edits and continue the existing working copies. If a source is actually missing, record its exact path and continue the already determined scope; when no source was supplied, save the known design or script scaffold and preparing manifest first.
 Apply the smallest concrete patch. Locate and batch-read only the functions or sections needed for it, then save known changes as you work. For scene design, persist the title, descriptive summary and program draft before investigating unresolved structure. If an exact input or required structure remains unknown, state the specific question or missing field in the manifest and hand off the completed scope; do not delay all saved preparation while trying to validate the entire production pipeline.
+Keep verification proportional to the actual change and unresolved evidence. Do not add complex SHA checks or compute checksums for every input, PNG, output and receipt. Preserve supplied native identities and use necessary file size/mtime version bindings. Serialize JSON/JSONL directly with explicit UTF-8 writes; do not re-read every newly written record just to check serialization. Do not repeatedly scan directories, poll unchanged state or revalidate unrelated completed stages. Run only the checks needed for the patch and its source/production boundary; broaden checks when a concrete failure requires it.
 Preparation is complete when the requested edits or design artifacts are saved, checks proportional to those changes have run, and an honest manifest reports artifact paths, actual checks, missing inputs and unresolved issues. A useful saved partial preparation can be handed off with its concrete blocker. Parent production acceptance is a later responsibility and must not prevent preparation drafts from being saved or delivered. Preserve hard requirements, exact measurement and public-question contracts, provenance, physics and everyday realism. Recognizable real assets are the default; geometry explicitly declared in the frozen plan remains valid in its scope. Predictions and references are not captured evidence or GT; record unaccepted or missing inputs without inventing results.
 The parent owns authoritative merging, capture, acceptance, export and each production stage's user window. Do not spawn more workers, create stage windows or bypass parent-owned tools through a shell, HTTP or task code. Question workers deliver S4 preparation or shards; the parent packages S5 after aggregate S4 acceptance. Update manifest.json to reflect the actual preparation outcome and quote its path in the final handoff. Preparation completion and accepted scene/data production are separate outcomes.`;
 
@@ -116,6 +119,45 @@ async function lock(file) {
   }
 }
 
+function activityError(error) {
+  return {name: error?.name || 'Error', message: error?.message || String(error),
+    ...(error?.code !== undefined ? {code: error.code} : {})};
+}
+
+function nativeIdleProbe(agent) {
+  const cached = nativeIdleProbes.get(agent);
+  if (cached?.state === 'pending') return cached;
+  const probe = {state: 'pending'};
+  let finishRead;
+  let timer;
+  // Reads await this bounded promise, never the Agent's unbounded promise.
+  // Once timed out, subsequent reads of a pending probe return immediately.
+  probe.readReady = new Promise(resolve => {
+    finishRead = () => { clearTimeout(timer); resolve(); };
+    timer = setTimeout(resolve, NATIVE_ACTIVITY_PROBE_MS);
+  });
+  nativeIdleProbes.set(agent, probe);
+  try {
+    probe.idlePromise = agent.whenIdle();
+    if (!probe.idlePromise || typeof probe.idlePromise.then !== 'function') {
+      probe.state = 'unknown';
+      probe.reason = 'Agent.whenIdle() did not return a promise';
+      finishRead();
+    } else {
+      // Exactly one completion listener for an unfinished Agent probe. Readers
+      // reuse readReady instead of racing or reattaching to idlePromise.
+      Promise.resolve(probe.idlePromise).then(() => {
+        probe.state = 'settled'; finishRead();
+      }, error => {
+        probe.state = 'error'; probe.error = activityError(error); finishRead();
+      });
+    }
+  } catch (error) {
+    probe.state = 'error'; probe.error = activityError(error); finishRead();
+  }
+  return probe;
+}
+
 /**
  * A trusted server adapter for native continuable spawn. The caller owns route
  * authentication and registered-workspace admission. Native spawn inherits the
@@ -124,6 +166,28 @@ async function lock(file) {
 export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
   if (!Number.isSafeInteger(batchSize) || batchSize < 1) throw new SynthesisError('batchSize must be a positive integer');
   const get = name => ctx.get(name);
+
+  async function nativeActivity(agentId) {
+    let agent;
+    try {
+      agent = get('agents')?.get(agentId);
+      if (!agent) return {available: false, agentStatus: null, idleConfirmed: false, activityPending: null};
+      const probe = typeof agent.whenIdle === 'function' ? nativeIdleProbe(agent) : undefined;
+      if (probe) await probe.readReady;
+      const agentStatus = typeof agent.status === 'string' ? agent.status : null;
+      if (!probe || probe.state === 'unknown') return {available: true, agentStatus,
+        idleConfirmed: false, activityPending: agentStatus === 'running' ? true : null,
+        reason: probe?.reason || 'Agent.whenIdle() is unavailable; agentStatus alone cannot confirm idle'};
+      if (probe.state === 'error') return {available: true, agentStatus, idleConfirmed: false,
+        activityPending: agentStatus === 'running' ? true : null, error: probe.error};
+      return {available: true, agentStatus,
+        idleConfirmed: probe.state === 'settled' && agentStatus === 'idle',
+        activityPending: probe.state === 'pending' || agentStatus === 'running'};
+    } catch (error) {
+      return {available: Boolean(agent), agentStatus: null, idleConfirmed: false,
+        activityPending: null, error: activityError(error)};
+    }
+  }
 
   function parentToolDeny(parent) {
     const tools = parent.ctx?.get('tools') || get('tools');
@@ -322,7 +386,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
   async function read({parentId, batchKey}, signal) {
     const {dir, service} = await scope(parentId, false, signal);
     const recordPath = fileOf(dir, batchKey);
-    return serialized(dir, async () => {
+    const value = await serialized(dir, async () => {
       const record = await json(recordPath);
       if (!record) return {parentId, batchKey, recordPath, state: 'not_started', acceptedCount: 0, tasks: []};
       if (record.parentId !== parentId) throw new SynthesisError('This batch belongs to another parent', 403);
@@ -333,6 +397,11 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
         return receipt(record, recordPath);
       } finally { await release(); }
     });
+    const [parentNativeActivity, ...taskActivities] = await Promise.all([
+      nativeActivity(parentId), ...value.tasks.map(task => nativeActivity(task.childId)),
+    ]);
+    return {...value, parentNativeActivity,
+      tasks: value.tasks.map((task, index) => ({...task, nativeActivity: taskActivities[index]}))};
   }
   return {start, read};
 }

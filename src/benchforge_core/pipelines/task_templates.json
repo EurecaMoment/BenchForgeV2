@@ -90,6 +90,11 @@
       ],
       "requirement": "每个实例只能选一种访问模式并冻结；查询答案不能由当前图直接恢复；真值历史不是模型记忆。未观察状态不当事实。"
     },
+    "provenance_recording": {
+      "media_versions": "按需要保存媒体路径、文件大小和mtime版本；不为每个题目重算图片SHA。",
+      "oracle_trace_ref": "引用已有原生或程序oracle回执及其版本，保留可复核来源与测量过程。",
+      "legacy_hashes": "既有原生hash可作为不透明元数据沿用；不要求为新实例计算复杂hash，也不因缺少hash拒绝正常旧记录。"
+    },
     "item_record_fields": [
       "item_id",
       "task_id",
@@ -103,7 +108,7 @@
       "hidden_information_manifest",
       "public_parameters",
       "private_scene_parameters",
-      "media_hashes",
+      "media_versions",
       "scene_group_id",
       "seed",
       "split",
@@ -112,7 +117,7 @@
       "output_schema",
       "ground_truth_or_valid_set",
       "oracle_version",
-      "oracle_trace_hash",
+      "oracle_trace_ref",
       "tolerance_config",
       "admission_checks",
       "provenance"
