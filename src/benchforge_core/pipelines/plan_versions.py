@@ -106,15 +106,20 @@ def _plain_text(markdown):
 def _narrative_unmapped(old,new,resolutions):
     if _plain_text(old)==_plain_text(new):
         return False
-    old_lines=_narrative(old).splitlines()
-    new_lines=_narrative(new).splitlines()
-    instructions=[_plain_text(row['instruction']) for row in resolutions]
+    old_prose,new_prose=_narrative(old),_narrative(new)
+    old_lines=old_prose.splitlines()
+    new_lines=new_prose.splitlines()
+    added=[_plain_text(row['instruction']) for row in resolutions
+           if row['instruction'] in new_prose and row['instruction'] not in old_prose]
+    removed=[_plain_text(row['instruction']) for row in resolutions
+             if row['instruction'] in old_prose and row['instruction'] not in new_prose]
     unmatched=False
     matcher=difflib.SequenceMatcher(a=old_lines,b=new_lines,autojunk=False)
-    for tag,_,_,new_start,new_end in matcher.get_opcodes():
+    for tag,old_start,old_end,new_start,new_end in matcher.get_opcodes():
         if tag=='equal':
             continue
-        changed=[line.strip() for line in new_lines[new_start:new_end] if line.strip()]
+        lines,instructions=(old_lines[old_start:old_end],removed) if tag=='delete' else (new_lines[new_start:new_end],added)
+        changed=[line.strip() for line in lines if line.strip()]
         if not changed or any(not any(_plain_text(line) in instruction for instruction in instructions)
                               for line in changed if _plain_text(line)):
             unmatched=True
@@ -149,8 +154,11 @@ def _check_normalization(saved,previous,args):
         row=by_path[path]
         if not _same(row['before'],before) or not _same(row['after'],after) or _same(before,after):
             raise ValueError('markdown_resolution before/after values do not match '+path)
-        if row['instruction'] not in narrative or row['instruction'] in previous_narrative:
-            raise ValueError('Each normalization instruction must quote newly added or changed Markdown prose, outside the YAML block')
+        instruction=row['instruction']
+        added_quote=instruction in narrative and instruction not in previous_narrative
+        removed_quote=instruction in previous_narrative and instruction not in narrative
+        if not (added_quote or removed_quote):
+            raise ValueError('Each normalization instruction must quote newly added or changed Markdown prose, or prose removed from the previous Markdown, outside the YAML block')
     if _private_projection(assessment)!=_private_projection(previous.get('assessment',{})):
         raise ValueError('Markdown normalization cannot change protected answer, authority or credential fields')
     inputs={**args.get('inputs',{}),**{key:args[key] for key in ('seed','split','evidence') if key in args}}
@@ -222,7 +230,7 @@ def verify_application(active,args):
             raise ValueError('Narrative rules outside resolved production parameters require updated executable steps or evidence inputs.')
         return rows
     if 'user_markdown' in saved:
-        markdown_changed=_narrative(saved['user_markdown'])!=_narrative(previous.get('user_markdown',''))
+        markdown_changed=_plain_text(saved['user_markdown'])!=_plain_text(previous.get('user_markdown',''))
         if markdown_changed and args.get('steps')==saved['steps'] and inputs.get('evidence')==saved['inputs'].get('evidence'):
             raise ValueError('Markdown instructions outside the assessment-yaml block require updated executable steps or evidence inputs.')
     return None

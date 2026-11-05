@@ -40,3 +40,30 @@ missing input, rather than ending every scene after a fixed two attempts.
 The external preset contains the default delegation policy. DSH keeps an active
 session's preset revision locked; existing sessions need explicit steering,
 while new sessions receive the updated worker configuration.
+
+Independent preparation uses the public `spatialforge_prepare` tool or the
+authenticated workbench's shared trusted synthesis adapter. Before creating a
+worker, the adapter resolves the exact provider/model route inherited from the
+parent's latest request and reads its advertised reasoning efforts. Medium is a
+preference only when supported; otherwise it selects an offered lower effort
+such as low, minimal, none or off. A model offering only high/max uses high and
+records that fallback. If those preferred levels are absent, an advertised max
+or another provider-owned effort remains valid: the receipt names the selected
+value and explains that no preferred or lighter level is available. When no
+reasoning control is exposed, the adapter omits the effort override and records
+why the inherited/default behavior applies. The provider/model route, parent
+reasoning and host defaults remain unchanged, and no worker output-token cap is
+added.
+
+The startup receipt records the supported efforts, actual selection and reason
+for each task. A raw native delegate retains the parent's default effort unless
+an explicitly supported override is permitted; it does not automatically become
+a medium worker. Older sessions may reject explicit model-selection parameters,
+so they use the trusted preparation adapter rather than retrying that parameter.
+The adapter resolves tool restrictions against registered canonical names and
+preserves durable batch identities. An optional saved plan path must resolve to
+an existing workspace file; that real path binds the batch and appears in every
+initial worker prompt. Reusing the batch key with a different plan path is
+rejected. A receipt proves inbox admission; verify an actual model request,
+readable handoff files and parent acceptance before reporting successful
+production. See [constraint-policy.md](constraint-policy.md).

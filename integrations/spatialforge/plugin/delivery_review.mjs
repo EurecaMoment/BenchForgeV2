@@ -56,9 +56,17 @@ export function pendingCapture(events, turn) {
     && (submittedHere || revisited.has(latest.runId) || revisited.has(latest.taskId)) ? latest : undefined;
 }
 
-export function createDeliveryReview({ api, createMessage, visuals = async () => [] }) {
+export function productionReviewApplies(agent, tools = agent.ctx?.get('tools')) {
+  if (agent.session.header?.origin !== 'subagent' || typeof tools?.get !== 'function') return true;
+  return ['spatialforge_capture', 'spatialforge_refine', 'spatialforge_run', 'spatialforge_extend']
+    .some(name => tools.get(name, agent)?.name === name);
+}
+
+export function createDeliveryReview({ api, createMessage, visuals = async () => [], shouldReview = productionReviewApplies }) {
   return async ({ agent, turn, signal }, deliver = message => agent.steer(message)) => {
     signal.throwIfAborted();
+    // Read-only preparation does not transfer the parent's production duty.
+    if (!shouldReview(agent)) return;
     const capture = pendingCapture(agent.session.snapshotEvents(), turn);
     if (!capture) return;
     const run = await api('/inspect', { run_id: capture.runId }, signal);

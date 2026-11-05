@@ -188,3 +188,24 @@ test('observing another operation or an unsuccessful tool does not create a scen
   const failed=replay([{type:'turn/start',data:{turn:1}},...observationEvents('spatialforge_status',{run_id:'sf_example'},true)]);
   await failed.run();assert.equal(failed.requests.length,0);
 });
+
+test('read-only preparation can hand off observed captures without taking parent production ownership', async () => {
+  const events=[{type:'turn/start',data:{turn:1}},...observationEvents('spatialforge_status',{run_id:'sf_example'})];
+  const requests=[],messages=[];
+  let productionTool;
+  const tools={get:name=>name===productionTool ? {name} : undefined};
+  const agent={session:{header:{origin:'subagent'},snapshotEvents:()=>events},ctx:{get:()=>tools},
+    steer:message=>messages.push(message)};
+  const review=createDeliveryReview({api:async(...args)=>{requests.push(args);return receipt;},createMessage:x=>x});
+  const input={agent,turn:1,signal:new AbortController().signal};
+  await review(input);
+  assert.equal(requests.length,0);
+  assert.equal(messages.length,0,'preparation must not be ordered to perform denied capture repairs');
+  productionTool='spatialforge_run';
+  await review(input);
+  assert.equal(messages.length,1,'a subagent that owns scene production retains delivery review');
+  productionTool=undefined;
+  agent.session.header.origin='user';
+  await review(input);
+  assert.equal(messages.length,2,'the parent production review remains mandatory');
+});

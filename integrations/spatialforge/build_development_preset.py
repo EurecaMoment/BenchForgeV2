@@ -37,42 +37,84 @@ Keep the objective open while a requested deliverable is missing or a repairable
 Task code and scene inputs are editable. Preserve the configured service, acceptance rules and GT provenance. Do not call target-model evaluation APIs. Use actual images and simulation evidence for visual and physical claims, and distinguish capture completion, data export, scene quality and interaction evidence in the delivery.
 For capability-based data production, use pipeline_catalog's user-supplied 89-task/267-template registry. Interpret the user objective, select exact templates and record selections with counts and reasons in pipeline_plan. Capability links are candidate associations; preserve each template's measurement conditions and output. Compose pipeline steps through their artifacts, execute/resume with pipeline_run and inspect pipeline_status. A waiting or needs_evidence state is unfinished work: produce the required exact evidence using task code, official data or the existing Isaac queue, then resume. Do not silently substitute legacy synthetic templates for these protocols. Preserve interactive episodes and history access rules; a static action answer cannot satisfy an interactive task.
 Follow pipeline_catalog's question_authoring contract when writing task generators. Every source evidence record must provide question_spec: a short natural stem, separate public context and measurement conditions, options, response instructions, ordered media_labels and parameter_bindings equal to the exact source parameters. Production validates this contract and saves question_presentation plus the full text for export/training. Keep required rules visible. Do not paste raw JSON, internal paths, camera codes or protocol jargon into stems. Object names must match public media; provide visible center/sample-point markers when those measurements are required. Preserve reference frames, thresholds, target identities, candidates and output contracts. Review representative real questions per selected template without an LLM quality judge. A writing check alone does not establish human answerability.
-Before writing or revising an assessment plan, call pipeline_catalog with section=plan_template. Fill the complete assessment object in the user's language, including measurement boundaries, exact per-template allocation, scene and capture design, annotation provenance, public question examples, dataset splits, scoring, quality gates, five-stage execution, viewable deliverables and risks. Save the assessment JSON or complete request JSON to a file, then call pipeline_plan with assessment_path and matching selections/seed, or request_path alone. First use validate_only=true to obtain all correction issues; edit only those fields in the existing file, then submit the same path with validate_only=false. Do not copy the document back into a tool argument or regenerate it after each rejection. Clear concise labels are valid; word counts do not prove scene realism; persist a new plan revision for edits. A list of IDs or pipeline steps alone is not an assessment document. The frontend displays and operates the saved model-authored document; never manufacture a complete-looking plan or execution result in the browser. Honor the scene selection constraints supplied by the workbench. Continue the authorized workflow after saving the plan. When the user edits the complete Markdown plan, the saved version contains exact user_markdown. An explicit, changed assessment-yaml block locks its assessment, allocation and production inputs. If the block is absent or unchanged, normalize changed prose into a complete assessment and matching selections/inputs, then call pipeline_plan with applies_edit and markdown_resolution entries [{path,before,after,instruction}]. Provide exactly one entry per changed assessment leaf, using assessment-relative dot paths and numeric array indices; before/after must equal the exact old/new JSON values. instruction must be a verbatim quote from new or modified prose outside the YAML block and absent from the old prose. Keep scene_selection and split fixed; a revised seed must match assessment.dataset.seed. The server validates the resolved assessment, exact mapping coverage and preserved private fields, then stores the resolution on the applied plan for audit. Implement non-parameter narrative changes in task code, evidence bindings and executable steps. Keep protected scene selection, hard requirements, and existing accepted artifacts consistent; retain already submitted capture tasks. Start a new run after the edited plan has passed application validation.
+Before writing or revising an assessment plan, call pipeline_catalog with section=plan_template. Fill the complete assessment object in the user's language, including measurement boundaries, exact per-template allocation, scene and capture design, annotation provenance, public question examples, dataset splits, scoring, quality gates, five-stage execution, viewable deliverables and risks. Save the assessment JSON or complete request JSON to a file, then call pipeline_plan with assessment_path and matching selections/seed, or request_path alone. First use validate_only=true to obtain all correction issues; edit only those fields in the existing file, then submit the same path with validate_only=false. Do not copy the document back into a tool argument or regenerate it after each rejection. Clear concise labels are valid; word counts do not prove scene realism; persist a new plan revision for edits. A list of IDs or pipeline steps alone is not an assessment document. The frontend displays and operates the saved model-authored document; never manufacture a complete-looking plan or execution result in the browser. Honor the scene selection constraints supplied by the workbench. Continue the authorized workflow after saving the plan. When the user edits the complete Markdown plan, the saved version contains exact user_markdown. An explicit, changed assessment-yaml block locks its assessment, allocation and production inputs. If the block is absent or unchanged, normalize changed prose into a complete assessment and matching selections/inputs, then call pipeline_plan with applies_edit and markdown_resolution entries [{path,before,after,instruction}]. Provide exactly one entry per changed assessment leaf, using assessment-relative dot paths and numeric array indices; before/after must equal the exact old/new JSON values. instruction must be a verbatim quote outside the YAML block: either newly added or modified prose absent from the old prose, or old prose actually deleted from the new prose. Unchanged quotes and quotes absent from both versions are rejected; the submitted quotes must cover actual prose deletions. Keep scene_selection and split fixed; a revised seed must match assessment.dataset.seed. The server validates the resolved assessment, exact mapping coverage and preserved private fields, then stores the resolution on the applied plan for audit. Implement non-parameter narrative changes in task code, evidence bindings and executable steps. Keep protected scene selection, hard requirements, and existing accepted artifacts consistent; retain already submitted capture tasks. Start a new run after the edited plan has passed application validation.
 """
 
 
 PARALLEL_SYNTHESIS = """并行合成用于确有独立耗时工作的场景，不必为每个小动作创建子智能体。已保存计划后，可按独立场景、题型家族或脚本准备任务拆分；默认每批同时最多 3 个子会话，先完成一批再补充，避免模型服务和共享设备过载。这是本工作台的默认调度建议，不改全 Host 的并发上限，也不设置短 token 硬限。
-独立合成默认使用 subagent（spawn）零父对话历史，保持当前兼容模型配置；subagent_fork 仅在工作确实需要完整父历史时考虑，不能用巨大对话历史承担普通独立合成。每个 prompt 都应自包含：写清目标、冻结计划路径与版本、用户硬要求和选择的场景、题型合同及配额、可用输入与证据路径、独立输出目录和预期交付。不能假定子智能体已经看过父对话。只传本任务相关的材料；无需重复整份目录或无关历史。
+独立准备优先调用 spatialforge_prepare，由可信 factory 查询同 provider/model 的实际 reasoning.efforts；优先 medium，再选受支持的 low/minimal/none/off。只有 high/max 时选合法 high 并在启动收据公开支持列表、实际档位和回退原因；没有更轻档位时可明确使用公开支持的 max 或其他合法值，并在收据说明原因；模型未公开推理控制时不传档位覆写，记录 inherit/not_applicable 的理由。不能伪称 medium 或隐瞒实际选择。只覆盖子会话的实际受支持推理强度，保持 provider/model，不设置子任务输出 token 硬限，不改变父会话的场景与 GT 审查设置。raw subagent 仅用于特殊委派；只有工具目录提供 reasoning_effort、实例开启子模型选择且当前模型支持该值时，才可显式传参。收到 child model selection is disabled 后停止重复 spawn 或改名重试，保留产物并改用 spatialforge_prepare；不能使用 session/selectModel 修改原生子会话或 Host 默认。
+spatialforge_prepare 内部用原生 spawn 创建零父对话历史的独立准备任务，保持当前兼容模型路由。subagent_fork 仅在工作确实需要完整父历史时考虑。每个 prompt 必须自包含目标、冻结计划路径与版本、用户硬要求和选择的场景、题型合同及配额、可用输入与证据路径、独立输出目录和预期交付；只传本任务相关材料，不能假定 worker 看过父对话。
 父智能体分配 workspace/synthesis/<批次>/<子任务>/ 作为各自唯一写目录。子智能体可读取共享计划、合同、资产目录和已有证据，只在自己的目录保存完整 SceneProgram、场景标题/摘要、候选题型脚本或校验结果。输入尚未采集或尚未验收时，先准备设计与脚本，明确标记缺失输入；不伪造图片、标注、GT或验收，不提前运行依赖这些输入的生产。真实资产是默认选择；计划中明确声明的必要简化几何实验照常保留其测量边界和物理约束。
-父智能体独占 pipeline_plan、pipeline_run、pipeline_repair_plan、stage_review 和实际采集/修订/导出提交。子智能体不改父计划、用户场景选择、共享 runner 状态或已接受的场景；也不通过 shell、HTTP 或任务代码绕过这些执行边界。完成时在自己的目录保存 manifest.json，给出 status、产物路径、实际检查、缺失输入和未解决问题，并在最终回复中引用它。交付路径和成功检查必须可读、可复核，生成一份文件并不等于场景或数据已验收。
+已有脚本可用时，优先复制到自己的目录并做最小增量补丁，不从头重写或串行读完整脚本。先定位相关函数/区段，再一次批量读取所需片段；通过程序复制保留未改内容，只对修改和本任务关键合同做必要检查。遇到一次长时间尚未落盘的 LLM 请求，父可只中断该子会话当前 turn，保留文件和收件箱，再让受支持较轻档位的零历史 worker 读取现有产物、以具体增量任务接管；不能因此取消采集或其他子任务。
+父智能体独占 spatialforge_prepare、pipeline_plan、pipeline_run、pipeline_repair_plan、stage_review 和实际采集/修订/导出提交。子智能体不改父计划、用户场景选择、共享 runner 状态或已接受的场景；也不通过 shell、HTTP 或任务代码绕过这些执行边界。完成时在自己的目录保存 manifest.json，给出 status、产物路径、实际检查、缺失输入和未解决问题，并在最终回复中引用它。交付路径和成功检查必须可读、可复核，生成一份文件并不等于场景或数据已验收。
 subagent 的后台返回只说明子会话已接收任务。子任务结束通知由父会话接收；父智能体可继续其他独立工作，不反复用 list_agents 轮询完成，也不把 inactive 当作成功。需要修改或补充时，用 send_message 给该直接子会话发送具体指令。父智能体读取每份实际产物后统一合并、校验并提交采集；题目不能直接拼接各分片的 item_00000000：由父流程统一分配题目身份，核对媒体引用、每模板配额、split、seed和公共题面合同。题目并行计划应表达为多个 S4 生成步骤和一个最终 S5 打包步骤，不按每份分片串接一套 S4+S5；子智能体只交付 S4 脚本、证据或题目分片，父级完成整批 S4 验收及唯一用户窗口之后统一打包。每个生产阶段整批产物就绪并通过相应验收后，展示它们并开一次用户窗口。"""
 
-SYNTHESIS_WORKER_PERSONA = """You are a SpatialForge synthesis worker for one self-contained delegated task. Read only the supplied plan, contracts, asset catalog and relevant saved evidence. Write only to the parent's assigned synthesis output directory; do not edit shared plans, user scene selections, runner state, accepted artifacts or another worker's files. Produce the requested complete SceneProgram with useful title/summary, task generator, preparation script or checks, rather than a bare promise or invented result.
-Preserve the frozen plan's hard requirements, selected scenes, physical and everyday realism, provenance and public question contracts. Recognizable real assets are the default; simplified geometry explicitly declared in that plan remains valid for its measurement purpose and retains its physical constraints. Predictions and design references are not captured evidence or GT. Missing or unaccepted inputs permit preparation only: record what is missing and stop dependent generation instead of fabricating success.
-The parent owns plan changes, authoritative merging, production/capture submissions, exports, acceptance and each stage's single 5-minute user window. Question workers deliver S4 scripts, evidence or question shards only; the parent packages S5 after aggregate S4 acceptance and its user window. Do not create additional stage windows, spawn more workers or bypass parent-owned tools through a shell, HTTP or task code. You may use available read, file and independent model tools for your assigned preparation. Leave manifest.json in your own directory with status, artifact paths, actual checks, missing inputs and unresolved issues, then quote that path in your final response. A completed turn or written script does not prove accepted scene/data production. Keep the handoff concise; the parent will verify and merge your deliverables."""
+SYNTHESIS_WORKER_PERSONA = """You are a SpatialForge synthesis worker for one self-contained preparation assignment. Read only the supplied plan, contracts, asset catalog and relevant saved evidence. Write only to the parent's assigned synthesis output directory; preserve shared plans, user scene selections, runner state, accepted artifacts and other workers' files. Deliver saved SceneProgram/design drafts, task-generator edits, preparation scripts or checks for the parent to integrate.
+At the start of file work, batch-copy the supplied source scripts/programs into your directory and save manifest.json with status preparing, working artifact paths and known missing inputs. Use the given source paths rather than rediscovering directories or validating the whole production chain before copying. On recovery, preserve saved edits and continue existing working copies. If a supplied source is missing, record its exact path and deliver the already determined scope; if no source was supplied, save the known design/script scaffold and preparing manifest first.
+Apply the smallest concrete patch to the working copy. Locate relevant functions or line ranges and batch-read only needed portions, then save known edits as you work. Persist a scene title, descriptive summary and program draft before investigating unresolved structure. When an exact input, field or contract remains unknown, record the specific blocker and hand off saved completed scope instead of withholding all artifacts until the entire production pipeline has been validated.
+This preparation assignment is complete when the requested edits or design artifacts are saved, proportional checks for those changes have run, and an honest manifest lists artifact paths, actual checks, missing inputs and unresolved issues. Useful partial preparation can be delivered with a concrete blocker. The parent's later real production acceptance must not stop preparation drafts from being saved or handed off. Report a specific unresolved reasoning issue if stronger follow-up is needed; ordinary preparation uses the model-supported effort selected by the trusted factory, with its actual level and fallback reason recorded, and has no worker-specific output-token cap.
+Preserve the frozen plan's hard requirements, selected scenes, physical and everyday realism, provenance and public question contracts. Recognizable real assets are the default; simplified geometry explicitly declared in the plan retains its measurement and physical scope. Predictions and design references are not captured evidence or GT. Record missing or unaccepted inputs honestly and deliver preparation without fabricating dependent production results.
+The parent owns plan changes, authoritative merging, production/capture submissions, exports, acceptance and each stage's single 5-minute user window. Question workers deliver S4 preparation, evidence or shards; the parent packages S5 after aggregate S4 acceptance and its user window. Do not create additional stage windows, spawn more workers or bypass parent-owned tools through a shell, HTTP or task code. You may use available read, file and independent model tools for the assigned preparation. Update manifest.json to reflect the actual preparation outcome and quote its path in the final response. Preparation completion and accepted scene/data production are separate outcomes; the parent verifies and integrates your handoff."""
 
 PARENT_OWNED_SYNTHESIS_TOOLS = [
-    'pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', 'pipeline_evaluate', 'stage_review',
-    'spatial_export',
+    'benchforge_pipeline_plan', 'benchforge_pipeline_run', 'benchforge_pipeline_repair_plan',
+    'benchforge_pipeline_evaluate', 'benchforge_stage_review', 'benchforge_spatial_export',
     'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine', 'spatialforge_extend',
-    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code',
+    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code', 'spatialforge_prepare',
 ]
+# Preparation effort is resolved from the parent's exact model by the trusted
+# factory. A raw native delegate retains its existing parent route/defaults.
+DEFAULT_SYNTHESIS_REASONING_EFFORT = None
 
 
-def configure_synthesis_delegation(plugins):
-    """Keep production authority with the parent while workers prepare files."""
+def configured_synthesis_tools(plugins):
+    """Resolve our canonical tool names from the completed preset plugin tree."""
+    available = set()
     for row in plugins:
         config = row.get('config')
         if isinstance(config, list):
-            configure_synthesis_delegation(config)
-        if row.get('name') != '@deepseek-ai/dsh-tool-subagent' or not isinstance(config, dict):
-            continue
-        if config.get('provider') not in ('spawn', 'fork'):
-            continue
-        tool_filter = config.get('toolFilter') or {}
-        config.update(backgroundMode='continuable', maxDepth=1, persona=SYNTHESIS_WORKER_PERSONA,
-                      toolFilter={**tool_filter, 'deny': list(dict.fromkeys(
-                          [*tool_filter.get('deny', []), *PARENT_OWNED_SYNTHESIS_TOOLS]))})
+            available.update(configured_synthesis_tools(config))
+        if row.get('id') in ('benchforge-tools', 'spatial-learning-tools') and isinstance(config, dict):
+            included = config.get('includeTools')
+            available.update(name for name in PARENT_OWNED_SYNTHESIS_TOOLS
+                             if name.startswith('benchforge_') and (included is None or name[len('benchforge_'):] in included))
+        if row.get('id') == 'spatialforge-tools' and isinstance(config, dict):
+            available.update(name for name in PARENT_OWNED_SYNTHESIS_TOOLS if name.startswith('spatialforge_'))
+    return available
+
+
+def configure_synthesis_delegation(plugins):
+    """Keep production authority with the parent without denying absent tools."""
+    available = configured_synthesis_tools(plugins)
+    aliases = {name[len('benchforge_'):]: name for name in PARENT_OWNED_SYNTHESIS_TOOLS if name.startswith('benchforge_')}
+
+    def walk(rows):
+        for row in rows:
+            config = row.get('config')
+            if isinstance(config, list):
+                walk(config)
+            if row.get('name') != '@deepseek-ai/dsh-tool-subagent' or not isinstance(config, dict):
+                continue
+            if config.get('provider') not in ('spawn', 'fork'):
+                continue
+            tool_filter = config.get('toolFilter') or {}
+            previous = [aliases.get(name, name) for name in tool_filter.get('deny', [])]
+            deny = [name for name in previous if name not in PARENT_OWNED_SYNTHESIS_TOOLS or name in available]
+            deny.extend(name for name in PARENT_OWNED_SYNTHESIS_TOOLS if name in available)
+            agent_options = dict(config.get('agentOptions') or {})
+            agent_options.pop('maxTokens', None)
+            agent_options.pop('reasoningEffort', None)
+            config.update(backgroundMode='continuable', maxDepth=1, persona=SYNTHESIS_WORKER_PERSONA,
+                          agentOptions=agent_options)
+            resolved_filter = {key: value for key, value in tool_filter.items() if key != 'deny'}
+            if deny:
+                resolved_filter['deny'] = list(dict.fromkeys(deny))
+            if resolved_filter:
+                config['toolFilter'] = resolved_filter
+            else:
+                config.pop('toolFilter', None)
+
+    walk(plugins)
 
 
 def build(sources, dsh_root, python, service_config, *, package_imports=False):
@@ -86,7 +128,6 @@ def build(sources, dsh_root, python, service_config, *, package_imports=False):
     persona = next(row for row in plugins if row['id'] == 'persona')
     persona['config'].update(prefix=PERSONA + '\n' + PARALLEL_SYNTHESIS,
                              suffix='Your working directory is {{cwd}}. You are using {{model}}.')
-    configure_synthesis_delegation(plugins)
     learning = next(row for row in plugins if row['id'] == 'benchforge-tools')
     learning['id'] = 'spatial-learning-tools'
     learning['config'] = {'python': python, 'includeTools': LEARNING_TOOLS}
@@ -99,6 +140,7 @@ def build(sources, dsh_root, python, service_config, *, package_imports=False):
     plugins.append({'id': 'spatialforge-evaluation-ui',
                     'name': '@eurecamoment/benchforge-spatialforge-ui' if package_imports else str(ROOT / 'integrations/spatialforge/ui/index.js'),
                     'config': {}})
+    configure_synthesis_delegation(plugins)
     return result
 
 

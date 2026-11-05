@@ -1,6 +1,7 @@
 """Read session-owned SpatialForge jobs; never construct Store or start work."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -43,6 +44,27 @@ def service_read(config, route, value):
         return json.load(response)
 
 
+def production_observation(config, run_id):
+    try:
+        return service_read(config, '/observe', {'run_id':run_id})
+    except HTTPError as error:
+        # A running older service can retain the pre-fix Python module. Recover
+        # this exact projection error from its read-only snapshot and saved files.
+        try:detail=json.loads(error.read())
+        except (ValueError,TypeError):raise error
+        if error.code!=400 or detail.get('error')!='KeyError' or detail.get('detail')!="'report'":raise error
+        snapshot=service_read(config, '/inspect', {'run_id':run_id})
+        source=Path(__file__).resolve().parents[3]/'components/spatialforge/src/spatialforge/observation.py'
+        spec=importlib.util.spec_from_file_location('workbench_native_observation',source)
+        native=importlib.util.module_from_spec(spec);spec.loader.exec_module(native)
+        class SnapshotStore:
+            root=Path(config['artifacts'])
+            def snapshot(self,requested):return snapshot
+        value=native.observe(SnapshotStore(),run_id)
+        value.pop('cursor',None)
+        return value
+
+
 def observe(config, session, run_ids, sessions=()):
     rows = session_runs(config, session, sessions)
     ids = list(dict.fromkeys([row['id'] for row in rows] + run_ids))[:12]
@@ -50,7 +72,7 @@ def observe(config, session, run_ids, sessions=()):
 
     def read(run_id):
         try:
-            value = service_read(config, '/observe', {'run_id': run_id})
+            value = production_observation(config, run_id)
             # Results may contain private answers. Return only lifecycle/production observations.
             fields = ('id', 'state', 'phase', 'revision', 'progress', 'failure', 'queue', 'quality', 'summary', 'workflow', 'next_action', 'evidence', 'downloads')
             return {'run_id': run_id, 'state': value['state'], 'terminal': value['terminal'],

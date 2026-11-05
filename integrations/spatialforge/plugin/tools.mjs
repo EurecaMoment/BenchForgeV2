@@ -11,10 +11,11 @@ import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
 const revision = new URL(import.meta.url).search;
 const { objectOutput, runOutput, taskRunOutput, observationOutput, taskOutput, cancellationOutput } =
   await import(new URL('./schemas.mjs' + revision, import.meta.url));
-const { createDeliveryReview, createCaptureReviewStep } =
+const { createDeliveryReview, createCaptureReviewStep, productionReviewApplies } =
   await import(new URL('./delivery_review.mjs' + revision, import.meta.url));
 const { createDeliveryFileReview } = await import(new URL('./delivery_files.mjs' + revision, import.meta.url));
 const { createDeliveryVisuals } = await import(new URL('./delivery_visuals.mjs' + revision, import.meta.url));
+const { createPreparationHandler } = await import(new URL('./preparation.mjs' + revision, import.meta.url));
 export const name='spatialforge-tools';
 // Delivery visual feedback resolves the active model route and stores image
 // attachments while the turn-stopping hook is running. Declare both services
@@ -24,6 +25,8 @@ export const Config=z.object({
   serviceConfig:z.string().required().description('Path to the SpatialForge service JSON configuration.'),
   scenePolicyWorkspace:z.string().default(''),
   policyPython:z.string().default('python3'),
+  preparationBatchSize:z.natural().min(1).default(3),
+  preparationRevision:z.string().default(''),
   dshRoot:z.string().description('Legacy preset field, retained for compatibility; public DSH packages are resolved normally.'),
 });
 export async function apply(ctx, config) {
@@ -85,10 +88,22 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
     for(const imagePath of paths)blocks.push({type:'image',attachment:await imageAttachment(imagePath,path.basename(imagePath),signal)});
     return blocks;
   }});
-  const review=createDeliveryReview({api,createMessage:createUserMessage,visuals});
+  const review=createDeliveryReview({api,createMessage:createUserMessage,visuals,
+    shouldReview:agent=>productionReviewApplies(agent,agent.ctx?.get('tools') || ctx.tools)});
   ctx.on('agent/pre-step',createCaptureReviewStep(review));
   ctx.on('agent/turn-stopping',input=>review(input));
   ctx.on('agent/turn-stopping',createDeliveryFileReview({createMessage:createUserMessage}));
+  ctx.tools.register(defineTool({name:'spatialforge_prepare',description:'Prepare independent scene designs, annotation scripts or question shards in native continuable subagents. Binds the current parent and its saved plan, resolves the actual supported reasoning effort, preserves the model route and returns durable startup receipts. Create distinct output directories first. Workers only prepare; the parent merges, captures, verifies and opens the single user window for each completed stage. Startup acceptance is not a completed artifact.',parameters:{
+    workspace:{type:'string',required:true,description:'Absolute shared workspace containing the parent plan and worker directories.'},
+    plan_path:{type:'string',required:true,description:'Saved plan associated with the current parent conversation.'},
+    batch_key:{type:'string',required:true,description:'Stable identity for this exact preparation batch; reuse on retry.'},
+    tasks:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{
+      key:{type:'string',required:true},label:{type:'string',required:true},
+      prompt:{type:'string',required:true,description:'Self-contained goal, frozen inputs, requirements and deliverables.'},
+      outputDirectory:{type:'string',required:true,description:'Existing dedicated write directory inside the workspace; workers must not overlap.'},
+    }}},
+  },output,execute:createPreparationHandler({ctx,batchSize:config.preparationBatchSize || 3,
+    revision:config.preparationRevision ? '?revision=' + encodeURIComponent(config.preparationRevision) : revision})}));
   ctx.tools.register(defineTool({name:'spatialforge_collaboration',description:'Share lightweight handoffs in the task workspace. Publish observations, artifacts, decisions, blockers and next actions; relate or reply to earlier handoffs; list or read records when agents join, resume or reconcile parallel work. The protocol does not prescribe a fixed orchestration graph.',parameters:{workspace:{type:'string',required:true,description:'Absolute shared task workspace.'},action:{type:'string',enum:['publish','list','read'],required:true},history:{type:'boolean',description:'For list: include earlier versions. Default returns only the latest record per handoff, then applies filters.'},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},output,execute:async(args,exec)=>{
     exec.signal.throwIfAborted();
     const file=path.join(path.resolve(args.workspace),'.benchforge','collaboration','handoffs.jsonl');

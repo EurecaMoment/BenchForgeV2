@@ -39,9 +39,14 @@ def quality_outcome(folder, complete):
 
 def capture_result(folder, result):
     """Expose capture facts without repeating the full asset/material inventory."""
-    report=result['report']
+    source=folder/'capture/report.json'
+    report=result.get('report')
+    if not isinstance(report,dict):
+        # Failed acceptance retains native files but its task result contains
+        # only the directory. Those files remain evidence, not acceptance.
+        report=json.loads(source.read_text(encoding='utf8')) if source.is_file() else {}
     summary={key:report[key] for key in ('status','frames','renderable','errors','render_settings','capture_scope','render_qa') if key in report}
-    summary['source_path']=str(folder/'capture/report.json')
+    summary.update(source_path=str(source),available=bool(report))
     views=[]
     for path in sorted((folder/'capture').glob('view_*.json')):
         frame=json.loads(path.read_text(encoding='utf8'))
@@ -94,7 +99,9 @@ def observe(store, run_id):
                 row['next_action']='inspect_outputs'
         if unit.get('intent',{}).get('capture_only') and task.get('result'):
             row['result']=capture_result(folder,task['result'])
-            row['next_action']='inspect_capture_issues' if row['result']['report'].get('renderable') is False else 'inspect_captures'
+            report=row['result']['report']
+            row['next_action']=('inspect_evidence' if not report['available'] else
+                'inspect_capture_issues' if report.get('renderable') is False else 'inspect_captures')
         if unit.get('workflow')=='layout':
             row['workflow']='layout'
             row['design_reference_ready']=task['state']=='SUCCEEDED' and (folder/'layout_reference.png').is_file()
@@ -105,8 +112,7 @@ def observe(store, run_id):
             quality=quality_outcome(folder,complete)
             if quality:
                 row['quality']=quality
-                if task['state']=='SUCCEEDED' and (quality['scene_quality_passed'] is False or
-                                                  quality['visual_realism']=='needs_improvement'):
+                if quality['scene_quality_passed'] is False or quality['visual_realism']=='needs_improvement':
                     row['next_action']='inspect_quality_gaps'
         if task['state']=='READY' and unit['phase']=='capture' and device.get('active'):
             row['queue']={'reason':'desktop_device_in_use','blocking_task_id':device.get('task_id')}

@@ -9,6 +9,7 @@ import {promisify} from 'node:util';
 import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
 import {sessionFamilyReader} from './parallel_sessions.js';
+import {createPreparationProducts} from './preparation_products.js';
 
 export const name = 'benchforge-spatialforge-ui';
 export const inject = ['connection', 'workspaceRegistry'];
@@ -354,17 +355,29 @@ async function productionProgress(roots, config, url, signal) {
       scenes = {status: 'unavailable', error: 'Production observer could not read the service (' + (error.code || error.name) + ')', runs: []};
     }
   }
+  const preparation = new Map();
+  for (const root of roots) {
+    const drafts = await config._preparation.read(root, session, config._family || [], signal);
+    for (const [childId, draft] of drafts) preparation.set(childId, {root, ...draft});
+  }
   const parallel_tasks = (config._family || []).map((child, index) => {
     const owned = operations.filter((row) => row.session_id === child.id);
     const saved = pipelines.filter((row) => row.session_id === child.id);
-    const public_artifacts = saved.filter((row) => row.completed > 0).map((row) => ({
+    const draft = preparation.get(child.id);
+    const public_artifacts = [...(draft?.files || []).map((file) => ({
+      title: file.title, kind: 'preparation', accepted: false, revision: file.revision,
+      url: workbenchUrl({view: 'run_product', product: 'preparation', batch_key: draft.batchKey,
+        child_id: child.id, file: file.file, session_id: session}, draft.root.path),
+    })), ...saved.filter((row) => row.completed > 0).map((row) => ({
       title: (child.label || '子任务') + '计划', url: workbenchUrl({view: 'run_product', product: 'plan', run: row.id, session_id: session}, roots[0]?.path),
       revision: row.steps.filter((step) => step.state === 'completed').map((step) => step.id).join(','),
-    }));
+    }))];
     return {id: child.id, display_name: child.label || '子任务 ' + (index + 1), state: child.state || 'unknown',
       stage: owned.find((row) => row.stage)?.stage || (/标注|annotation/i.test(child.label || '') ? 'S3' :
         /题目|question/i.test(child.label || '') ? 'S4' : /场景|scene/i.test(child.label || '') ? 'S2' : null),
-      artifact_count: public_artifacts.length, public_artifacts};
+      artifact_count: public_artifacts.length, public_artifacts,
+      ...(draft ? {preparation: {status: 'preparing', accepted: false, artifact_count: draft.files.length,
+        reasoningSelection: draft.reasoningSelection}} : {})};
   });
   return {operations, pipelines, scenes, parallel_tasks, sources, snapshot_at: new Date().toISOString(),
     scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only',
@@ -677,10 +690,15 @@ async function readMedia(url, roots, signal, sessions = []) {
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
 }
 
-export function createWorkbenchHandler(config, registered = () => [], family = async () => []) {
+export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
+  limits._preparation = createPreparationProducts({validatePlan: async (root, planPath, parentId) => {
+    const file = await inside(root, planPath);
+    await assertSessionDirectory(root, path.dirname(file), {session_id: parentId, session_ids: [], history: false});
+    return file;
+  }});
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
@@ -691,7 +709,32 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
       const sessions = related.map((row) => row.id);
       const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
       let value;
-      if (view === 'plan_edit') {
+      if (view === 'synthesis_start' || view === 'synthesis_status') {
+        if (roots.length !== 1 || !scope.session_id || scope.history)
+          throw new ApiError('Preparation requires the current workspace and parent conversation',400);
+        if (request.headers.get('sec-fetch-site') === 'cross-site')
+          throw new ApiError('Cross-site preparation is not allowed',403);
+        if (!synthesisFactory) throw new ApiError('Native preparation service is unavailable',503);
+        const controller=synthesisFactory(roots[0].path);
+        if (view === 'synthesis_status') {
+          if (request.method !== 'GET') throw new ApiError('Preparation status requires GET',405);
+          value=await controller.read({parentId:scope.session_id,batchKey:url.searchParams.get('batch_key')});
+        } else {
+          if (request.method !== 'POST') throw new ApiError('Preparation startup requires POST',405);
+          const body=await request.text();
+          if (body.length > 512000) throw new ApiError('Preparation request is too large',413);
+          let preparation;
+          try {preparation=JSON.parse(body);} catch {throw new ApiError('Invalid preparation JSON');}
+          if (!preparation || typeof preparation.plan_path !== 'string')
+            throw new ApiError('Preparation needs the saved parent plan');
+          const file=await inside(roots[0],preparation.plan_path);
+          await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
+          value=await controller.start({parentId:scope.session_id,batchKey:preparation.batch_key,
+            planPath:file,tasks:preparation.tasks},request.signal);
+        }
+        limits._preparation.remember(roots[0],scope.session_id,value);
+      }
+      else if (view === 'plan_edit') {
         if (request.method !== 'POST') throw new ApiError('Plan editing requires POST',405);
         if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
         if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site plan editing is not allowed',403);
@@ -741,6 +784,13 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
       else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
       else if (view === 'progress') value = await productionProgress(roots, scoped, url, request.signal);
       else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
+      else if (view === 'run_product' && url.searchParams.get('product') === 'preparation') {
+        if (roots.length !== 1 || !scope.session_id || scope.history)
+          throw new ApiError('Preparation previews require the current workspace and parent conversation',400);
+        return await limits._preparation.open(roots[0], scope.session_id, related, {
+          batchKey: url.searchParams.get('batch_key'), childId: url.searchParams.get('child_id'), file: url.searchParams.get('file'),
+        }, request.signal);
+      }
       else if (view === 'run_product') {
         const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
         const product = url.searchParams.get('product'), step = url.searchParams.get('step');
@@ -760,9 +810,17 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
     }
   };
 }
-export function apply(ctx, config) {
+export async function apply(ctx, config) {
+  const helper=new URL('./synthesis_sessions.js',import.meta.url);
+  helper.searchParams.set('revision',config.uiRevision);
+  const {createSynthesisSessions}=await import(helper);
+  const preparation=new Map();
+  const synthesisFactory=workspacePath => {
+    if (!preparation.has(workspacePath)) preparation.set(workspacePath,createSynthesisSessions({ctx,workspacePath}));
+    return preparation.get(workspacePath);
+  };
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx))});
+    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory)});
   ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated artifacts and scene selection API');
 }
 

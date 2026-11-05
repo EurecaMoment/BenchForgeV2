@@ -54,6 +54,26 @@ class SceneAcceptance(unittest.TestCase):
     def assess(self):
         return capture_acceptance(self.artifacts,self.program,self.report,self.evidence,self.review,self.capture)
 
+    def test_short_concrete_observations_keep_evidence_checks_without_a_character_quota(self):
+        observations={'object_identity':'陶杯带把','realistic_scale':'杯子小于桌面',
+            'support_and_attachment':'杯底着地','functional_layout':'杯把朝外',
+            'access_and_clearance':'周围空旷','materials_and_lighting':'陶瓷有光泽'}
+        for check in self.review['life_review']['checks']:
+            check['evidence'][0]['observation']=observations[check['check']]
+        alignment=self.review['brief_alignment']
+        alignment['observations'][0]['observation']='陶杯正立'
+        alignment['requirement_checks'][0]['observation']='杯底着地'
+        self.assertTrue(self.assess()['passed'])
+        for invalid in ('   ',123456789,{'claim':'the cup is stable'}):
+            with self.subTest(invalid=invalid):
+                alignment['requirement_checks'][0]['observation']=invalid
+                self.assertFalse(self.assess()['passed'])
+        alignment['requirement_checks'][0]['observation']='杯底着地'
+        alignment['observations'][0]['view']='missing.png'
+        self.assertFalse(self.assess()['passed'])
+        alignment['observations'][0]['view']=['view_0.png']
+        self.assertFalse(self.assess()['passed'])
+
     def test_real_assets_pass_but_cube_spoofs_floating_objects_and_unreal_scale_fail(self):
         self.assertTrue(admit_program(self.artifacts,self.program)['passed'])
         for edits in ({'kind':'box'},{'kind':'box','id':'floor_fake','size':[1,1,1]},

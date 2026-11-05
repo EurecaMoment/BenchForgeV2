@@ -116,7 +116,9 @@ def plan(args, directory, config=None):
         activate(workspace,session,str(target.resolve()),expected=edit['base_plan'] if edit else active['plan'],
                  pending=bool(edit),changes=edit['changes'] if edit else ())
     review = None
-    if session:
+    # A saved edit still needs executable application. Its final applied plan
+    # owns S1; opening a draft window here would make the user wait twice.
+    if session and not edit:
         from ..stage_review import gate
         review = gate(Path(directory).parents[1], session, 'S1', str(target.resolve()), str(target.resolve()))
     unsupported = [t['id'] for t in value['template_contracts'] if not t['execution']['program_generator']]
@@ -124,4 +126,5 @@ def plan(args, directory, config=None):
             'stage_review': review,
             'assessment_status': 'structured' if value.get('assessment') else 'legacy_summary',
             'selections': selections, 'evidence_required_for': unsupported,
-            'next': 'pipeline_run; when evidence is required, use exact template protocol with task code or existing collectors, then supply evidence. No legacy 3240-template substitution.'}
+            'next': ('Apply the saved user edit with pipeline_plan(applies_edit=plan) before pipeline_run. S1 review opens after the executable application is validated.'
+                     if edit else 'pipeline_run; when evidence is required, use exact template protocol with task code or existing collectors, then supply evidence. No legacy 3240-template substitution.')}

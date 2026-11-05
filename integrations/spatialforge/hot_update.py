@@ -64,6 +64,7 @@ def update_profile(profile, root, python, mode_config, service_config, revision)
                                      includeTools=development.LEARNING_TOOLS)
             if name == "spatialforge-tools":
                 row["config"]["serviceConfig"] = str(service_config)
+                row["config"]["preparationRevision"] = revision
             if name == "persona":
                 row["config"]["prefix"] = development.PERSONA + "\n" + development.PARALLEL_SYNTHESIS
             if isinstance(row.get("config"), list):
@@ -158,6 +159,7 @@ def main():
                    "model_tools": development.MODEL_TOOLS, "services_before": services_before,
                    "services_after": services_after, "restarted": False,
                    "existing_sessions": "keep their already-bound revision; new sessions use this update",
+                   "synthesis_worker_reasoning_effort": development.DEFAULT_SYNTHESIS_REASONING_EFFORT,
                    "profile_backup": str(backup), "heavy_model_start": False}
         (deployment / "spatialforge-hot-update.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
         print(json.dumps(receipt, ensure_ascii=False))
