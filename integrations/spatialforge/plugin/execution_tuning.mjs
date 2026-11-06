@@ -178,16 +178,43 @@ export function createExecutionTuning({ctx, pairing}) {
         if(done)await save(id,{...record,compact:{state:'complete',finished_at:done.time,command_id:done.data.commandId,
           summary_seq:done.data.sourceEventSeq,text:done.data.text}});
       }
-      const starts=new Map(), steps=[], tools=[];
+      const starts=new Map(), steps=[], tools=[], pending=new Map();
+      let activity=null;
       for(const event of events) {
         const d=event.data, key=d && d.turn+':'+d.step;
-        if(event.type==='step/start')starts.set(key,event.time);
-        if(event.type==='assistant/message' && starts.has(key))steps.push({turn:d.turn,step:d.step,
-          seconds:(event.time-starts.get(key))/1000,usage:d.usage});
-        if(event.type==='tool/call')tools.push({time:event.time,name:d.name});
+        if(event.type==='step/start') {
+          starts.set(key,event.time);activity={phase:'preparing',turn:d.turn,step:d.step,started_at:event.time};
+        }
+        if(event.type==='request/header')activity={...(activity || {}),phase:'model',started_at:event.time};
+        if(event.type==='assistant/message' && starts.has(key)) {
+          const started=starts.get(key), seconds=(event.time-started)/1000, content=d.message?.content || [];
+          const chunks=(d.stream || []).map(chunk=>chunk.time ?? chunk.time0).filter(time=>Number.isFinite(time) && time>=started);
+          const first=chunks.length?(Math.min(...chunks)-started)/1000:null;
+          const decoding=first===null?null:seconds-first;
+          steps.push({turn:d.turn,step:d.step,seconds,usage:d.usage,first_stream_seconds:first,
+            output_tokens_per_second:decoding>0 && Number.isFinite(d.usage?.outputTokens)?d.usage.outputTokens/decoding:null,
+            reasoning_only:content.length>0 && content.every(block=>block.type==='reasoning')});
+          activity={phase:'between_steps',turn:d.turn,step:d.step,started_at:event.time};
+        }
+        if(event.type==='tool/call') {
+          const tool={time:event.time,name:d.name};tools.push(tool);pending.set(d.callId,tool);
+          activity={phase:'tool',started_at:event.time};
+        }
+        if(event.type==='tool/result') {
+          pending.delete(d.message?.toolCallId);
+          if(pending.size===0 && activity?.phase==='tool')activity={phase:'between_steps',started_at:event.time};
+        }
+        if(event.type==='compaction/start')activity={phase:'compaction',started_at:event.time};
+        if(event.type==='compaction/end' || event.type==='turn/end')activity=null;
       }
+      // Native inactivity is not production completion. Never expose private
+      // reasoning text, or count a reasoning-only response as an artifact.
+      if(activity && pending.size>0 && activity.phase==='tool')activity.started_at=Math.min(...[...pending.values()].map(tool=>tool.time));
+      const current=activity?{...activity,elapsed_seconds:Math.max(0,(Date.now()-activity.started_at)/1000),
+        active_tools:activity.phase==='tool'?[...pending.values()]:[]}:{phase:agent.status==='idle'?'idle':'unknown',active_tools:[]};
       return {session_id:id,agent_status:agent.status,last_used:route(agent.session.requestHeader?.()?.config),
         policy:records.get(id) || null,recent_steps:steps.slice(-4),recent_tools:tools.slice(-8),
+        current_activity:current,
         last_event:events.length?{type:events.at(-1).type,time:events.at(-1).time}:null};
     },
     async dispose() {
