@@ -690,7 +690,7 @@ async function readMedia(url, roots, signal, sessions = []) {
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
 }
 
-export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory) {
+export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
@@ -704,12 +704,30 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const parentScope = scopeOf(url);
-      const related = !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
+      const related = !view.startsWith('execution_') && !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
         ? await family(parentScope.session_id, request.signal) : [];
       const sessions = related.map((row) => row.id);
       const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
       let value;
-      if (view === 'synthesis_start' || view === 'synthesis_status') {
+      if (view === 'execution_status' || view === 'execution_control') {
+        if(roots.length !== 1 || !scope.session_id || scope.history || !execution)
+          throw new ApiError('Execution adjustment requires the current workspace and production parent',400);
+        if(request.headers.get('sec-fetch-site') === 'cross-site')throw new ApiError('Cross-site execution control is not allowed',403);
+        if(view === 'execution_status') {
+          if(request.method !== 'GET')throw new ApiError('Execution status requires GET',405);
+          value=await execution.observe(roots[0].path,scope.session_id);
+        } else {
+          if(request.method !== 'POST')throw new ApiError('Execution adjustment requires POST',405);
+          const body=await request.text();
+          if(body.length>2048)throw new ApiError('Execution adjustment is too large',413);
+          let tuning;
+          try {tuning=JSON.parse(body);}catch {throw new ApiError('Invalid execution adjustment JSON');}
+          if(!tuning || typeof tuning!=='object' || Array.isArray(tuning) || Object.keys(tuning).some(key=>!['reasoning_effort','compact_history'].includes(key)) ||
+            tuning.compact_history!==undefined && typeof tuning.compact_history!=='boolean')throw new ApiError('Invalid execution adjustment');
+          value=await execution.arm(roots[0].path,scope.session_id,tuning,request.signal);
+        }
+      }
+      else if (view === 'synthesis_start' || view === 'synthesis_status') {
         if (roots.length !== 1 || !scope.session_id || scope.history)
           throw new ApiError('Preparation requires the current workspace and parent conversation',400);
         if (request.headers.get('sec-fetch-site') === 'cross-site')
@@ -811,6 +829,11 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
   };
 }
 export async function apply(ctx, config) {
+  const tuningModule=new URL('../plugin/execution_tuning.mjs',import.meta.url);
+  tuningModule.searchParams.set('revision',config.uiRevision);
+  const {createExecutionTuning}=await import(tuningModule);
+  const execution=createExecutionTuning({ctx});
+  ctx.effect(()=>()=>execution.dispose(),'benchforge execution adjustments');
   const captureRuntime=new URL('../plugin/capture_runtime.mjs',import.meta.url);
   captureRuntime.searchParams.set('revision',config.uiRevision);
   const {attachCaptureRuntime}=await import(captureRuntime);
@@ -824,7 +847,7 @@ export async function apply(ctx, config) {
     return preparation.get(workspacePath);
   };
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory)});
+    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory,execution)});
   ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated artifacts and scene selection API');
 }
 
