@@ -56,7 +56,10 @@ def finish_job(job,directory,outcome,error=None):
             active=bool(processes)
             for process in processes:process.close()
             if active:raise RuntimeError('cannot release desktop during resident capture')
-    pending={'job':job_identity(job),'outcome':outcome,'processes_stopped':True,'error':error,'transport_retry':job.get('transport_retry',0)}
+    report=directory/'capture/report.json'
+    captured=json.loads(report.read_text(encoding='utf8')).get('status')=='captured' if report.is_file() else False
+    pending={'job':job_identity(job),'outcome':outcome,'processes_stopped':True,'error':error,
+             'capture_complete':captured,'transport_retry':job.get('transport_retry',0)}
     write_json(directory/'finish_pending.json',pending)
     result=api('/worker/finish',pending)
     write_json(directory/'commit.json',result)

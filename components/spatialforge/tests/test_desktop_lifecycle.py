@@ -90,7 +90,7 @@ class LifecycleTests(unittest.TestCase):
     def test_transport_failure_visible_and_explicit_retry_reuses_capture_token(self):
         with self.store.repo.transaction() as c:c.execute(runs.update().values(state='RUNNING'))
         self.store.worker_update(JOB,progress={'stage':'upload_retry','errors':5,'error':'disconnected'})
-        self.store.worker_update(JOB,outcome='failed',processes_stopped=True,error='five network failures')
+        self.store.worker_update(JOB,outcome='failed',processes_stopped=True,error='five network failures',capture_complete=True)
         self.store.settle_runs()
         snap=self.store.snapshot('sf_test')
         self.assertEqual(snap['state'],'FAILED_FINAL')
@@ -101,6 +101,44 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(snap['tasks'][0]['unit']['transport_retry'],1)
         self.assertNotIn('worker_end',snap['tasks'][0]['unit'])
         with self.assertRaisesRegex(ValueError,'retry generation'):self.store.worker_update(JOB,outcome='failed',processes_stopped=True)
+
+    def test_admitted_executor_crash_retries_same_revision_with_fresh_attempt(self):
+        directory=self.store.directory(JOB['task_id'],0)
+        (directory/'program.json').write_text('{}')
+        (directory/'scene_admission.json').write_text('{"enforced":true,"passed":true}')
+        with self.store.repo.transaction() as c:c.execute(runs.update().values(state='RUNNING'))
+        self.store.worker_update(JOB,outcome='failed',processes_stopped=True,error='Isaac worker exited')
+        with patch('spatialforge.scene_acceptance.policy_for',return_value={'enabled':True}), \
+             patch('spatialforge.scene_acceptance.admit_program'):
+            result=self.store.retry(JOB['task_id'])
+        self.assertEqual(result['revision'],0)
+        self.assertEqual(result['capture_recovery_mode'],'restart_capture')
+        unit=self.store.snapshot('sf_test')['tasks'][0]['unit']
+        self.assertNotIn('resume_capture_token',unit)
+        self.assertEqual(unit['capture_attempt_history'][0]['token'],JOB['token'])
+        self.assertFalse((directory/'capture/report.json').exists())
+        self.assertEqual((directory/'program.json').read_text(),'{}')
+        with patch.object(self.store,'_job',side_effect=lambda task,token:{'token':token}):
+            claimed=self.store.claim_desktop('recovered-worker')
+        self.assertNotEqual(claimed['token'],JOB['token'])
+        with self.assertRaisesRegex(ValueError,'retry generation'):
+            self.store.worker_update(JOB,outcome='failed',processes_stopped=True)
+
+    def test_capture_retry_admission_does_not_waive_missing_input_or_quality_failure(self):
+        from spatialforge.scene_acceptance import check_request
+        directory=self.store.directory(JOB['task_id'],0)
+        (directory/'program.json').write_text('{}')
+        with patch('spatialforge.scene_acceptance.policy_for',return_value={'enabled':True}), \
+             patch('spatialforge.scene_acceptance.admit_program'):
+            with self.assertRaisesRegex(ValueError,'admitted frozen'):
+                check_request(self.store.root,'/retry',{'task_id':JOB['task_id']})
+            (directory/'scene_admission.json').write_text('{"passed":true}')
+            check_request(self.store.root,'/retry',{'task_id':JOB['task_id']})
+            with self.store.repo.transaction() as c:
+                c.execute(runs.update().values(state='FAILED_FINAL'))
+                c.execute(tasks.update().values(state='FAILED_FINAL',unit={'revision':0,'phase':'review'},failure={'error':'SceneQualityError'}))
+            with self.assertRaisesRegex(ValueError,'Only review transport'):
+                self.store.retry(JOB['task_id'])
 
 
 if __name__=='__main__':unittest.main()

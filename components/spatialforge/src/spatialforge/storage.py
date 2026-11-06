@@ -81,40 +81,56 @@ class Store:
             c.execute(tasks.update().where(tasks.c.id==tid).values(**fields))
             self.repo.event(c,old['run_id'],tid,'spatialforge.transition',{'state':fields.get('state',old['state']),'phase':fields.get('unit',old['unit']).get('phase')})
 
-    def retry(self,tid,feedback=None):
+    def retry(self,tid,feedback=None,capture_mode='auto'):
         """Retain old attempts and retry the failed stage; never mutate successful products."""
+        if capture_mode not in {'auto','resume_upload','restart_capture'}:
+            raise ValueError('capture_mode must be auto, resume_upload or restart_capture')
         if feedback is not None and (not isinstance(feedback,str) or not 1<=len(feedback)<=12000):
             raise ValueError('retry feedback must be 1..12000 characters')
         with self.repo.transaction() as c:
             c.exec_driver_sql('SELECT pg_advisory_xact_lock(7420391)')
             task=c.execute(select(tasks).where(tasks.c.id==tid).with_for_update()).mappings().one()
             run=c.execute(select(runs).where(runs.c.id==task['run_id']).with_for_update()).mappings().one()
+            if run['state'] in {'CANCELED','SUCCEEDED'}:raise ValueError('cannot retry a canceled or successful run')
+            if task['state']!='FAILED_FINAL':raise ValueError('only failed tasks need retry')
             recovery_id=None
             from .scene_acceptance import policy_for
             if policy_for(self.root) and task['unit'].get('workflow','scene')=='scene':
-                if (task['unit']['phase']!='review' or feedback is not None or
-                        (task.get('failure') or {}).get('error') not in {'TimeoutError','URLError','ConnectionError','OSError','RemoteDisconnected','ConnectionResetError','ConnectionAbortedError'}):
-                    raise ValueError('Only review transport failures can reuse a frozen capture; repair scene quality through capture/refine')
                 from .scene_acceptance import admit_program
-                from .scene_design import review_retry_directory
-                directory=review_retry_directory(self.root,tid)
+                from .scene_design import capture_retry_directory,review_retry_directory
+                capture_failure=(task['unit']['phase']=='capture' and
+                    (task.get('failure') or {}).get('stage')=='capture_transport' and feedback is None)
+                review_failure=(task['unit']['phase']=='review' and feedback is None and
+                    (task.get('failure') or {}).get('error') in {'TimeoutError','URLError','ConnectionError','OSError','RemoteDisconnected','ConnectionResetError','ConnectionAbortedError'})
+                if not capture_failure and not review_failure:
+                    raise ValueError('Only review transport or capture execution/transport failures can retry; repair scene quality through capture/refine')
+                directory=(capture_retry_directory(self.root,tid,task['unit']['revision']) if capture_failure
+                    else review_retry_directory(self.root,tid))
                 admit_program(self.root,json.loads((directory/'program.json').read_text()))
-                if task['unit'].get('review_transport_retries',0)>=2:
+                if review_failure and task['unit'].get('review_transport_retries',0)>=2:
                     marker=self.root/'model_transport_recovery.json'
                     recovery=json.loads(marker.read_text()) if marker.is_file() and marker.stat().st_size<4096 else {}
                     recovery_id=recovery.get('recovery_id') if recovery.get('status')=='transport_verified' else None
                     if not isinstance(recovery_id,str) or not recovery_id or recovery_id==task['unit'].get('review_transport_recovery_id'):
                         raise ValueError('Review transport recovery budget exhausted')
-            if run['state'] in {'CANCELED','SUCCEEDED'}:raise ValueError('cannot retry a canceled or successful run')
-            if task['state']!='FAILED_FINAL':raise ValueError('only failed tasks need retry')
             unit=dict(task['unit']);phase=unit['phase'];old=self.directory(tid,unit['revision'])
+            if capture_mode!='auto' and not (phase=='capture' and (task.get('failure') or {}).get('stage')=='capture_transport'):
+                raise ValueError('capture_mode applies only to capture execution/transport failures')
             if recovery_id:
                 unit.update(review_transport_recovery_id=recovery_id,previous_review_transport_retries=unit.get('review_transport_retries',0),review_transport_retries=0)
             if policy_for(self.root) and phase=='review':unit['review_transport_retries']=unit.get('review_transport_retries',0)+1
             if phase=='capture' and (task.get('failure') or {}).get('stage')=='capture_transport':
-                # An explicit operator retry resumes the same native files and transfer offsets.
+                # A crash needs a fresh executor attempt. A completed capture only needs upload.
                 ended=unit.pop('worker_end',{})
-                if ended.get('token'):unit['resume_capture_token']=ended['token']
+                mode=capture_mode
+                if mode=='auto':mode='resume_upload' if ended.get('capture_complete') is True else 'restart_capture'
+                unit.pop('resume_capture_token',None)
+                if mode=='resume_upload':
+                    if ended.get('capture_complete') is False:raise ValueError('Incomplete capture requires restart_capture, not resume_upload')
+                    if not ended.get('token'):raise ValueError('resume_upload needs the ended capture attempt')
+                    unit['resume_capture_token']=ended['token']
+                unit['capture_recovery_mode']=mode
+                unit['capture_attempt_history']=[*unit.get('capture_attempt_history',[]),{**ended,'recovery_mode':mode}]
                 unit['transport_retry']=unit.get('transport_retry',0)+1
             if feedback is not None:
                 if phase!='plan':raise ValueError('retry feedback requires a failed planning stage; use refine for captured scenes')
@@ -142,9 +158,10 @@ class Store:
                     shutil.copy2(old/'program.json',self.directory(tid,unit['revision'])/'program.json')
                     unit.pop('capture_token',None)
             c.execute(runs.update().where(runs.c.id==run['id']).values(state='PENDING'))
-            c.execute(tasks.update().where(tasks.c.id==tid).values(state='READY',unit=unit,failure=None,result=None,ready_at=0,lease_owner=None))
+            c.execute(tasks.update().where(tasks.c.id==tid).values(state='READY',unit=unit,failure=None,result=None,ready_at=0,lease_owner=None,lease_expires_at=None))
             self.repo.event(c,run['id'],tid,'spatialforge.retry',{'phase':unit['phase'],'revision':unit['revision'],'operator_feedback':feedback})
-        return {'task_id':tid,'revision':unit['revision'],'phase':unit['phase']}
+        return {'task_id':tid,'revision':unit['revision'],'phase':unit['phase'],
+                **({'capture_recovery_mode':unit['capture_recovery_mode']} if phase=='capture' and 'capture_recovery_mode' in unit else {})}
 
     def all_work(self, connection=None):
         query=select(tasks).join(runs,tasks.c.run_id==runs.c.id).where(runs.c.code_revision=='spatialforge-0.2.0',runs.c.state.notin_(['CANCELED','SUCCEEDED','FAILED_FINAL']))
@@ -191,7 +208,7 @@ class Store:
             row=c.execute(select(self.device).where(self.device.c.id=='desktop-isaac')).mappings().first()
             return row['record'] if row else {'active':False}
 
-    def worker_update(self,job,progress=None,outcome=None,processes_stopped=False,error=None):
+    def worker_update(self,job,progress=None,outcome=None,processes_stopped=False,error=None,capture_complete=None):
         """A terminal acknowledgement releases only the matching device lease."""
         from .progress import record_progress
         with self.repo.transaction() as c:
@@ -215,6 +232,7 @@ class Store:
                 if outcome=='canceled' and not canceled:raise ValueError('run has not requested cancellation')
                 state='CANCELED' if canceled else 'FAILED_FINAL'
                 end={'token':job['token'],'outcome':state,'time':time.time(),'local_capture_preserved':True}
+                if type(capture_complete) is bool:end['capture_complete']=capture_complete
                 failure=None if canceled else {'stage':'capture_transport','error':str(error or 'desktop attempt failed')[:1000],'local_capture_preserved':True}
                 c.execute(tasks.update().where(tasks.c.id==task['id']).values(state=state,lease_owner=None,lease_expires_at=None,unit={**task['unit'],'worker_end':end},failure=failure))
                 c.execute(self.device.update().where(self.device.c.id=='desktop-isaac').values(record={'active':False,'last_end':end}))

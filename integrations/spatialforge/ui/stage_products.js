@@ -811,6 +811,10 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
   };
 }
 export async function apply(ctx, config) {
+  const captureRuntime=new URL('../plugin/capture_runtime.mjs',import.meta.url);
+  captureRuntime.searchParams.set('revision',config.uiRevision);
+  const {attachCaptureRuntime}=await import(captureRuntime);
+  await attachCaptureRuntime(ctx,config);
   const helper=new URL('./synthesis_sessions.js',import.meta.url);
   helper.searchParams.set('revision',config.uiRevision);
   const {createSynthesisSessions}=await import(helper);

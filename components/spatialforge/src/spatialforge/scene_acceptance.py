@@ -92,11 +92,11 @@ def check_request(root, route, arguments):
     if route not in {'/start', '/capture', '/refine', '/extend', '/retry', '/dataset'}:return
     check_references(arguments, policy)
     if route == '/retry':
-        from .scene_design import review_retry_directory
+        from .scene_design import capture_retry_directory
         if arguments.get('feedback') is not None:raise ValueError('Scene design changes require capture/refine, not review retries')
-        directory=review_retry_directory(root,arguments.get('task_id'))
+        directory=capture_retry_directory(root,arguments.get('task_id'))
         admit_program(root,json.loads((directory/'program.json').read_text()))
-        # Store.retry additionally checks the actual failed phase and error.
+        # Store.retry validates the actual phase; a crashed executor has no capture yet.
         return
     if route in {'/start', '/capture', '/refine', '/extend'}:
         from .program_submission import read_program_submission
