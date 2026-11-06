@@ -187,14 +187,26 @@ def require_prior_brief(brief, directory):
         raise ValueError('Scene revision must reference the frozen brief of its captured parent')
 
 
-def review_retry_directory(root, task_id):
+def capture_retry_directory(root, task_id, revision=None):
+    """Admitted frozen input can be recovered before any capture exists."""
     if not re.fullmatch(r'sf_[a-zA-Z0-9_-]+\.scene\d+',str(task_id)):
-        raise ValueError('Unreviewed scene retries require a valid captured task')
+        raise ValueError('Unreviewed scene retries require a valid scene task')
     folders=[p for p in (Path(root)/task_id).glob('revision_*') if p.is_dir() and p.name[9:].isdigit()]
-    if not folders:raise ValueError('Unreviewed scene retries have no frozen captured program')
+    if revision is not None:
+        folders=[p for p in folders if p.name=='revision_'+str(revision)]
+    if not folders:raise ValueError('Unreviewed scene retries have no frozen admitted program')
     directory=max(folders,key=lambda p:int(p.name[9:]))
+    admission=directory/'scene_admission.json'
+    if (not (directory/'program.json').is_file() or not admission.is_file() or
+            json.loads(admission.read_text()).get('passed') is not True):
+        raise ValueError('Unreviewed scene retries require an admitted frozen program')
+    return directory
+
+
+def review_retry_directory(root, task_id):
+    directory=capture_retry_directory(root,task_id)
     report=directory/'capture/report.json'
-    if not report.is_file() or json.loads(report.read_text()).get('status')!='captured' or not (directory/'scene_admission.json').is_file():
+    if not report.is_file() or json.loads(report.read_text()).get('status')!='captured':
         raise ValueError('Unreviewed scene retries require an admitted native capture')
     return directory
 

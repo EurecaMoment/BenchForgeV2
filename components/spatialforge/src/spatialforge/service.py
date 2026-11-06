@@ -225,7 +225,7 @@ def main():
                 elif self.path=='/evidence':
                     from .operator_evidence import evidence
                     self.reply(evidence(store,value['task_id'],value.get('revision'),value.get('file'),value.get('workspace_id')))
-                elif self.path=='/retry':self.reply(store.retry(value['task_id'],value.get('feedback')))
+                elif self.path=='/retry':self.reply(store.retry(value['task_id'],value.get('feedback'),value.get('capture_mode','auto')))
                 elif self.path=='/download':
                     task_id=value['task_id'];snap=store.snapshot(task_id.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==task_id)
                     directory=store.root/task_id/('revision_'+str(value.get('revision',task['unit']['revision'])));file=safe_path(directory,value['file'],must_exist=True)
@@ -251,7 +251,7 @@ def main():
                     if 'revision' not in value:
                         snap=store.snapshot(value['task_id'].split('.')[0]);self.reply({'cancel':snap['state']=='CANCELED'})
                     else:self.reply(store.worker_update({**{k:value[k] for k in ('task_id','revision','token')},'transport_retry':value.get('transport_retry',0)},progress=value.get('progress')))
-                elif self.path=='/worker/finish':self.reply(store.worker_update(value['job'],outcome=value['outcome'],processes_stopped=value.get('processes_stopped'),error=value.get('error')))
+                elif self.path=='/worker/finish':self.reply(store.worker_update(value['job'],outcome=value['outcome'],processes_stopped=value.get('processes_stopped'),error=value.get('error'),capture_complete=value.get('capture_complete')))
                 elif self.path=='/worker/upload-begin':self.reply(transfer.begin(value['job'],value['files']))
                 elif self.path=='/worker/upload-commit':self.reply(transfer.commit(value['job']))
                 else:self.reply({'error':'unknown operation'},404)

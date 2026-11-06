@@ -125,7 +125,7 @@ def check_submission(workspace, route, arguments):
             config=Path(workspace)/'service.local.json'
             if not config.is_file():raise ValueError('Unreviewed scene retries are disabled; provide a compliant SceneProgram through capture/refine')
             root=json.loads(config.read_text())['artifacts']
-            directory=scene_design_parser().review_retry_directory(root,arguments['task_id'])
+            directory=scene_design_parser().capture_retry_directory(root,arguments['task_id'])
             if arguments.get('feedback') is not None:raise ValueError('Scene changes require capture/refine')
             check_program(policy,json.loads((directory/'program.json').read_text()))
     intents = arguments.get('intents', []) if route == '/start' else [arguments]
