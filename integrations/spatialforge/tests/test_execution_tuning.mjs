@@ -104,3 +104,19 @@ test('status reconciles an external compact only after its native successful com
   f.agent.session.snapshotEvents=()=>[run,{type:'command/done',time:receipt.requested_at+3,data:{commandId:'external',kind:'success',sourceEventSeq:45,text:'Compacted.'}}];
   assert.equal((await f.tuning.observe(f.root,f.agent.id)).policy.compact.summary_seq,45);
 });
+
+test('a checkpoint gets a concise final directive without rewriting ordinary calls, config or the cached prefix',async t=>{
+  const f=await fixture(t),signal=new AbortController().signal;
+  await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'high',compact_history:true},signal);
+  const hook=f.handlers.get('llm/stream');let dispatched=0;
+  const runtime={stream:options=>hook.call(runtime,options,()=>{dispatched++;return options;})};
+  const prefix={role:'user',content:[{type:'text',text:'saved user requirements'}]};
+  const call={...f.current,sessionId:f.agent.id,purpose:'compaction',messages:[prefix,{role:'user',content:[{type:'text',text:'You are now acting as a compaction engine.'}]}]};
+  const before=structuredClone(call),bounded=runtime.stream(call);
+  assert.deepEqual(call,before);assert.equal(bounded.messages[0],prefix);
+  assert.equal(bounded.maxTokens,call.maxTokens);assert.equal(bounded.model,call.model);
+  assert.match(bounded.messages.at(-1).content[0].text,/1500 tokens/);assert.equal(dispatched,1);
+  const normal={...call,purpose:undefined};assert.equal(runtime.stream(normal),normal);
+  const other={...call,sessionId:'session-other'};assert.equal(runtime.stream(other),other);
+  const frozen=Object.freeze({...call});assert.equal(runtime.stream(frozen),frozen);
+});
