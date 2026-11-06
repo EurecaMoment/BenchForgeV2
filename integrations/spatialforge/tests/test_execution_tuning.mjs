@@ -105,6 +105,36 @@ test('status reconciles an external compact only after its native successful com
   assert.equal((await f.tuning.observe(f.root,f.agent.id)).policy.compact.summary_seq,45);
 });
 
+test('a reasoning-only native response reports decoding latency without claiming production progress',async t=>{
+  const f=await fixture(t);
+  f.agent.status='idle';
+  f.agent.session.snapshotEvents=()=>[
+    {type:'step/start',time:1000,data:{turn:1,step:1}},
+    {type:'request/header',time:1001,data:{}},
+    {type:'assistant/message',time:11000,data:{turn:1,step:1,usage:{inputTokens:48179,outputTokens:800},
+      message:{content:[{type:'reasoning',text:'This private text must not be returned.'}]},stream:[{type:'reasoning-chunks',time0:3000}]}},
+    {type:'turn/end',time:11001,data:{turn:1}},
+  ];
+  const value=await f.tuning.observe(f.root,f.agent.id),step=value.recent_steps[0];
+  assert.equal(step.seconds,10);assert.equal(step.first_stream_seconds,2);
+  assert.equal(step.output_tokens_per_second,100);assert.equal(step.reasoning_only,true);
+  assert.equal(value.current_activity.phase,'idle');assert.equal(value.current_activity.production_complete,undefined);
+  assert.ok(!JSON.stringify(value).includes('private text'));
+});
+
+test('a current native model request and paired tool call expose their actual active phase',async t=>{
+  const f=await fixture(t),time=Date.now()-1000;
+  const rows=[{type:'step/start',time,data:{turn:2,step:3}},{type:'request/header',time,data:{}}];
+  f.agent.session.snapshotEvents=()=>rows;
+  let value=await f.tuning.observe(f.root,f.agent.id);
+  assert.equal(value.current_activity.phase,'model');assert.ok(value.current_activity.elapsed_seconds>=1);
+  rows.push({type:'tool/call',time,data:{callId:'capture-one',name:'spatialforge_capture'}});
+  value=await f.tuning.observe(f.root,f.agent.id);
+  assert.equal(value.current_activity.phase,'tool');assert.equal(value.current_activity.active_tools[0].name,'spatialforge_capture');
+  rows.push({type:'tool/result',time,data:{message:{toolCallId:'capture-one'}}});
+  assert.equal((await f.tuning.observe(f.root,f.agent.id)).current_activity.phase,'between_steps');
+});
+
 test('a checkpoint gets a concise final directive without rewriting ordinary calls, config or the cached prefix',async t=>{
   const f=await fixture(t),signal=new AbortController().signal;
   await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'high',compact_history:true},signal);
