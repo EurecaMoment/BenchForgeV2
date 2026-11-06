@@ -1,5 +1,6 @@
 """Resolve model-declared simplifications from a saved scene production plan."""
 import json
+import math
 from pathlib import Path
 import re
 
@@ -81,6 +82,74 @@ def geometry_exception(program, policy=None):
             'scene_style': 'simplified_geometry', 'authority': 'model-declared experimental design, not physical evidence'}
 
 
+_REVIEW_DIRECTIONS = {'left', 'right', 'front', 'back', 'above', 'below'}
+
+
+def _review_reference_vector(value, name):
+    if (not isinstance(value, (list, tuple)) or len(value) != 3 or
+            any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) for v in value)):
+        raise ValueError(name + ' needs three finite coordinates')
+    return tuple(float(v) for v in value)
+
+
+def _review_reference_dot(a, b):
+    return sum(x*y for x, y in zip(a, b))
+
+
+def _review_reference_unit(a, name):
+    length = math.sqrt(_review_reference_dot(a, a))
+    if length <= 1e-8:
+        raise ValueError(name + ' is degenerate')
+    return tuple(v/length for v in a)
+
+
+def validate_reference(design, object_ids=None):
+    reference = design.get('spatial_reference')
+    if reference is None:
+        return None
+    if isinstance(reference, str):
+        if not reference.strip():
+            raise ValueError('spatial_reference text must define a concrete reference')
+        return reference
+    if not isinstance(reference, dict) or reference.get('schema') != 'spatialforge.review-reference/v1':
+        raise ValueError('spatial_reference needs text or spatialforge.review-reference/v1')
+    up = _review_reference_unit(_review_reference_vector(reference.get('world_up'), 'world_up'), 'world_up')
+    frames = reference.get('frames')
+    if not isinstance(frames, list) or not frames:
+        raise ValueError('spatial_reference needs explicitly named frames')
+    by_id = {}
+    for frame in frames:
+        if (not isinstance(frame, dict) or not isinstance(frame.get('id'), str) or not frame['id'].strip() or
+                frame['id'] in by_id or frame.get('kind') not in {'user', 'world'}):
+            raise ValueError('spatial reference frames need distinct IDs and user/world kind')
+        keys = ('origin_object_id', 'observer_object_id', 'facing_target_object_id') if frame['kind'] == 'user' else ('origin_object_id',)
+        if any(not isinstance(frame.get(k), str) or not frame[k].strip() for k in keys):
+            raise ValueError('spatial reference needs explicit source objects')
+        if object_ids is not None and any(frame[k] not in object_ids for k in keys):
+            raise ValueError('spatial reference names an unavailable object')
+        if frame['kind'] == 'user':
+            if frame.get('front') not in {'toward_observer', 'observer_forward'}:
+                raise ValueError('user frame front must distinguish work-surface front from observer forward')
+        else:
+            front = _review_reference_unit(_review_reference_vector(frame.get('front_world'), 'front_world'), 'front_world')
+            right = _review_reference_unit(_review_reference_vector(frame.get('right_world'), 'right_world'), 'right_world')
+            if any(abs(value) > 1e-4 for value in (_review_reference_dot(front, right), _review_reference_dot(front, up), _review_reference_dot(right, up))):
+                raise ValueError('world reference axes must be orthogonal')
+        by_id[frame['id']] = frame
+    for relation in design.get('relations', []):
+        name, directions = relation.get('reference_frame'), relation.get('expected_direction')
+        if name is not None and name not in by_id:
+            raise ValueError('spatial relation names an unknown reference frame')
+        if directions is not None:
+            if (name is None or not isinstance(directions, list) or not directions or
+                    any(not isinstance(direction, str) or direction not in _REVIEW_DIRECTIONS for direction in directions) or len(set(directions)) != len(directions) or
+                    any(pair <= set(directions) for pair in ({'left','right'}, {'front','back'}, {'above','below'}))):
+                raise ValueError('directional relation needs a frame and nonconflicting directions')
+            if relation.get('target') != by_id[name]['origin_object_id']:
+                raise ValueError('directional relation target must be its reference origin')
+    return reference
+
+
 def validate_scene_brief(design, object_ids=None):
     if not isinstance(design.get('name'), str) or not design['name'].strip():
         raise ValueError('Scene brief needs a human-readable title')
@@ -108,6 +177,7 @@ def validate_scene_brief(design, object_ids=None):
             raise ValueError('Scene brief needs concrete typed spatial relations')
         if object_ids is not None and (row.get('source') not in object_ids or row.get('target') not in object_ids | {'ground'}):
             raise ValueError('Scene brief relation references an unavailable object')
+    validate_reference(design, object_ids)
     return design
 
 

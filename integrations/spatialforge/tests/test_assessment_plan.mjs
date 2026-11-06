@@ -122,9 +122,10 @@ test('plan view displays saved model content, exports it and sends changes only 
   for (const {title} of template.sections) assert.ok(planMarkdown(plan).includes('## '+title));
   const yamlBlock=JSON.stringify(document,null,2);
   const applyInstruction=planEditInstruction('/fixture/edited/plan.json');
-  for (const phrase of ['Markdown 正文','_plan_edit.base_plan','markdown_resolution','{path, before, after, instruction}',
-    '逐字引用正文','assessment、selections、inputs','split 与场景选择保持锁定']) assert.ok(applyInstruction.includes(phrase),phrase);
-  assert.doesNotMatch(applyInstruction,/原样保留.*assessment/);
+  for (const phrase of ['Markdown 正文','edit_revision.base_plan','markdown_normalization=false','markdown_normalization=true',
+    'markdown_resolution','{path, before, after, instruction}','逐字引用正文','assessment、selections、inputs',
+    'split 与场景选择保持锁定','request_path=','plan_request_cli.py','重复应用不重开阶段窗口']) assert.ok(applyInstruction.includes(phrase),phrase);
+  assert.doesNotMatch(applyInstruction,/_plan_edit\.base_plan/);
   const savedMarkdown='# Saved user plan\n\n## Body\n\nExact authored Markdown';
   assert.equal(planMarkdown({...plan,user_markdown:savedMarkdown}),savedMarkdown);
   hooks=[];hookIndex=0;

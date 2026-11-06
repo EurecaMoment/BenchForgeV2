@@ -229,7 +229,7 @@ print(json.dumps({'initial': initial, 'options': options, 'withSpatial': with_sp
 });
 
 test('preparation selects only supported effort on the route the native child actually inherits', async t => {
-  const f = await fixture(t, 5);
+  const f = await fixture(t, 6);
   f.setEfforts(['high', 'max']);
   f.parent.options = {provider: 'creation-provider', model: 'creation-model', reasoningEffort: 'max'};
   f.parent.session.requestHeader = () => ({config: {provider: 'qwen-flash', model: 'Qwen/Qwen3.8-Flash-Next', reasoningEffort: 'max'}});
@@ -238,11 +238,16 @@ test('preparation selects only supported effort on the route the native child ac
   assert.equal(f.capabilityRequests[0].model, 'Qwen/Qwen3.8-Flash-Next');
   assert.equal(result.reasoningSelection.selectedEffort, 'high');
   assert.deepEqual(result.reasoningSelection.supportedEfforts, ['high', 'max']);
-  assert.match(result.reasoningSelection.reason, /does not support medium.*supported high/);
+  assert.match(result.reasoningSelection.reason, /does not support low.*supported high/);
   assert.equal(result.tasks[0].reasoningSelection.selectedEffort, 'high');
   assert.deepEqual(f.calls[0].request.agentOptions, {reasoningEffort: 'high'});
   assert.equal(f.modelRequests.length, 1, 'support-aware preparation must avoid accepted-but-no-model-request failure');
   assert.match(f.modelRequests[0].content[0].text, /Prepare compatible from the frozen plan/);
+  assert.equal(f.parent.options.reasoningEffort, 'max');
+  f.setEfforts(['off', 'low', 'medium', 'high', 'max']);
+  const supportedLow = await f.factory.start(f.request([await f.task('supported-low')], 'supported-low'));
+  assert.equal(supportedLow.reasoningSelection.selectedEffort, 'low');
+  assert.deepEqual(f.calls.at(-1).request.agentOptions, {reasoningEffort: 'low'});
   assert.equal(f.parent.options.reasoningEffort, 'max');
   f.setEfforts(['none', 'max']);
   const lighter = await f.factory.start(f.request([await f.task('lighter')], 'lighter'));
@@ -255,14 +260,14 @@ test('preparation selects only supported effort on the route the native child ac
   f.setEfforts(['vendor-auto']);
   const opaque = await f.factory.start(f.request([await f.task('opaque')], 'opaque'));
   assert.equal(opaque.reasoningSelection.selectedEffort, 'vendor-auto');
-  assert.deepEqual(f.calls[3].request.agentOptions, {reasoningEffort: 'vendor-auto'});
+  assert.deepEqual(f.calls.at(-1).request.agentOptions, {reasoningEffort: 'vendor-auto'});
   f.setReasoningInfo(undefined);
   const withoutControl = await f.factory.start(f.request([await f.task('no-reasoning-control')], 'no-reasoning-control'));
   assert.equal(withoutControl.reasoningSelection.selectionMode, 'not_applicable');
   assert.ok(!('selectedEffort' in withoutControl.reasoningSelection));
-  assert.ok(!('agentOptions' in f.calls[4].request), 'a model without exposed reasoning control must not receive a fabricated override');
+  assert.ok(!('agentOptions' in f.calls.at(-1).request), 'a model without exposed reasoning control must not receive a fabricated override');
   assert.match(withoutControl.reasoningSelection.reason, /no reasoningEffort override/);
-  assert.equal(f.modelRequests.length, 5);
+  assert.equal(f.modelRequests.length, 6);
 });
 
 test('batch identity binds an optional existing workspace plan and injects its real path into user content', async t => {

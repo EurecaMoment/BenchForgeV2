@@ -111,7 +111,7 @@ window.__ModuleLoader__.load({
         chooseDataset: '选择数据集版本', template: '模板', split: '分区', search: '题目、ID 或任务', apply: '检索',
         previous: '上一页', nextPage: '下一页', page: '页', matches: '符合条件', total: '全集记录', pageSize: '每页',
         grid: '网格', table: '表格', question: '公开题目', noItems: '没有符合条件的记录。', item: '样本',
-        details: '公开条件与输出格式', media: '公开观测', noMedia: '未声明公开媒体', close: '返回列表',
+        details: '公开条件与输出格式', media: '公开观测', publicAssets: '公开测量附件', noMedia: '未声明公开媒体', close: '返回列表',
         publicNote: '公开题目与配套媒体。',
         report: '生成质量报告', noReport: '该版本没有 quality_report.json，不能宣称已完成集合质量验收。',
         requested: '请求数', accepted: '生成接纳数', shortfall: '缺口', scene_groups: '场景组',
@@ -122,6 +122,8 @@ window.__ModuleLoader__.load({
         task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
         workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
         productionProgress: '生产进度', progressUpload: '产物上传', progressItems: '已完成数量', progressStages: '已完成阶段', progressUpdated: '更新', progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '执行中', progressWaiting: '等待回执', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
+        questionGeneration: '题目生成', generationWritten: '已写出', generationVerified: '公开校验通过', generationEligible: '题目校验通过', generationCandidate: '候选题', generationPublished: '已发布', generationRepairVerified: '修复候选已验证', generationNeedsRepair: '待修题目', generationAwaitingAdmission: '生成结束，待入库', generationInterrupted: '生成进程已停止，待恢复', generationSelecting: '筛选候选题', generationOracle: '计算几何依据', generationWriting: '写出题目', generationComplete: '生成已结束', sceneNativeAccepted: '原生场景已验收', scenePlanPending: '计划修改待应用', sceneSnapshotUnavailable: '正在核对当前计划与场景登记', priorSceneAttempts: '采集回执详情',
+        scenePassed: '已通过', sceneRepairing: '正在修复', sceneCapturing: '采集中', sceneQueued: '排队', sceneNeedsRepair: '待修复', sceneStopped: '已停止', scenePending: '等待场景回执', sceneIdentityPending: '场景绑定待确认',
         parallelTasks: '并行任务', parallelTask: '合成任务', parallelCompleted: '已完成子任务', parallelRunning: '正在执行', parallelArtifacts: '公开产物', parallelOpenArtifact: '查看产物',
         inactive: '等待后续任务', unavailable: '状态暂不可用',
         keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
@@ -231,7 +233,7 @@ window.__ModuleLoader__.load({
         chooseDataset: 'Choose dataset version', template: 'Template', split: 'Split', search: 'Question, ID or task', apply: 'Search',
         previous: 'Previous', nextPage: 'Next', page: 'Page', matches: 'Matches', total: 'All records', pageSize: 'Per page',
         grid: 'Grid', table: 'Table', question: 'Public question', noItems: 'No matching records.', item: 'Sample',
-        details: 'Public conditions & output format', media: 'Public observations', noMedia: 'No declared public media', close: 'Back to list',
+        details: 'Public conditions & output format', media: 'Public observations', publicAssets: 'Public measurement attachments', noMedia: 'No declared public media', close: 'Back to list',
         publicNote: 'Public questions and supporting media.',
         report: 'Generation quality report', noReport: 'No quality_report.json. Collection acceptance cannot be inferred.',
         requested: 'Requested', accepted: 'Generation accepted', shortfall: 'Shortfall', scene_groups: 'Scene groups',
@@ -242,6 +244,8 @@ window.__ModuleLoader__.load({
         task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
         workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
         productionProgress: 'Production progress', progressUpload: 'Artifact upload', progressItems: 'Completed items', progressStages: 'Completed stages', progressUpdated: 'Updated', progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Awaiting receipt', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
+        questionGeneration: 'Question generation', generationWritten: 'Written', generationVerified: 'Public checks passed', generationEligible: 'Question checks passed', generationCandidate: 'Candidates', generationPublished: 'Published', generationRepairVerified: 'Repair candidates verified', generationNeedsRepair: 'Items to repair', generationAwaitingAdmission: 'Generation ended; awaiting admission', generationInterrupted: 'Generator stopped; awaiting recovery', generationSelecting: 'Selecting candidates', generationOracle: 'Computing geometry evidence', generationWriting: 'Writing questions', generationComplete: 'Generation ended', sceneNativeAccepted: 'Native scene accepted', scenePlanPending: 'Plan edits await application', sceneSnapshotUnavailable: 'Checking the current plan and scene registrations', priorSceneAttempts: 'Capture receipt details',
+        scenePassed: 'Accepted', sceneRepairing: 'Repairing', sceneCapturing: 'Capturing', sceneQueued: 'Queued', sceneNeedsRepair: 'Needs repair', sceneStopped: 'Stopped', scenePending: 'Awaiting scene receipt', sceneIdentityPending: 'Scene binding pending',
         parallelTasks: 'Parallel tasks', parallelTask: 'Synthesis task', parallelCompleted: 'Completed subtasks', parallelRunning: 'Running tasks', parallelArtifacts: 'Public artifacts', parallelOpenArtifact: 'View artifact',
         inactive: 'Awaiting next task', unavailable: 'Status unavailable',
         keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
@@ -295,6 +299,7 @@ window.__ModuleLoader__.load({
 .bfw-progress-rail{position:relative;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:color-mix(in srgb,var(--dsw-alias-label-primary,#20252c) 12%,var(--dsw-alias-bg-base,#fff));overflow:hidden}.bfw-stage-progress progress,.bfw-progress-track{display:block;width:100%;height:.75rem;border:0;border-radius:1rem;overflow:hidden;background:transparent;accent-color:var(--bfw-progress-fill)}.bfw-stage-progress progress::-webkit-progress-bar{background:transparent}.bfw-stage-progress progress::-webkit-progress-value{background:var(--bfw-progress-fill);border-radius:1rem;transition:width .3s ease}.bfw-stage-progress progress::-moz-progress-bar{background:var(--bfw-progress-fill);border-radius:1rem}
 .bfw-progress-activity{position:absolute;inset-block:0;inset-inline-start:0;inline-size:30%;border-radius:1rem;background:var(--bfw-progress-fill);opacity:.22;animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate;pointer-events:none}.bfw-progress-sweep{display:block;width:30%;height:100%;border-radius:1rem;background:var(--bfw-progress-fill);animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate}@keyframes bfw-progress-sweep{from{transform:translateX(0)}to{transform:translateX(233%)}}@media(prefers-reduced-motion:reduce){.bfw-progress-sweep,.bfw-progress-activity{animation:none}}
 .bfw-progress-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .75rem;margin-top:.4rem;font-size:.72rem;font-variant-numeric:tabular-nums}.bfw-progress-current{max-inline-size:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}.bfw-progress-details{margin-inline-start:auto}.bfw-progress-details summary{color:var(--dsw-alias-label-secondary)}.bfw-progress-details[open]{flex-basis:100%;margin:0}.bfw-progress-detail-body{padding-top:.5rem}.bfw-hint{display:block;color:var(--dsw-alias-label-secondary);font-size:.72rem;line-height:1.4;margin:.2rem 0;overflow-wrap:anywhere}
+.bfw-scene-summary{display:flex;flex-wrap:wrap;gap:.3rem .8rem;margin-top:.45rem;font-size:.72rem}.bfw-scene-summary-row{display:inline-flex;align-items:center;gap:.35rem;min-inline-size:0;max-inline-size:100%}.bfw-scene-summary-row strong{font-weight:500;max-inline-size:24ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bfw-scene-summary-row .bfw-pill{font-size:.65rem}
 .bfw-parallel{margin-top:.6rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-top:.55rem;font-size:.75rem}.bfw-parallel-heading,.bfw-parallel-task-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.bfw-parallel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:.45rem;margin-top:.4rem}.bfw-parallel-task{min-inline-size:0;padding:.45rem .6rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem}.bfw-parallel-task-heading strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bfw-parallel-task .bfw-pill{flex-shrink:0;font-size:.65rem}.bfw-parallel-task progress{height:.35rem;margin-top:.35rem}.bfw-parallel-task-count{display:block;font-size:.7rem;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}.bfw-parallel-links{display:flex;flex-wrap:wrap;gap:.25rem .6rem;margin-top:.25rem}.bfw-parallel-links a{color:var(--dsw-alias-brand-primary);overflow-wrap:anywhere}.bfw-parallel-completed{margin-top:.35rem}.bfw-parallel-completed summary{color:var(--dsw-alias-label-secondary)}
 
 .bfw-stage-heading{display:flex;align-items:flex-start;gap:.7rem;margin-block:.85rem}.bfw-stage-heading h2{font-size:clamp(1.05rem,2cqi,1.3rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{display:grid;place-items:center;inline-size:2rem;block-size:2rem;flex:0 0 auto;border-radius:.55rem;background:var(--dsw-alias-bg-layer-2);font:.8rem ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}
@@ -427,8 +432,8 @@ window.__ModuleLoader__.load({
     }
     function planEditInstruction(path) {
       return '用户已编辑计划 Markdown，已保存的新版本：'+path+
-        '\n必须读取该 Markdown 正文与其 _plan_edit.base_plan 指向的原计划，逐项落实所有改动并以新计划继续生产。调用 pipeline_plan(applies_edit="'+path+
-        '") 时提供 markdown_resolution 数组；每个规范化字段变更一项，格式为 {path, before, after, instruction}：path 是 assessment 相对点路径（数组用十进制索引），before 必须等于原 assessment 值，after 是规范化后的新值，instruction 必须逐字引用正文中提出该变更的原句。不得从旧正文或代码块取引文。题量、题型、场景数等要同步更新 assessment、selections、inputs 和相关执行步骤，并通过已有校验。split 与场景选择保持锁定。Markdown 中其他制作规则要落实到场景方案、任务代码、校验及执行步骤；不得只复述文档。保存新执行计划后使用新的 run 继续生产，复用仍符合新合同的已有产物和已提交采集。';
+        '\n必须读取该 Markdown 正文与 edit_revision.base_plan 指向的原计划，逐项落实改动。edit_revision.markdown_normalization=false 时，结构数据已经随显式 YAML 修改保存：保留该版本的 assessment、selections、inputs 和完整 user_markdown，不要求重新生成 markdown_resolution。只有 markdown_normalization=true 时，才将正文改动同步到结构数据并提供 markdown_resolution，格式为 {path, before, after, instruction}；path 为 assessment 相对点路径，before/after 为准确旧新值，instruction 逐字引用正文中新改的原句或已删除的旧句。split 与场景选择保持锁定。'+
+        '\n把可执行应用请求保存为 JSON 文件，applies_edit="'+path+'"，使用 pipeline_plan(request_path=文件路径)。旧会话工具定义若没有 request_path，用当前生产 Python 执行 SDK integrations/spatialforge/ui/plan_request_cli.py --workspace 当前工作区 --session 当前会话 --request 文件路径；该入口保留相同校验与会话来源，重复应用不重开阶段窗口。不要重新输出整份大文档。制作规则的实质修改必须落实到任务代码、执行步骤或证据输入；应用后使用新的 run，并复用仍符合合同的产物和已提交采集。';
     }
     function table(headers, rows) {
       return h('div', {className: 'bfw-scroll'}, h('table', {className: 'bfw-table'},
@@ -564,9 +569,13 @@ window.__ModuleLoader__.load({
           sorted((row.tasks || []).map((task) => [task.id, task.revision ?? null, terminal(task.state), artifacts(task)]))])),
         sorted((value?.parallel_tasks || []).filter((row) => terminal(row.state) || row.artifact_revision != null ||
           row.artifact_count > 0 || row.public_artifacts?.length).map((row) => [row.id, row.revision ?? null, terminal(row.state), artifacts(row)])),
+        value?.current_collection && [value.current_collection.plan_path, value.current_collection.ledger_version,
+          value.current_collection.status, sorted((value.current_collection.rows || []).map((row) => [row.design_id, row.task_id, row.revision]))],
+        value?.generation && value.generation.state !== 'running' ? [value.generation.run_id || value.generation.plan_path,
+          value.generation.state, value.generation.written_count, value.generation.verified_count, value.generation.published_count] : null,
       ]);
     }
-    const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
+    const sceneStage = (row) => row.workflow === 'scene' ? 'S2' : row.workflow === 'dataset' ? 'S4' :
       ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
     function pipelineForStage(id, pipelines) {
       const latest = (stage) => pipelines.filter((row) => row.steps?.some((step) => step.stage === stage))
@@ -592,13 +601,132 @@ window.__ModuleLoader__.load({
       });
       return {state: active.some((row) => row.state === 'RUNNING') ? 'RUNNING' : active[0].state, tasks};
     }
+    function registeredCollectionProgress(plan, current) {
+      const design = plan?.assessment?.scenes;
+      const targets = design?.designs || [];
+      const total = Number(design?.target_scene_count ?? plan?.inputs?.target_scene_count) || targets.length;
+      const saved = new Map((current.rows || []).map((row) => [row.design_id, row]));
+      const accepted = (current.rows || []).filter((row) => row.state === 'completed').length;
+      const trusted = current.status === 'current' && current.target === total && targets.length === total &&
+        saved.size === total && targets.every((row) => saved.has(row.id)) && current.accepted === accepted &&
+        (current.rows || []).every((row) => ['completed', 'waiting'].includes(row.state));
+      const rows = targets.map((target) => {
+        const row = trusted ? saved.get(target.id) : null;
+        const passed = row?.state === 'completed';
+        return {id: target.id, scene_id: row?.scene_id || target.scene_id, run_id: row?.run_id,
+          name: row?.name || sceneName(target.name) || '场景', state: passed ? 'completed' : 'waiting',
+          statusLabel: passed ? 'scenePassed' : 'scenePending', phase: passed ? 'sceneNativeAccepted' : 'scenePending'};
+      });
+      return {rows, total, passed: trusted ? accepted : 0, state: trusted && accepted === total && total > 0 ? 'completed' : 'waiting',
+        identityPending: !trusted, current: true, registrationStatus: current.status,
+        notice: current.status === 'pending' ? 'scenePlanPending' : !trusted ? 'sceneSnapshotUnavailable' : null};
+    }
+    function currentGeneration(value) {
+      if (!value || !['current_applied_plan', 'current_plan_path_after_save'].includes(value.association) ||
+          !Number.isSafeInteger(value.target_items) || value.target_items < 1 ||
+          !Number.isSafeInteger(value.written_count) || !Number.isSafeInteger(value.verified_count) ||
+          value.written_count < 0 || value.verified_count < 0 || value.written_count > value.target_items ||
+          value.verified_count > value.target_items) return null;
+      const heartbeat = value.heartbeat_at ?? value.updated_at;
+      const age = Date.now() / 1000 - heartbeat;
+      const fresh = value.fresh === true && Number.isFinite(age) && age >= 0 && age <= 30 && value.process_alive !== false;
+      const eligible = value.contract_eligible_count;
+      if (eligible != null && (!Number.isSafeInteger(eligible) || eligible < 0 || eligible > value.verified_count)) return null;
+      const incomplete = value.state === 'complete' && (value.written_count !== value.target_items || value.verified_count !== value.target_items ||
+        eligible != null && eligible !== value.target_items);
+      return {...value, fresh, state: incomplete || value.state === 'running' && !fresh ? 'incomplete' : value.state};
+    }
+    function sceneCollectionProgress(plan, scenes = [], current = null) {
+      if (current) return registeredCollectionProgress(plan, current);
+      const design = plan?.assessment?.scenes;
+      const declared = Number(design?.target_scene_count ?? plan?.inputs?.target_scene_count);
+      const total = Number.isInteger(declared) && declared > 0 ? declared :
+        design?.designs?.length || design?.selected_scenes?.length || 0;
+      const targets = (design?.designs || []).map((row) => ({
+        // This is a declared program filename, not a guess from a display name.
+        id: row.scene_id || String(row.program_path || row.artifact || '').match(/([^/\\\s]+)\.scene_program\.json\b/)?.[1],
+        name: row.name,
+      })).filter((row) => row.id);
+      const targetIds = new Set(targets.map((row) => row.id));
+      const boundPlan = total > 0 && targetIds.size === total;
+      const timestamp = (value) => {
+        if (value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))) {
+          const number = Number(value); return number < 1e12 ? number * 1000 : number;
+        }
+        return Date.parse(value) || 0;
+      };
+      const latest = new Map();
+      for (const run of scenes) {
+        const tasks = (run.tasks || []).filter((task) => task.workflow === 'scene' ||
+          sceneStage(task) === 'S2' && task.workflow !== 'asset');
+        if (!tasks.length && (run.tasks?.length || !run.scene_id || !run.state)) continue;
+        const groups = new Map();
+        for (const task of tasks.length ? tasks : [null]) {
+          const key = task?.scene_id || run.scene_id || run.run_id;
+          if (!key) continue;
+          groups.set(key, [...(groups.get(key) || []), task]);
+        }
+        for (const [key, candidates] of groups) {
+          const task = candidates.filter(Boolean).sort((a, b) => (Number(b.revision) || 0) - (Number(a.revision) || 0) ||
+            timestamp(b.updated_at || b.created_at) - timestamp(a.updated_at || a.created_at))[0];
+          if (!run.state && !task?.state && !task?.queue) continue;
+          const sceneId = task?.scene_id || run.scene_id;
+          if (boundPlan && sceneId && !targetIds.has(sceneId)) continue;
+          const created = timestamp(task?.created_at || run.created_at || run.updated_at || task?.updated_at);
+          const updated = timestamp(run.updated_at || task?.updated_at || run.created_at);
+          const candidate = {run, task, sceneId, created, updated};
+          const prior = latest.get(key);
+          if (!prior || created > prior.created || created === prior.created && updated > prior.updated) latest.set(key, candidate);
+        }
+      }
+      const observed = [...latest.values()].map(({run, task, sceneId}) => {
+        const nativeState = lifecycle(task?.state || run.state);
+        const phase = task?.progress?.stage || task?.phase || run.progress?.stage || '';
+        const acceptance = task?.acceptance?.passed ?? task?.acceptance_passed ?? run.acceptance?.passed ?? run.acceptance_passed;
+        let state = 'waiting', label = 'scenePending';
+        if (nativeState === 'completed' && acceptance !== false) {
+          state = 'completed'; label = 'scenePassed';
+        } else if (nativeState === 'failed' || acceptance === false && nativeState === 'completed') {
+          state = 'failed'; label = 'sceneNeedsRepair';
+        } else if (nativeState === 'canceled') {
+          state = 'canceled'; label = 'sceneStopped';
+        } else if (task?.queue || run.queue || nativeState === 'waiting') {
+          state = 'waiting'; label = 'sceneQueued';
+        } else if (nativeState === 'running' || lifecycle(run.state) === 'running') {
+          state = 'running'; label = /repair|revis|retry/i.test(phase) ? 'sceneRepairing' : 'sceneCapturing';
+        }
+        return {id: sceneId || run.run_id, scene_id: sceneId, run_id: run.run_id,
+          name: task?.name || run.name || sceneId || run.run_id, state, statusLabel: label,
+          phase, task, error: task?.failure || task?.progress?.error || run.failure};
+      });
+      const rows = boundPlan ? [...targets.map((target) => observed.find((row) => row.scene_id === target.id) ||
+        {id: target.id, scene_id: target.id, name: target.name || target.id, state: 'waiting', statusLabel: 'scenePending'}),
+        ...observed.filter((row) => !row.scene_id)] : observed;
+      if (!total && !rows.length) return null;
+      const identityPending = rows.some((row) => !row.scene_id) || total > 0 && rows.length > total;
+      const passed = rows.filter((row) => row.state === 'completed' && row.scene_id).length;
+      const state = total > 0 && !identityPending && rows.length === total && passed === total ? 'completed' :
+        rows.some((row) => row.state === 'running') ? 'running' : rows.some((row) => row.state === 'failed') ? 'failed' :
+        rows.length && rows.every((row) => row.state === 'canceled') ? 'canceled' : 'waiting';
+      return {rows, total, passed, state, identityPending};
+    }
     function annotationProducts(artifacts) {
       return artifacts.filter((row) => row.stage === 'S3' && row.kind === 'json' && artifacts.some((image) =>
         image.kind === 'image' && image.task_id === row.task_id && image.revision === row.revision &&
         image.file === row.file?.replace(/\.json$/, '.png')));
     }
-    function stageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = []) {
+    function stageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = [], collection = null, generation = null) {
+      const generated = id === 'S4' ? currentGeneration(generation) : null;
+      if (generated?.state === 'running' && generated.fresh) return 'running';
+      if (generated?.state === 'failed') return 'failed';
+      if (generated?.state === 'incomplete') return 'needs_evidence';
+      const recorded = recordedStageState(id, pipeline, scene, operations, planReceipt, artifacts, collection);
+      if (generated?.state === 'complete' && pipeline?.steps?.some((row) => row.stage === id) && recorded !== 'unknown') return recorded;
+      return generated?.state === 'complete' && recorded !== 'completed' ? 'waiting' : recorded;
+    }
+    function recordedStageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = [], collection = null) {
       if (id === 'S1' && planReceipt) return 'completed';
+      if (id === 'S2' && collection) return collection.state;
       const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
       if (current.length) {
         if (scene.state === 'CANCELED' && current.some((row) => row.state !== 'SUCCEEDED')) return 'canceled';
@@ -682,10 +810,12 @@ window.__ModuleLoader__.load({
               h('p', null, t('repairScope') + ': ' + repair.scope),
               h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
     }
-    function executionStage(viewed, states, running, parallelTasks = []) {
+    function executionStage(viewed, states, running, parallelTasks = [], generation = null) {
+      const generated = currentGeneration(generation);
+      if (generated?.state === 'running' && generated.fresh) return STAGES.find((row) => row.id === 'S4');
       const active = parallelTasks.filter((row) => lifecycle(row.state) === 'running');
       if (!running && !active.length) return viewed;
-      return STAGES.find((row) => states[row.id] === 'running') ||
+      return STAGES.find((row) => ['running', 'failed', 'canceled'].includes(states[row.id])) ||
         STAGES.find((row) => active.some((task) => task.stage === row.id)) ||
         STAGES.find((row) => states[row.id] === 'waiting') || {id: 'execution', key: 'productionProgress'};
     }
@@ -705,7 +835,8 @@ window.__ModuleLoader__.load({
         detail.done + ' / ' + detail.total;
     }
     function ParallelProgress({tasks = [], stage, titleKey = 'parallelTasks', t}) {
-      const rows = tasks.filter((row) => !row.stage || stage.id === 'execution' || row.stage === stage.id).map((row, index) => ({...row,
+      const rows = tasks.filter((row) => (!row.stage || stage.id === 'execution' || row.stage === stage.id) &&
+        !['idle', 'inactive'].includes(row.state)).map((row, index) => ({...row,
         display_name: row.display_name || row.label || row.name || t('parallelTask') + ' ' + (index + 1)}));
       if (!rows.length) return null;
       const completed = rows.filter((row) => lifecycle(row.state) === 'completed');
@@ -735,49 +866,69 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-parallel-heading'}, h('strong', null, t(titleKey)),
           h('span', {className: 'bfw-muted'}, caption + ' / ' + rows.length)),
         active.length > 0 && h('div', {className: 'bfw-parallel-grid'}, active.map(renderTask)),
-        completed.length > 0 && h('details', {className: 'bfw-parallel-completed', open: !active.length},
+        completed.length > 0 && h('details', {className: 'bfw-parallel-completed'},
           h('summary', null, t('parallelCompleted') + ' ' + completed.length), h('div', {className: 'bfw-parallel-grid'}, completed.map(renderTask))));
     }
-    function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
+    function StageProgress({stage, pipeline, scene, record, planReceipt, collectionPlan, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
+      const collection = stage.id === 'S2' ? sceneCollectionProgress(collectionPlan, record.value?.scenes?.runs || [], record.value?.current_collection) : null;
+      const generation = stage.id === 'S4' ? currentGeneration(record.value?.generation) : null;
       scene = progressSceneForStage(stage.id, scene, record.value?.scenes?.runs || []);
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
-      const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
+      const savedSteps = collection ? collection.rows.map((row) => ({id: row.name, state: row.state,
+        label: collection.current ? t(row.phase) : row.phase, error: row.error, queue: row.task?.queue})) : stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
         state: scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state),
         label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
         queue: row.queue, age: row.progress?.age_seconds, progress: row.progress})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
         .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
+      const generationPhase = generation && t({selecting: 'generationSelecting', surface_oracle: 'generationOracle',
+        writing: 'generationWriting', complete: 'generationComplete'}[generation.phase] || 'questionGeneration');
+      const steps = generation ? [{id: t('questionGeneration'), state: generation.state === 'complete' ? 'waiting' :
+        generation.state === 'incomplete' ? 'needs_evidence' : generation.state, label: generationPhase}] : savedSteps;
+      const history = collection?.current ? (record.value?.scenes?.runs || []).flatMap((run) =>
+        (run.tasks || []).filter((task) => sceneStage(task) === 'S2').map((task) => ({id: sceneName(task.name || task.summary?.name) || t('progressTasks'),
+          state: run.state === 'CANCELED' && task.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(task.state),
+          label: task.progress?.stage || task.phase}))) : [];
       const completed = steps.filter((row) => row.state === 'completed').length;
       const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
         steps.find((row) => row.state !== 'completed');
-      const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
+      const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts, collection, generation);
       const currentChildren = (record.value?.parallel_tasks || []).filter((row) => lifecycle(row.state) === 'running' &&
         (stage.id === 'execution' || row.stage === stage.id));
       const state = recordedState === 'unknown' && (conversationRunning || currentChildren.length) ||
         recordedState === 'completed' && currentChildren.length ? 'running' : recordedState;
-      const parallelUnknown = currentChildren.length > 0 && !current;
+      const parallelUnknown = !generation && currentChildren.length > 0 && !current;
       const products = stage.id === 'S3' && !steps.length ? annotationProducts(artifacts) : [];
       const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
         /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
-      const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
+      const stale = record.error || (collection?.current ? collection.registrationStatus === 'unavailable' :
+        generation ? false : ['partial', 'unavailable'].includes(record.value?.scenes?.status));
       // A list of recent operations is history, not a declared workload total.
       const readings = tasks.map((row) => reportedProgress(row.progress));
       const sharedMeasure = tasks.length > 1 && readings.every(Boolean) && readings.every((row) =>
         row.label === readings[0].label && row.bytes === readings[0].bytes) &&
         new Set(tasks.map((row) => row.progress?.stage || row.phase)).size === 1;
-      const detail = current && !parallelUnknown && !['failed', 'canceled'].includes(state) ? sharedMeasure
+      const checked = generation?.contract_eligible_count ?? generation?.verified_count;
+      const checkLabel = Number.isSafeInteger(generation?.contract_eligible_count) ? 'generationEligible' : 'generationVerified';
+      const repairTarget = generation?.repair_target_count ?? generation?.repair_candidate_target ??
+        (generation ? generation.written_count - checked : 0);
+      const detail = generation ? {done: generation.written_count === generation.target_items || generation.state === 'incomplete'
+        ? checked : generation.written_count, total: generation.target_items,
+        label: generation.written_count === generation.target_items || generation.state === 'incomplete' ? checkLabel : 'generationWritten'} :
+        !collection && current && !parallelUnknown && !['failed', 'canceled'].includes(state) ? sharedMeasure
         ? {...readings[0], done: readings.reduce((sum, row) => sum + row.done, 0), total: readings.reduce((sum, row) => sum + row.total, 0)}
         : tasks.length > 1 ? null : reportedProgress(current.progress) : null;
       // A whole-task count cannot describe work still occurring within that task.
       const activeUnknown = state === 'running' && (parallelUnknown || current && !detail);
-      const total = detail?.total || (activeUnknown || operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal);
-      const done = detail?.done ?? (steps.length ? completed : products.length);
+      const total = collection ? collection.identityPending ? 0 : collection.total : detail?.total ||
+        (activeUnknown || operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal);
+      const done = collection ? collection.passed : detail?.done ?? (steps.length ? completed : products.length);
       const measured = total > 0;
       const percent = measured ? Math.min(100, Math.round(done / total * 100)) : null;
       const moving = ['running', 'previewable'].includes(state);
-      const metric = measured ? percent + '%' : t(state === 'completed' ? 'stageDone' : moving ? 'progressPending' :
+      const metric = measured ? (generation ? t(detail.label) + ' ' : '') + percent + '%' : t(state === 'completed' ? 'stageDone' : moving ? 'progressPending' :
         ['failed', 'canceled'].includes(state) ? 'progressPaused' : 'progressWaiting');
-      const unit = t(detail?.label || (products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps'));
+      const unit = t(collection ? 'scenePassed' : detail?.label || (products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps'));
       const amount = detail?.bytes ? (done / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB' : done + ' / ' + total;
       return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id,
         'data-progress-state': stale ? 'stale' : state, 'aria-label': t('stageProgress')},
@@ -796,18 +947,41 @@ window.__ModuleLoader__.load({
               stage.id === 'execution' ? t('progressStages') + ' ' + completedStages + ' / 5' :
               steps.length ? unit + ' ' + completed + ' / ' + steps.length : t('waitingForReceipt')),
           current && h('span', {className: 'bfw-progress-current', title: current.id}, current.label || current.id),
-          conversationRunning && record.updatedAt && h('small', {className: 'bfw-muted', 'data-progress-updated': record.updatedAt},
+          (conversationRunning || generation) && record.updatedAt && h('small', {className: 'bfw-muted', 'data-progress-updated': record.updatedAt},
             t('progressUpdated') + ' ' + new Date(record.updatedAt).toLocaleTimeString()),
           steps.length > 0 && h('details', {className: 'bfw-progress-details'}, h('summary', null, t('stageProcess')),
             h('div', {className: 'bfw-progress-detail-body'},
               h('small', {className: 'bfw-muted'}, t('lastObserved') + ': ' +
                 (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—')),
-              table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))))),
+              table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—'])),
+              history.length > 0 && h('small', {className: 'bfw-muted'}, t('priorSceneAttempts')),
+              history.length > 0 && table([t('steps'), t('state'), t('phase')], history.map((row) => [row.id, status(row.state, t), row.label || '—']))))),
+        generation && h('div', {className: 'bfw-parallel-task-count', 'data-generation-counts': true},
+          h('span', {'data-generation-written': generation.written_count}, t('generationWritten') + ' ' + generation.written_count + ' / ' + generation.target_items), ' · ',
+          h('span', {'data-generation-verified': generation.verified_count}, t('generationVerified') + ' ' + generation.verified_count + ' / ' + generation.target_items),
+          Number.isSafeInteger(generation.contract_eligible_count) && h('span', {'data-generation-eligible': generation.contract_eligible_count},
+            ' · ' + t('generationEligible') + ' ' + generation.contract_eligible_count + ' / ' + generation.target_items),
+          Number.isSafeInteger(generation.candidate_count) && h('span', {'data-generation-candidate': generation.candidate_count}, ' · ' + t('generationCandidate') + ' ' + generation.candidate_count),
+          Number.isSafeInteger(generation.published_count) && h('span', {'data-generation-published': generation.published_count}, ' · ' + t('generationPublished') + ' ' + generation.published_count),
+          generation.written_count > checked && h('span', {'data-generation-draft': true}, ' · ' + t('generationNeedsRepair') + ' ' + (generation.written_count - checked))),
+        Number.isSafeInteger(generation?.repair_candidate_verified_count) && repairTarget > 0 &&
+          generation.repair_candidate_verified_count <= repairTarget && generation.written_count > checked &&
+          h('div', {className: 'bfw-parallel-task-count', 'data-repair-progress': true},
+            h('span', null, t('generationRepairVerified') + ' ' + generation.repair_candidate_verified_count + ' / ' + repairTarget),
+            h('progress', {max: repairTarget, value: generation.repair_candidate_verified_count,
+              'aria-label': t('generationRepairVerified')})),
+        generation?.state === 'complete' && state !== 'completed' && h('small', {className: 'bfw-hint'}, t('generationAwaitingAdmission')),
+        generation?.reported_state === 'running' && generation.state !== 'running' && h('small', {className: 'bfw-hint'}, t('generationInterrupted')),
+        collection && h('div', {className: 'bfw-scene-summary', 'data-collection-scenes': true}, collection.rows.map((row) =>
+          h('span', {className: 'bfw-scene-summary-row', key: row.id, 'data-scene-id': row.scene_id},
+            h('strong', {title: row.scene_id || row.run_id}, row.name),
+            h('span', {className: 'bfw-pill ' + row.state}, t(row.statusLabel))))),
+        collection?.identityPending && h('small', {className: 'bfw-hint'}, t(collection.notice || 'sceneIdentityPending')),
         stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
-        current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
+        !collection && current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
         current?.queue && h('small', {className: 'bfw-hint'}, t('waiting') + ': ' + current.queue.reason),
         h(ParallelProgress, {tasks: record.value?.parallel_tasks || [], stage, t}),
-        tasks.length > 1 && h(ParallelProgress, {stage, titleKey: 'progressTasks', t, tasks: tasks.map((row, index) => ({
+        !collection && tasks.length > 1 && h(ParallelProgress, {stage, titleKey: 'progressTasks', t, tasks: tasks.map((row, index) => ({
           id: row.id, stage: stage.id, display_name: row.display_name || row.name || row.summary?.name || row.summary?.title ||
             t('progressTasks') + ' ' + (index + 1), state: row.queue && row.state !== 'FAILED_FINAL' ? 'waiting' : lifecycle(row.state),
           progress: row.progress, public_artifacts: artifacts.filter((file) => file.task_id === row.id && file.url),
@@ -862,6 +1036,10 @@ window.__ModuleLoader__.load({
           const observation=h(PublicObservation,{key:src,src,type:item.media_types?.[index],label,t});
           return item.media_types?.[index]==='application/json' ? h('details',{key:src},h('summary',null,label),observation) : observation;
         }) : empty(t('noMedia')),
+        item.assets?.length > 0 && h('details',{'data-public-assets':true},
+          h('summary',null,t('publicAssets')+' ('+item.assets.length+')'),
+          h('ul',null,item.assets.map((src,index)=>h('li',{key:src},
+            h('a',{href:src,target:'_blank',rel:'noreferrer'},item.asset_names?.[index] || t('publicAssets')+' '+(index+1)))))),
         h('details',null,h('summary',null,t('details')),json({...item,media:undefined,media_types:undefined})));
     }
     function sceneProjects(items) {
@@ -1188,12 +1366,24 @@ window.__ModuleLoader__.load({
       if (error) return h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + error);
       if (!data) return empty(t('loading'));
       return h('article', {className: 'bfw-plan-document'}, h('h3', null, item.title),
-        h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([key, value]) =>
+        data.scene_previews?.length > 0 && h('div', {'data-report-scene-previews': true,
+          style: {display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '.75rem'}},
+          data.scene_previews.map((row) => h('figure', {key: row.url, style: {margin: 0}},
+            h('img', {src: row.url, alt: row.title, loading: 'lazy', style: {width: '100%', aspectRatio: '16 / 9', objectFit: 'cover'}}),
+            h('figcaption', {className: 'bfw-muted'}, row.title)))),
+        data.body_markdown && h(React.Fragment, null, planMarkdownView(data.body_markdown),
+          h('a', {className: 'bfw-button', href: item.step_id && item.url
+              ? item.url + (item.url.includes('?') ? '&' : '?') + 'format=markdown'
+              : 'data:text/markdown;charset=utf-8,' + encodeURIComponent(data.body_markdown),
+            download: 'delivery_report.md'}, t('exportPlanText'))),
+        !data.body_markdown && h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([key, value]) =>
           ['requested','accepted','shortfall','split','scene_groups','total','count','success_rate','model_api_calls','benchmark_approved','state','status'].includes(key) &&
           (value === null || typeof value !== 'object')).map(([key, value]) =>
           h('div', {key}, h('dt', null, key==='benchmark_approved' ? t('approval') :
             ({total:'总数',count:'数量',success_rate:'成功率',model_api_calls:'模型调用次数',status:'状态'})[key] || t(key)),
             h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : ['state','status'].includes(key) ? t(value) : String(value ?? '—'))))),
+        !data.body_markdown && data.per_partition && table(['数据用途','题量'], Object.entries(data.per_partition).map(([split,count])=>
+          [({train:'训练',dev:'开发验证',test:'测试',sealed:'封存'})[split] || split,count])),
         h('details', null, h('summary', null,'数据详情'), json(data)));
     }
     function Quality({report, t, templateName=(id)=>id}) {
@@ -1202,6 +1392,8 @@ window.__ModuleLoader__.load({
         h('small', {className: 'bfw-hint'}, t('reportNote')),
         h('div', {className: 'bfw-stats'}, ['requested', 'accepted', 'shortfall', 'scene_groups'].map((key) =>
           h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, report[key] ?? '—')))),
+        report.per_partition && table(['数据用途','题量'], Object.entries(report.per_partition).map(([split,count])=>
+          [({train:'训练',dev:'开发验证',test:'测试',sealed:'封存'})[split] || split,count])),
         h('p', null, t('approval') + ': ', report.benchmark_approved === undefined ? '—' : t(report.benchmark_approved ? 'yes' : 'no')),
         card(t('coverage'), table([t('template'), t('accepted')], Object.entries(report.per_template || {}).map(([id,count])=>[templateName(id),count]))),
         card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
@@ -1474,6 +1666,7 @@ window.__ModuleLoader__.load({
       const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
         ? summary.value.plan : null;
       const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
+      const collectionPlan = summary.value?.plan?.assessment?.scenes ? summary.value.plan : plan;
       const templateName=(id)=>plan?.template_contracts?.find(row=>row.id===id)?.title || '题型';
       const versionOptions = [['', t('chooseDataset')], ...datasets.map((row,index) =>
         [row.id,'数据集 '+(index+1)+' · '+(row.report?.accepted ?? '—')+' 题 · '+(row.updated_at || '').slice(0,10)])];
@@ -1539,10 +1732,12 @@ window.__ModuleLoader__.load({
           (row.title === '评测计划' && row.stage === 'S1' || row.title === '评测配置' && row.stage === 'S4')));
         const navigationState = (id) => stageState(id, navigationPipeline(id), progressSceneForStage(id, navigationScene(id), sceneJobs), progress.value?.operations,
           planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
-            navigationPipeline(id)?.id === selectedRunId ? allStageFiles : []);
+            navigationPipeline(id)?.id === selectedRunId ? allStageFiles : [],
+          id === 'S2' ? sceneCollectionProgress(collectionPlan, sceneJobs, progress.value?.current_collection) : null, progress.value?.generation);
         const progressStates = Object.fromEntries(STAGES.map((row) => [row.id, navigationState(row.id)]));
-        const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === 'running');
-        const liveProgressStage = executionStage(stage, progressStates, conversationRunning, progress.value?.parallel_tasks || []);
+        const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === 'running') ||
+          currentGeneration(progress.value?.generation)?.state === 'running';
+        const liveProgressStage = executionStage(stage, progressStates, conversationRunning, progress.value?.parallel_tasks || [], progress.value?.generation);
         const liveProgressPipeline = liveProgressStage.id === 'execution' ? null : navigationPipeline(liveProgressStage.id);
         const liveProgressScene = liveProgressStage.id === 'execution' ? null : navigationScene(liveProgressStage.id);
         const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
@@ -1588,7 +1783,7 @@ window.__ModuleLoader__.load({
         else product = h(React.Fragment, null,
           select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
           dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
-          (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report,templateName,t}),
+          !finalReport && (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report,templateName,t}),
           !finalReport && (sceneArtifacts.loading || run.loading) ? empty(t('loading')) :
             !finalReport && filesError ? h('p', {className: 'bfw-error'}, t('artifactReadFailed') + ' ' + filesError) :
               h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
@@ -1614,7 +1809,7 @@ window.__ModuleLoader__.load({
           h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
             t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
         h(StageProgress, {stage: liveProgressStage, pipeline: liveProgressPipeline, scene: liveProgressScene, record: progress,
-          planReceipt, artifacts: allStageFiles, conversationRunning: progressRunning,
+          planReceipt, collectionPlan, artifacts: allStageFiles, conversationRunning: progressRunning,
           completedStages: Object.values(progressStates).filter((state) => state === 'completed').length, t}),
         h(StageReviewPanel,{value:reviewRecord.value,t,change:() => prepare(''),act:async (action) => {
           try {await reviewAction(action); if (action === 'pause' && conversationRunning) await stopExecution(); if (action === 'continue' && !conversationRunning) {

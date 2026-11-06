@@ -41,6 +41,23 @@ class QuestionWritingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'every public media'):
             validate_spec(self.spec, self.parameters, 2)
 
+    def test_normalizes_complete_legacy_spec_without_mutating_its_source(self):
+        legacy = deepcopy(self.spec)
+        legacy.pop('schema')
+        self.assertEqual(validate_spec(legacy, self.parameters, 1),
+                         validate_spec(self.spec, self.parameters, 1))
+        self.assertNotIn('schema', legacy)
+        with self.assertRaisesRegex(ValueError, 'exact source parameters'):
+            validate_spec(legacy, {**self.parameters, 'threshold': 0.2}, 1)
+        with self.assertRaisesRegex(ValueError, 'measurement rules'):
+            validate_spec({**legacy, 'conditions': []}, self.parameters, 1)
+        with self.assertRaisesRegex(ValueError, 'every public media'):
+            validate_spec(legacy, self.parameters, 2)
+
+    def test_rejects_explicit_unsupported_question_schema(self):
+        with self.assertRaisesRegex(ValueError, 'Unsupported question_spec.schema'):
+            validate_spec({**self.spec, 'schema': 'unknown/v2'}, self.parameters, 1)
+
     def test_rejects_internal_codes_serialized_payloads_and_malformed_stems(self):
         for stem in ['根据cam_main判断方向？', '在sf_e103_study中判断方向？',
                      '根据{"A": "OBJ05"}判断方向？', '根据{unbound}判断方向？', '在哪侧？。']:

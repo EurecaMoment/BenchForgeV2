@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import unittest
 import tempfile
+import time
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
@@ -17,6 +18,51 @@ import json
 
 
 class StageArtifactsTest(unittest.TestCase):
+    def test_repairs_keep_public_plan_and_candidate_counts_separate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / 'bench-office100'
+            (folder / 'evidence').mkdir(parents=True)
+            evidence = folder / 'evidence/evidence.jsonl'
+            evidence.write_text('{}\n')
+            (folder / 'questions').mkdir()
+            plan = {'inputs': {'target_items': 100, 'evidence': str(evidence)}}
+            plan_path = root / 'plan.json'
+            plan_path.write_text(json.dumps(plan))
+            reference = {'path': str(plan_path.resolve()), 'file_version': observer.file_version(plan_path)}
+            path = folder / 'questions/generation_progress.json'
+            saved = {'schema': 'bench-office100-generation-progress-v1', 'session_id': 'session-counts',
+                'plan_path': reference['path'], 'plan_version': reference['file_version'], 'target_items': 100,
+                'state': 'running', 'pid': 123, 'heartbeat_at': time.time(), 'candidate_count': 100,
+                'written_count': 100, 'verified_count': 89, 'published_count': 0, 'contract_eligible_count': 81,
+                'repair_candidate_target': 19, 'repair_candidate_written_count': 19, 'repair_candidate_verified_count': 19}
+            path.write_text(json.dumps(saved))
+            with patch.object(observer, 'process_alive', return_value=True):
+                value = observer.generation_progress(root, 'session-counts', plan, reference)
+            self.assertEqual((value['written_count'], value['verified_count'], value['contract_eligible_count']), (100, 89, 81))
+            self.assertEqual((value['repair_target_count'], value['repair_candidate_verified_count']), (19, 19))
+            saved.update(state='complete', verified_count=100)
+            path.write_text(json.dumps(saved))
+            self.assertEqual(observer.generation_progress(root, 'session-counts', plan, reference)['state'], 'incomplete')
+            saved.update(contract_eligible_count=101)
+            path.write_text(json.dumps(saved))
+            self.assertIsNone(observer.generation_progress(root, 'session-counts', plan, reference))
+
+    def test_frozen_scene_identity_groups_retries_without_exposing_program(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            folder = root / 'sf_retry.scene0/revision_0'
+            folder.mkdir(parents=True)
+            (folder / 'program.json').write_text(json.dumps({'scene_id': 'office_work',
+                'title': 'Office', 'answer': 'PRIVATE_ORACLE', 'objects': [{'id': 'secret'}]}))
+            value = observer.saved_scene_identity({'artifacts': str(root)}, {'id': 'sf_retry.scene0', 'revision': 0})
+            self.assertEqual(value['scene_id'], 'office_work')
+            self.assertEqual(value['name'], 'Office')
+            self.assertIn('created_at', value)
+            self.assertNotIn('PRIVATE_ORACLE', str(value))
+            self.assertEqual(observer.saved_scene_identity({'artifacts': str(root)}, {'id': '../outside', 'revision': 0}), {})
+            self.assertEqual(observer.saved_scene_identity({'artifacts': str(root)}, {'id': 'sf_retry.scene0', 'revision': -1}), {})
+
     def test_old_service_report_projection_error_preserves_failed_native_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);capture=root/'sf_failed.scene0/revision_0/capture';capture.mkdir(parents=True)

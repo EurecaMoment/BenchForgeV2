@@ -1,18 +1,106 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
-import {compactCaptureObservation} from './capture_watch.mjs';
+const {compactCaptureObservation,captureRunId}=await import(new URL('./capture_watch.mjs'+new URL(import.meta.url).search,import.meta.url));
+
+// Retained tools can have old implementations and lost registration disposers.
+// Public around-dispatch hooks replace only these observation bodies. Their
+// existing schemas, output validation, preset and Agent identity stay in place.
+export function createScopedCaptureObservations({read,watch,evidence,artifacts}) {
+  const ownershipKey=Symbol.for('benchforge.capture-observation-interceptors');
+  const ownership=globalThis[ownershipKey]??=new WeakMap();
+  const installed=new WeakMap(), records=new Set();
+  return {
+    install(agent) {
+      if(installed.has(agent))return;
+      const context=agent.ctx,tools=context?.get('tools');
+      if(!tools || typeof context.on!=='function')return;
+      const names=new Set(['spatialforge_status','spatialforge_wait','spatialforge_evidence']
+        .filter(name=>tools.get?.(name,agent)));
+      if(!names.size)return;
+      const previous=ownership.get(agent);
+      const disposeHook=context.on('tools/execute',async(exec,next)=>{
+        if(exec.agent!==agent || !names.has(exec.name))return next();
+        const args=exec.arguments;
+        exec.signal?.throwIfAborted();
+        let value;
+        if(exec.name==='spatialforge_status') {
+          const {cursor:ignored,...request}=args;
+          request.run_id=captureRunId(request.run_id);
+          const {cursor,...observed}=await read(args.detail?'/inspect':'/observe',request,exec.signal);
+          value=args.detail===true?observed:compactCaptureObservation(observed,{artifacts});
+        } else if(exec.name==='spatialforge_wait') {
+          const {background,cursor:ignored,...request}=args;
+          request.run_id=captureRunId(request.run_id);
+          const observed=background?await watch(request,exec):await read('/wait',request,exec.signal);
+          value=compactCaptureObservation(observed,{artifacts});
+        } else {
+          if(typeof evidence!=='function')return next();
+          const request={...args},runId=captureRunId(args.run_id || args.task_id);
+          if(request.run_id)request.run_id=runId;
+          if(request.task_id===runId) {
+            const observed=await read('/observe',{run_id:runId},exec.signal);
+            if(observed.tasks?.length!==1)throw new Error('Choose the exact task_id from this run: '+(observed.tasks || []).map(task=>task.id).join(', '));
+            request.task_id=observed.tasks[0].id;
+          }
+          value=await evidence(request,exec);
+        }
+        exec.signal?.throwIfAborted();
+        // Authored around-dispatch values re-enter Tools.normalizeDispatchResult,
+        // which validates output.schema and invokes the original output renderer.
+        return {isError:false,value,content:[]};
+      });
+      let released=false;
+      const record={dispose() {
+        if(released)return;
+        released=true;
+        disposeHook();
+        records.delete(record);
+        installed.delete(agent);
+        if(ownership.get(agent)===record)ownership.delete(agent);
+      }};
+      installed.set(agent,record);
+      records.add(record);
+      ownership.set(agent,record);
+      previous?.dispose();
+    },
+    dispose() {for(const record of [...records])record.dispose();},
+  };
+}
+
+// Use the same native evidence route and vision checks as the preset tool.
+// Never invoke a borrowed ToolDefinition with a fabricated run context.
+export function createCaptureEvidence({api}) {
+  return async(args,exec)=>{
+    const value=await api('/evidence',args,exec.signal);
+    if(!value.image_path)return value;
+    const context=exec.agent?.ctx,attachments=context?.get('attachments'),llm=context?.get('llm');
+    const routed=exec.agent?.session.requestHeader()?.config;
+    const provider=routed?.provider??exec.agent?.options.provider,model=routed?.model??exec.agent?.options.model;
+    if(!attachments||!llm||provider===undefined||model===undefined)throw Error('Image evidence needs the attachment service and a resolved vision route; copy to workspace_id for file processing.');
+    const info=await llm.resolveModelInfo(provider,model,exec.signal);
+    if(!info.inputModalities?.includes('image'))throw Error('Current model route does not declare image input; use JSON evidence or copy the image to workspace_id.');
+    exec.signal.throwIfAborted();
+    const data=await fs.readFile(value.image_path,{signal:exec.signal});
+    exec.signal.throwIfAborted();
+    value.image=await attachments.saveImage({data,mediaType:/\.jpe?g$/i.test(value.image_path)?'image/jpeg':'image/png',name:path.basename(value.image_path)});
+    exec.signal.throwIfAborted();
+    delete value.image_path;
+    return value;
+  };
+}
 
 // Existing Agents keep their preset revision. This root-scoped, authenticated
 // adapter gives those Agents background waiting without replacing their tools.
-export function createLegacyCaptureStep({watch, recover, read, createMessage = createUserMessage}) {
+export function createLegacyCaptureStep({watch, recover, read, associate, createMessage = createUserMessage}) {
   const seen = new Set(), announced = new Set();
   return async ({agent, signal}, next) => {
     const decision = await next();
     if (decision.kind !== 'enter' || agent.session.header?.origin === 'subagent') return decision;
+    const events = agent.session.snapshotEvents().slice(-64);
+    if (associate) await associate(agent, events);
     const definition = agent.ctx?.get('tools')?.get('spatialforge_wait', agent);
     if (!definition || definition.description?.includes('background=true')) return decision;
-    const events = agent.session.snapshotEvents().slice(-28);
     const calls = new Map(), messages = [];
     for (const event of events) {
       if (event.type === 'tool/call') calls.set(event.data.callId, event.data);
@@ -63,9 +151,10 @@ export async function attachCaptureRuntime(ctx, config) {
   const revision = '?revision=' + encodeURIComponent(config.uiRevision);
   const {createObservationBridge} = await import('./observation_bridge.mjs' + revision);
   const {createCaptureRetry} = await import('./capture_retry.mjs' + revision);
-  const {createCaptureWatcher} = await import('./capture_watch.mjs' + revision);
+  const {createCaptureWatcher, deliverCaptureNotice} = await import('./capture_watch.mjs' + revision);
+  const {createCaptureAssociations} = await import('./capture_associations.mjs' + revision);
   const controller = new AbortController();
-  ctx.on('dispose', () => controller.abort());
+  ctx.effect(()=>()=>controller.abort(),'benchforge capture runtime cancellation');
   const api = async (route, args, signal) => {
     const response = await fetch((cfg.service_url || 'http://127.0.0.1:' + (cfg.port || 3841)) + route,
       {method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+cfg.operator_token},body:JSON.stringify(args),signal});
@@ -75,15 +164,18 @@ export async function attachCaptureRuntime(ctx, config) {
   };
   const read = createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.productionPython});
   const recover = createCaptureRetry({api,serviceConfig:config.productionConfig,policyPython:config.productionPython});
-  const watch = createCaptureWatcher({artifacts:cfg.artifacts,read,signal:controller.signal,notify:async(agent,record)=>{
-    agent.followup(createUserMessage({source:{kind:'spatialforge/capture-watch'},content:[{type:'text',text:
-      '采集终态通知：'+JSON.stringify(record)+'\n继续原任务；失败仍未完成，按真实失败阶段处理，不再轮询已结束作业。'}]}));
-  }});
-  const hook = createLegacyCaptureStep({watch,recover,read});
   const roots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(config.productionConfig)];
+  const associations = createCaptureAssociations({ctx, roots});
+  const watch = createCaptureWatcher({artifacts:cfg.artifacts,read,signal:controller.signal,
+    notify:async(agent,record)=>deliverCaptureNotice(agent,record,createUserMessage)});
+  const observations=createScopedCaptureObservations({read,watch,evidence:createCaptureEvidence({api}),artifacts:cfg.artifacts});
+  ctx.effect(()=>()=>observations.dispose(),'benchforge capture observation interceptors');
+  const hook = createLegacyCaptureStep({watch,recover,read,associate:associations.record});
   ctx.on('agent/pre-step', async (input,next) => {
     const cwd = input.agent.session.header?.cwd;
     if (!cwd || !roots.some(root => {const relative=path.relative(root,cwd);return relative==='' || relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative);})) return next();
+    if(input.agent.session.header?.origin!=='subagent')observations.install(input.agent);
     return hook(input,next);
   });
+  return associations;
 }

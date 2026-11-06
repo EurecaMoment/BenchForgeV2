@@ -1,11 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {fileURLToPath} from 'node:url';
 
 const queues = new Map();
 const nativeIdleProbes = new WeakMap();
 const NATIVE_ACTIVITY_PROBE_MS = 50;
 const SCHEMA = 'benchforge.synthesis-sessions/v1';
+const FACING_REFERENCE = fileURLToPath(new URL('../native_asset_facing.json', import.meta.url));
+const FACING_HELPER = fileURLToPath(new URL('../native_asset_facing.py', import.meta.url));
 const PARENT_TOOLS = ['pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', 'pipeline_evaluate',
   'stage_review', 'spatial_export', 'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine',
   'spatialforge_extend', 'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code',
@@ -15,6 +18,7 @@ At the start of file work, batch-copy the supplied source scripts or programs in
 Apply the smallest concrete patch. Locate and batch-read only the functions or sections needed for it, then save known changes as you work. For scene design, persist the title, descriptive summary and program draft before investigating unresolved structure. If an exact input or required structure remains unknown, state the specific question or missing field in the manifest and hand off the completed scope; do not delay all saved preparation while trying to validate the entire production pipeline.
 Keep verification proportional to the actual change and unresolved evidence. Do not add complex SHA checks or compute checksums for every input, PNG, output and receipt. Preserve supplied native identities and use necessary file size/mtime version bindings. Serialize JSON/JSONL directly with explicit UTF-8 writes; do not re-read every newly written record just to check serialization. Do not repeatedly scan directories, poll unchanged state or revalidate unrelated completed stages. Run only the checks needed for the patch and its source/production boundary; broaden checks when a concrete failure requires it.
 Preparation is complete when the requested edits or design artifacts are saved, checks proportional to those changes have run, and an honest manifest reports artifact paths, actual checks, missing inputs and unresolved issues. A useful saved partial preparation can be handed off with its concrete blocker. Parent production acceptance is a later responsibility and must not prevent preparation drafts from being saved or delivered. Preserve hard requirements, exact measurement and public-question contracts, provenance, physics and everyday realism. Recognizable real assets are the default; geometry explicitly declared in the frozen plan remains valid in its scope. Predictions and references are not captured evidence or GT; record unaccepted or missing inputs without inventing results.
+For scene facing and functional-layout work, use the calibrated native asset front axes in ${FACING_REFERENCE}; the dependency-free planning helper is ${FACING_HELPER}. It provides yaw_toward(kind, source_xy, target_xy) and world_forward(kind, yaw_deg). These references apply to their named source USD assets. Do not infer an asset's front from AABB dimensions or an earlier visual-review pass. Unknown assets have no implied axis. Keep their uncertainty explicit and obtain only the necessary shape evidence. Face monitors toward their operator, chairs toward their declared working target and conversation seats toward their declared conversation target; use the saved role relations, not a single assumed axis for all assets. The helper computes planned directions, not executed physics or acceptance; verify changed poses in subsequent native capture. Use Python with -B when reading the helper outside your assigned write directory.
 The parent owns authoritative merging, capture, acceptance, export and each production stage's user window. Do not spawn more workers, create stage windows or bypass parent-owned tools through a shell, HTTP or task code. Question workers deliver S4 preparation or shards; the parent packages S5 after aggregate S4 acceptance. Update manifest.json to reflect the actual preparation outcome and quote its path in the final handoff. Preparation completion and accepted scene/data production are separate outcomes.`;
 
 class SynthesisError extends Error {
@@ -208,8 +212,8 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
     const provider = nonempty(route?.provider, 'parent provider'), model = nonempty(route?.model, 'parent model');
     const info = await llm.resolveModelInfo(provider, model, signal);
     const supportedEfforts = info.reasoning?.efforts?.map(effort => effort.id) || [];
-    const preferredEffort = 'medium';
-    const selectedEffort = ['medium', 'low', 'minimal', 'none', 'off', 'high', 'xhigh']
+    const preferredEffort = 'low';
+    const selectedEffort = ['low', 'minimal', 'none', 'off', 'medium', 'high', 'xhigh']
       .find(effort => supportedEfforts.includes(effort)) || supportedEfforts[0];
     const selectionMode = selectedEffort ? 'explicit' : info.reasoning ? 'inherit' : 'not_applicable';
     return {provider, model, preferredEffort, selectionMode,
@@ -217,9 +221,9 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
       ...(info.reasoning?.defaultEffort ? {providerDefaultEffort: info.reasoning.defaultEffort} : {}),
       reason: !selectedEffort ? 'The model exposes no selectable reasoning effort; no reasoningEffort override is supplied.' :
         selectedEffort === preferredEffort ? 'The model supports the preferred preparation effort.' :
-          !['low', 'minimal', 'none', 'off', 'high', 'xhigh'].includes(selectedEffort)
+          !['minimal', 'none', 'off', 'medium', 'high', 'xhigh'].includes(selectedEffort)
             ? `The model exposes no supported preferred or lighter preparation level; its advertised ${selectedEffort} is selected explicitly.`
-            : `The model does not support medium; preparation uses supported ${selectedEffort}. Provider/model and parent effort are unchanged.`};
+            : `The model does not support ${preferredEffort}; preparation uses supported ${selectedEffort}. Provider/model and parent effort are unchanged.`};
   }
 
   async function scope(parentId, requireAgent = true, signal) {

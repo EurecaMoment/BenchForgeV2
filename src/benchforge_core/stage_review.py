@@ -28,6 +28,8 @@ def review(workspace, session, action='status', *, stage=None, key=None, artifac
         if action == 'open':
             db.execute('INSERT OR IGNORE INTO reviews(session,key,stage,artifact,started,deadline,state,instruction) VALUES(?,?,?,?,?,?,?,?)',
                        (session,key,stage,str(artifact),clock,clock+SECONDS,'waiting_user',''))
+            db.execute('UPDATE reviews SET artifact=? WHERE session=? AND key=? AND stage=?',
+                       (str(artifact),session,key,stage))
             row = db.execute('SELECT * FROM reviews WHERE session=? AND key=? AND stage=?', (session,key,stage)).fetchone()
         elif review_id is not None:
             row = db.execute('SELECT * FROM reviews WHERE session=? AND id=?', (session,review_id)).fetchone()

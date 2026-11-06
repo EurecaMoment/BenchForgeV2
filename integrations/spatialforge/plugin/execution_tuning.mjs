@@ -150,18 +150,21 @@ export function createExecutionTuning({ctx, pairing}) {
   ];
   return {
     async arm(root,id,{reasoning_effort,compact_history=false},signal) {
-      if(reasoning_effort !== 'high')throw error('This production speed adjustment supports the advertised high effort');
+      if(typeof reasoning_effort !== 'string' || !reasoning_effort.trim() || reasoning_effort.length>64)
+        throw error('A supported reasoning effort is required');
       const agent=await owner(root,id), current=agent.session.requestHeader?.()?.config;
       if(!current?.provider || !current?.model)throw error('The parent has no admitted model request',409);
       const llm=agent.ctx?.get('llm') || ctx.get('llm');
       const info=await llm.resolveModelInfo(current.provider,current.model,signal);
       const supported=info.reasoning?.efforts?.map(item=>item.id) || [];
-      if(!supported.includes(reasoning_effort))throw error('The current model does not advertise high reasoning');
+      if(!supported.includes(reasoning_effort))throw error(`The current model does not advertise reasoning effort ${reasoning_effort}`);
       const selected={...route(current),reasoningEffort:reasoning_effort};
       const previous=records.get(id);
       if(previous?.state==='prepared')throw error('The adjustment is already preparing a native request',409);
       const record={schema:'benchforge.execution-tuning/v1',session_id:id,requested_at:Date.now(),
         state:same(route(current),selected)?'applied':'requested',from:route(current),selected,supported_efforts:supported,
+        // Changing effort alone retains the committed native compact receipt.
+        ...(previous?.compact?{compact:previous.compact}:{}),
         ...(compact_history?{compact:{state:agent.status==='idle'?'waiting_for_idle':'waiting_for_boundary'}}:{})};
       await save(id,record);
       if(agent.status==='idle')void compactWhenIdle(agent);
@@ -169,6 +172,16 @@ export function createExecutionTuning({ctx, pairing}) {
     },
     async observe(root,id) {
       const agent=await owner(root,id), events=agent.session.snapshotEvents().slice(-100);
+      const config=agent.session.requestHeader?.()?.config;
+      const sharedLlm=ctx.get('llm'), sessionLlm=agent.ctx?.get('llm') || sharedLlm;
+      const efforts=async llm=>{
+        try {
+          if(!config?.provider || !config?.model || !llm?.resolveModelInfo)return [];
+          const info=await llm.resolveModelInfo(config.provider,config.model);
+          return info.reasoning?.efforts?.map(item=>item.id) || [];
+        } catch {return null;}
+      };
+      const available=await efforts(sessionLlm), shared=sharedLlm===sessionLlm?available:await efforts(sharedLlm);
       const record=records.get(id);
       // An authorized native /compact can finish outside this UI adapter.
       // Reconcile only its committed command pair and summary reference.
@@ -198,9 +211,20 @@ export function createExecutionTuning({ctx, pairing}) {
         }
         if(event.type==='tool/call') {
           const tool={time:event.time,name:d.name};tools.push(tool);pending.set(d.callId,tool);
+          if(/^spatialforge_(status|wait|evidence)$/.test(d.name || '')) {
+            try {tool.input=Object.fromEntries(Object.entries(JSON.parse(d.arguments)).filter(([key])=>['run_id','task_id','detail','background','timeout_seconds'].includes(key)));} catch {}
+          }
           activity={phase:'tool',started_at:event.time};
         }
         if(event.type==='tool/result') {
+          const tool=pending.get(d.message?.toolCallId);
+          if(tool) {
+            tool.seconds=Math.max(0,(event.time-tool.time)/1000);
+            tool.result_characters=(d.message?.content || []).reduce((count,block)=>count+(block.type==='text'?(block.text || '').length:0),0);
+            tool.failed=d.message?.isError===true;
+            if(tool.failed && /^spatialforge_(status|wait|evidence)$/.test(tool.name))
+              tool.error=(d.message?.content || []).filter(block=>block.type==='text').map(block=>block.text || '').join('\n').slice(0,1200);
+          }
           pending.delete(d.message?.toolCallId);
           if(pending.size===0 && activity?.phase==='tool')activity={phase:'between_steps',started_at:event.time};
         }
@@ -212,8 +236,23 @@ export function createExecutionTuning({ctx, pairing}) {
       if(activity && pending.size>0 && activity.phase==='tool')activity.started_at=Math.min(...[...pending.values()].map(tool=>tool.time));
       const current=activity?{...activity,elapsed_seconds:Math.max(0,(Date.now()-activity.started_at)/1000),
         active_tools:activity.phase==='tool'?[...pending.values()]:[]}:{phase:agent.status==='idle'?'idle':'unknown',active_tools:[]};
+      const agentTools=ctx.get('agentPresets')?.serviceFor?.(agent,'tools') || agent.ctx?.get('tools') || ctx.get('tools');
+      const toolDefinitions=Object.fromEntries(['spatialforge_status','spatialforge_wait'].map(name=>{
+        const tool=agentTools?.get?.(name,agent);
+        return [name,tool?{description:tool.description}:null];
+      }));
+      const localTools=agent.ctx?.get('tools');
+      const bindings=Object.fromEntries(['spatialforge_status','spatialforge_wait','spatialforge_evidence'].map(name=>{
+        const selected=agentTools?.get?.(name,agent),local=localTools?.get?.(name,agent);
+        return [name,{same_registration:selected===local,selected_description:selected?.description ?? null,
+          local_description:local?.description ?? null,selected_present:Boolean(selected),local_present:Boolean(local)}];
+      }));
       return {session_id:id,agent_status:agent.status,last_used:route(agent.session.requestHeader?.()?.config),
+        available_efforts:available,shared_efforts:shared,
         policy:records.get(id) || null,recent_steps:steps.slice(-4),recent_tools:tools.slice(-8),
+        tool_definitions:toolDefinitions,
+        tool_binding_scopes:bindings,
+        recent_turn_outcomes:events.filter(event=>event.type==='turn/end').slice(-3).map(event=>({time:event.time,outcome:event.data})),
         current_activity:current,
         last_event:events.length?{type:events.at(-1).type,time:events.at(-1).time}:null};
     },

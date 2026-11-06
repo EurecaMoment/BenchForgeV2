@@ -253,14 +253,16 @@ class StageReviewTests(unittest.TestCase):
                 applied = runtime.call('pipeline_plan', {**arguments, 'applies_edit': draft['plan']})
                 self.assertFalse(current(tmp, 'session-edit-window')['pending'])
                 self.assertEqual(applied['stage_review']['stage'], 'S1')
+                self.assertEqual(applied['stage_review']['review_id'], original['stage_review']['review_id'])
+                self.assertEqual(applied['stage_review']['deadline'], original['stage_review']['deadline'])
                 self.assertEqual(applied['stage_review']['deadline']-applied['stage_review']['started'], 300)
                 waiting = run({'plan': applied['plan'], 'run': str(root/'run'), '_workspace': tmp,
                                '_dsh_context': {'session_id': 'session-edit-window'}}, root/'operation')
-                self.assertEqual(waiting['stage_review']['review_id'], applied['stage_review']['review_id'])
-                self.assertEqual(waiting['stage_review']['deadline'], applied['stage_review']['deadline'])
+                self.assertTrue(applied['stage_review']['can_continue'])
+                self.assertNotEqual(waiting['stage_review']['stage'], 'S1')
                 with closing(sqlite3.connect(root/'stage-reviews.sqlite')) as db:
                     count = db.execute("SELECT COUNT(*) FROM reviews WHERE stage='S1'").fetchone()[0]
-                self.assertEqual(count, 2)  # Original executable plan and applied revision; no draft window.
+                self.assertEqual(count, 1)  # One parent stage window survives executable revisions.
             finally:
                 runtime.close()
 

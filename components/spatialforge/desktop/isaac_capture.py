@@ -15,6 +15,16 @@ from spatialforge.scene_preflight import preflight_scene
 from spatialforge.support_graph import objects_in_support_order
 from spatialforge.material_catalog import load_native_materials
 from scene_runtime import render_options, room_metadata, light_specs, material_for, part_material_for, interaction_plan, select_interaction_camera, evaluate_force_trajectory, transform_mesh_geometry
+# Portable contract: load the colocated published helper at this task boundary.
+# Its per-view readout must use that view's live product before product cleanup.
+import importlib.util as _camera_hot_util
+import sys as _camera_hot_sys
+from pathlib import Path as _CameraPath
+_calibration_source = _CameraPath(__file__).with_name('camera_controls.py')
+_calibration_spec = _camera_hot_util.spec_from_file_location('camera_controls', _calibration_source)
+_calibration_module = _camera_hot_util.module_from_spec(_calibration_spec)
+exec(compile(_calibration_source.read_text(encoding='utf-8-sig'), str(_calibration_source), 'exec'), _calibration_module.__dict__)
+_camera_hot_sys.modules['camera_controls'] = _calibration_module
 from camera_controls import camera_matrix, apply_camera_optics, camera_evidence
 from spatialforge.camera_trajectory import sampled_camera
 from primitive_geometry import define_textured_primitive
@@ -493,15 +503,16 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
                 camera_spec=recording_camera
                 if camera_path:
                     camera_spec=sampled_camera(recording_camera,camera_path,step-recording_start_step)
-                focal=float(capture_camera.GetFocalLengthAttr().Get())
-                aperture=float(capture_camera.GetHorizontalApertureAttr().Get())
-                fx=focal/aperture*settings['width']
                 cache=UsdGeom.XformCache()
                 matrix=cache.GetLocalToWorldTransform(capture_camera.GetPrim())
-                camera={**camera_evidence(capture_camera,camera_spec,matrix),
-                        'intrinsics':{'fx':fx,'fy':fx,'cx':settings['width']/2.,'cy':settings['height']/2.,
-                                      'source':'authored Isaac camera optics'},
-                        'image_size':[settings['width'],settings['height']]}
+                # Read this frame's own live camera/product, retaining the legacy scalar API.
+                calibration=camera_evidence(capture_camera,camera_spec,matrix,product)
+                intrinsic=calibration['K'];readout=calibration['render_product_resolution']
+                camera={**calibration,
+                        'intrinsics':{'fx':intrinsic[0][0],'fy':intrinsic[1][1],
+                                      'cx':intrinsic[0][2],'cy':intrinsic[1][2],
+                                      'source':calibration['calibration_source']},
+                        'image_size':[readout['width'],readout['height']]}
                 objects=[]
                 for eid,entity in entities.items():
                     visibility=object_visibility(instance,eid,entity['prim_path'],(settings['height'],settings['width']))
@@ -609,7 +620,7 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
                     sim,settings['dt'],simulation_step,lambda phase:interaction_rgb(f'interaction_{ai}_{phase}.png',action['object_id']),
                     recording=recording_for(ai,action),
                     contact_positions=(lambda:{eid:pose(entities[eid]) for eid in action['contact_object_ids']}) if action.get('contact_object_ids') else None)
-                record['visual_evidence'].update(camera={**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera))},
+                record['visual_evidence'].update(camera={**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera),product)},
                                                   selection='explicit' if 'camera_id' in action else 'closest_view_direction')
                 name=f'interaction_{ai}_trajectory.json'
                 (output/name).write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding='utf8')
@@ -658,7 +669,7 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
             sim.pause()
             measured=evaluate_force_trajectory(action,trajectory,drift)
             after_image,after_visibility=interaction_rgb(f'interaction_{ai}_after.png',action['object_id'])
-            visual_evidence={'camera':{**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera))},'selection':'explicit' if 'camera_id' in action else 'closest_view_direction',
+            visual_evidence={'camera':{**action_camera,**camera_evidence(capture_camera,action_camera,camera_matrix(action_camera),product)},'selection':'explicit' if 'camera_id' in action else 'closest_view_direction',
                              'before':before_visibility,'after':after_visibility}
             trajectory_name=f'interaction_{ai}_trajectory.json'
             record={'schema':'spatialforge.interaction/v1','id':action['id'],'action':'apply_force','object_id':action['object_id'],
@@ -734,7 +745,7 @@ def run_capture(job, output, app=None, *, renderer_defaults=None, app_reused=Fal
                 z=depth[region];z=z[np.isfinite(z)&(z>0)]
                 objects.append({'object_id':eid,'label':e['label'],'bbox_2d':{'xyxy':[int(xs.min()),int(ys.min()),int(xs.max()+1),int(ys.max()+1)]},'mask':{'area_px':len(xs)},'confidence':{'value':1.},'valid_for_question_generation':True,'depth_z_median':float(np.median(z)) if len(z) else None})
             quality=assess_view(rgb,depth,objects)
-            meta={'frame_id':name,'image':f'{name}.png','step_id':simulation_step,'timestamp_sim':simulation_step*settings['dt'],'image_size':{'width':settings['width'],'height':settings['height']},'objects':objects,'camera':camera_evidence(capture_camera,c,matrix),'semantic_info':info,'instance_info':inst.get('info',{}),'depth_kind':'optical_axis_z_m','rgb_std':quality['rgb_std'],'quality':quality}
+            meta={'frame_id':name,'image':f'{name}.png','step_id':simulation_step,'timestamp_sim':simulation_step*settings['dt'],'image_size':{'width':settings['width'],'height':settings['height']},'objects':objects,'camera':camera_evidence(capture_camera,c,matrix,product),'semantic_info':info,'instance_info':inst.get('info',{}),'depth_kind':'optical_axis_z_m','rgb_std':quality['rgb_std'],'quality':quality}
             (output/f'{name}.json').write_text(json.dumps(meta,ensure_ascii=False,indent=2),encoding='utf8');captures.append(meta)
         for a in annot.values():a.detach([product])
         annot={}

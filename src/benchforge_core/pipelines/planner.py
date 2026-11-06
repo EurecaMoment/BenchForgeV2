@@ -3,7 +3,7 @@ import re
 import json
 from copy import deepcopy
 from pathlib import Path
-from ..runtime import write
+from ..runtime import read, write
 from .catalog import all_templates, capability_id, selected_templates, pipeline_files, relevance
 from .adapters import supports
 from .assessment import validate_assessment
@@ -111,6 +111,14 @@ def plan(args, directory, config=None):
             value['edit_revision']['markdown_path']=str(markdown_path.resolve())
     if args.get('applies_edit'):value['applies_edit']=args['applies_edit']
     target = Path(directory)/'plan.json'
+    # A revision of one production goal keeps its parent's S1 window. The new
+    # document remains viewable without repeatedly adding five idle minutes.
+    value['stage_review_key'] = str(target.resolve())
+    if args.get('applies_edit'):
+        base_plan = value.get('edit_revision', {}).get('base_plan')
+        if base_plan:
+            previous = read(base_plan)
+            value['stage_review_key'] = previous.get('stage_review_key', str(Path(base_plan).resolve()))
     write(target, value)
     if session and (active or edit):
         activate(workspace,session,str(target.resolve()),expected=edit['base_plan'] if edit else active['plan'],
@@ -120,7 +128,7 @@ def plan(args, directory, config=None):
     # owns S1; opening a draft window here would make the user wait twice.
     if session and not edit:
         from ..stage_review import gate
-        review = gate(Path(directory).parents[1], session, 'S1', str(target.resolve()), str(target.resolve()))
+        review = gate(Path(directory).parents[1], session, 'S1', value['stage_review_key'], str(target.resolve()))
     unsupported = [t['id'] for t in value['template_contracts'] if not t['execution']['program_generator']]
     return {'state': 'planned', 'plan': str(target.resolve()), 'pipeline_id': recipe,
             'stage_review': review,

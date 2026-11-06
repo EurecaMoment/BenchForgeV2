@@ -251,7 +251,7 @@ def main():
                     if 'revision' not in value:
                         snap=store.snapshot(value['task_id'].split('.')[0]);self.reply({'cancel':snap['state']=='CANCELED'})
                     else:self.reply(store.worker_update({**{k:value[k] for k in ('task_id','revision','token')},'transport_retry':value.get('transport_retry',0)},progress=value.get('progress')))
-                elif self.path=='/worker/finish':self.reply(store.worker_update(value['job'],outcome=value['outcome'],processes_stopped=value.get('processes_stopped'),error=value.get('error'),capture_complete=value.get('capture_complete')))
+                elif self.path=='/worker/finish':self.reply(store.worker_update(value['job'],outcome=value['outcome'],processes_stopped=value.get('processes_stopped'),error=value.get('error'),capture_complete=value.get('capture_complete'),capture_receipt=value.get('capture_receipt')))
                 elif self.path=='/worker/upload-begin':self.reply(transfer.begin(value['job'],value['files']))
                 elif self.path=='/worker/upload-commit':self.reply(transfer.commit(value['job']))
                 else:self.reply({'error':'unknown operation'},404)

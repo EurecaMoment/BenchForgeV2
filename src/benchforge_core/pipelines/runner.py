@@ -40,7 +40,7 @@ def bind(value, environment):
             try:
                 result[key] = bind(child, environment)
             except MissingBinding:
-                if key not in ('evidence', 'capture_options'):
+                if key not in ('evidence', 'capture_options', 'preserve_source_splits'):
                     raise
         return result
     return value
@@ -204,8 +204,9 @@ def run(args, directory, config=None, client=service_call):
             write(state_path,state)
             return {'run':str(run_root.resolve()),**state}
         if active and not args.get('_review_nested'):
-            for key in ('seed','split','target_items','selections','scene_selection','target_scene_count'):
-                if key in args.get('bindings',{}) and args['bindings'][key]!=plan['inputs'].get(key):
+            for key in ('seed','split','target_items','selections','scene_selection','target_scene_count','preserve_source_splits'):
+                expected = plan['inputs'].get(key, False) if key == 'preserve_source_splits' else plan['inputs'].get(key)
+                if key in args.get('bindings',{}) and args['bindings'][key]!=expected:
                     raise ValueError('Run bindings must honor the active edited '+key)
     blocked=plan_guard()
     if blocked:return blocked
@@ -219,7 +220,7 @@ def run(args, directory, config=None, client=service_call):
         if current['state'] in ('waiting_user','paused','needs_input'):
             return waiting(current)
         if not args.get('_review_nested'):
-            initial = gate(args['_workspace'],session,'S1',str(plan_path),str(plan_path))
+            initial = gate(args['_workspace'],session,'S1',plan.get('stage_review_key',str(plan_path)),str(plan_path))
             if not initial['can_continue']:
                 return waiting(initial)
     def checkpoint():

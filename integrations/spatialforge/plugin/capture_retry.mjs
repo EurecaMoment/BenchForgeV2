@@ -9,7 +9,8 @@ export function createCaptureRetry({api, serviceConfig, policyPython}) {
       const detail = error.response?.detail || '';
       if (error.status !== 400 || error.response?.error !== 'ValueError' ||
           !(detail.startsWith('Unreviewed scene retries require an admitted native capture') ||
-            detail.startsWith('Only review transport failures can reuse a frozen capture'))) throw error;
+            detail.startsWith('Only review transport failures can reuse a frozen capture') ||
+            detail.startsWith('Only review transport or capture execution/transport failures can retry'))) throw error;
     }
     signal?.throwIfAborted();
     return new Promise((resolve, reject) => {

@@ -18,6 +18,7 @@ from .progress import record_progress
 from .geometry_preview import preview_scene_geometry,compact_preview,GUIDANCE as GEOMETRY_GUIDANCE
 from .program_submission import handoff_receipt
 from .scene_acceptance import policy_for, admit_program, capture_acceptance
+from .scene_review_reference import review_spatial_context, GUIDANCE as REFERENCE_GUIDANCE
 from .repair_context import build_repair_context,bound_repair_context,scene_changes,GUIDANCE as REPAIR_GUIDANCE
 
 
@@ -251,7 +252,9 @@ def review_scene(store,task,stop,*,capture_only=False):
     report=json.loads((capture/'report.json').read_text())
     program=json.loads((directory/'program.json').read_text())
     evidence=json.loads((capture/'evidence.json').read_text()) if (capture/'evidence.json').is_file() else {}
-    physical_issues=capture_acceptance(store.root,program,report,evidence,{},capture).get('physical_issues',[]) if policy_for(store.root) else []
+    physical_precheck=capture_acceptance(store.root,program,report,evidence,{},capture) if policy_for(store.root) else {}
+    physical_issues=physical_precheck.get('physical_issues',[])
+    spatial_context=None
     if report['status']=='captured' and not physical_issues:
         prompt='检查实际 Isaac 视图和执行证据是否满足原始场景需求：'+json.dumps(unit['intent'],ensure_ascii=False)+'''。
 返回 JSON：{"acceptable":boolean,"visual_quality":1到5,"semantic_fidelity":1到5,"issues":[string],"repair_suggestions":[string],"visual_realism":{"status":"needs_improvement"|"visually_plausible"|"matches_declared_geometry"|"not_requested","issues":[string],"prioritized_repairs":[string],"basis":"rendered_views_only"}}。
@@ -270,6 +273,9 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
                 brief=admission['scene_brief']
                 context={k:brief[k] for k in ('name','summary','hard_requirements','object_roles','physical_assumptions')}
                 if brief.get('spatial_reference'):context['spatial_reference']=brief['spatial_reference']
+                spatial_context=review_spatial_context(brief,evidence,physical_precheck.get('native_relation_checks',[]))
+                write_json(directory/'scene_spatial_context.json',spatial_context)
+                prompt+='\n明确参照和本次原生方向/支撑事实（不能代替实际逐图生活检查）：'+json.dumps(spatial_context,ensure_ascii=False)
                 context['visual_relations']=[{'index':i,**r} for i,r in enumerate(brief['relations']) if r['type'] not in {'supported_by','mounted_to'}]
                 prompt += '\n必须对照的场景标题、摘要、角色及空间关系：' + json.dumps(context, ensure_ascii=False)
                 prompt += ('\n额外返回 brief_alignment:{passed:boolean,hard_requirements_preserved:boolean,observations:[{view:"view_0.png",observation:"实际可见依据"}],'
@@ -331,6 +337,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         prompt+='\n实拍相机位置、朝向与图片对应：'+json.dumps([{'view':f'view_{i}.png',**c} for i,c in enumerate(program['cameras'])],ensure_ascii=False)
         prompt+='\n关系判断须区分画面坐标、世界坐标及使用者视角；左右前后按摘要明确参照判断，不得随相机换位而改变场景关系。未定义参照时指出文字歧义，不臆造世界方向。相机高度以执行位置为准，不能仅凭俯视构图判断拍摄高度。外观名称须由实际形态和材质支持，禁止把未观察到的颜色或品牌当事实。'
         prompt+='\n全部机位共同覆盖场景，不要求每张照片同时看见所有物体。单一视角遮挡不能证明物体缺失、穿插或悬空；须检查其它对应机位和原生姿态证据。全部机位仍无法辨认或验证的项目应失败并列为未解；清晰可见的缺陷必须保留，不能由程序名称替代外观。'
+        prompt+='\n'+REFERENCE_GUIDANCE
         layout_reference=directory/'layout_reference.png'
         if layout_reference.is_file():
             review_images.append(layout_reference)
@@ -341,6 +348,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
     else: review={'acceptable':False,'issues':physical_issues or report.get('errors',[]),
                  'repair_suggestions':['Repair the actual support, attachment or layout issue in a new complete program and capture again.'],
                  'visual_review_skipped':bool(physical_issues)}
+    if spatial_context is not None:review['spatial_reference_context']=spatial_context
     review['physical_stable']=report.get('physics',{}).get('stable',False);review['renderable']=report.get('renderable',False)
     frames=evidence.get('frames',[])
     native=evidence.get('origin')=='isaac_native'

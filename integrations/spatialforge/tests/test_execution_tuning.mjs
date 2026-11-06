@@ -60,6 +60,29 @@ test('a changed native selection wins before the requested adjustment',async t=>
   assert.equal((await f.tuning.observe(f.root,f.agent.id)).policy.state,'superseded');
 });
 
+test('light execution uses the advertised effort and rejects invented levels',async t=>{
+  const f=await fixture(t),signal=new AbortController().signal;
+  f.services.llm.resolveModelInfo=async()=>({reasoning:{efforts:['off','low','medium','high','max'].map(id=>({id}))}});
+  await assert.rejects(f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'turbo'},signal),/does not advertise/);
+  await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'off'},signal);
+  const changed=await f.handlers.get('agent/request')({agent:f.agent,turn:2,step:1,signal},async()=>f.current);
+  assert.deepEqual(changed,{...f.current,reasoningEffort:'off'});
+  await f.handlers.get('session/event')({id:f.agent.id},{type:'request/header',time:18,seq:22,data:{header:{config:changed}}});
+  assert.equal((await f.tuning.observe(f.root,f.agent.id)).policy.state,'applied');
+});
+
+test('an effort change keeps the earlier native history compact receipt',async t=>{
+  const f=await fixture(t),signal=new AbortController().signal;
+  await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'high',compact_history:true},signal);
+  await f.handlers.get('agent/pre-step')({agent:f.agent,signal},async()=>({kind:'enter'}));
+  const compact=(await f.tuning.observe(f.root,f.agent.id)).policy.compact;
+  f.services.llm.resolveModelInfo=async()=>({reasoning:{efforts:[{id:'off'},{id:'high'}]}});
+  const changed=await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'off'},signal);
+  assert.deepEqual(changed.compact,compact);
+  await f.handlers.get('agent/pre-step')({agent:f.agent,signal},async()=>({kind:'enter'}));
+  assert.equal(f.calls.length,1);
+});
+
 test('history reduction waits for a step boundary, retains the system and recent tail, and keeps tool pairs together',async t=>{
   const f=await fixture(t),signal=new AbortController().signal;
   await f.tuning.arm(f.root,f.agent.id,{reasoning_effort:'high',compact_history:true},signal);
@@ -133,6 +156,23 @@ test('a current native model request and paired tool call expose their actual ac
   assert.equal(value.current_activity.phase,'tool');assert.equal(value.current_activity.active_tools[0].name,'spatialforge_capture');
   rows.push({type:'tool/result',time,data:{message:{toolCallId:'capture-one'}}});
   assert.equal((await f.tuning.observe(f.root,f.agent.id)).current_activity.phase,'between_steps');
+});
+
+test('tool diagnostics use the caller scope and report result size without returning its contents',async t=>{
+  const f=await fixture(t);
+  f.services.tools={get:(name,scope)=>{
+    assert.equal(scope,f.agent);
+    return name==='spatialforge_status'?{description:'Read concise status'}:undefined;
+  }};
+  f.agent.session.snapshotEvents=()=>[
+    {type:'tool/call',time:1000,data:{callId:'status-1',name:'spatialforge_status'}},
+    {type:'tool/result',time:1030,data:{message:{toolCallId:'status-1',content:[{type:'text',text:'Private capture evidence'}]}}},
+  ];
+  const value=await f.tuning.observe(f.root,f.agent.id);
+  assert.equal(value.tool_definitions.spatialforge_status.description,'Read concise status');
+  assert.equal(value.recent_tools[0].seconds,.03);
+  assert.equal(value.recent_tools[0].result_characters,24);
+  assert.ok(!JSON.stringify(value).includes('Private capture evidence'));
 });
 
 test('a checkpoint gets a concise final directive without rewriting ordinary calls, config or the cached prefix',async t=>{

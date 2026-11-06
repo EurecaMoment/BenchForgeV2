@@ -99,7 +99,7 @@ class Store:
                 from .scene_acceptance import admit_program
                 from .scene_design import capture_retry_directory,review_retry_directory
                 capture_failure=(task['unit']['phase']=='capture' and
-                    (task.get('failure') or {}).get('stage')=='capture_transport' and feedback is None)
+                    (task.get('failure') or {}).get('stage') in {'capture_transport','capture_execution'} and feedback is None)
                 review_failure=(task['unit']['phase']=='review' and feedback is None and
                     (task.get('failure') or {}).get('error') in {'TimeoutError','URLError','ConnectionError','OSError','RemoteDisconnected','ConnectionResetError','ConnectionAbortedError'})
                 if not capture_failure and not review_failure:
@@ -114,21 +114,26 @@ class Store:
                     if not isinstance(recovery_id,str) or not recovery_id or recovery_id==task['unit'].get('review_transport_recovery_id'):
                         raise ValueError('Review transport recovery budget exhausted')
             unit=dict(task['unit']);phase=unit['phase'];old=self.directory(tid,unit['revision'])
-            if capture_mode!='auto' and not (phase=='capture' and (task.get('failure') or {}).get('stage')=='capture_transport'):
+            if capture_mode!='auto' and not (phase=='capture' and (task.get('failure') or {}).get('stage') in {'capture_transport','capture_execution'}):
                 raise ValueError('capture_mode applies only to capture execution/transport failures')
             if recovery_id:
                 unit.update(review_transport_recovery_id=recovery_id,previous_review_transport_retries=unit.get('review_transport_retries',0),review_transport_retries=0)
             if policy_for(self.root) and phase=='review':unit['review_transport_retries']=unit.get('review_transport_retries',0)+1
-            if phase=='capture' and (task.get('failure') or {}).get('stage')=='capture_transport':
+            if phase=='capture' and (task.get('failure') or {}).get('stage') in {'capture_transport','capture_execution'}:
                 # A crash needs a fresh executor attempt. A completed capture only needs upload.
                 ended=unit.pop('worker_end',{})
+                receipt=ended.get('capture_receipt')
+                if receipt is not None:
+                    from .capture_recovery import require_capture_receipt
+                    require_capture_receipt(receipt,self._job(task,ended['token']))
                 mode=capture_mode
-                if mode=='auto':mode='resume_upload' if ended.get('capture_complete') is True else 'restart_capture'
+                if mode=='auto':mode='resume_upload' if receipt is not None else 'restart_capture'
                 unit.pop('resume_capture_token',None)
+                unit.pop('capture_resume_receipt',None)
                 if mode=='resume_upload':
-                    if ended.get('capture_complete') is False:raise ValueError('Incomplete capture requires restart_capture, not resume_upload')
-                    if not ended.get('token'):raise ValueError('resume_upload needs the ended capture attempt')
+                    if receipt is None:raise ValueError('resume_upload needs a validated native capture receipt; restart_capture recovers unfinished execution')
                     unit['resume_capture_token']=ended['token']
+                    unit['capture_resume_receipt']=receipt
                 unit['capture_recovery_mode']=mode
                 unit['capture_attempt_history']=[*unit.get('capture_attempt_history',[]),{**ended,'recovery_mode':mode}]
                 unit['transport_retry']=unit.get('transport_retry',0)+1
@@ -201,14 +206,15 @@ class Store:
         return {'task_id':task['id'],'revision':task['unit']['revision'],'token':token,
                 'program':program,'assets':assets,'transport_retry':task['unit'].get('transport_retry',0),
                 'capture_options':task['unit']['intent'].get('capture_options',{}),
-                'capture':{'width':960,'height':720,'steps':180,'dt':1/60}}
+                'capture':{'width':960,'height':720,'steps':180,'dt':1/60},
+                **{key:task['unit'][key] for key in ('capture_recovery_mode','capture_resume_receipt') if key in task['unit']}}
 
     def desktop_state(self):
         with self.repo.engine.connect() as c:
             row=c.execute(select(self.device).where(self.device.c.id=='desktop-isaac')).mappings().first()
             return row['record'] if row else {'active':False}
 
-    def worker_update(self,job,progress=None,outcome=None,processes_stopped=False,error=None,capture_complete=None):
+    def worker_update(self,job,progress=None,outcome=None,processes_stopped=False,error=None,capture_complete=None,capture_receipt=None):
         """A terminal acknowledgement releases only the matching device lease."""
         from .progress import record_progress
         with self.repo.transaction() as c:
@@ -233,7 +239,12 @@ class Store:
                 state='CANCELED' if canceled else 'FAILED_FINAL'
                 end={'token':job['token'],'outcome':state,'time':time.time(),'local_capture_preserved':True}
                 if type(capture_complete) is bool:end['capture_complete']=capture_complete
-                failure=None if canceled else {'stage':'capture_transport','error':str(error or 'desktop attempt failed')[:1000],'local_capture_preserved':True}
+                if capture_receipt is not None:
+                    from .capture_recovery import require_capture_receipt
+                    require_capture_receipt(capture_receipt,self._job(task,job['token']))
+                    end.update(capture_complete=True,capture_receipt=capture_receipt)
+                failure=None if canceled else {'stage':'capture_transport' if capture_receipt is not None else 'capture_execution',
+                    'error':str(error or 'desktop attempt failed')[:1000],'local_capture_preserved':True}
                 c.execute(tasks.update().where(tasks.c.id==task['id']).values(state=state,lease_owner=None,lease_expires_at=None,unit={**task['unit'],'worker_end':end},failure=failure))
                 c.execute(self.device.update().where(self.device.c.id=='desktop-isaac').values(record={'active':False,'last_end':end}))
                 self.repo.event(c,task['run_id'],task['id'],'spatialforge.desktop_finished',{'end':end,'failure':failure})

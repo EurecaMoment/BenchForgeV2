@@ -25,9 +25,11 @@ export const Config = z.object({
 const STATUSES = ['draft', 'candidate', 'verified', 'rejected', 'superseded'];
 const PUBLIC_FIELDS = ['item_id', 'id', 'task_id', 'template_id', 'protocol_id', 'protocol_version',
   'measurement_variant', 'primary_operation', 'catalog_capability_links', 'provided_information',
-  'scene_group_id', 'split', 'question', 'question_presentation', 'choices', 'media', 'output_schema', 'reference_frame', 'history_access_mode'];
+  'scene_group_id', 'split', 'question', 'question_presentation', 'choices', 'media', 'assets', 'output_schema', 'reference_frame', 'history_access_mode'];
 const QUALITY_FIELDS = ['requested', 'accepted', 'shortfall', 'per_template', 'requested_per_template',
-  'split', 'scene_groups', 'rejections', 'source', 'benchmark_approved', 'capability_scope', 'state'];
+  'split', 'requested_split', 'preserve_source_splits', 'per_partition', 'per_template_partitions',
+  'sft_split', 'sft_items', 'training_bundle_eligible', 'public_asset_count', 'scene_groups', 'rejections', 'source',
+  'benchmark_approved', 'capability_scope', 'state'];
 
 class ApiError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -91,19 +93,47 @@ function publicPlan(plan) {
     ...(markdown === undefined ? {} : {user_markdown: markdown}),
     assessment,
     selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
-    inputs: pick(plan.inputs || {}, ['seed', 'split', 'target_items']),
+    inputs: pick(plan.inputs || {}, ['seed', 'split', 'preserve_source_splits', 'target_items']),
     template_contracts: (plan.template_contracts || []).map((row) => ({...pick(row, ['id', 'task_id', 'task_name',
       'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links', 'execution']),title:planTemplateTitles.get(row.id) || row.task_name})),
     steps: (plan.steps || []).map((step) => pick(step, ['id', 'uses', 'pipeline_id', 'artifact_type', 'await_terminal']))};
 }
 
 const REPORT_FIELDS = [...QUALITY_FIELDS, 'per_template', 'model_api_calls', 'scope', 'metrics',
-  'total', 'count', 'success_rate', 'missing', 'status', 'capabilities', 'limitations'];
+  'total', 'count', 'success_rate', 'missing', 'status', 'capabilities', 'limitations',
+  'body_markdown', 'public_verified_count', 'contract_eligible_count', 'source_scene_count', 'captured_view_count'];
 
 function publicReport(report) {
   const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
     ? Object.fromEntries(Object.entries(value).filter(([key]) => !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
   return clean(pick(report, REPORT_FIELDS));
+}
+
+async function deliveryScenePreviews(root, dataset, previews, scope, itemCount = Number.MAX_SAFE_INTEGER) {
+  if (typeof dataset !== 'string' || !Array.isArray(previews)) return [];
+  if (!Number.isSafeInteger(itemCount) || itemCount < 1) return [];
+  const directory = await inside(root, dataset);
+  await assertSessionDirectory(root, directory, scope);
+  const targets = previews.slice(0, 3).filter((row) => Number.isSafeInteger(row.row_index) &&
+    row.row_index >= 0 && row.row_index < itemCount && Number.isSafeInteger(row.media_index) && row.media_index >= 0);
+  if (!targets.length) return [];
+  const wanted = new Set(targets.map((row) => row.row_index)), rows = new Map();
+  const stream = createReadStream(path.join(directory, 'questions.jsonl'), {encoding: 'utf8'});
+  const lines = createInterface({input: stream, crlfDelay: Infinity});
+  let index = 0;
+  try {
+    for await (const line of lines) {
+      if (!line.trim()) continue;
+      if (wanted.has(index)) rows.set(index, JSON.parse(line));
+      if (++index > Math.max(...wanted)) break;
+    }
+  } finally {lines.close(); stream.destroy();}
+  const datasetId = token(root, path.relative(root.path, directory));
+  return targets.flatMap((row) => {
+    const item = rows.get(row.row_index);
+    const url = item && mediaReferences(item, datasetId, row.row_index, root.path, scope)[row.media_index];
+    return url ? [{title: String(row.title || '场景'), url: '/' + url}] : [];
+  });
 }
 
 async function runProducts(id, root, directory, state, plan, scope) {
@@ -125,9 +155,13 @@ async function runProducts(id, root, directory, state, plan, scope) {
         const file = await inside(root, path.resolve(directory, candidate));
         const report = await readJson(file);
         if (!report || typeof report !== 'object') continue;
-        items.push({stage: 'S5', title: path.basename(file) === 'quality_report.json' ? '数据质量报告' : '评测报告',
+        const delivery = path.basename(file) === 'delivery_report.json';
+        const data = publicReport(report);
+        if (delivery) data.scene_previews = await deliveryScenePreviews(root, result.dataset, report.scene_previews, scope, report.accepted ?? report.total);
+        items.push({stage: 'S5', title: delivery ? '数据生产与质检报告' : path.basename(file) === 'quality_report.json' ? '数据质量报告' : '评测报告',
+          ...(delivery ? {file: 'release/collection_report.json'} : {}),
           kind: 'json', step_id: stepId, artifact_id: step.artifact?.artifact_id,
-          data: publicReport(report), url: link('report', stepId)});
+          data, url: link('report', stepId)});
         break;
       } catch (error) { if (!['ENOENT'].includes(error.code) && !(error instanceof ApiError)) throw error; }
     }
@@ -210,6 +244,20 @@ function scheduleSceneMovies(config, session, scenes, runIds = []) {
   }
 }
 
+async function associatedCaptures(roots, scope, associations) {
+  if (scope.history || !/^session-[A-Za-z0-9-]+$/.test(scope.session_id)) return [];
+  await associations?.warm(scope.session_id);
+  const captures = [];
+  for (const root of roots) {
+    const file = path.join(root.path, '.benchforge', 'capture-associations', scope.session_id + '.json');
+    const saved = await readJson(file);
+    if (!saved || saved.context?.session_id !== scope.session_id) continue;
+    await inside(root, file);
+    for (const row of saved.captures || []) if (/^sf_[A-Za-z0-9_-]+$/.test(row.run_id || '')) captures.push(row.run_id);
+  }
+  return [...new Set(captures.reverse())];
+}
+
 async function sceneArtifacts(config, roots, url, signal, media = false) {
   const session = url.searchParams.get('session_id') || '', scene = url.searchParams.get('scene') || '';
   if (!roots.length || !config.productionConfig || !/^session-[a-zA-Z0-9-]+$/.test(session) || !/^sf_[a-zA-Z0-9_-]+$/.test(scene)) {
@@ -220,6 +268,7 @@ async function sceneArtifacts(config, roots, url, signal, media = false) {
   const args = ['-B', helper, '--config', config.productionConfig, '--session', session,
     '--action', media ? 'file' : 'artifacts', ...(library ? ['--workspace', roots[0].path] : ['--scene', scene])];
   if (!library && config._sessionIds?.length) args.push('--sessions', JSON.stringify(config._sessionIds));
+  if (!library && config._captureIds?.length) args.push('--run-ids', JSON.stringify(config._captureIds));
   const run = url.searchParams.get('run');
   if (library && run) throw new ApiError('Library scenes use their saved catalog identity', 403);
   if (run) {
@@ -274,6 +323,7 @@ async function sceneMedia(config, roots, url, request) {
 // Frequent reads use only bounded index rows and small state files, never scan datasets/manifests.
 async function productionProgress(roots, config, url, signal) {
   const operations = [], pipelines = [], sources = [], remoteIds = new Set();
+  for (const id of config._captureIds || []) remoteIds.add(id);
   let unassociatedRecords = 0;
   const scope = scopeOf(url, config._sessionIds);
   const seen = new Set();
@@ -340,6 +390,7 @@ async function productionProgress(roots, config, url, signal) {
       const helper = fileURLToPath(new URL('./production_observer.py', import.meta.url));
       const {stdout} = await execute(config.productionPython, ['-B', helper, '--config', config.productionConfig,
         '--session', session, '--sessions', JSON.stringify(config._sessionIds || []),
+        '--workspace', roots[0].path,
         '--run-ids', JSON.stringify([...remoteIds].slice(0, 12))],
       {signal, timeout: 12000, maxBuffer: 2 * 1024 * 1024});
       scenes = JSON.parse(stdout);
@@ -379,7 +430,8 @@ async function productionProgress(roots, config, url, signal) {
       ...(draft ? {preparation: {status: 'preparing', accepted: false, artifact_count: draft.files.length,
         reasoningSelection: draft.reasoningSelection}} : {})};
   });
-  return {operations, pipelines, scenes, parallel_tasks, sources, snapshot_at: new Date().toISOString(),
+  const {current_collection = null, generation = null, ...observedScenes} = scenes;
+  return {operations, pipelines, scenes: observedScenes, current_collection, generation, parallel_tasks, sources, snapshot_at: new Date().toISOString(),
     scope: scope.history ? 'explicit_workspace_history' : 'current_conversation_only',
     association: scope.session_id ? config._sessionIds?.length ? 'parent_and_verified_child_context' : 'exact_session_context' : 'no_session',
     unassociated_records: unassociatedRecords};
@@ -630,10 +682,12 @@ function integer(value, fallback, maximum) {
   return number;
 }
 const PUBLIC_MEDIA_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-  '.svg': 'image/svg+xml', '.gif': 'image/gif', '.json': 'application/json'};
-function mediaReferences(row, id, index, workspacePath, scope) {
-  return (Array.isArray(row.media) ? row.media : []).map((_, media) => {
-    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index), media: String(media), ...scopeParams(scope)});
+  '.svg': 'image/svg+xml', '.gif': 'image/gif', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8',
+  '.npy': 'application/octet-stream'};
+function mediaReferences(row, id, index, workspacePath, scope, field = 'media') {
+  return (Array.isArray(row[field]) ? row[field] : []).map((_, media) => {
+    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index),
+      [field === 'assets' ? 'asset' : 'media']: String(media), ...scopeParams(scope)});
     if (workspacePath) params.set('workspace_path', workspacePath);
     return 'api/benchforge/workbench?' + params;
   });
@@ -660,6 +714,8 @@ async function readDataset(url, roots, signal, sessions = []) {
       if(projected.question_presentation) projected.question_presentation=pick(projected.question_presentation,
         ['schema','stem','context','conditions','options','response','media_labels']);
       items.push({...projected, row_index: index, media: mediaReferences(row, id, index, workspacePath, scope),
+        assets: mediaReferences(row, id, index, workspacePath, scope, 'assets'),
+        asset_names: (Array.isArray(row.assets) ? row.assets : []).map((reference) => typeof reference === 'string' ? path.basename(reference) : ''),
         media_types: (Array.isArray(row.media) ? row.media : []).map((reference) => typeof reference === 'string'
           ? PUBLIC_MEDIA_TYPES[path.extname(reference).toLowerCase()] || 'application/octet-stream' : 'application/octet-stream')});
     }
@@ -673,15 +729,19 @@ async function readDataset(url, roots, signal, sessions = []) {
 async function readMedia(url, roots, signal, sessions = []) {
   const id = url.searchParams.get('dataset');
   const {root, publicRoot, questions} = await datasetFiles(id, roots, scopeOf(url, sessions));
-  const item = Number(url.searchParams.get('item')), media = Number(url.searchParams.get('media'));
+  const field = url.searchParams.has('asset') ? 'assets' : 'media';
+  if (url.searchParams.has('asset') && url.searchParams.has('media')) throw new ApiError('Invalid public file reference');
+  const item = Number(url.searchParams.get('item')), media = Number(url.searchParams.get(field === 'assets' ? 'asset' : 'media'));
   if (![item, media].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new ApiError('Invalid media reference');
   let reference;
   for await (const record of jsonLines(questions, signal)) if (record.index === item) {
-    reference = record.row.media?.[media]; break;
+    reference = record.row[field]?.[media]; break;
   }
-  if (typeof reference !== 'string' || !/^media[\\/]/.test(reference)) throw new ApiError('Only declared public media can be read', 403);
+  const prefix = field === 'assets' ? 'assets' : 'media';
+  const declared = field === 'assets' ? /^assets[\\/]/ : /^media[\\/]/;
+  if (typeof reference !== 'string' || !declared.test(reference)) throw new ApiError('Only declared public files can be read', 403);
   const file = await inside(root, path.resolve(publicRoot, reference));
-  const mediaRoot = await fs.realpath(path.join(publicRoot, 'media'));
+  const mediaRoot = await fs.realpath(path.join(publicRoot, prefix));
   const relative = path.relative(mediaRoot, file);
   if (relative.startsWith('..' + path.sep) || relative === '..' || path.isAbsolute(relative)) throw new ApiError('Media escapes public media directory', 403);
   const type = PUBLIC_MEDIA_TYPES[path.extname(file).toLowerCase()];
@@ -690,7 +750,7 @@ async function readMedia(url, roots, signal, sessions = []) {
     'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
 }
 
-export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution) {
+export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution, associations) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
@@ -708,6 +768,8 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
         ? await family(parentScope.session_id, request.signal) : [];
       const sessions = related.map((row) => row.id);
       const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
+      if (view === 'progress' || view === 'stage_artifacts' || view === 'stage_media')
+        scoped._captureIds = await associatedCaptures(roots, scope, associations);
       let value;
       if (view === 'execution_status' || view === 'execution_control') {
         if(roots.length !== 1 || !scope.session_id || scope.history || !execution)
@@ -815,6 +877,15 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
         value = product === 'plan' ? run.plan : product === 'config' ? run.stage_artifacts.find((row) => row.stage === 'S4')?.data
           : product === 'report' ? run.stage_artifacts.find((row) => row.stage === 'S5' && row.step_id === step)?.data : null;
         if (!value) throw new ApiError('Stage product was not found', 404);
+        if (product === 'report' && url.searchParams.get('format') === 'markdown') {
+          if (typeof value.body_markdown !== 'string' || !value.body_markdown.trim())
+            throw new ApiError('Markdown report was not found', 404);
+          return new Response(value.body_markdown, {headers: {
+            'content-type': 'text/markdown; charset=utf-8',
+            'content-disposition': 'attachment; filename="delivery_report.md"',
+            'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
+          }});
+        }
       }
       else if (view === 'stage_artifacts') value = await sceneArtifacts(scoped, roots, url, request.signal);
       else if (view === 'stage_media') return await sceneMedia(scoped, roots, url, request);
@@ -837,7 +908,7 @@ export async function apply(ctx, config) {
   const captureRuntime=new URL('../plugin/capture_runtime.mjs',import.meta.url);
   captureRuntime.searchParams.set('revision',config.uiRevision);
   const {attachCaptureRuntime}=await import(captureRuntime);
-  await attachCaptureRuntime(ctx,config);
+  const associations = await attachCaptureRuntime(ctx,config);
   const helper=new URL('./synthesis_sessions.js',import.meta.url);
   helper.searchParams.set('revision',config.uiRevision);
   const {createSynthesisSessions}=await import(helper);
@@ -847,7 +918,7 @@ export async function apply(ctx, config) {
     return preparation.get(workspacePath);
   };
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory,execution)});
+    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory,execution,associations)});
   ctx.effect(() => dispose, 'benchforge-spatialforge-ui: authenticated artifacts and scene selection API');
 }
 
