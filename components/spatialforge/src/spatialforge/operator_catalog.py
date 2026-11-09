@@ -46,8 +46,10 @@ def _overview():
             'item_id': 'exact listed id; use for full selected details', 'offset': 'use next_offset with the same filters',
             'limit': 'positive count, default 20; pages fit the response byte budget', 'workspace_id': 'optional lossless JSON copy of all matches'},
         'workflow': [
-            'For a new scene, first generate or reuse a scene-wide diffusion design reference and inspect its image. Use an existing user reference when supplied. Choose spatialforge_diffusion or the optional layout pipeline; asset product images do not replace the scene reference. Use the reference to choose spatial composition, asset reuse or generation, material detail and lighting, then build SceneProgram and compare actual captures against it. Keep the reference available for later corrections; it is a design target, not geometry or GT.',
-            'Build reconstructed assets as paired Gaussian appearance and same-source mesh physics. SAM3D retains both; mesh_import registers the pair. Keep auto or gaussian for paired components, with the mesh collider sharing pose, scale and semantic identity. Inspect PathTracing and local lighting before changing representation; hidden-mesh PBR settings do not change visible Gaussian radiance. Explicit mesh remains available for a requested mesh appearance or a diagnostic comparison; native and mesh-only assets remain usable.',
+            'For a new scene, first generate or reuse a scene-wide diffusion design reference and inspect its image. Use an existing user reference when supplied. Choose spatialforge_diffusion or the optional spatialforge_layout pipeline; asset product images do not replace the scene reference. Use the reference to choose spatial composition, asset reuse or generation, material detail and lighting, then build SceneProgram and compare actual captures against it. Keep the reference available for later corrections; it is a design target, not geometry or GT.',
+            ('TRELLIS.2 reconstructs object meshes with embedded PBR textures in y_up coordinates. Register source_path with mesh_import and source_frame=y_up; use mesh or auto for its appearance and mesh physics. Choose object placement and metric dimensions from scene design or measured evidence. Reconstruction does not estimate camera pose, metric scale or Gaussian splats.'
+             if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER') == 'trellis2' else
+             'Build reconstructed assets as paired Gaussian appearance and same-source mesh physics. SAM3D retains both; mesh_import registers the pair. Keep auto or gaussian for paired components, with the mesh collider sharing pose, scale and semantic identity. Inspect PathTracing and local lighting before changing representation; hidden-mesh PBR settings do not change visible Gaussian radiance. Explicit mesh remains available for a requested mesh appearance or a diagnostic comparison; native and mesh-only assets remain usable.'),
             'Independent tools: diffusion for images, sam3 for candidate masks, sam3d for meshes, depth for layout priors, mesh_import for registration. Inspect each result and choose the next operation.',
             'Optional pipelines: layout prepares a design reference; asset generates a registered asset; run plans, captures and exports a scene.',
             'Write SceneProgram with standard file tools or task_code and submit scene_program_path to preserve your design. Scene data, assets, lights and cameras are operator-controlled.',
@@ -67,7 +69,7 @@ def _overview():
 
 def _load_rows(store, section, item_id):
     if section=='generation_tools':
-        return _rows({
+        tools = {
             'diffusion':{'tool':'spatialforge_diffusion','inputs':'prompt; optional source_image for editing','outputs':'image source_path'},
             'sam3':{'tool':'spatialforge_sam3','inputs':'source_image and prompts or pixel box instances','outputs':'all masks, boxes and scores'},
             'sam3d':{'tool':'spatialforge_sam3d','inputs':'source_image and objects with selected source_mask; optional texture_baking:true uses installed Gaussian multiview baking with UVs instead of default vertex colors','outputs':'paired Gaussian source_paths and mesh source_paths with predicted camera-frame pose; mesh_import registers both; Gaussian displays by default with mesh physics'},
@@ -75,7 +77,15 @@ def _load_rows(store, section, item_id):
             'camera_layout':{'python':'from spatialforge.source_camera_layout import camera_layout_placement',
                 'inputs':'registered sam3d_camera mesh record, meters_per_unit, camera_position; optional orientation_deg_xyz. Use one shared scale and camera pose for assets from the same image.',
                 'outputs':'optional SceneProgram placement fields preserving source-camera positions and relative scale, plus camera pose without intrinsics. Apply result["placement"] to chosen objects in task_code; retains prediction errors, does not edit scene or assets.'},
-            'mesh_import':{'tool':'spatialforge_mesh_import','inputs':'source_mesh, label and source frame; optional source_gaussian; SAM3D sidecars are paired automatically','outputs':'registered asset_id and geometry; no model calls'}})
+            'mesh_import':{'tool':'spatialforge_mesh_import','inputs':'source_mesh, label and source frame; optional source_gaussian; SAM3D sidecars are paired automatically','outputs':'registered asset_id and geometry; no model calls'}}
+        if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER') == 'trellis2':
+            reconstruction = {'tool': 'spatialforge_trellis', 'provider': 'microsoft/TRELLIS.2-4B',
+                'inputs': '1024x1024 source_image and objects with selected source_mask; optional seed',
+                'outputs': 'mesh source_paths with embedded 4K PBR textures and source_frame=y_up; register with mesh_import; no metric scale, camera pose or Gaussian estimate'}
+            tools['trellis'] = reconstruction
+            tools['sam3d'] = {**reconstruction, 'tool': 'spatialforge_sam3d', 'compatibility_alias': 'spatialforge_trellis'}
+            tools['camera_layout']['inputs'] = 'Legacy sam3d_camera assets only. TRELLIS y_up meshes contain no source-camera placement estimate.'
+        return _rows(tools)
     if section == 'contracts':
         return _rows({k: v for k, v in scene_contract_capabilities().items()
                       if k not in {'native_assets', 'texture_ids', 'environment_maps'}})

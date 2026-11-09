@@ -1,0 +1,14 @@
+--- a/runtime/compute-g3024/resident_gateway.py
++++ b/runtime/compute-g3024/resident_gateway.py
+@@ -12 +12 @@
+-PORTS = {'diffusion': 4953, 'depth_anything': 4954, 'sam3': 4955, 'sam3d': 4956, 'blender': 4961}
++PORTS = {'diffusion': 4953, 'depth_anything': 4954, 'sam3': 4955, 'sam3d': 4956, 'trellis': 4956, 'blender': 4961}
+@@ -46,0 +47,2 @@
++            if tool in {'sam3d', 'trellis'} and health.get('model') == 'trellis2':
++                report.update(provider=health['model_id'], representations=health['representations'], source_frame='y_up')
+@@ -55 +57 @@
+-            if tool == 'sam3d' and request.get('texture_baking'):
++            if tool == 'sam3d' and request.get('texture_baking') and health.get('model') != 'trellis2':
+@@ -79 +81 @@
+-        if tool == 'sam3d':
++        if tool in {'sam3d', 'trellis'} and availability.get('health', {}).get('model') != 'trellis2':

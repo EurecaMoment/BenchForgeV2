@@ -165,7 +165,9 @@ test('Config rejects missing or mistyped service config and accepts the legacy p
   assert.throws(()=>Config({}),/serviceConfig/);
   assert.throws(()=>Config({serviceConfig:12}),/serviceConfig/);
   const f=await fixture(t);
-  assert.equal(f.tools.size,22);
+  assert.equal(f.tools.size,23);
+  assert.ok(f.tools.has('spatialforge_trellis'));
+  assert.ok(f.tools.has('spatialforge_sam3d'));
 });
 
 test('HTTP routing uses the configured operator token and stable output families',async(t)=>{
