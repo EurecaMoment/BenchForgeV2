@@ -835,8 +835,7 @@ window.__ModuleLoader__.load({
         detail.done + ' / ' + detail.total;
     }
     function ParallelProgress({tasks = [], stage, titleKey = 'parallelTasks', t}) {
-      const rows = tasks.filter((row) => (!row.stage || stage.id === 'execution' || row.stage === stage.id) &&
-        !['idle', 'inactive'].includes(row.state)).map((row, index) => ({...row,
+      const rows = tasks.filter((row) => !row.stage || stage.id === 'execution' || row.stage === stage.id).map((row, index) => ({...row,
         display_name: row.display_name || row.label || row.name || t('parallelTask') + ' ' + (index + 1)}));
       if (!rows.length) return null;
       const completed = rows.filter((row) => lifecycle(row.state) === 'completed');
@@ -866,11 +865,12 @@ window.__ModuleLoader__.load({
         h('div', {className: 'bfw-parallel-heading'}, h('strong', null, t(titleKey)),
           h('span', {className: 'bfw-muted'}, caption + ' / ' + rows.length)),
         active.length > 0 && h('div', {className: 'bfw-parallel-grid'}, active.map(renderTask)),
-        completed.length > 0 && h('details', {className: 'bfw-parallel-completed'},
+        completed.length > 0 && h('details', {className: 'bfw-parallel-completed', open: false},
           h('summary', null, t('parallelCompleted') + ' ' + completed.length), h('div', {className: 'bfw-parallel-grid'}, completed.map(renderTask))));
     }
     function StageProgress({stage, pipeline, scene, record, planReceipt, collectionPlan, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
-      const collection = stage.id === 'S2' ? sceneCollectionProgress(collectionPlan, record.value?.scenes?.runs || [], record.value?.current_collection) : null;
+      const collection = stage.id === 'S2' && (collectionPlan?.assessment?.scenes || collectionPlan?.inputs?.target_scene_count || record.value?.current_collection)
+        ? sceneCollectionProgress(collectionPlan, record.value?.scenes?.runs || [], record.value?.current_collection) : null;
       const generation = stage.id === 'S4' ? currentGeneration(record.value?.generation) : null;
       scene = progressSceneForStage(stage.id, scene, record.value?.scenes?.runs || []);
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
@@ -1733,7 +1733,8 @@ window.__ModuleLoader__.load({
         const navigationState = (id) => stageState(id, navigationPipeline(id), progressSceneForStage(id, navigationScene(id), sceneJobs), progress.value?.operations,
           planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
             navigationPipeline(id)?.id === selectedRunId ? allStageFiles : [],
-          id === 'S2' ? sceneCollectionProgress(collectionPlan, sceneJobs, progress.value?.current_collection) : null, progress.value?.generation);
+          id === 'S2' && (collectionPlan?.assessment?.scenes || collectionPlan?.inputs?.target_scene_count || progress.value?.current_collection)
+            ? sceneCollectionProgress(collectionPlan, sceneJobs, progress.value?.current_collection) : null, progress.value?.generation);
         const progressStates = Object.fromEntries(STAGES.map((row) => [row.id, navigationState(row.id)]));
         const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === 'running') ||
           currentGeneration(progress.value?.generation)?.state === 'running';
