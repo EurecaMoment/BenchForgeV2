@@ -18,6 +18,17 @@ import json
 
 
 class StageArtifactsTest(unittest.TestCase):
+    def test_workspace_paths_normalize_root_and_reject_escape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            nested = root / 'nested'
+            nested.mkdir()
+            alias = nested / '..'
+            self.assertEqual(observer.workspace_file(alias, root / 'plan.json'), root.resolve() / 'plan.json')
+            self.assertEqual(observer.workspace_file(alias, 'plan.json'), root.resolve() / 'plan.json')
+            with self.assertRaises(ValueError):
+                observer.workspace_file(alias, '../outside.json')
+
     def test_repairs_keep_public_plan_and_candidate_counts_separate(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

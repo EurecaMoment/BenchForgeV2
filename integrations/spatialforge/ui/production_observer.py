@@ -82,6 +82,7 @@ def file_version(path):
 
 
 def workspace_file(workspace, value):
+    workspace = Path(workspace).resolve()
     path = Path(value)
     if not path.is_absolute():
         path = workspace / path
