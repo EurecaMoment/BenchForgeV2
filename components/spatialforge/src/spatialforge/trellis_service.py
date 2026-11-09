@@ -75,6 +75,16 @@ class TrellisModel:
         from trellis2.pipelines import Trellis2ImageTo3DPipeline
         import o_voxel
         self.np, self.torch, self.voxel = np, torch, o_voxel
+        if __package__:
+            from .trellis_export import export_glb_lossless
+            from .trellis_postprocess import to_glb
+        else:
+            from trellis_export import export_glb_lossless
+            from trellis_postprocess import to_glb
+        self.export_glb = export_glb_lossless
+        self.postprocess = to_glb
+        self.parallel_inpaint = config.get('parallel_inpaint', True)
+        self.png_compress_level = config.get('png_compress_level', 1)
         torch.set_num_threads(config.get('cpu_threads', 8))
         torch.cuda.set_per_process_memory_fraction(.94)
         torch.backends.cuda.matmul.allow_tf32 = True
@@ -130,11 +140,14 @@ class TrellisModel:
                 item.check()
                 mesh.simplify(16777216)
                 export_start = time.perf_counter()
-                glb = self.voxel.postprocess.to_glb(vertices=mesh.vertices, faces=mesh.faces,
+                export_timing = {}
+                glb = self.postprocess(vertices=mesh.vertices, faces=mesh.faces,
                     attr_volume=mesh.attrs, coords=mesh.coords, attr_layout=mesh.layout,
                     voxel_size=mesh.voxel_size, aabb=[[-.5, -.5, -.5], [.5, .5, .5]],
                     decimation_target=1000000, texture_size=4096,
-                    remesh=True, remesh_band=1, remesh_project=0, verbose=True)
+                    remesh=True, remesh_band=1, remesh_project=0, verbose=True,
+                    timings=export_timing, parallel_inpaint=self.parallel_inpaint,
+                    verify_inpaint=request.get('verify_inpaint') is True, check=item.check)
                 item.check()
                 if not len(glb.faces) or not self.np.isfinite(glb.vertices).all():
                     raise ValueError('TRELLIS produced empty or nonfinite mesh geometry')
@@ -143,7 +156,7 @@ class TrellisModel:
                     raise ValueError('TRELLIS mesh is missing PBR texture payloads')
                 destination = output / (row['object_id'] + '.glb')
                 temporary = output / (row['object_id'] + '.' + item.id + '.partial.glb')
-                glb.export(str(temporary))
+                export_timing.update(self.export_glb(glb, temporary, self.png_compress_level))
                 item.check()
                 temporary.replace(destination)
                 asset = {'object_id': row['object_id'], 'asset': destination.name,
@@ -156,7 +169,9 @@ class TrellisModel:
                     'metallic_roughness_texture_size': list(material.metallicRoughnessTexture.size),
                     'bytes': destination.stat().st_size, 'inputs': inputs,
                     'generation_seconds': generation_seconds,
-                    'export_seconds': time.perf_counter() - export_start}
+                    'export_seconds': time.perf_counter() - export_start,
+                    'export_profile': 'lossless-parallel-v1', 'remesh': True,
+                    'export_timing': export_timing}
                 write_json(destination.with_suffix('.complete.json'), {'asset': asset,
                     'provider': 'trellis2', 'request_id': item.id, 'status': 'complete'})
                 assets.append(asset)
@@ -194,7 +209,8 @@ class Resident:
             'max_batch': 1, 'completed': self.completed, 'failed': self.failed,
             'expired': self.expired, 'latency_recent': self.history[-64:],
             'representations': ['mesh_pbr'], 'gaussian_supported': False,
-            'pipeline': '1024_cascade', 'texture_size': 4096, 'resident': True}
+            'pipeline': '1024_cascade', 'texture_size': 4096, 'resident': True,
+            'export_profile': 'lossless-parallel-v1', 'remesh': True}
 
     def submit(self, request, timeout):
         rows = request.get('objects')

@@ -36,6 +36,22 @@ does not measure sustainable successful throughput; report its failures plainly.
 One GPU worker and 64 request slots do not establish a 64-request latency SLA.
 First-use kernel compilation is part of a cold request's observed wall time.
 
+The resident exporter preserves `remesh=True`, geometry/UV processing, sampling
+steps, texture size, and the original OpenCV Telea algorithms and radii. Its
+`lossless-parallel-v1` profile runs the four independent inpainting operations
+concurrently, and encodes PNG images in two workers with compression level 1.
+Lower PNG compression increases encoded size while preserving every decoded
+pixel. `trellis_postprocess.py` retains the installed TRELLIS.2 `o_voxel`
+postprocessor with stage timing and this independent CPU work separated.
+
+Each asset includes `export_timing` for GPU-synchronized geometry, UV, texture
+processing, PNG encoding, and GLB packaging/writing. A controlled `/infer`
+request can set `verify_inpaint=true` to compare the original serial operations
+against the parallel output on the same actual PBR arrays. It fails before
+publishing if any pixel differs. This optional audit repeats the serial work;
+leave it off when measuring production latency. Geometry changes such as
+disabling remeshing require separate quality acceptance.
+
 For the existing FIT reconstruction route, keep the legacy tool name `sam3d`
 and point its external resident gateway port at this service. Set
 `SPATIALFORGE_RECONSTRUCTION_PROVIDER=trellis2` on the SpatialForge API so
