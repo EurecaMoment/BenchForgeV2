@@ -43,7 +43,7 @@ const PLAN_FIELDS = {
 
 function createClient(React) {
   const h = React.createElement;
-  const primitives = createPrimitives({React, PLAN_FIELDS});
+  const primitives = createPrimitives({React, PLAN_FIELDS, PLAN_SECTIONS});
   const state = createWorkbenchState({STAGES, sceneName: primitives.sceneName});
   const hooks = createApiHooks({React});
   const helpers = {...primitives, ...state, ...hooks, STAGES, PLAN_SECTIONS, PLAN_FIELDS, styles, dictionaries};

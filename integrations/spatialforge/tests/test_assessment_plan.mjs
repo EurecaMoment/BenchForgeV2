@@ -8,8 +8,11 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {createWorkbenchHandler} from '../ui/index.js';
 
-const source = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-  .replace(/return \{\s+inject:/, 'return {PlanProduct, planMarkdown, planEditInstruction}; return {inject:');
+const bundle = await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8');
+const clientExport = /return \{\s+ProductionEnvironment, Workbench, dictionaries, apply, \.\.\.helpers, \.\.\.components\s+\};/;
+assert.match(bundle, clientExport, 'the built client exposes its UI factory result');
+const source = bundle.replace(clientExport,
+  'return {PlanProduct: components.PlanProduct, planMarkdown: helpers.planMarkdown, planEditInstruction: helpers.planEditInstruction, ProductionEnvironment, Workbench, dictionaries, apply, ...helpers, ...components};');
 let registration;
 vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => registration = value}}, encodeURIComponent});
 let hooks=[],hookIndex=0;

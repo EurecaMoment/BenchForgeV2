@@ -222,5 +222,5 @@ export function createGalleryComponents({React, helpers}) {
         h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
       item.task_id && h('details',null,h('summary',null,'技术详情'),h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision))));}));
   }
-  return {PublicObservation, QuestionDialog, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery};
+  return {PublicObservation, QuestionDialog, firstImage, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery};
 }

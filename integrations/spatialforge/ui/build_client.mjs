@@ -4,10 +4,12 @@ import {fileURLToPath} from 'node:url';
 
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const integrations = path.resolve(directory, '../..');
+const repository = path.resolve(integrations, '..');
 const require = createRequire(path.join(integrations, 'package.json'));
 const {build} = require('esbuild');
 
 await build({
+  absWorkingDir: repository,
   entryPoints: [path.join(directory, 'client/entry.js')],
   outfile: path.join(directory, 'client.js'),
   bundle: true,

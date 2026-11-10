@@ -1,4 +1,4 @@
-export function createPrimitives({React, PLAN_FIELDS}) {
+export function createPrimitives({React, PLAN_FIELDS, PLAN_SECTIONS}) {
   const h = React.createElement;
   function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
   function button(label, onClick, props = {}) { return h('button', {type: 'button', className: 'bfw-button', onClick, ...props}, label); }

@@ -8,7 +8,7 @@ export function createWorkbenchComponent({React, helpers, components}) {
   stageState, recordedStageState,
   STAGES, PLAN_SECTIONS, PLAN_FIELDS, styles, dictionaries} = helpers;
   const {TemplateCatalog, RunDetails, executionStage, reportedProgress, progressAmount, ParallelProgress,
-    StageProgress, PublicObservation, QuestionDialog, sceneProjects, SceneGallery, SceneVideo,
+    StageProgress, PublicObservation, QuestionDialog, firstImage, sceneProjects, SceneGallery, SceneVideo,
     SceneLibrary, PreviewDialog, ArtifactGallery, StageReviewPanel, DraftReview, DemandForm,
     SendDialog, PlanProduct, ReportProduct, Quality, ExecutionFeedback} = components;
   function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions, renderFactorySlot, canSubmit = false,

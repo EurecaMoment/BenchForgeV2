@@ -950,7 +950,7 @@
 `;
 
   // integrations/spatialforge/ui/client/primitives.js
-  function createPrimitives({ React, PLAN_FIELDS: PLAN_FIELDS2 }) {
+  function createPrimitives({ React, PLAN_FIELDS: PLAN_FIELDS2, PLAN_SECTIONS: PLAN_SECTIONS2 }) {
     const h = React.createElement;
     function status(value, t) {
       return h("span", { className: "bfw-pill " + (value || "unknown") }, t(value || "unknown"));
@@ -1031,7 +1031,7 @@
       const document2 = plan.assessment;
       if (typeof plan.user_markdown === "string") return plan.user_markdown;
       if (!document2) return "# " + (plan.objective || "\u8BC4\u6D4B\u8BA1\u5212") + "\n\n\u6267\u884C\u6458\u8981\n\n```json\n" + JSON.stringify(plan, null, 2) + "\n```\n";
-      return "# " + document2.title + "\n\n" + document2.summary + "\n\n" + PLAN_SECTIONS.filter(([key]) => document2[key]).map(([key, title]) => "## " + title + "\n\n" + format(document2[key])).join("\n\n") + "\n";
+      return "# " + document2.title + "\n\n" + document2.summary + "\n\n" + PLAN_SECTIONS2.filter(([key]) => document2[key]).map(([key, title]) => "## " + title + "\n\n" + format(document2[key])).join("\n\n") + "\n";
     }
     function planMarkdownView(markdown) {
       const inline = (value) => value.split(/(!?\[[^\]]*\]\([^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g).map((part, index2) => {
@@ -1598,7 +1598,7 @@
       stageState,
       recordedStageState,
       STAGES: STAGES2,
-      PLAN_SECTIONS: PLAN_SECTIONS3,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
       PLAN_FIELDS: PLAN_FIELDS2,
       styles: styles2,
       dictionaries: dictionaries2
@@ -1999,7 +1999,7 @@
       stageState,
       recordedStageState,
       STAGES: STAGES2,
-      PLAN_SECTIONS: PLAN_SECTIONS3,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
       PLAN_FIELDS: PLAN_FIELDS2,
       styles: styles2,
       dictionaries: dictionaries2
@@ -2041,7 +2041,7 @@
         }) : h("p", { className: "bfw-muted" }, t("unsupportedObservation"))
       );
     }
-    function firstImage2(item) {
+    function firstImage(item) {
       const index = item.media_types ? item.media_types.findIndex((type) => type.startsWith("image/")) : 0;
       return item.media?.[index];
     }
@@ -2425,7 +2425,7 @@
         );
       }));
     }
-    return { PublicObservation, QuestionDialog, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery };
+    return { PublicObservation, QuestionDialog, firstImage, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery };
   }
 
   // integrations/spatialforge/ui/client/components/products.js
@@ -2466,7 +2466,7 @@
       stageState,
       recordedStageState,
       STAGES: STAGES2,
-      PLAN_SECTIONS: PLAN_SECTIONS3,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
       PLAN_FIELDS: PLAN_FIELDS2,
       styles: styles2,
       dictionaries: dictionaries2
@@ -2760,11 +2760,11 @@
         null,
         h("summary", null, t("planTemplate")),
         h("small", { className: "bfw-hint" }, t("planTemplateNote")),
-        h("ol", null, (template?.sections || PLAN_SECTIONS3.map(([key, title]) => ({ key, title }))).map((row) => h("li", { key: row.key }, row.title)))
+        h("ol", null, (template?.sections || PLAN_SECTIONS2.map(([key, title]) => ({ key, title }))).map((row) => h("li", { key: row.key }, row.title)))
       ));
       const document2 = plan.assessment;
       const labels = Object.fromEntries((plan.template_contracts || []).map((row) => [row.id, row.title || row.task_name]));
-      const sections = PLAN_SECTIONS3.filter(([key]) => document2?.[key]);
+      const sections = PLAN_SECTIONS2.filter(([key]) => document2?.[key]);
       const operate = (text) => request("\u672C\u6B21\u64CD\u4F5C\u5BF9\u8C61\u662F\u5F53\u524D\u9875\u9762\u5C55\u793A\u7684\u5DF2\u4FDD\u5B58\u8BA1\u5212\uFF1A" + (source?.plan_path || source?.operation_id || source?.run_id || plan.objective) + "\n\u8BF7\u5148\u8BFB\u53D6\u8BE5\u8BA1\u5212\u53CA\u5176\u51C6\u786E\u5408\u540C\uFF0C\u518D\u5E94\u7528\u4EE5\u4E0B\u8981\u6C42\uFF1A\n" + text);
       return h(
         "article",
@@ -2773,7 +2773,7 @@
           "div",
           { className: "bfw-toolbar" },
           h("span", { className: "bfw-pill" }, t("persistedPlan")),
-          document2 && h("span", { className: "bfw-pill" }, t("completePlan") + " \xB7 " + sections.length + "/" + PLAN_SECTIONS3.length),
+          document2 && h("span", { className: "bfw-pill" }, t("completePlan") + " \xB7 " + sections.length + "/" + PLAN_SECTIONS2.length),
           !draft && (document2 ? save && button(t("revisePlan"), begin, { "data-plan-revise": true }) : request && button(t("completePlanRequest"), () => operate("\u8BF7\u6309\u7167\u5B8C\u6574\u8BC4\u6D4B\u8BA1\u5212\u6A21\u677F\u8865\u5168\u5E76\u4FDD\u5B58 assessment\uFF0C\u590D\u7528\u5F53\u524D\u573A\u666F\u7EA6\u675F\u3002"), { "data-plan-revise": true })),
           draft && button(t(busy ? "savingPlan" : "savePlan"), commit, { "data-plan-save": true, disabled: busy }),
           draft && button(t("cancelPlanEdit"), () => {
@@ -3004,7 +3004,7 @@
       stageState,
       recordedStageState,
       STAGES: STAGES2,
-      PLAN_SECTIONS: PLAN_SECTIONS3,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
       PLAN_FIELDS: PLAN_FIELDS2,
       styles: styles2,
       dictionaries: dictionaries2
@@ -3019,6 +3019,7 @@
       StageProgress,
       PublicObservation,
       QuestionDialog,
+      firstImage,
       sceneProjects,
       SceneGallery,
       SceneVideo,
@@ -3851,7 +3852,7 @@
     { id: "S4", key: "synthesis" },
     { id: "S5", key: "verification" }
   ];
-  var PLAN_SECTIONS2 = [
+  var PLAN_SECTIONS = [
     ["objectives", "\u8BC4\u6D4B\u76EE\u6807\u4E0E\u8FB9\u754C"],
     ["coverage", "\u80FD\u529B\u3001\u6A21\u677F\u4E0E\u9898\u91CF\u5206\u914D"],
     ["scenes", "\u573A\u666F\u4E0E\u91C7\u96C6\u8BBE\u8BA1"],
@@ -3957,10 +3958,10 @@
   };
   function createClient(React) {
     const h = React.createElement;
-    const primitives = createPrimitives({ React, PLAN_FIELDS });
+    const primitives = createPrimitives({ React, PLAN_FIELDS, PLAN_SECTIONS });
     const state = createWorkbenchState({ STAGES, sceneName: primitives.sceneName });
     const hooks = createApiHooks({ React });
-    const helpers = { ...primitives, ...state, ...hooks, STAGES, PLAN_SECTIONS: PLAN_SECTIONS2, PLAN_FIELDS, styles, dictionaries };
+    const helpers = { ...primitives, ...state, ...hooks, STAGES, PLAN_SECTIONS, PLAN_FIELDS, styles, dictionaries };
     const progress = createProgressComponents({ React, helpers });
     const gallery = createGalleryComponents({ React, helpers });
     const components = { ...progress, ...gallery, ...createProductComponents({ React, helpers, components: { ...progress, ...gallery } }) };

@@ -19,10 +19,10 @@ export const REPORT_FIELDS = [...QUALITY_FIELDS, 'model_api_calls', 'scope', 'me
 export function createPublicArtifactProjector({pick, taskTemplates}) {
   const planTemplateTitles = new Map((taskTemplates?.tasks || [])
     .flatMap((task) => task.templates.map((row) => [row.id, row.title])));
-  const stripPrivate = (value, allowAuthoritySource = false) => Array.isArray(value) ? value.map((child) => stripPrivate(child)) :
+  const stripPrivate = (value, allowAuthoritySource = false) => Array.isArray(value) ? value.map((child) => stripPrivate(child, allowAuthoritySource)) :
     value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([key]) =>
       allowAuthoritySource && key === 'authority_source' || !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key))
-      .map(([key, child]) => [key, stripPrivate(child)])) : value;
+      .map(([key, child]) => [key, stripPrivate(child, allowAuthoritySource)])) : value;
 
   function publicPlan(plan) {
     if (!plan) return null;
