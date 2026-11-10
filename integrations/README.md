@@ -14,7 +14,7 @@ one DSH installation, not three maintained application repositories.
 ## Evaluation workbench UI
 
 `spatialforge/ui` is a separate root UI plugin in this same repository. It adds
-the DSH sidebar workbench with persisted runs/artifacts, version-isolated dataset
+the DSH SpatialForge session workbench with persisted runs/artifacts, version-isolated dataset
 browsing, server-side pagination and generation quality reports. It does not edit
 official DSH source or start model/simulator services. Install or refresh it in an
 already running DSH with `python integrations/spatialforge/install_workbench.py`.

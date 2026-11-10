@@ -36,3 +36,16 @@ benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+    "src/benchforge_core/vendor/**",
+    "components/benchclaw/BenchClaw/**",
+    "components/benchclaw/src/benchclaw/resources/BenchClaw/**",
+    "work/**",
+]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]

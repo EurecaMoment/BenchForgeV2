@@ -15,7 +15,7 @@ import uuid
 
 
 def read_json(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
 
 
 @contextmanager
@@ -41,7 +41,7 @@ def write_json(path, value):
 
 
 def read_jsonl(path):
-    with Path(path).open(encoding="utf-8") as stream:
+    with Path(path).open(encoding="utf-8-sig") as stream:
         return [json.loads(line) for line in stream if line.strip()]
 
 

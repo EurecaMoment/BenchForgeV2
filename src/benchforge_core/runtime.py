@@ -12,6 +12,7 @@ import signal
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from .artifact_io import (
     read_json as read,
@@ -19,6 +20,7 @@ from .artifact_io import (
     write_json as write,
     write_jsonl as jsonl,
 )
+from .processes import terminate_process_tree
 
 
 def select(raw, pointer):
@@ -45,7 +47,8 @@ class Runtime:
     def close(self):
         self.db.close()
 
-    def call(self, tool, args):
+    def call(self, tool: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Execute one harness operation and persist its request and result."""
         if tool == "catalog":
             if args.get('section') == 'migration':
                 inventory = read(Path(__file__).with_name('knowledge') / 'skill-migration.json')
@@ -157,17 +160,38 @@ class Runtime:
             command = list(cfg["command"]) + [str(script), *args.get("argv", []), "--output-dir", str(output)]
         env = {**os.environ, **cfg.get("env", {})}
         with (directory / "stdout.log").open("w", encoding="utf-8") as stdout, (directory / "stderr.log").open("w", encoding="utf-8") as stderr:
-            options={'start_new_session':True} if os.name!='nt' else {'creationflags':subprocess.CREATE_NO_WINDOW}
-            completed = subprocess.Popen(command,cwd=self.root,env=env,stdout=stdout,stderr=stderr,**options)
+            options = {'start_new_session': True} if os.name != 'nt' else {
+                'creationflags': subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,
+            }
+            completed = subprocess.Popen(
+                command, cwd=self.root, env=env, stdout=stdout, stderr=stderr, **options
+            )
             try:
                 completed.wait(timeout=args.get('timeout_seconds',3600))
+            except subprocess.TimeoutExpired:
+                if os.name == 'nt':
+                    terminate_process_tree(completed)
+                else:
+                    try:
+                        os.killpg(completed.pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        completed.terminate()
+                    try:
+                        completed.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        try:
+                            os.killpg(completed.pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            completed.kill()
+                        completed.wait()
+                raise
             finally:
                 # Only the collector's own process group, including any explicitly
                 # launched test server; attached shared servers are outside it.
                 if os.name!='nt':
                     try:os.killpg(completed.pid,signal.SIGTERM)
                     except ProcessLookupError:pass
-                elif completed.poll() is None:completed.terminate()
+                elif completed.poll() is None:terminate_process_tree(completed)
         if completed.returncode:
             detail = (directory / 'stderr.log').read_text(encoding='utf-8')[-6000:]
             raise RuntimeError(f"{tool} exited {completed.returncode}: {detail}; full log: {directory / 'stderr.log'}")

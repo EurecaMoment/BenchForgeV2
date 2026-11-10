@@ -20,6 +20,7 @@ const { createPreparationHandler } = await import(new URL('./preparation.mjs' + 
 const { createObservationBridge } = await import(new URL('./observation_bridge.mjs' + revision, import.meta.url));
 const { createCaptureRetry } = await import(new URL('./capture_retry.mjs' + revision, import.meta.url));
 const { createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation, captureRunId } = await import(new URL('./capture_watch.mjs' + revision, import.meta.url));
+const {requestKeyFor} = await import(new URL('./request_identity.mjs' + revision, import.meta.url));
 export const name='spatialforge-tools';
 // Delivery visual feedback resolves the active model route and stores image
 // attachments while the turn-stopping hook is running. Declare both services
@@ -93,7 +94,7 @@ async function observation(path,args,signal){
   return args.detail === true ? value : compactCaptureObservation(value, {artifacts:cfg.artifacts});
 }
 async function submit(path,args,exec){
-  const request_key=args.request_key??`dsh:${exec.agent.session.id}:${exec.callId}`;
+  const request_key=requestKeyFor(args,exec);
   return api(path,{...args,request_key},exec.signal);
 }
 const requestKey={type:'string',description:'Optional key to reuse the same request across separate tool calls. Omit to use this session and tool-call identity.'};

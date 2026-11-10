@@ -16,6 +16,7 @@ from .evaluation import Roster, evaluate_isolated, report_evaluation, save_evalu
 from .metadata import Repository
 from .plugins import Registry
 from .release import build_release, validate_run
+from .resources import resource_path
 from .store import ArtifactStore, write_json
 from .workflow import LocalWorkflowBackend
 
@@ -96,11 +97,11 @@ def main(argv=None):
                 model.model_validate(record)
             emit({'valid':True,'count':len(records)});return 0
         if args.command=='init':
-            source=Path(__file__).resolve().parents[2]/'examples/minimal/dataset.yaml'
+            source=resource_path('examples','minimal','dataset.yaml')
             target=Path(args.path)
             if target.exists():
                 raise HarnessError('FILE_EXISTS',str(target))
-            spec=load_spec(source)
+            spec=DatasetSpec.model_validate(load(source))
             target.write_text(yaml.safe_dump(spec.model_dump(mode='json'),allow_unicode=True,sort_keys=False),encoding='utf-8')
             emit({'path':str(target.resolve())});return 0
         if args.command=='plugins':

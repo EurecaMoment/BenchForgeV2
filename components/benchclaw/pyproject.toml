@@ -23,6 +23,23 @@ benchclaw = "benchclaw.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+benchclaw = [
+    "resources/BenchClaw/annotation-tool/default-annotation/run_image_to_semantic_depth.py",
+    "resources/BenchClaw/annotation-tool/depthanything3/depthanything3_client.py",
+    "resources/BenchClaw/annotation-tool/llm-local/llm_local_client.py",
+    "resources/BenchClaw/annotation-tool/sam3/sam3_client.py",
+    "resources/BenchClaw/annotation-tool/sam3/sam3_service.py",
+    "resources/BenchClaw/annotation-tool/yoloe/yoloe_client.py",
+    "resources/BenchClaw/annotation-tool/yoloe/yoloe_service.py",
+    "resources/BenchClaw/templates/template_library/executable_template_coverage.json",
+    "resources/BenchClaw/templates/tools/synthesize_static_vlm_benchmark.py",
+    "resources/BenchClaw/tools/cdm_irt_analysis.py",
+    "resources/BenchClaw/tools/gt_kinship_base.py",
+    "resources/BenchClaw/simulatorCards/CARLA/quick_capture.py",
+    "resources/examples/minimal/dataset.yaml",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

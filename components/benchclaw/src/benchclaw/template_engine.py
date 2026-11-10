@@ -13,10 +13,11 @@ from .domain import (AnswerRecord,Bundle,HarnessError,MediaAsset,PublicMetadata,
                      TemplateEvidence,VisibleEvalItem,WorkResult)
 from .gates import decode_image
 from .plugins import Plugin,merge_inputs,materialize_files
+from .resources import benchclaw_root
 from .store import safe_path
 
-ROOT=Path(__file__).resolve().parents[2]
-ENGINE=ROOT/'BenchClaw/templates/tools/synthesize_static_vlm_benchmark.py'
+ROOT=benchclaw_root()
+ENGINE=ROOT/'templates/tools/synthesize_static_vlm_benchmark.py'
 
 
 def engine():
@@ -29,7 +30,7 @@ def engine():
 
 def catalogue():
     m=engine()
-    coverage=json.loads((ROOT/'BenchClaw/templates/template_library/executable_template_coverage.json').read_text())
+    coverage=json.loads((ROOT/'templates/template_library/executable_template_coverage.json').read_text(encoding='utf-8'))
     executable={x['template_id'] for x in coverage if x['executable_in_tool']=='yes'} | {'T085'}
     sets={k:sorted(v & executable) for k,v in m.TEMPLATE_SETS.items()}
     sets['strict_all_supported']=sorted(executable-m.DEPRECATED_LOCKED_TEMPLATES)

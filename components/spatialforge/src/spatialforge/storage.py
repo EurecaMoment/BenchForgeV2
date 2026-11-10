@@ -53,7 +53,10 @@ class Store:
         policy = next((value for value in policies.values() if value), {})
         if policy:
             check_references(intents,policy)
-            if workflow=='scene' and intent.get('execution_mode') in (None, 'production'):
+            requires_scene_programs = workflow == 'scene' and any(
+                mode in (None, 'production') for mode in scene_modes
+            )
+            if requires_scene_programs:
                 if not submitted_programs or len(submitted_programs)!=len(intents) or any(not row for row in submitted_programs):
                     raise ValueError('Realistic production requires complete SceneProgram snapshots; no planner fallback')
                 for intent,submission in zip(intents,submitted_programs):

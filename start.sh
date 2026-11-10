@@ -122,18 +122,21 @@ echo "验证："
 if "$PY" spatialforge_app.py status > /dev/null 2>&1; then
   echo "  数据库 / 服务 / 令牌：正常"
 else
-  echo "  数据库 / 服务 / 令牌：检查失败，手动执行 .venv/bin/python spatialforge_app.py status"
+  die "数据库 / SpatialForge 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
 fi
 
 URL="$(latest_url)"
 WEB_STATUS=""
 [ -n "$URL" ] && WEB_STATUS="$(url_status "$URL")"
+if [ -z "$URL" ]; then
+  die "未找到 DSH Web token 地址，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
+if [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; then
+  die "DSH Web token readiness 检查返回 $WEB_STATUS，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
 echo
 echo "启动完成。"
 echo "  服务端: http://127.0.0.1:$SERVICE_PORT"
 echo "  Web:    ${URL:-http://127.0.0.1:$WEB_PORT/ （token 见 .benchforge/logs/dsh.log）}"
-if [ -n "$URL" ] && { [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; }; then
-  echo "  警告:   该 token 访问返回 $WEB_STATUS，可能属于上一次未完成启动的进程，请查看日志"
-fi
 echo "  日志:   $LOG_DIR"
 echo "  停止:   ./shutdown.sh"

@@ -38,11 +38,12 @@ class PipelineTests(unittest.TestCase):
             dataset = Path(result['outputs']['questions']['dataset'])
             public, private = rows(dataset/'questions.jsonl'), rows(dataset/'authority.jsonl')
             self.assertEqual(len(public), 51)
+            templates = {template['id']: template for template in all_templates()}
             for question, truth in zip(public, private):
                 self.assertNotIn('answer', question)
                 self.assertNotIn('private_scene_parameters', question)
                 self.assertEqual(oracle(truth['template_id'], read(dataset/truth['source'])), truth['answer'])
-                self.assertTrue(score(truth, truth['answer'])['success'])
+                self.assertTrue(score(truth, truth['answer'], templates[truth['template_id']])['success'])
                 for media in question['media']:
                     self.assertTrue((dataset/media).is_file())
             with zipfile.ZipFile(result['outputs']['package']['public_bundle']) as bundle:
@@ -64,23 +65,25 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(oracle('C01-T02', world)['value'], 3)
         self.assertEqual(oracle('C43-T03', {'segments': [{'speed': 2, 'duration': 3, 'direction': 'forward'}, {'speed': 2, 'duration': 1, 'direction': 'backward'}]})['value'], 8)
         self.assertAlmostEqual(oracle('C44-T01', {'height': 4.9, 'gravity': 9.8})['value'], 1)
-        self.assertFalse(score({'answer': {'value': 5, 'unit': 'm'}, 'tolerance': {'absolute': .02, 'relative': .05}}, {'value': 5, 'unit': 'cm'})['success'])
+        template = next(template for template in all_templates() if template['id'] == 'C01-T01')
+        self.assertFalse(score(
+            {'answer': {'value': 5, 'unit': 'm'}, 'tolerance': {'absolute': .02, 'relative': .05}},
+            {'value': 5, 'unit': 'cm'}, template,
+        )['success'])
 
     def test_unimplemented_interactive_never_substituted(self):
         with tempfile.TemporaryDirectory() as tmp:
             runtime = Runtime(tmp)
             planned = runtime.call('pipeline_plan', {'template_ids': ['C81-T01'], 'target_items': 2})
-            result = runtime.call('pipeline_run', {'plan': planned['plan']})
-            self.assertEqual(result['state'], 'needs_evidence')
-            self.assertEqual(result['steps']['questions']['result']['accepted'], 0)
-            self.assertNotIn('package', result['steps'])
+            with self.assertRaisesRegex(ValueError, 'No deterministic scorer'):
+                runtime.call('pipeline_run', {'plan': planned['plan']})
             runtime.close()
 
     def test_source_binding_and_group_split_immutable(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root/'simulation.json'
-            write(source, {'result': {'label': 'visible'}, 'admission': {'template_id': 'C63-T01', 'protocol_id': 'D89-C63-v1', 'information_sufficient': True, 'oracle_executed': True, 'media_consistent': True, 'no_answer_leakage': True}})
+            write(source, {'result': {'value': False}, 'admission': {'template_id': 'C63-T01', 'protocol_id': 'D89-C63-v1', 'information_sufficient': True, 'oracle_executed': True, 'media_consistent': True, 'no_answer_leakage': True}})
             # This exercises exact source extraction; it is not a real-scene acceptance claim.
             template = next(t for t in all_templates() if t['id'] == 'C63-T01')
             record = {'template_id': template['id'], 'provenance': {'kind': 'program', 'path': str(source)}, 'parameters': {p['name']: 'explicit fixture' for p in template['parameters']}, 'provided_information': ['fixture'], 'media': [], 'answer_selector': '/result', 'admission_selector': '/admission', 'oracle_version': 'fixture-v1', 'reference_frame': 'fixture', 'scene_group_id': 'source-family-1'}

@@ -115,6 +115,8 @@ def compile_bundle(args,directory,config):
     # Use the same declared metrics for both installed and standalone evaluation.
     for src,dest in [('evaluation.py','score_predictions.py'),('artifacts.py','artifacts.py')]:
         shutil.copyfile(Path(__file__).with_name(src),bundle/'scripts'/dest)
+    for src in ('artifact_io.py', 'processes.py'):
+        shutil.copyfile(Path(__file__).with_name(src), bundle/'scripts'/src)
     # Policy is a requested design property, not a claim of measured human difficulty.
     policy=args.get('difficulty',{'minimum_ratios':{},'unknown_difficulty_allowed':False})
     write(bundle/'difficulty_mix_contract.json',policy)

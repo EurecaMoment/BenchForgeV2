@@ -4,6 +4,8 @@ import math
 import sys
 from pathlib import Path
 
+from benchclaw.resources import benchclaw_root
+
 import numpy as np
 from PIL import Image
 
@@ -105,7 +107,7 @@ def carla(p,output):
     import carla
     import queue
     import importlib.util
-    legacy=Path(__file__).resolve().parents[2]/'BenchClaw/simulatorCards/CARLA/quick_capture.py'
+    legacy=benchclaw_root()/'simulatorCards/CARLA/quick_capture.py'
     spec=importlib.util.spec_from_file_location('carla_geometry',legacy);geometry=importlib.util.module_from_spec(spec);spec.loader.exec_module(geometry)
     client=carla.Client(p['host'],p['port']);client.set_timeout(30)
     if p.get('map_name'):

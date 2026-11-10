@@ -8,6 +8,7 @@ from spatialforge.quantity_contract import delivery_status
 from spatialforge.run_context import RunContext
 from spatialforge.scene_policy import policy_for, resolve_execution_mode
 from spatialforge.scene_acceptance import check_request
+from spatialforge.storage import Store
 
 
 class BackendContracts(unittest.TestCase):
@@ -74,6 +75,15 @@ class BackendContracts(unittest.TestCase):
             self.assertEqual(resolve_execution_mode('production'), 'production')
             with self.assertRaisesRegex(ValueError, 'conflicts with configured mode'):
                 check_request(Path.cwd(), '/dataset', {'execution_mode': 'exploration'})
+
+    def test_production_submission_requires_frozen_scene_program_before_database_write(self):
+        store = Store.__new__(Store)
+        store.root = Path.cwd()
+
+        with patch('spatialforge.scene_acceptance.policy_for', return_value={'enabled': True}), \
+             patch('spatialforge.scene_acceptance.check_references'):
+            with self.assertRaisesRegex(ValueError, 'requires complete SceneProgram snapshots'):
+                store.submit('request-key', [{'execution_mode': 'production'}])
 
 
 if __name__ == '__main__':

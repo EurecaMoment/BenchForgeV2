@@ -6,10 +6,11 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import io
 import html
 import json
+import logging
 from pathlib import Path
 import threading
 import zipfile
-from urllib.parse import urlparse,unquote
+from urllib.parse import quote,urlparse,unquote
 from benchclaw.store import safe_path
 from .storage import Store,uid
 from .engine import coordinate
@@ -23,6 +24,20 @@ from .scene_requests import context_from_request as _request_context
 
 
 scene_intent = _scene_requests.scene_intent
+
+
+def request_error_status(method, exc):
+    if isinstance(exc, FileNotFoundError) or (isinstance(exc, KeyError) and method == 'GET'):
+        return 404
+    if isinstance(exc, PermissionError):
+        return 403
+    if isinstance(exc, (KeyError, TypeError, ValueError)):
+        return 400
+    return 500
+
+
+def gallery_path(run_id):
+    return '/gallery/' + quote(str(run_id), safe='')
 
 
 def start_scene_request(store,value,max_scenes=1000):
@@ -86,7 +101,19 @@ def main():
     thread=threading.Thread(target=coordinate,args=(store,stop),daemon=True);thread.start()
 
     class Handler(BaseHTTPRequestHandler):
-        def log_message(self,*args):pass
+        def fail(self, exc):
+            status = request_error_status(self.command, exc)
+            if status == 500:
+                logging.getLogger('spatialforge.service').exception(
+                    'request failed method=%s path=%s run_id=%s task_id=%s',
+                    self.command, urlparse(self.path).path,
+                    getattr(self, 'request_run_id', None),
+                    getattr(self, 'request_task_id', None),
+                    exc_info=(type(exc), exc, exc.__traceback__),
+                )
+            detail = str(exc)[:1000] if status < 500 else 'Internal server error'
+            self.reply({'error': type(exc).__name__, 'detail': detail}, status)
+
         def reply(self,value,status=200):
             data=json.dumps(value,ensure_ascii=False,default=str).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
         def binary(self,data,mime='application/zip'):
@@ -100,7 +127,7 @@ def main():
                     if file.suffix.lower()!='.png':raise ValueError('only public PNG imagery')
                     data=file.read_bytes();mime='image/png'
                 elif path.startswith('/gallery/'):
-                    rid=path[len('/gallery/'):];snap=store.snapshot(rid)
+                    rid=path[len('/gallery/'):];self.request_run_id = rid;snap=store.snapshot(rid)
                     sections=[]
                     for task in snap['tasks']:
                         folder=store.directory(task['id'],task['unit']['revision'])
@@ -110,9 +137,9 @@ def main():
                         sections.append('<section><h2>'+html.escape(task['unit']['intent'].get('name',task['id']))+'</h2><p>'+html.escape(task['state'])+' · revision '+str(task['unit']['revision'])+'</p><div class="views">'+images+'</div><pre>'+html.escape(json.dumps(result,ensure_ascii=False,indent=2))+'</pre></section>')
                     body='<html><meta charset="utf-8"><meta http-equiv="refresh" content="30"><title>SpatialForge</title><style>body{background:#111827;color:#e5e7eb;font:16px system-ui;margin:32px}h1{color:#67e8f9}.views{display:flex;gap:12px;flex-wrap:wrap}.views img{width:400px;border-radius:8px}section{padding:20px;background:#1f2937;margin:16px 0;border-radius:12px}pre{white-space:pre-wrap;font-size:13px}</style><h1>SpatialForge · 真实生产产物</h1><p>'+html.escape(rid)+' · '+snap['state']+'</p>'+''.join(sections)+'</html>'
                     data=body.encode();mime='text/html; charset=utf-8'
-                else:self.reply({'name':'SpatialForge','message':'Use /gallery/<run_id>'});return
+                else:self.reply({'name':'SpatialForge','message':'Use /gallery/<run_id>'},404);return
                 self.send_response(200);self.send_header('Content-Type',mime);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
-            except Exception as exc:self.reply({'error':str(exc)},404)
+            except Exception as exc:self.fail(exc)
         def do_POST(self):
             role='worker' if self.path.startswith('/worker/') else 'operator'
             if not hmac.compare_digest(self.headers.get('Authorization',''),'Bearer '+config[role+'_token']):self.reply({'error':'unauthorized'},401);return
@@ -124,10 +151,12 @@ def main():
                 if len(raw)!=length:raise ValueError('incomplete request body')
                 if self.path=='/worker/upload-chunk':
                     job=json.loads(self.headers['X-SpatialForge-Job'])
+                    self.request_task_id = job.get('task_id')
                     chunk=decode_chunk(raw,self.headers.get('X-SpatialForge-Encoding','identity'))
                     self.reply(transfer.chunk(job,self.headers['X-SpatialForge-File'],int(self.headers['X-SpatialForge-Offset']),chunk));return
                 if self.path=='/worker/upload':
                     job=json.loads(self.headers['X-SpatialForge-Job'])
+                    self.request_task_id = job.get('task_id')
                     directory=Path(config['artifacts'])/'staging'/uid('upload');directory.mkdir(parents=True)
                     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
                         if len(archive.infolist())>100 or sum(x.file_size for x in archive.infolist())>500*1024*1024:raise ValueError('capture bundle too large')
@@ -138,6 +167,8 @@ def main():
                     validate_capture(directory,job,store)
                     self.reply(store.commit_capture(job,directory));return
                 value=json.loads(raw or b'{}')
+                self.request_run_id = value.get('run_id') if isinstance(value, dict) else None
+                self.request_task_id = value.get('task_id') if isinstance(value, dict) else None
                 from .scene_acceptance import check_request
                 check_request(store.root,self.path,value)
                 if self.path=='/catalog':
@@ -209,7 +240,7 @@ def main():
                     self.binary(bundle.getvalue())
                 elif self.path=='/inspect':
                     state=store.snapshot(value['run_id'])
-                    self.reply({'run_id':value['run_id'],'state':state['state'],'gallery_url':'http://127.0.0.1:3841/gallery/'+value['run_id'],'tasks':[{**{k:t.get(k) for k in ('id','state','unit','result','failure')},'downloads':[p.relative_to(store.directory(t['id'],t['unit']['revision'])).as_posix() for p in store.directory(t['id'],t['unit']['revision']).glob('release/*.zip')]} for t in state['tasks']]})
+                    self.reply({'run_id':value['run_id'],'state':state['state'],'gallery_url':gallery_path(value['run_id']),'tasks':[{**{k:t.get(k) for k in ('id','state','unit','result','failure')},'downloads':[p.relative_to(store.directory(t['id'],t['unit']['revision'])).as_posix() for p in store.directory(t['id'],t['unit']['revision']).glob('release/*.zip')]} for t in state['tasks']]})
                 elif self.path=='/cancel':store.cancel(value['run_id']);self.reply({'cancel_requested':True})
                 elif self.path=='/worker/claim':self.reply(store.claim_desktop(value['worker_id']))
                 elif self.path=='/worker/heartbeat':
@@ -221,7 +252,7 @@ def main():
                 elif self.path=='/worker/upload-begin':self.reply(transfer.begin(value['job'],value['files']))
                 elif self.path=='/worker/upload-commit':self.reply(transfer.commit(value['job']))
                 else:self.reply({'error':'unknown operation'},404)
-            except Exception as exc:self.reply({'error':type(exc).__name__,'detail':str(exc)[:1000]},400)
+            except Exception as exc:self.fail(exc)
     server=ThreadingHTTPServer(('127.0.0.1',config.get('port',3841)),Handler)
     try:server.serve_forever()
     finally:stop.set();server.server_close()
