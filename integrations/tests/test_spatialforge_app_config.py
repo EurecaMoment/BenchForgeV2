@@ -1,9 +1,12 @@
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'components' / 'spatialforge' / 'src'))
 
 import spatialforge_app
 from benchforge_core.service_config import load_service_client_config
