@@ -22,7 +22,7 @@ python3.11 spatialforge_app.py serve
 ```
 
 Python 需要 venv/ensurepip。Debian/Ubuntu 可安装与所用 Python 版本匹配的 `python3.11-venv`。
-`setup` 在 `.spatialforge/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
+`setup` 在 `.deployment/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
 `init` 生成随机凭据及配置，重复运行保留已有文件。PostgreSQL 只绑定本机 55432，
 API 只绑定本机 3841；端口冲突时首次初始化使用 `--port 3856 --db-port 55546`。
 数据库使用独立 Compose 项目和卷。不要让第二个服务连接已有生产数据库。
@@ -86,7 +86,7 @@ python3.11 spatialforge_app.py capture \
 不需要模型权重或语言模型。记录返回的 `run_id`；网络中断后使用相同的请求键和文件
 重连原任务。修改场景时使用新请求键，旧产物保留。退出码 2 表示等待窗口结束、任务仍在运行。
 
-产物在 `.spatialforge/artifacts/<task_id>/revision_0/capture/`：
+产物在 `.deployment/artifacts/<task_id>/revision_0/capture/`：
 `view_*.png/json`、交互前后图和轨迹、`evidence.json`、`report.json`、成对 USD 场景文件。
 以实际交互 `success`、轨迹和前后画面判断推动效果；`SUCCEEDED` 只表示采集任务完成。
 打开 USD 时保持整个 capture 目录一起移动。这个例子的几何全部程序生成；
@@ -168,12 +168,12 @@ python3.11 spatialforge_app.py dsh-start
   在模型使用的 `/observe` 中可读取阶段和具体失败；不要重复提交相同任务。
 - 模型工具失败：查看该任务 `generation_stage/worker/worker.log`，修复实际缺失依赖。
   已有本地模型权重可直接配置路径，不必再下载。
-- 重新生成配置不会迁移已有数据；保留 `.spatialforge` 和桌面 runs 目录。
+- 重新生成配置不会迁移已有数据；保留 `.deployment` 和桌面 runs 目录。
 
 新隔离数据库、没有桌面 worker 的环境可运行服务回归：
 
 ```bash
-.spatialforge/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
+.deployment/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
   --config config/spatialforge-server.local.json --output runs/service-roundtrip
 ```
 

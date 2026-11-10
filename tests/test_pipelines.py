@@ -140,7 +140,10 @@ class PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             runtime = Runtime(root)
-            planned = runtime.call('pipeline_plan', {'pipeline_id': 'scene.capture', 'inputs': {'scene_program_path': '/workspace/scene.json', 'service_config': 'fixture.json'}})
+            service_config = root/'service.json'
+            write(service_config, {'service_url': 'http://127.0.0.1:3841', 'operator_token': 'fixture',
+                                   'execution_mode': 'exploration'})
+            planned = runtime.call('pipeline_plan', {'pipeline_id': 'scene.capture', 'inputs': {'scene_program_path': '/workspace/scene.json', 'service_config': str(service_config)}})
             calls = []
             submission_keys = []
             ready = [False]
@@ -155,7 +158,7 @@ class PipelineTests(unittest.TestCase):
             final = run({'plan': planned['plan'], 'run': result['run'], '_workspace': str(root)}, root/'resume', client=client)
             self.assertEqual(final['state'], 'completed')
             self.assertEqual(calls.count('/capture'), 1)
-            combined = runtime.call('pipeline_plan', {'objective': '组合采集和数据生产', 'inputs': {}, 'steps': [{'id': 'capture', 'uses': 'pipeline', 'pipeline_id': 'scene.capture', 'arguments': {'scene_program_path': '/workspace/scene.json', 'service_config': 'fixture.json'}}, {'id': 'data', 'uses': 'pipeline', 'pipeline_id': 'data.capability', 'arguments': {'selections': [{'template_ids': ['C43-T01'], 'count': 2, 'reason': 'motion rule'}], 'seed': 5, 'split': 'train'}}]})
+            combined = runtime.call('pipeline_plan', {'objective': '组合采集和数据生产', 'inputs': {'service_config': str(service_config)}, 'steps': [{'id': 'capture', 'uses': 'pipeline', 'pipeline_id': 'scene.capture', 'arguments': {'scene_program_path': '/workspace/scene.json', 'service_config': str(service_config)}}, {'id': 'data', 'uses': 'pipeline', 'pipeline_id': 'data.capability', 'arguments': {'selections': [{'template_ids': ['C43-T01'], 'count': 2, 'reason': 'motion rule'}], 'seed': 5, 'split': 'train'}}]})
             composed = run({'plan': combined['plan'], '_workspace': str(root)}, root/'composed', client=client)
             self.assertEqual(composed['state'], 'completed')
             self.assertEqual(composed['outputs']['data']['outputs']['questions']['accepted'], 2)

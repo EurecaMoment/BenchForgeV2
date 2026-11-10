@@ -7,7 +7,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SF_PY="$ROOT/.spatialforge/venv/bin/python"
+SF_PY="$ROOT/.deployment/venv/bin/python"
 SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
 SERVICE_CONFIG="$ROOT/config/spatialforge.local.json"
 PRESET="$ROOT/config/benchforge.local.yml"
@@ -64,6 +64,11 @@ echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
+  [ -f "$ROOT/config/database.env" ] || die "缺少 config/database.env，请先运行 spatialforge_app.py init"
+  set -a
+  # shellcheck disable=SC1091
+  . "$ROOT/config/database.env"
+  set +a
   echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/spatialforge.log"
   # setsid 脱离当前终端会话，关闭终端后服务继续运行
   setsid "$SF_PY" -m spatialforge.service --config "$SERVER_CONFIG" >> "$LOG_DIR/spatialforge.log" 2>&1 < /dev/null &

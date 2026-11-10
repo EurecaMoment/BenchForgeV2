@@ -53,9 +53,9 @@ stop_port() {
 }
 
 if [ -f "$SERVER_CONFIG" ]; then
-  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo 3856)"
+  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo 3841)"
 else
-  SERVICE_PORT=3856
+  SERVICE_PORT=3841
 fi
 
 echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"

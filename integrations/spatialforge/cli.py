@@ -10,7 +10,8 @@ def load_config(path=None):
     path = path or os.environ.get('SPATIALFORGE_CONFIG')
     if not path:
         raise ValueError('Set SPATIALFORGE_CONFIG or pass --config PATH')
-    return json.loads(Path(path).read_text(encoding='utf-8'))
+    from benchforge_core.service_config import load_service_client_config
+    return load_service_client_config(path)
 
 def status(config, run_id=None):
     token_name = config.get('operator_token_env', 'SPATIALFORGE_OPERATOR_TOKEN')

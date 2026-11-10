@@ -78,13 +78,18 @@ class TrellisModel:
         if __package__:
             from .trellis_export import export_glb_lossless
             from .trellis_postprocess import to_glb
+            from .trellis_fast import FAST_PROFILE, run_fast
         else:
             from trellis_export import export_glb_lossless
             from trellis_postprocess import to_glb
+            from trellis_fast import FAST_PROFILE, run_fast
         self.export_glb = export_glb_lossless
         self.postprocess = to_glb
         self.parallel_inpaint = config.get('parallel_inpaint', True)
         self.png_compress_level = config.get('png_compress_level', 1)
+        self.default_profile = config.get('default_profile', 'quality')
+        self.fast_profile = FAST_PROFILE
+        self.run_fast = run_fast
         torch.set_num_threads(config.get('cpu_threads', 8))
         torch.cuda.set_per_process_memory_fraction(.94)
         torch.backends.cuda.matmul.allow_tf32 = True
@@ -106,6 +111,12 @@ class TrellisModel:
     def infer(self, item):
         from PIL import Image
         request = item.request
+        profile = request.get('profile', self.default_profile)
+        if profile not in {'quality', 'fast10'}:
+            raise ValueError('profile must be quality or fast10')
+        fast = profile == 'fast10'
+        steps = self.fast_profile['sampling_steps'] if fast else 12
+        texture_size = self.fast_profile['texture_size'] if fast else 4096
         output = Path(request['output_dir'])
         output.mkdir(parents=True, exist_ok=True)
         assets = []
@@ -133,21 +144,33 @@ class TrellisModel:
                                       'mtime_ns': mask_path.stat().st_mtime_ns}
                 seed = int(row.get('seed', request.get('seed', 42) + index))
                 generation_start = time.perf_counter()
+                generation_timing = {}
                 with self.torch.inference_mode():
-                    mesh = self.pipeline.run(image, seed=seed, pipeline_type='1024_cascade')[0]
+                    if fast:
+                        mesh, generation_timing = self.run_fast(self.pipeline, image, seed,
+                            steps=steps, check=item.check)
+                    else:
+                        mesh = self.pipeline.run(image, seed=seed, pipeline_type='1024_cascade')[0]
                 self.torch.cuda.synchronize()
                 generation_seconds = time.perf_counter() - generation_start
                 item.check()
-                mesh.simplify(16777216)
+                if not fast:
+                    mesh.simplify(16777216)
                 export_start = time.perf_counter()
                 export_timing = {}
                 glb = self.postprocess(vertices=mesh.vertices, faces=mesh.faces,
                     attr_volume=mesh.attrs, coords=mesh.coords, attr_layout=mesh.layout,
                     voxel_size=mesh.voxel_size, aabb=[[-.5, -.5, -.5], [.5, .5, .5]],
-                    decimation_target=1000000, texture_size=4096,
-                    remesh=True, remesh_band=1, remesh_project=0, verbose=True,
+                    decimation_target=self.fast_profile['target_triangles'] if fast else 1000000,
+                    texture_size=texture_size,
+                    remesh=not fast, remesh_band=1, remesh_project=0, verbose=not fast,
                     timings=export_timing, parallel_inpaint=self.parallel_inpaint,
-                    verify_inpaint=request.get('verify_inpaint') is True, check=item.check)
+                    verify_inpaint=request.get('verify_inpaint') is True and not fast, check=item.check,
+                    fast_cleanup=fast, project_texture_to_source=not fast,
+                    texture_padding='dilate' if fast else 'telea',
+                    uv_mode='triangle_atlas' if fast else 'xatlas',
+                    simplify_options={'thresh': 1e-5} if fast else None,
+                    texture_sampling='dense128' if fast else 'sparse')
                 item.check()
                 if not len(glb.faces) or not self.np.isfinite(glb.vertices).all():
                     raise ValueError('TRELLIS produced empty or nonfinite mesh geometry')
@@ -162,16 +185,20 @@ class TrellisModel:
                 asset = {'object_id': row['object_id'], 'asset': destination.name,
                     'model': 'microsoft/TRELLIS.2-4B', 'source_frame': 'y_up',
                     'representation': 'mesh_pbr', 'metric_reconstruction': False,
-                    'camera_pose_estimated': False, 'seed': seed, 'pipeline': '1024_cascade',
-                    'sampling_steps': {'sparse': 12, 'shape': 12, 'texture': 12},
+                    'camera_pose_estimated': False, 'seed': seed,
+                    'pipeline': '512_coarse' if fast else '1024_cascade',
+                    'sampling_steps': {'sparse': steps, 'shape': steps, 'texture': steps},
                     'vertices': len(glb.vertices), 'triangles': len(glb.faces),
                     'base_color_texture_size': list(material.baseColorTexture.size),
                     'metallic_roughness_texture_size': list(material.metallicRoughnessTexture.size),
                     'bytes': destination.stat().st_size, 'inputs': inputs,
                     'generation_seconds': generation_seconds,
                     'export_seconds': time.perf_counter() - export_start,
-                    'export_profile': 'lossless-parallel-v1', 'remesh': True,
-                    'export_timing': export_timing}
+                    'export_profile': 'fast10-v2' if fast else 'lossless-parallel-v1',
+                    'profile': profile, 'remesh': not fast, 'generation_timing': generation_timing,
+                    'export_timing': export_timing,
+                    'quality_tradeoff': fast,
+                    **({'fast_profile': self.fast_profile} if fast else {})}
                 write_json(destination.with_suffix('.complete.json'), {'asset': asset,
                     'provider': 'trellis2', 'request_id': item.id, 'status': 'complete'})
                 assets.append(asset)
@@ -209,10 +236,16 @@ class Resident:
             'max_batch': 1, 'completed': self.completed, 'failed': self.failed,
             'expired': self.expired, 'latency_recent': self.history[-64:],
             'representations': ['mesh_pbr'], 'gaussian_supported': False,
-            'pipeline': '1024_cascade', 'texture_size': 4096, 'resident': True,
-            'export_profile': 'lossless-parallel-v1', 'remesh': True}
+            'pipeline': '512_coarse' if self.config.get('default_profile') == 'fast10' else '1024_cascade',
+            'texture_size': 1024 if self.config.get('default_profile') == 'fast10' else 4096, 'resident': True,
+            'export_profile': 'fast10-v2' if self.config.get('default_profile') == 'fast10' else 'lossless-parallel-v1',
+            'remesh': self.config.get('default_profile') != 'fast10',
+            'default_profile': self.config.get('default_profile', 'quality'),
+            'profiles': ['quality', 'fast10']}
 
     def submit(self, request, timeout):
+        if request.get('profile', self.config.get('default_profile', 'quality')) not in {'quality', 'fast10'}:
+            raise ValueError('profile must be quality or fast10')
         rows = request.get('objects')
         if not isinstance(rows, list) or not rows or not Path(request.get('output_dir', '')).is_absolute():
             raise ValueError('objects and an absolute output_dir are required')

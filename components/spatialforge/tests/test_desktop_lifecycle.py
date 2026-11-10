@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import json
 from pathlib import Path
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 from sqlalchemy import select
@@ -39,6 +40,30 @@ class LifecycleTests(unittest.TestCase):
 
     def tearDown(self):
         self.store.repo.engine.dispose();self.temp.cleanup()
+
+    def test_stage_claim_has_one_owner_and_expired_attempt_recovers_with_new_context(self):
+        with self.store.repo.transaction() as c:
+            c.execute(runs.update().where(runs.c.id=='sf_test').values(
+                state='PENDING',plan={'schema':'spatialforge.pipeline/v1','context':{
+                    'workspace_id':'workspace-a','session_id':'session-a','run_id':'sf_test'}}))
+            c.execute(tasks.update().where(tasks.c.id==JOB['task_id']).values(
+                state='READY',unit={'phase':'plan','revision':0},lease_owner=None,lease_expires_at=None))
+
+        first=self.store.claim_stage(JOB['task_id'],'stage_first',lease_seconds=60)
+        self.assertEqual(first['state'],'RUNNING')
+        self.assertEqual(first['lease_owner'],'stage_first')
+        self.assertIsNone(self.store.claim_stage(JOB['task_id'],'stage_second'))
+        self.assertEqual(first['unit']['run_context']['workspace_id'],'workspace-a')
+        self.assertEqual(first['unit']['run_context']['attempt_id'],'stage_first')
+
+        with self.store.repo.transaction() as c:
+            c.execute(tasks.update().where(tasks.c.id==JOB['task_id']).values(
+                lease_expires_at=time.time()-1))
+        recovered=self.store.claim_stage(JOB['task_id'],'stage_second',lease_seconds=60)
+        self.assertEqual(recovered['lease_owner'],'stage_second')
+        self.assertEqual(recovered['unit']['run_context']['attempt_id'],'stage_second')
+        with self.assertRaisesRegex(ValueError,'ownership changed'):
+            self.store.update(JOB['task_id'],expected_owner='stage_first',state='SUCCEEDED')
 
     def captured_attempt(self):
         directory=self.store.directory(JOB['task_id'],0)

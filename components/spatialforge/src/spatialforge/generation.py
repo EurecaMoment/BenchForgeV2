@@ -364,6 +364,8 @@ class GenerationTools:
         request = {'output_dir': str(work / 'mesh'), 'objects': [{'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': spec.get('seed', 42)}]}
         if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER'):
             request['provider'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROVIDER']
+        if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROFILE'):
+            request['profile'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROFILE']
         if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
             request.update(source_root=self.config.data['sources']['sam3d'],
                            config_path=str(Path(self.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))

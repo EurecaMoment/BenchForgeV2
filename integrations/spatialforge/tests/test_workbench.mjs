@@ -6,8 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import vm from 'node:vm';
 import {createWorkbenchHandler} from '../ui/index.js';
+import {loadClient} from '../ui/tests/load_client.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const python = process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
@@ -258,7 +258,7 @@ test('automatic assessment products retain explicit template intent while a sepa
     assert.equal(capture.completed, 1);
     assert.equal(capture.total, 2);
 
-    let registration, dictionary, component, records, route;
+    let dictionary, component, records, route;
     const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
       useRef: (current) => ({current}), useEffect() {}, useState: (initial) => {
         const value = typeof initial === 'function' ? initial() : initial;
@@ -266,13 +266,9 @@ test('automatic assessment products retain explicit template intent while a sepa
           ? {key: 'fixture', value: records.shift(), loading: false} : value, () => {}];
       }};
     class FixtureParams extends URLSearchParams {toString() {return 'fixture';}}
-    const clientSource = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
-      .replace(/return \{\s+inject:/, 'return {Workbench, dictionaries}; return {inject:');
-    vm.runInNewContext(clientSource, {
-      window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, Date, URLSearchParams: FixtureParams,
-      localStorage: {getItem: () => JSON.stringify(route)},
-    });
-    const extracted = registration.factory(() => React);
+    const clientSource = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
+    const {api: extracted} = loadClient(clientSource, React, {Date, URLSearchParams: FixtureParams,
+      localStorage: {getItem: () => JSON.stringify(route)}});
     component = extracted.Workbench;
     dictionary = extracted.dictionaries.zh;
     const expand = (node) => Array.isArray(node) ? node.map(expand) : !node || typeof node !== 'object' ? node :
@@ -318,7 +314,7 @@ test('automatic assessment products retain explicit template intent while a sepa
 });
 
 test('automatic scenes and paired annotations remain visible behind newer canceled and assessment runs', async () => {
-  let registration, route, records, requests;
+  let route, records, requests;
   const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
     useRef: (current) => ({current}), useEffect() {}, useState: (initial) => {
       const value = typeof initial === 'function' ? initial() : initial;
@@ -332,11 +328,10 @@ test('automatic scenes and paired annotations remain visible behind newer cancel
     constructor(value) {super(value); requests.push(Object.fromEntries(this));}
     toString() {return 'fixture';}
   }
-  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {Workbench, dictionaries, stageState, sceneProjects}; return {inject:');
-  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, Date,
-    URLSearchParams: FixtureParams, localStorage: {getItem: () => JSON.stringify(route)}});
-  const {Workbench, dictionaries, stageState, sceneProjects} = registration.factory(() => React);
+  const source = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
+  const {api} = loadClient(source, React, {Date, URLSearchParams: FixtureParams,
+    localStorage: {getItem: () => JSON.stringify(route)}});
+  const {Workbench, dictionaries, stageState, sceneProjects} = api;
   const completedScene = {run_id: 'sf_completed', state: 'SUCCEEDED', terminal: true,
     tasks: [{id: 'sf_completed.scene0', state: 'SUCCEEDED', phase: 'capture', workflow: 'scene', revision: 1}]};
   const canceledScene = {run_id: 'sf_canceled', state: 'CANCELED', terminal: true,
@@ -400,18 +395,17 @@ test('automatic scenes and paired annotations remain visible behind newer cancel
 });
 
 test('public JSON observations render as text and loading failures remain visible', async () => {
-  let registration, states, cursor, effects, responseOk = true;
+  let states, cursor, effects, responseOk = true;
   const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
     useEffect: (effect) => effects.push(effect), useState: (initial) => {
       const index = cursor++;
       if (!(index in states)) states[index] = initial;
       return [states[index], (value) => {states[index] = typeof value === 'function' ? value(states[index]) : value;}];
     }};
-  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {PublicObservation}; return {inject:');
-  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}, AbortController,
+  const source = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
+  const {api} = loadClient(source, React, {AbortController,
     fetch: async () => ({ok: responseOk, status: 415, json: async () => ({tol: {pixel_sep_min_frac: 0.08}, variant: '<plain text>'})})});
-  const {PublicObservation} = registration.factory(() => React);
+  const {PublicObservation} = api;
   const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
     : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
   const render = (type) => {cursor = 0; return PublicObservation({src: 'public-observation', type, label: 'Observation 2', t: (key) => key});};
@@ -433,13 +427,11 @@ test('public JSON observations render as text and loading failures remain visibl
 });
 
 test('scene playback uses its saved movie on the first render and after reopening', async () => {
-  let registration;
   const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}}),
     useState: (value) => [value, () => {}], useEffect: (effect) => effect()};
-  const source = (await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {SceneVideo, sceneProjects}; return {inject:');
-  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}});
-  const {SceneVideo, sceneProjects} = registration.factory(() => React);
+  const source = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
+  const {api} = loadClient(source, React);
+  const {SceneVideo, sceneProjects} = api;
   const project = sceneProjects([
     {task_id: 'sf_one.scene0', kind: 'image', url: 'public/view_0.png'},
     {task_id: 'sf_one.scene0', kind: 'video', url: 'public/interaction_0.mp4'},
@@ -542,13 +534,8 @@ test('parent progress and products include verified children while browser query
 });
 
 test('production workbench replaces only the active SpatialForge main conversation', async () => {
-  let registration;
-  vm.runInNewContext(await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8'),
-    {window: {__ModuleLoader__: {load: (value) => registration = value}}});
-  const plugin = registration.factory((id) => {
-    assert.equal(id, 'react');
-    return {createElement: (type, props) => ({type, props})};
-  });
+  const source = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
+  const {api: plugin} = loadClient(source, {createElement: (type, props) => ({type, props})});
   const observable = (value) => {
     const listeners = new Set();
     return {getSnapshot: () => value, subscribe: (fn) => {listeners.add(fn); return () => listeners.delete(fn);},

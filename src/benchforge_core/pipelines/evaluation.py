@@ -2,7 +2,7 @@
 import math
 from collections import defaultdict
 from pathlib import Path
-from ..runtime import read, rows, jsonl, write
+from ..artifact_io import read_jsonl as rows, write_jsonl as jsonl, write_json as write
 
 
 def iou(a, b):
@@ -49,17 +49,58 @@ def score(gold, prediction):
     return {'success': prediction == truth, 'metric': 'exact_protocol_output'}
 
 
+def _index_records(records, *, kind, required_fields):
+    """Reject malformed or repeated IDs before any score is calculated."""
+    indexed = {}
+    for position, record in enumerate(records, start=1):
+        if not isinstance(record, dict):
+            raise ValueError(f'{kind} row {position} must be an object')
+        item_id = record.get('item_id')
+        if not isinstance(item_id, str) or not item_id.strip():
+            raise ValueError(f'{kind} row {position} requires a nonempty item_id')
+        missing = set(required_fields) - record.keys()
+        if missing:
+            raise ValueError(f'{kind} {item_id} is missing fields: {sorted(missing)}')
+        if item_id in indexed:
+            raise ValueError(f'Duplicate {kind.lower()} item_id: {item_id}')
+        indexed[item_id] = record
+    return indexed
+
+
 def evaluate(args, directory, config=None):
+    """Score a valid submission; missing predictions remain explicit failures."""
     dataset = Path(args['dataset'])
-    predictions = {r['item_id']: r['answer'] for r in rows(args['predictions'])}
+    authority = _index_records(
+        rows(dataset / 'authority.jsonl'),
+        kind='Authority',
+        required_fields=('answer', 'template_id'),
+    )
+    if not authority:
+        raise ValueError('Authority dataset must contain at least one item')
+    predictions = _index_records(
+        rows(args['predictions']), kind='Prediction', required_fields=('answer',)
+    )
+    unknown = predictions.keys() - authority.keys()
+    if unknown:
+        sample = ', '.join(sorted(unknown)[:10])
+        raise ValueError(f'Unknown prediction item_id ({len(unknown)}): {sample}')
     outcomes, grouped = [], defaultdict(list)
-    for gold in rows(dataset/'authority.jsonl'):
-        value = score(gold, predictions[gold['item_id']]) if gold['item_id'] in predictions else {'success': False, 'metric': 'missing', 'missing': True}
+    for gold in authority.values():
+        prediction = predictions.get(gold['item_id'])
+        value = (
+            score(gold, prediction['answer'])
+            if prediction is not None
+            else {'success': False, 'metric': 'missing', 'missing': True}
+        )
         row = {'item_id': gold['item_id'], 'template_id': gold['template_id'], **value}
         outcomes.append(row)
         grouped[gold['template_id']].append(row)
     report = {'per_template': {tid: {'count': len(values), 'success_rate': sum(v['success'] for v in values)/len(values), 'missing': sum(v.get('missing', False) for v in values)} for tid, values in grouped.items()},
-              'model_api_calls': 0, 'scope': 'exact document measurement variants; no aggregate 27-capability claim'}
+              'model_api_calls': 0, 'scope': 'exact document measurement variants; no aggregate 27-capability claim',
+              'submission': {'validated': True, 'expected_items': len(authority),
+                             'submitted_items': len(predictions),
+                             'missing_items': len(authority.keys() - predictions.keys()),
+                             'missing_policy': 'score_as_failure'}}
     jsonl(Path(directory)/'scores.jsonl', outcomes)
     write(Path(directory)/'report.json', report)
     return {'report': str(Path(directory)/'report.json'), **report}

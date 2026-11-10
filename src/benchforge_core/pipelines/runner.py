@@ -1,7 +1,4 @@
 """Persisted recipe execution; durable remote submissions and local artifacts resume."""
-import json
-import os
-import urllib.request
 from pathlib import Path
 from ..runtime import read, write
 from .artifact_graph import ArtifactGraph, binding_roots, make_record
@@ -10,52 +7,15 @@ from .production import produce, package
 from ..stage_review import STAGES, gate, review
 from .plan_versions import current as active_plan
 from .scene_policy import check_submission, check_source, load_policy
+from .execution_lock import exclusive_run
+from .bindings import MissingBinding, bind
+from .review_steps import stage_of, review_scope, completed_stage
+from .service_client import service_call
 
 SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
                   'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine', 'spatialforge.extend': '/extend',
                   'spatialforge.observe': '/inspect', 'spatialforge.evidence': '/evidence',
                   'spatialforge.task_code': '/task-code'}
-
-
-class MissingBinding(ValueError):
-    pass
-
-
-def bind(value, environment):
-    if isinstance(value, str) and value.startswith('$'):
-        current = environment
-        for key in value[1:].split('.'):
-            if isinstance(current, list):
-                current = current[int(key)]
-                continue
-            if key not in current:
-                raise MissingBinding(value)
-            current = current[key]
-        return current
-    if isinstance(value, list):
-        return [bind(v, environment) for v in value]
-    if isinstance(value, dict):
-        result = {}
-        for key, child in value.items():
-            try:
-                result[key] = bind(child, environment)
-            except MissingBinding:
-                if key not in ('evidence', 'capture_options', 'preserve_source_splits'):
-                    raise
-        return result
-    return value
-
-
-def service_call(route, arguments, config_path):
-    config = read(config_path)
-    url = config.get('service_url') or f"http://127.0.0.1:{config.get('port', 3841)}"
-    token = config.get('operator_token') or os.environ.get(config.get('operator_token_env', 'SPATIALFORGE_OPERATOR_TOKEN'))
-    if not token:
-        raise ValueError('Configure operator_token in the SpatialForge service configuration')
-    request = urllib.request.Request(url.rstrip('/')+route, data=json.dumps(arguments).encode(), method='POST',
-                                     headers={'Content-Type': 'application/json', 'Authorization': 'Bearer '+token})
-    with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=60) as response:
-        return json.load(response)
 
 
 def execute_step(step, arguments, directory, environment, client):
@@ -77,11 +37,21 @@ def execute_step(step, arguments, directory, environment, client):
                     '_dsh_context': environment.get('_dsh_context', {}), '_review_nested':True,
                     '_review_scope': environment.get('_review_scope')}, directory, client=client)
     if operation == 'templates.produce':
-        return produce({**arguments, '_workspace': environment['_workspace']}, directory)
+        return produce({**arguments, '_workspace': environment['_workspace'],
+                        '_service_config': environment['inputs'].get('service_config')}, directory)
     if operation == 'data.package':
         return package(arguments, directory)
     if operation in SERVICE_ROUTES:
-        check_submission(environment['_workspace'], SERVICE_ROUTES[operation], arguments)
+        check_submission(environment['_workspace'], SERVICE_ROUTES[operation], arguments,
+                         environment['inputs'].get('service_config'))
+        session_id = environment.get('_dsh_context', {}).get('session_id')
+        if session_id:
+            request_context = arguments.setdefault('context', {})
+            if not isinstance(request_context, dict):
+                raise ValueError('context must be an object')
+            if request_context.get('session_id') not in (None, session_id):
+                raise ValueError('context.session_id conflicts with the active DSH session')
+            request_context['session_id'] = session_id
         if operation in ('spatialforge.start', 'spatialforge.capture', 'spatialforge.asset', 'spatialforge.refine', 'spatialforge.extend'):
             arguments.setdefault('request_key', environment['_run_key']+'.'+step['id'])
         if not environment['inputs'].get('service_config'):
@@ -93,83 +63,20 @@ def execute_step(step, arguments, directory, environment, client):
     raise ValueError(f'Unknown pipeline operation: {operation}')
 
 
-def stage_of(step):
-    if step.get('review_stage') in ('S1','S2','S3','S4','S5'):
-        return step['review_stage']
-    return {'spatialforge.start':'S2','spatialforge.capture':'S2','spatialforge.observe':'S2',
-            'spatialforge.refine':'S2','spatialforge.extend':'S2','spatialforge.asset':'S2','spatialforge.evidence':'S3',
-            'templates.produce':'S4','data.package':'S5'}.get(step['uses'])
-
-
-def review_scope(plan, run_root, plan_path):
-    """One review owner for the leaf artifacts of a composed production run."""
-    members = {stage: [] for stage in STAGES[1:]}
-    recipes = None
-
-    def expand(steps, root, prefix=''):
-        nonlocal recipes
-        consumed = set()
-        for step in steps:
-            for source in binding_roots(step.get('arguments', {})):
-                consumed.add(source)
-        for step in steps:
-            step_root = root/'steps'/step['id']
-            label = prefix+step['id']
-            if step['uses'] == 'pipeline':
-                nested_root = step_root/'nested-run'
-                saved = nested_root/'plan.json'
-                if saved.exists():
-                    nested_steps = read(saved)['steps']
-                else:
-                    if recipes is None:
-                        from .catalog import pipeline_files
-                        recipes = {recipe['id']: recipe for recipe in pipeline_files()}
-                    nested_steps = recipes[step['pipeline_id']]['steps']
-                expand(nested_steps, nested_root, label+'/')
-            else:
-                stage = stage_of(step)
-                if stage in members:
-                    members[stage].append({'step': step['id'], 'label': label, 'uses': step['uses'],
-                        'run': str(root.resolve()), 'result_path': str((step_root/'result.json').resolve()),
-                        'terminal': step['id'] not in consumed})
-
-    expand(plan['steps'], run_root)
-    return {'run': str(run_root.resolve()), 'plan': str(plan_path), 'members': members, 'continued_stages': []}
-
-
-def completed_stage(scope, stage):
-    """Receipts are retained, but a review needs every planned stage artifact."""
-    members = scope['members'][stage]
-    if not members:
-        return None
-    states = {}
-    # The last planned artifact is usually unfinished; check it first so large
-    # scene batches do not reread every completed scene on each submission.
-    for member in reversed(members):
-        root = member['run']
-        if root not in states:
-            path = Path(root)/'state.json'
-            states[root] = read(path).get('steps', {}) if path.exists() else {}
-        prior = states[root].get(member['step'])
-        if not prior or prior['state'] != 'completed':
-            return None
-    outputs = []
-    for member in members:
-        result_path = Path(member['result_path'])
-        if not result_path.is_file():
-            return None
-        result = read(result_path)
-        if member['terminal'] and result.get('state') in ('RUNNING', 'READY'):
-            return None
-        outputs.append({'step': member['label'], 'uses': member['uses'],
-                        'result_path': member['result_path'], 'result': result})
-    return outputs
-
-
 def run(args, directory, config=None, client=service_call):
+    """Advance one run under a lock; status readers need not acquire it."""
+    run_root = Path(args['run']).resolve() if args.get('run') else Path(directory) / 'pipeline_run'
+    with exclusive_run(run_root):
+        return _run_locked(args, directory, config, client)
+
+
+def _run_locked(args, directory, config, client):
     plan_path = Path(args['plan']).resolve()
-    check_source(load_policy(args['_workspace']), source_path=plan_path)
     plan = read(plan_path)
+    inputs = {**plan.get('inputs', {}), **args.get('bindings', {})}
+    service_config = inputs.get('service_config')
+    policy = load_policy(args['_workspace'], service_config)
+    check_source(policy, source_path=plan_path)
     run_root = Path(args['run']).resolve() if args.get('run') else Path(directory)/'pipeline_run'
     run_root.mkdir(parents=True, exist_ok=True)
     frozen = run_root/'plan.json'
@@ -179,6 +86,11 @@ def run(args, directory, config=None, client=service_call):
     state_path = run_root/'state.json'
     state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
     state.setdefault('run_id', f'run-{run_root.name}')
+    execution_mode = policy['execution_mode']
+    prior_mode = state.get('execution_mode')
+    if prior_mode and prior_mode != execution_mode:
+        raise ValueError('Execution mode changed; create a new pipeline run to preserve its original policy')
+    state['execution_mode'] = execution_mode
     context = args.get('_dsh_context', {})
     session = context.get('session_id')
     scope = args.get('_review_scope') or (review_scope(plan, run_root, plan_path) if session else None)
@@ -191,7 +103,7 @@ def run(args, directory, config=None, client=service_call):
     artifact_ids = {}
     # The full persisted run path distinguishes nested recipes in separate plans
     # and stays the same when an interrupted submission is resumed.
-    environment = {'inputs': {**plan['inputs'], **args.get('bindings', {})}, '_workspace': args['_workspace'], '_dsh_context': context,
+    environment = {'inputs': inputs, '_workspace': args['_workspace'], '_dsh_context': context,
                    '_run_key': 'pipeline:'+run_root.as_posix(), '_review_scope': scope}
     def plan_guard():
         owner_plan = scope['plan'] if scope else str(plan_path)

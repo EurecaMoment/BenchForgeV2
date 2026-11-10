@@ -8,11 +8,6 @@
     },
     "depthanything3": {
       "url": "http://127.0.0.1:8008"
-    },
-    "llm_local": {
-      "url": "http://127.0.0.1:9001",
-      "token": "",
-      "model": "YOUR_DEPLOYED_QWEN_VL_MODEL"
     }
   },
   "collectors": {
@@ -57,7 +52,7 @@
     "qwen": {
       "url": "http://127.0.0.1:9001/v1",
       "model": "YOUR_DEPLOYED_QWEN_VL_MODEL",
-      "token": "",
+      "token_env": "QWEN_RELAY_API_KEY",
       "max_tokens": 4096,
       "timeout_seconds": 180,
       "retries": 1

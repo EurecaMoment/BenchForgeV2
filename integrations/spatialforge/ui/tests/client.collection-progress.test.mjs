@@ -1,21 +1,11 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
-import vm from 'node:vm';
+import {loadClient} from './load_client.mjs';
 
 const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8');
-const marker = "    return {\n      inject: ['slots', 'locale', 'uiSession', 'sessions', 'uiConversation'],";
-assert.ok(client.includes(marker), 'client factory marker remains available');
-const instrumented = client.replace(marker,
-  '    globalThis.testApi = {sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, dictionaries};\n' + marker);
-const context = {window: {__ModuleLoader__: {load({factory}) {
-  factory((id) => {
-    assert.equal(id, 'react');
-    return {createElement: (type, props, ...children) => ({type, props: props || {}, children}), Fragment: 'fragment'};
-  });
-}}}};
-vm.runInNewContext(instrumented, context, {filename: 'client.js'});
-const api = context.testApi;
+const React = {createElement: (type, props, ...children) => ({type, props: props || {}, children}), Fragment: 'fragment'};
+const {api} = loadClient(client, React);
 const t = (key) => api.dictionaries.zh[key] || key;
 const plan = {assessment: {scenes: {target_scene_count: 3, designs: [
   {id: 'design-office-work', name: '办公室工作区（sf_office_work_area）', artifact: 'scenes/sf_office_work_area.scene_program.json → captures/sf_office_work_area/'},

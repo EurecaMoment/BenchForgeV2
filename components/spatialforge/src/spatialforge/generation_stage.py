@@ -123,6 +123,8 @@ def execute_generation_stage(store, task, stop):
         request = {'output_dir': str(output), 'objects': objects}
         if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER'):
             request['provider'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROVIDER']
+        if value.get('profile') or os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROFILE'):
+            request['profile'] = value.get('profile') or os.environ['SPATIALFORGE_RECONSTRUCTION_PROFILE']
         if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
             request.update(source_root=tools.config.data['sources']['sam3d'],
                            config_path=str(Path(tools.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))

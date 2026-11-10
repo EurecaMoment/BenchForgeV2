@@ -1,0 +1,14 @@
+{
+  "service_host": "127.0.0.1",
+  "port": 3841,
+  "artifacts": "../.deployment/artifacts",
+  "harness": "../components/benchclaw",
+  "database_url_env": "SPATIALFORGE_DATABASE_URL",
+  "operator_token_env": "SPATIALFORGE_OPERATOR_TOKEN",
+  "worker_token_env": "SPATIALFORGE_WORKER_TOKEN",
+  "models_config": "models.local.json",
+  "gpu_candidates": "0",
+  "task_root": "../.deployment/artifacts/operator_workspaces",
+  "execution_mode": "production",
+  "scene_policy_path": "scene-library/policy.json"
+}

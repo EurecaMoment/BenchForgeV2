@@ -6,6 +6,7 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
+import {loadServiceConfig} from '../shared/config.mjs';
 // An operator-issued revision refreshes this plugin and its local helpers while
 // the official Harness keeps already-bound agent revisions alive.
 const revision = new URL(import.meta.url).search;
@@ -33,21 +34,25 @@ export const Config=z.object({
   dshRoot:z.string().description('Legacy preset field, retained for compatibility; public DSH packages are resolved normally.'),
 });
 export async function apply(ctx, config) {
-  const cfg = JSON.parse(await fs.promises.readFile(config.serviceConfig, 'utf8'));
-  const tokenName = cfg.operator_token_env || 'SPATIALFORGE_OPERATOR_TOKEN';
-  // An explicitly configured environment variable has the same precedence as
-  // the service and worker loaders. Inline tokens still support local installs.
-  const environmentToken = () => launchEnvironmentOf(ctx).getFrom(tokenName, ['process','project-env','user-env'])?.value;
-  const token = cfg.operator_token_env ? environmentToken() : cfg.operator_token || environmentToken();
-  if (!token) throw new Error(`Configure operator_token or set ${tokenName}`);
+  const environment = launchEnvironmentOf(ctx);
+  const loaded = await loadServiceConfig(config.serviceConfig, {
+    getEnvironmentValue: (name) => environment.getFrom(name, ['process','project-env','user-env']),
+  });
+  const {config: cfg, serviceUrl, operatorToken: token} = loaded;
   const scenePolicyWorkspace=config.scenePolicyWorkspace || cfg.task_root || '';
-  const serviceUrl = (cfg.service_url || `http://127.0.0.1:${cfg.port || 3841}`).replace(/\/$/, '');
+const withExecutionMode = (value, mode) => {
+  if (value.execution_mode !== undefined && value.execution_mode !== mode)
+    throw new Error(`execution_mode ${value.execution_mode} conflicts with configured ${mode} mode`);
+  return {...value, execution_mode: mode};
+};
 const output=objectOutput;
 async function api(path,args,signal){
   if(scenePolicyWorkspace && ['/start','/capture','/refine','/extend','/retry','/dataset'].includes(path)) {
     await new Promise((resolve,reject)=>{
       const child=spawn(config.policyPython,['-B',fileURLToPath(new URL('../scene_policy_gate.py',import.meta.url)),
-        '--workspace',scenePolicyWorkspace,'--route',path],{stdio:['pipe','pipe','pipe'],signal});
+        '--workspace',scenePolicyWorkspace,'--route',path,
+        '--execution-mode',loaded.executionMode,
+        ...(loaded.scenePolicyPath ? ['--policy',loaded.scenePolicyPath] : [])],{stdio:['pipe','pipe','pipe'],signal});
       let output='',errors='';
       const timer=setTimeout(()=>child.kill(),10000);
       child.stdout.on('data',value=>output+=value);child.stderr.on('data',value=>errors+=value);
@@ -59,7 +64,15 @@ async function api(path,args,signal){
       child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify(args));
     });
   }
-  const response=await fetch(serviceUrl+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(args),signal});
+  const contextual = {...args};
+  if (path === '/start' && Array.isArray(contextual.intents)) {
+    contextual.intents = contextual.intents.map(intent => withExecutionMode(intent, loaded.executionMode));
+  } else if (['/capture','/refine','/extend','/retry','/dataset'].includes(path)) {
+    Object.assign(contextual, withExecutionMode(contextual, loaded.executionMode));
+    if (contextual.intent && typeof contextual.intent === 'object')
+      contextual.intent = withExecutionMode(contextual.intent, loaded.executionMode);
+  }
+  const response=await fetch(serviceUrl+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(contextual),signal});
   // Isaac camera matrices contain -0.0; DSH's JSON transport rejects signed zero.
   const data=JSON.parse(await response.text(),(_key,value)=>Object.is(value,-0)?0:value);
   if(!response.ok){const error=new Error(JSON.stringify(data));error.status=response.status;error.response=data;throw error;}

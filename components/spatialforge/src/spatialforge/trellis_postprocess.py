@@ -42,6 +42,12 @@ def to_glb(
     parallel_inpaint: bool = True,
     verify_inpaint: bool = False,
     check=None,
+    project_texture_to_source: bool = True,
+    fast_cleanup: bool = False,
+    texture_padding: str = 'telea',
+    uv_mode: str = 'xatlas',
+    simplify_options: Optional[dict] = None,
+    texture_sampling: str = 'sparse',
 ):
     """
     Convert an extracted mesh to a GLB file.
@@ -146,7 +152,7 @@ def to_glb(
         pbar.set_description("Building BVH")
     if verbose:
         print(f"Building BVH for current mesh...", end='', flush=True)
-    bvh = cumesh.cuBVH(vertices, faces)
+    bvh = cumesh.cuBVH(vertices, faces) if remesh or project_texture_to_source else None
     if use_tqdm:
         pbar.update(1)
     if verbose:
@@ -160,34 +166,43 @@ def to_glb(
     mark('bvh_build_seconds')
     # --- Branch 1: Standard Pipeline (Simplification & Cleaning) ---
     if not remesh:
-        # Step 1: Aggressive simplification (3x target)
-        mesh.simplify(decimation_target * 3, verbose=verbose)
-        if verbose:
+        if fast_cleanup:
+            mesh.simplify(decimation_target, verbose=verbose, options=simplify_options or {})
+            mesh.remove_duplicate_faces()
+            mesh.remove_degenerate_faces()
+        else:
+            # Step 1: Aggressive simplification (3x target)
+            mesh.simplify(decimation_target * 3, verbose=verbose)
+        if verbose and not fast_cleanup:
             print(f"After inital simplification: {mesh.num_vertices} vertices, {mesh.num_faces} faces")
 
         # Step 2: Clean up topology (duplicates, non-manifolds, isolated parts)
-        mesh.remove_duplicate_faces()
-        mesh.repair_non_manifold_edges()
-        mesh.remove_small_connected_components(1e-5)
-        mesh.fill_holes(max_hole_perimeter=3e-2)
-        if verbose:
+        if not fast_cleanup:
+            mesh.remove_duplicate_faces()
+            mesh.repair_non_manifold_edges()
+            mesh.remove_small_connected_components(1e-5)
+            mesh.fill_holes(max_hole_perimeter=3e-2)
+        if verbose and not fast_cleanup:
             print(f"After initial cleanup: {mesh.num_vertices} vertices, {mesh.num_faces} faces")
 
         # Step 3: Final simplification to target count
-        mesh.simplify(decimation_target, verbose=verbose)
-        if verbose:
+        if not fast_cleanup:
+            mesh.simplify(decimation_target, verbose=verbose)
+        if verbose and not fast_cleanup:
             print(f"After final simplification: {mesh.num_vertices} vertices, {mesh.num_faces} faces")
 
         # Step 4: Final Cleanup loop
-        mesh.remove_duplicate_faces()
-        mesh.repair_non_manifold_edges()
-        mesh.remove_small_connected_components(1e-5)
-        mesh.fill_holes(max_hole_perimeter=3e-2)
-        if verbose:
+        if not fast_cleanup:
+            mesh.remove_duplicate_faces()
+            mesh.repair_non_manifold_edges()
+            mesh.remove_small_connected_components(1e-5)
+            mesh.fill_holes(max_hole_perimeter=3e-2)
+        if verbose and not fast_cleanup:
             print(f"After final cleanup: {mesh.num_vertices} vertices, {mesh.num_faces} faces")
 
         # Step 5: Unify face orientations
-        mesh.unify_face_orientations()
+        if not fast_cleanup:
+            mesh.unify_face_orientations()
 
     # --- Branch 2: Remeshing Pipeline ---
     else:
@@ -227,16 +242,36 @@ def to_glb(
     if verbose:
         print("Parameterizing new mesh...")
 
-    out_vertices, out_faces, out_uvs, out_vmaps = mesh.uv_unwrap(
-        compute_charts_kwargs={
-            "threshold_cone_half_angle_rad": mesh_cluster_threshold_cone_half_angle_rad,
-            "refine_iterations": mesh_cluster_refine_iterations,
-            "global_iterations": mesh_cluster_global_iterations,
-            "smooth_strength": mesh_cluster_smooth_strength,
-        },
-        return_vmaps=True,
-        verbose=verbose,
-    )
+    if uv_mode == 'triangle_atlas':
+        source_vertices, source_faces = mesh.read()
+        count = source_faces.shape[0]
+        side = int(np.ceil(np.sqrt((count + 1) // 2)))
+        if texture_size / side < 4:
+            raise ValueError('Triangle atlas needs at least four pixels per tile')
+        index = torch.arange(count, device=source_faces.device)
+        tile = index // 2
+        tile_xy = torch.stack([tile % side, tile // side], dim=-1).float()
+        padding = side / texture_size * .65
+        corner_a = torch.tensor([[padding, padding], [1-padding, padding], [padding, 1-padding]], device=index.device)
+        corner_b = torch.tensor([[1-padding, 1-padding], [padding, 1-padding], [1-padding, padding]], device=index.device)
+        corners = torch.where((index % 2 == 0)[:, None, None], corner_a[None], corner_b[None])
+        out_uvs = ((tile_xy[:, None] + corners) / side).reshape(-1, 2)
+        out_vmaps = source_faces.reshape(-1).long()
+        out_vertices = source_vertices[out_vmaps]
+        out_faces = torch.arange(count * 3, device=index.device, dtype=torch.int32).reshape(-1, 3)
+    elif uv_mode == 'xatlas':
+        out_vertices, out_faces, out_uvs, out_vmaps = mesh.uv_unwrap(
+            compute_charts_kwargs={
+                "threshold_cone_half_angle_rad": mesh_cluster_threshold_cone_half_angle_rad,
+                "refine_iterations": mesh_cluster_refine_iterations,
+                "global_iterations": mesh_cluster_global_iterations,
+                "smooth_strength": mesh_cluster_smooth_strength,
+            },
+            return_vmaps=True,
+            verbose=verbose,
+        )
+    else:
+        raise ValueError('uv_mode must be xatlas or triangle_atlas')
     out_vertices = out_vertices.cuda()
     out_faces = out_faces.cuda()
     out_uvs = out_uvs.cuda()
@@ -281,19 +316,47 @@ def to_glb(
 
     # Map these positions back to the *original* high-res mesh to get accurate attributes
     # This corrects geometric errors introduced by simplification/remeshing
-    _, face_id, uvw = bvh.unsigned_distance(valid_pos, return_uvw=True)
-    orig_tri_verts = vertices[faces[face_id.long()]] # (N_new, 3, 3)
-    valid_pos = (orig_tri_verts * uvw.unsqueeze(-1)).sum(dim=1)
+    if project_texture_to_source:
+        _, face_id, uvw = bvh.unsigned_distance(valid_pos, return_uvw=True)
+        orig_tri_verts = vertices[faces[face_id.long()]] # (N_new, 3, 3)
+        valid_pos = (orig_tri_verts * uvw.unsqueeze(-1)).sum(dim=1)
 
     # Trilinear sampling from the attribute volume (Color, Material props)
     attrs = torch.zeros(texture_size, texture_size, attr_volume.shape[1], device='cuda')
-    attrs[mask] = grid_sample_3d(
-        attr_volume,
-        torch.cat([torch.zeros_like(coords[:, :1]), coords], dim=-1),
-        shape=torch.Size([1, attr_volume.shape[1], *grid_size.tolist()]),
-        grid=((valid_pos - aabb[0]) / voxel_size).reshape(1, -1, 3),
-        mode='trilinear',
-    )
+    if texture_sampling == 'dense128':
+        # Low-resolution material field for the explicitly lower-quality fast
+        # profile. Average occupied source voxels, extend into a two-cell band,
+        # then use the hardware-backed dense grid sampler without a BVH.
+        import torch.nn.functional as functional
+        resolution = 128
+        cell = ((coords.float() + .5) / grid_size.float() * resolution).long().clamp(0, resolution - 1)
+        flat = (cell[:, 0] * resolution + cell[:, 1]) * resolution + cell[:, 2]
+        volume = torch.zeros((attr_volume.shape[1], resolution ** 3), device=coords.device)
+        counts = torch.zeros(resolution ** 3, device=coords.device)
+        volume.index_add_(1, flat, attr_volume.float().T)
+        counts.index_add_(0, flat, torch.ones_like(flat, dtype=torch.float32))
+        volume = (volume / counts.clamp_min(1)[None]).reshape(1, -1, resolution, resolution, resolution)
+        occupied = (counts > 0).float().reshape(1, 1, resolution, resolution, resolution)
+        for _ in range(2):
+            weight = functional.avg_pool3d(occupied, 3, stride=1, padding=1)
+            extended = functional.avg_pool3d(volume, 3, stride=1, padding=1) / weight.clamp_min(1e-8)
+            volume = torch.where(occupied.bool(), volume, extended)
+            occupied = (weight > 0).float()
+        sample_grid = ((valid_pos - aabb[0]) / (aabb[1] - aabb[0]) * 2 - 1)[:, [2, 1, 0]]
+        sampled = functional.grid_sample(volume, sample_grid.reshape(1, 1, 1, -1, 3),
+            mode='bilinear', align_corners=False).reshape(attr_volume.shape[1], -1).T
+        attrs[mask] = sampled
+        del volume, counts, occupied
+    elif texture_sampling == 'sparse':
+        attrs[mask] = grid_sample_3d(
+            attr_volume,
+            torch.cat([torch.zeros_like(coords[:, :1]), coords], dim=-1),
+            shape=torch.Size([1, attr_volume.shape[1], *grid_size.tolist()]),
+            grid=((valid_pos - aabb[0]) / voxel_size).reshape(1, -1, 3),
+            mode='trilinear',
+        )
+    else:
+        raise ValueError('texture_sampling must be sparse or dense128')
     if use_tqdm:
         pbar.update(1)
     if verbose:
@@ -316,6 +379,10 @@ def to_glb(
     alpha_mode = 'OPAQUE'
 
     # Inpainting: fill gaps (dilation) to prevent black seams at UV boundaries
+    if texture_padding == 'dilate':
+        # Coarse geometry may query outside occupied voxels; treat missing
+        # samples as gaps instead of publishing zero-valued black PBR pixels.
+        mask = mask & (alpha[..., 0] > 0)
     mask_inv = (~mask).astype(np.uint8)
     if verify_inpaint:
         audit_started = time.perf_counter()
@@ -325,7 +392,21 @@ def to_glb(
             cv2.inpaint(alpha, mask_inv, 1, cv2.INPAINT_TELEA)[..., None]]
         timings['audit_serial_inpaint_seconds'] = time.perf_counter() - audit_started
     inpaint_started = time.perf_counter()
-    if parallel_inpaint:
+    if texture_padding == 'dilate':
+        packed = np.concatenate([base_color, metallic, roughness, alpha], axis=-1)
+        packed = np.where(mask[..., None], packed, 0)
+        valid = mask.astype(np.uint8)
+        kernel = np.ones((3, 3), dtype=np.uint8)
+        for _ in range(4):
+            expanded = cv2.dilate(valid, kernel)
+            frontier = (expanded != 0) & (valid == 0)
+            padded = cv2.dilate(packed, kernel)
+            packed[frontier] = padded[frontier]
+            valid = expanded
+        base_color, metallic, roughness, alpha = packed[..., :3], packed[..., 3:4], packed[..., 4:5], packed[..., 5:6]
+    elif texture_padding != 'telea':
+        raise ValueError('texture_padding must be telea or dilate')
+    elif parallel_inpaint:
         base_color, metallic, roughness, alpha = inpaint_pbr_channels(
             base_color, metallic, roughness, alpha, mask_inv)
     else:

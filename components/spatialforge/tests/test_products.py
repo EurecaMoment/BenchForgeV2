@@ -2,6 +2,7 @@
 import json
 import importlib.util
 import tempfile
+import threading
 import unittest
 import zipfile
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ from PIL import Image
 HAS_HARNESS=importlib.util.find_spec('benchclaw') is not None
 if HAS_HARNESS:
     from spatialforge import products
+from spatialforge.run_context import RunCancelled
 
 
 @unittest.skipUnless(HAS_HARNESS,'Requires the real BenchClaw spatial task generator')
@@ -142,6 +144,9 @@ class ProductExports(unittest.TestCase):
                 summary=products.produce(directory,intent={'target_items':8})
             self.assertEqual(model.call_count,3)
             self.assertEqual(summary['accepted'],1);self.assertEqual(summary['shortfall'],7)
+            self.assertEqual(summary['quantity_contract'],'best_effort')
+            self.assertTrue(summary['delivery_satisfied'])
+            self.assertEqual(summary['delivery_status'],'partial')
             self.assertEqual(summary['data_selection']['state'],'candidate_pool_exhausted')
             self.assertEqual(summary['data_selection']['review_budget'],16)
             self.assertEqual(summary['candidates_reviewed'],2)
@@ -163,6 +168,22 @@ class ProductExports(unittest.TestCase):
             self.assertEqual((old/'item_reviews.json').read_bytes(),old_review)
             self.assertTrue(all(p.is_file() for p in old_images))
             self.assertNotEqual(model.call_args_list[0].args[1].parent.parent,old)
+
+    def test_cancel_after_authoring_preserves_attempt_without_review_or_release(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            directory=Path(tmp);self.capture(directory);stop=threading.Event()
+            def author(*args,**kwargs):
+                stop.set()
+                return {'items':[]}
+            with patch.object(products,'completion',side_effect=author) as model:
+                with self.assertRaisesRegex(RunCancelled,'question review'):
+                    products.produce(directory,intent={'target_items':1},stop=stop)
+            self.assertEqual(model.call_count,1)
+            self.assertFalse((directory/'release').exists())
+            attempt=next((directory/'product_attempts').glob('export_*'))
+            selection=json.loads((attempt/'data_selection.json').read_text())
+            self.assertEqual(selection['state'],'reviewing')
+            self.assertEqual(selection['candidates_reviewed'],0)
 
     def test_small_only_candidates_make_no_model_calls_and_retain_report(self):
         with tempfile.TemporaryDirectory() as tmp:

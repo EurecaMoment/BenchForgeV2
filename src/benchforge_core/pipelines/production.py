@@ -204,14 +204,15 @@ def produce(args, directory, config=None):
     root.mkdir(parents=True, exist_ok=True)
     evidence_path = Path(args['evidence']).resolve() if args.get('evidence') else None
     records = rows(evidence_path) if evidence_path else []
-    policy = load_policy(args['_workspace'])
+    service_config = args.get('_service_config') or args.get('service_config')
+    policy = load_policy(args['_workspace'], service_config)
     if evidence_path:check_source(policy,source_path=evidence_path)
     for record in records:
         _require_production_evidence(record)
         source = record.get('provenance', {})
         check_source(policy, task_id=source.get('task_id'), run_id=source.get('run_id'),
                      scene_group=record.get('scene_group_id'), source_path=source.get('path'))
-        check_evidence(args['_workspace'],record,evidence_path)
+        check_evidence(args['_workspace'], record, evidence_path, service_config)
     public, authority, rejected = [], [], []
     asset_roots, asset_copies, asset_checks = {}, {}, {}
     usage = Counter()

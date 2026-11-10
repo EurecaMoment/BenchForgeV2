@@ -13,22 +13,12 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-
-def read(path):
-    return json.loads(Path(path).read_text(encoding="utf-8"))
-
-
-def write(path, value):
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def rows(path):
-    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
-
-
-def jsonl(path, values):
-    Path(path).write_text("".join(json.dumps(v, ensure_ascii=False)+"\n" for v in values), encoding="utf-8")
+from .artifact_io import (
+    read_json as read,
+    read_jsonl as rows,
+    write_json as write,
+    write_jsonl as jsonl,
+)
 
 
 def select(raw, pointer):

@@ -15,99 +15,61 @@ from .storage import Store,uid
 from .engine import coordinate
 from .generation import GenerationTools
 from .contracts import scene_contract_capabilities
-from .layout import validate_layout,default_layout
 from .capture_transfer import CaptureTransfer,CHUNK_BYTES,validate_capture,decode_chunk
 from .program_submission import read_program_submission
 from .design import start_design_request,require_prior_reference
-from .capture_scope import capture_scope
+from . import scene_requests as _scene_requests
+from .scene_requests import context_from_request as _request_context
 
 
-def scene_intent(intent):
-    if not isinstance(intent,dict) or not {'name','description','split'}<=set(intent):raise ValueError('scene requires name, description, split')
-    if set(intent)-{'name','description','split','target_items','layout','scene_program_path'}:raise ValueError('unknown scene intent fields')
-    if 'scene_program_path' in intent and (not isinstance(intent['scene_program_path'],str) or not intent['scene_program_path']):raise ValueError('scene_program_path must be a task JSON source_path')
-    if 'layout' in intent:validate_layout(intent['layout'])
-    if intent['split'] not in {'train','dev'} or not isinstance(intent['description'],str) or not 1<=len(intent['description'])<=12000:raise ValueError('invalid scene intent')
-    if not isinstance(intent['name'],str) or not 1<=len(intent['name'])<=200:raise ValueError('invalid name')
-    if type(intent.get('target_items',24)) is not int or not 1<=intent.get('target_items',24)<=1000:raise ValueError('invalid target item budget')
-    return intent
+scene_intent = _scene_requests.scene_intent
 
 
 def start_scene_request(store,value,max_scenes=1000):
-    intents=value['intents']
-    if not isinstance(intents,list) or not 1<=len(intents)<=max_scenes:raise ValueError('scene count exceeds registered run budget')
-    for intent in intents:scene_intent(intent)
-    submissions=[read_program_submission(store.root,intent['scene_program_path']) if 'scene_program_path' in intent else None for intent in intents]
-    for intent in intents:require_prior_reference(store,intent)
-    intents=[{**intent,'layout':intent.get('layout') or default_layout(intent)} for intent in intents]
-    return {'run_id':store.submit(value['request_key'],intents,submitted_programs=submissions if any(submissions) else None),'state':'accepted','program_handoff':['validated_frozen_snapshot' if item else 'planner' for item in submissions]}
+    return _scene_requests.start_scene_request(
+        store,
+        value,
+        max_scenes,
+        submission_reader=read_program_submission,
+        prior_reference_checker=require_prior_reference,
+    )
 
 
 def start_generation_request(store,tool,value):
     from .generation_stage import validate_generation_request
-    parameters=validate_generation_request(GenerationTools(store.root),tool,{k:v for k,v in value.items() if k!='request_key'})
+    parameters=validate_generation_request(GenerationTools(store.root),tool,{k:v for k,v in value.items() if k not in {'request_key','context'}})
     intent={'tool':tool,'parameters':parameters}
-    rid=store.submit(value['request_key'],[intent],'generation')
+    kwargs={}
+    context=_request_context(value)
+    if context is not None:kwargs['context']=context
+    rid=store.submit(value['request_key'],[intent],'generation',**kwargs)
     return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','tool':tool}
 
 
 def start_capture_request(store,value):
-    submission=read_program_submission(store.root,value['scene_program_path'])
-    intent={'name':value.get('name',submission['program']['title']),'description':'Capture the supplied SceneProgram.',
-            'split':'dev','capture_only':True,'scene_program_path':value['scene_program_path']}
-    if 'layout' in value:intent['layout']=validate_layout(value['layout'])
-    if 'capture_options' in value:
-        capture_scope(submission['program'],value['capture_options'])
-        intent['capture_options']=value['capture_options']
-    rid=store.submit(value['request_key'],[intent],submitted_programs=[submission])
-    return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','operation':'capture_only'}
+    return _scene_requests.start_capture_request(
+        store,
+        value,
+        submission_reader=read_program_submission,
+    )
 
 
 def refine_scene_request(store,value):
-    parent=value['parent_task_id'];snap=store.snapshot(parent.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==parent)
-    if task['unit'].get('workflow','scene')!='scene':raise ValueError('refine requires a scene task')
-    if snap['state'] not in {'SUCCEEDED','FAILED_FINAL','CANCELED'} or task['state'] not in {'SUCCEEDED','FAILED_FINAL','CANCELED'}:raise ValueError('source run is still active; wait for its terminal state before refining')
-    source_revision=value.get('source_revision',task['unit']['revision'])
-    if type(source_revision) is not int or not 0<=source_revision<=task['unit']['revision']:raise ValueError('source_revision must identify an existing revision')
-    directory=store.root/parent/f'revision_{source_revision}'
-    if not (directory/'capture'/'evidence.json').is_file():raise ValueError('refine requires captured scene evidence')
-    parent_intent=task['unit']['intent']
-    intent=scene_intent({'name':value['name'],'description':value['description'],'split':parent_intent['split'],'target_items':value.get('target_items',parent_intent.get('target_items',24))})
-    # Refining a capture keeps its operation scope. An explicit data target opts
-    # into the full pipeline; missing target_items must not silently request 24 QA.
-    if parent_intent.get('capture_only') and 'target_items' not in value:
-        intent.pop('target_items')
-        intent['capture_only']=True
-    if 'layout' in value:intent['layout']=validate_layout(value['layout'])
-    submission=None
-    if 'scene_program_path' in value:
-        submission=read_program_submission(store.root,value['scene_program_path'])
-        intent['scene_program_path']=value['scene_program_path']
-    require_prior_reference(store,intent,directory)
-    intent.update(refine_task_id=parent,refine_revision=source_revision,scene_family=task['unit']['intent'].get('scene_family',parent))
-    rid=store.submit(value['request_key'],[intent],submitted_programs=[submission] if submission else None)
-    return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','operation':'capture_only' if intent.get('capture_only') else 'scene_pipeline','inherited_split':intent['split'],'source_revision':intent['refine_revision'],'program_handoff':'validated_frozen_snapshot' if submission else 'planner_refinement'}
+    return _scene_requests.refine_scene_request(
+        store,
+        value,
+        submission_reader=read_program_submission,
+        prior_reference_checker=require_prior_reference,
+    )
 
 
 def extend_scene_request(store,value):
-    parent=value['parent_task_id'];snap=store.snapshot(parent.split('.')[0]);task=next(t for t in snap['tasks'] if t['id']==parent)
-    if task['state']!='SUCCEEDED' or task['unit'].get('workflow','scene')!='scene':raise ValueError('extend an available captured scene task')
-    revision=task['unit']['revision'];directory=store.directory(parent,revision)
-    from .scene_acceptance import policy_for, require_accepted
-    strict=bool(policy_for(store.root))
-    if strict:require_accepted(store.root,directory)
-    intent=scene_intent({'name':value['name'],'description':value['description'],
-        'split':task['unit']['intent']['split'],'target_items':value.get('target_items',24),
-        **({'scene_program_path':value['scene_program_path']} if value.get('scene_program_path') else {})})
-    if 'layout' in value:intent['layout']=validate_layout(value['layout'])
-    submission=read_program_submission(store.root,value['scene_program_path']) if value.get('scene_program_path') else None
-    if strict and not submission:raise ValueError('Realistic scene extension requires a complete SceneProgram')
-    intent.update(parent_task_id=parent,parent_revision=revision,extend_task_id=parent,extend_revision=revision,
-                  scene_family=task['unit']['intent'].get('scene_family',parent))
-    require_prior_reference(store,intent,directory)
-    rid=store.submit(value['request_key'],[intent],submitted_programs=[submission] if submission else None)
-    return {'run_id':rid,'task_id':rid+'.scene0','state':'accepted','inherited_split':intent['split'],
-            'source_revision':revision,'program_handoff':'validated_frozen_snapshot' if submission else 'planner_extension'}
+    return _scene_requests.extend_scene_request(
+        store,
+        value,
+        submission_reader=read_program_submission,
+        prior_reference_checker=require_prior_reference,
+    )
 
 
 def main():
@@ -200,7 +162,9 @@ def main():
                     intent=value['intent']
                     if not isinstance(intent,dict) or not {'name','description'}<=set(intent) or set(intent)-{'name','description','label','source_image','source_mask','source_mesh','source_gaussian','asset_id','seed','source_up_axis','size_hint_m','subject_box','edit_reference','texture_baking'}:raise ValueError('invalid asset intent')
                     if not isinstance(intent['description'],str) or not 1<=len(intent['description'])<=12000:raise ValueError('invalid asset description')
-                    self.reply({'run_id':store.submit(value['request_key'],[intent],'asset'),'state':'accepted'})
+                    context=_request_context(value)
+                    kwargs={'context':context} if context is not None else {}
+                    self.reply({'run_id':store.submit(value['request_key'],[intent],'asset',**kwargs),'state':'accepted'})
                 elif self.path=='/extend':
                     self.reply(extend_scene_request(store,value))
                 elif self.path=='/refine':
@@ -210,7 +174,9 @@ def main():
                     if not isinstance(intent,dict):raise ValueError('dataset intent must be an object')
                     from .integration import prepare_spec
                     prepare_spec(intent,store.harness)
-                    self.reply({'run_id':store.submit(value['request_key'],[intent],'dataset'),'state':'accepted'})
+                    context=_request_context(value)
+                    kwargs={'context':context} if context is not None else {}
+                    self.reply({'run_id':store.submit(value['request_key'],[intent],'dataset',**kwargs),'state':'accepted'})
                 elif self.path=='/observe':
                     from .observation import observe
                     result=observe(store,value['run_id']);result.pop('cursor')
