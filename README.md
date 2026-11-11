@@ -76,7 +76,7 @@ Near-term work prioritizes clear contracts, configuration ownership, resumable e
 Python 3.10+ can run an offline example without a model API, GPU, or simulator:
 
 ```bash
-git -c http.version=HTTP/1.1 clone --branch spatialforge-cleanup https://github.com/EurecaMoment/BenchForgeV2.git
+git -c http.version=HTTP/1.1 clone --branch main https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 python benchforge.py demo
 ```
@@ -131,9 +131,9 @@ Run the [portable verification steps](docs/VALIDATION.md) locally. CI covers Win
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 # Miniforge 用户改用：source "$HOME/miniforge3/etc/profile.d/conda.sh"
 
-conda create -n benchforge-cleanup --override-channels -c conda-forge \
+conda create -n benchforge --override-channels -c conda-forge \
   --repodata-fn current_repodata.json python=3.11 nodejs=24 'git>=2.26' -y
-conda activate benchforge-cleanup
+conda activate benchforge
 git --version
 python3.11 --version
 node --version
@@ -145,22 +145,22 @@ npm --version
 下列命令只为本次创建选择镜像，不修改其他项目的全局 Conda 配置：
 
 ```bash
-conda create -n benchforge-cleanup --override-channels \
+conda create -n benchforge --override-channels \
   -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge \
   --repodata-fn current_repodata.json python=3.11 nodejs=24 'git>=2.26' -y
-conda activate benchforge-cleanup
+conda activate benchforge
 git --version
 python3.11 --version
 node --version
 npm --version
 ```
 
-若提示 `benchforge-cleanup` 已存在，先激活并检查版本；已有环境符合要求时直接使用，
+若提示 `benchforge` 已存在，先激活并检查版本；已有环境符合要求时直接使用，
 不符合时为新环境换一个名字，保留旧环境。
 
 没有 Conda 可先按 [Miniforge 官方安装说明](https://github.com/conda-forge/miniforge#install)
 安装，然后执行上述创建环境的命令；已有符合版本要求的工具可跳过创建环境。
-再次登录服务器后，先 `conda activate benchforge-cleanup`，再进入仓库目录。
+再次登录服务器后，先 `conda activate benchforge`，再进入仓库目录。
 
 Ubuntu/Debian 缺少系统工具时，管理员可执行：
 
@@ -179,18 +179,18 @@ docker info
 docker compose version
 ```
 
-### 1. 下载 cleanup 到新目录
+### 1. 下载 main 到新目录
 
-`benchforge-cleanup-3092` 是这次部署的独立目录名；已有同名目录时换一个新名称。
+`benchforge-3092` 是示例部署的独立目录名；已有同名目录时换一个新名称。
 
 ```bash
 cd "$HOME"
-git -c http.version=HTTP/1.1 clone --branch spatialforge-cleanup --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-cleanup-3092
-cd benchforge-cleanup-3092
+git -c http.version=HTTP/1.1 clone --branch main --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-3092
+cd benchforge-3092
 git branch --show-current
 ```
 
-最后一行应输出 `spatialforge-cleanup`。之后所有服务器命令都在这个目录执行。
+最后一行应输出 `main`。之后所有服务器命令都在这个目录执行。
 不要复制旧部署的 `config/`、`.benchforge/` 或 `.deployment/`。
 `-c http.version=HTTP/1.1` 仅对本次克隆生效，用于减少部分网络链路上的 GitHub
 连接中断，不修改全局 Git 配置。若下载仍失败，保留错误并检查网络；重试前确认目标
@@ -220,7 +220,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 ```bash
 .venv/bin/python spatialforge_app.py init \
-  --port 3858 --db-port 55548 --project benchforge-cleanup-3092
+  --port 3858 --db-port 55548 --project benchforge-3092
 ```
 
 `--project` 是本实例的数据库项目名，同机不同部署必须不同。它保存为
@@ -386,11 +386,11 @@ BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
 BENCHFORGE_WEB_PORT=3092 ./shutdown.sh
 ```
 
-更新 cleanup 时先保留自己的本地配置和数据，再停止应用、拉取代码、更新依赖：
+更新 main 时先保留自己的本地配置和数据，再停止应用、拉取代码、更新依赖：
 
 ```bash
 BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
-git pull --ff-only origin spatialforge-cleanup
+git pull --ff-only origin main
 .venv/bin/python -m pip install -e '.[dsh,production,research]'
 npm ci --prefix integrations
 .venv/bin/python spatialforge_app.py setup
