@@ -20,6 +20,7 @@ dist/
 .env.*
 !.env.example
 config/*.env
+/config/scene-library/
 *.bak
 *.bak-*
 *.backup

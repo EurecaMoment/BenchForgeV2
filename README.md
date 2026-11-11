@@ -345,6 +345,10 @@ docker compose --env-file config/database.env -f components/spatialforge/deploy/
 离线例子应输出 `Offline demo complete: 2 items, exact-match accuracy 0.5`，
 其中一个预测故意错误，0.5 是预期结果。产物在 `runs/quickstart/`。
 再确认网页能够登录、三个预设均可选，且 `BenchForgeV2_UI` 能显示工作台、没有加载错误。
+页面验收必须新建并选择 **`BenchForgeV2_UI`** 会话、绑定本实例的独立工作区，确认
+“评测计划、场景预览、标注预览、评测配置与题目表、最终报告”五个阶段可以打开。
+只看到 DSH 默认 Standard 对话页面，不能算工作台安装成功。新实例应显示空的生产状态，
+不应读取其他实例的历史任务；原有样板对话在各自实例中继续保留原工作区和产物关联。
 这些结果验证基础部署；Isaac 画面、生成模型质量和真实生产吞吐需要分别验收。
 
 ### 8. 配置自己需要的模型和仿真能力
