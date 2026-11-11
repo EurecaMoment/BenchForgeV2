@@ -5,43 +5,20 @@ SpatialForge integrations, composable benchmark pipelines, and spatial-learning
 tools. New integration work belongs here; the official `deepseek-harness` source
 is an external dependency and is not modified by this repository.
 
-## Modes and deployment
+## 从 main 独立部署
 
-The DSH preset names identify separate modes in the same deployment:
+下方提供 Linux 服务机的完整安装步骤，可在另一台机器或另一目录部署，
+不需要已有 FIT 服务、旧 DSH 配置或其他分支的文件。按顺序执行
+[独立部署指令](#独立部署指令linux)，先启动 Web、SpatialForge 和独立数据库。
 
-| Mode | Purpose | DSH profile binding |
-| --- | --- | --- |
-| `BenchForge` | Retained first-generation benchmark mode | Legacy mode |
-| `BenchForgev2` | Second-generation published mode | `.deployment/published` on FIT |
-| `SpatialForge` | Second-generation development mode with scene tools | Repository checkout on FIT |
+本分支生成的自定义 Agent 预设显示为 **`BenchForgev2`**，内部 ID 为
+`benchforgev2`。这是 `main` 当前的名称。已有部署中的 `BenchForge`、
+`SpatialForge` 名称及其历史绑定见 [集成说明](integrations/README.md)，
+不属于新安装的前置条件。
 
-The maintained FIT checkout is `/home/maqiang/GitHub/BenchForgeV2`, branch
-`SpatialForge`; the public repository is
-[EurecaMoment/BenchForgeV2](https://github.com/EurecaMoment/BenchForgeV2).
-The active production simulation route is DSH on FIT → the FIT SpatialForge
-service and queue → the external `a800-remote-fit` dispatcher → FIT's local
-reverse-SSH endpoint `127.0.0.1:18766` → `thunlp-node1` running Isaac Sim 6.2.0
-on A800 → capture and evidence returned to FIT. `desktop-isaac` is a retained
-database lease name; it does not identify the active remote worker. The A800
-dispatcher and its server-side Isaac deployment are outside this repository.
-
-```mermaid
-flowchart LR
-  DSH[DSH on FIT] -->|BenchForgev2 / SpatialForge preset| Plugin[BenchForgeV2 plugins]
-  Plugin -->|benchmark, pipeline, learning tools| Core[BenchForgeV2 Python package]
-  Plugin -->|scene tools| SF[FIT SpatialForge service and queue]
-  SF --> Dispatcher[External a800-remote-fit dispatcher]
-  Dispatcher -->|FIT 127.0.0.1:18766 reverse SSH| Isaac[thunlp-node1 A800 / Isaac Sim 6.2.0]
-  Isaac -->|capture and evidence| SF
-  Plugin -->|independent model API clients| Models[External model services]
-  Desktop[Optional self-hosted Windows Isaac worker] --> SF
-```
-
-The Windows worker is a supported self-hosted deployment option, not the active
-FIT production route. External model services, weights, simulator installations,
-assets, credentials, and production artifacts remain in their own deployment
-locations. The lightweight clients in this repository do not start or migrate
-those services.
+基础安装不需要 GPU、模型密钥或 Isaac。模型问答、图像生成和仿真采集需要另外
+配置对应服务；安装命令不会替你提供这些能力。场景工作台 UI 是可选插件，见
+[工作台安装说明](docs/frontend-workbench-v2.md)。
 
 ## What is included
 
@@ -93,213 +70,316 @@ demo trains only a small controlled Transformer task:
 python examples/spatial_learning_demo.py --workspace runs/cpu-training
 ```
 
-## DSH setup
+## 独立部署指令（Linux）
 
+以下命令在 **Linux 服务器的 Bash 终端**执行，只有第 6 节的 SSH 隧道在自己的
+电脑上执行。每一组成功后再执行下一组；失败时先处理错误，避免拿半安装状态启动。
+示例选择 Web `3092`、API `3858`、数据库 `55548`，可在第 3 节改成自己的空闲端口。
 
-已有 SpatialForge 后端和桌面 worker 时，复制
-`config/spatialforge.example.json` 为 `config/spatialforge.local.json`，
-填写服务 URL 与 `operator_token`，然后执行：
+### 0. 准备运行环境
+
+| 软件 | 要求 | 检查命令 |
+| --- | --- | --- |
+| Git | **2.26 或更新**，DSH 安装脚本有此要求 | `git --version` |
+| Python | 完整部署用 3.11、3.12 或 3.13，并包含 venv/ensurepip | `python3.11 --version` |
+| Node.js / npm | Node 22.19+ 或 24+；建议 24 LTS | `node --version`、`npm --version` |
+| Docker Engine / Compose | 当前用户可使用 Docker；Compose v2 支持 `--wait` | `docker info`、`docker compose version` |
+| 系统工具 | `bash`、`ss`、`curl`、`setsid`、C/C++ 编译工具 | `command -v bash ss curl setsid cc make` |
+| bubblewrap | 执行隔离任务代码时使用；基础页面验收不调用它 | `bwrap --version` |
+
+本文统一用 `python3.11` 创建环境；已经安装 3.12/3.13 时，只需把下面创建环境的
+`python3.11` 换成该命令，后续都使用 `.venv/bin/python`。系统的 `python3` 可能仍是
+3.8，不要仅凭命令存在就继续。需要联网下载 GitHub 源码、npm/PyPI 包和 PostgreSQL 镜像。
+
+**已有 Conda 时，推荐创建专用环境，避免修改其他项目的 Git、Node 或 Python：**
 
 ```bash
-python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
-python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+# 新终端找不到 conda 时，先加载自己安装位置的初始化脚本。
+# Miniconda 默认位置：
+source "$HOME/miniconda3/etc/profile.d/conda.sh"
+# Miniforge 用户改用：source "$HOME/miniforge3/etc/profile.d/conda.sh"
 
-The simple launcher below builds a private DSH runtime and installs the retained
-first-generation `BenchForge` mode for local use. It does not reproduce FIT's
-current SpatialForge/A800 deployment:
-
-```bash
-python benchforge.py setup
-
-python benchforge.py start
+conda create -n benchforge-main --override-channels -c conda-forge python=3.11 nodejs=24 'git>=2.26' -y
+conda activate benchforge-main
+git --version
+python3.11 --version
+node --version
+npm --version
 ```
 
-To attach the second-generation bundle to an existing DSH profile, follow
-[integration installation and preset selection](integrations/README.md). To run
-the bundled SpatialForge server and a self-hosted desktop worker, use the
-[self-hosted installation guide](docs/SPATIALFORGE_INSTALL.md); it is an
-alternative deployment, not a migration recipe for FIT's A800 worker.
+没有 Conda 可先按 [Miniforge 官方安装说明](https://github.com/conda-forge/miniforge#install)
+安装，然后执行上述创建环境的命令；已有符合版本要求的工具可跳过创建环境。
+再次登录服务器后，先 `conda activate benchforge-main`，再进入仓库目录。
 
+Ubuntu/Debian 缺少系统工具时，管理员可执行：
 
-## 全流程启动（数据库 + SpatialForge + DSH）
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential curl ca-certificates iproute2 util-linux bubblewrap
+```
 
-仓库提供三个一键脚本，配置只读取本仓库的 `config/`，不需要设置任何配置类环境变量：
+Docker 尚未安装时，按 [Docker 官方 Linux 安装说明](https://docs.docker.com/engine/install/)
+选择系统，安装 Engine 和 Compose plugin。普通用户访问权限按
+[安装后配置](https://docs.docker.com/engine/install/linux-postinstall/) 设置；
+重新登录后确认下面两条命令成功，再继续。不要为了绕过权限问题用 sudo 运行整套 Python/DSH。
 
-| 脚本 | 作用 |
-|---|---|
-| `./start.sh` | 启动 PostgreSQL → SpatialForge（3856）→ DSH Web（3081） |
-| `./restart.sh` | 保留数据库，重启 SpatialForge 与 DSH |
-| `./shutdown.sh` | 逆序停止全部；`--keep-db` 只停应用 |
+```bash
+docker info
+docker compose version
+```
 
-示例端口：SpatialForge `3856`、PostgreSQL `55546`、DSH `3081`。`start.sh` 按
-`config/spatialforge-server.local.json` 的 `port` 启动服务，Web 端口可用
-`BENCHFORGE_WEB_PORT` 覆盖。
+### 1. 下载 main 到新目录
 
-### 1. 首次准备（只做一次）
+`benchforge-main-3092` 是这次部署的独立目录名；已有同名目录时换一个新名称。
+
+```bash
+cd "$HOME"
+git clone --branch main --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-main-3092
+cd benchforge-main-3092
+git branch --show-current
+```
+
+最后一行应输出 `main`。之后所有服务器命令都在这个目录执行。
+不要复制旧部署的 `config/`、`.benchforge/` 或 `.spatialforge/`。
+
+### 2. 安装 Python 后端与 Node 插件
 
 ```bash
 python3.11 -m venv .venv
-.venv/bin/python -m pip install -e ".[dsh,production,research]"
+.venv/bin/python -m pip install -e '.[dsh,production,research]'
 npm ci --prefix integrations
-
-python3.11 spatialforge_app.py setup
-.venv/bin/python spatialforge_app.py init --port 3856 --db-port 55546
+.venv/bin/python spatialforge_app.py setup
 ```
 
-`npm ci --prefix integrations` 不能省略：DSH 插件以裸包名导入
-`@deepseek-ai/dsh-tools` 等模块，缺少该目录时插件无法加载。DSH 本身可用
-`python benchforge.py setup` 安装，或用
-`python benchforge.py setup --dsh-root /path/to/deepseek-harness` 复用已构建的 DSH。
+`.venv/` 是核心与 DSH 辅助程序环境，`.spatialforge/venv/` 是后端环境。
+`npm ci --prefix integrations` 安装插件依赖，不能用 Python 安装替代。
+这一步完成后还没有启动服务，也没有配置模型或仿真器。
 
-`init` 首次运行会生成 `config/spatialforge-server.local.json`、
-`config/database.env`（随机密码、权限 600）、客户端配置、`models.local.json` 与
-`worker.local.json`。重复运行保留已有配置、端口和凭据，并从服务端配置补齐缺失的
-`config/spatialforge.local.json`。之后 `./start.sh` 直接复用这些文件。
+### 3. 选择端口并生成本实例配置
 
-需要本地 Qwen 中转密钥时，复制 `config/dsh.env.example` 为 `config/dsh.env`，
-只在被忽略的本地文件里填写密钥；不要提交该文件。
-
-### 2. 配置文件
-
-| 文件 | 关键字段 | 说明 |
-|---|---|---|
-| `config/benchforge.local.json` | `services.*`、`models.qwen`、`model_services.url` | 外部模型地址；`model_services` 默认复用 4960 网关 |
-| `config/benchforge.local.yml` | `llm-pi-ai`、`agent-default-model`、`hmr` | DSH 预设；由 `build_preset.py` 生成，末尾追加了本项目覆盖项 |
-| `config/dsh.env` | `QWEN_RELAY_API_KEY` | 被忽略的本地密钥文件 |
-| `config/spatialforge.local.json` | `service_url`、`operator_token` | 客户端视角 |
-| `config/spatialforge-server.local.json` | `port`、`database_url`、`artifacts`、`harness`、`model_url`、`models_config` | 服务端视角 |
-| `config/database.env` | `POSTGRES_PORT` | PostgreSQL 宿主机端口；密码由 init 生成，不要手改 |
-| `config/worker.local.json` | `url`、`worker_token` | Windows 采集 worker |
-| `config/models.local.json` | 解释器与权重路径 | 本地模型 |
-
-必须保持一致的项：
-
-- `spatialforge-server.local.json` 的 `port` = `spatialforge.local.json` 的
-  `service_url` 端口 = `worker.local.json` 的 `url` 端口。
-- 客户端与服务器端的 `operator_token` 相同；服务器端与 worker 的
-  `worker_token` 相同。
-- `database.env` 的 `POSTGRES_PORT` = 服务端 `database_url` 中的端口。
-
-### 3. 模型提供方（按环境选择）
-
-`config/benchforge.local.yml` 由 `build_preset.py` 生成。若当前环境提供本地 Qwen
-中转，可在生成后的本地文件中追加覆盖项；仓库不把该服务作为通用生产默认值：
-
-- `hmr: disabled`：本机 inotify 配额已满，关闭文件热更新，避免 DSH 卡在启动阶段。
-- `llm-pi-ai` 的 `qwen-flash`：`baseURL: http://127.0.0.1:29002/v1`，模型
-  `Qwen/Qwen3.8-Flash-Next`，key 由 `config/dsh.env` 的 `QWEN_RELAY_API_KEY` 注入。
-- `agent-default-model`：只有在确认本地 Qwen 服务、模型和密钥均已配置后，才将新会话默认切到 `qwen-flash`。
-
-未配置本地 Qwen 时，继续使用环境已有的模型提供方；旧会话会保留创建时的模型选择。
-本地 Qwen 的配置只影响当前项目，不改变 FIT 或其他生产部署。
-
-重新执行 `build_preset.py` 会覆盖这些追加项，建议先备份为
-`config/benchforge.local.yml.bak-<日期>`，生成后再把追加项补回。由于已禁用 hmr，
-修改任何配置后都需要执行 `./restart.sh`。
-
-### 4. 一键启动
+先检查这三个端口；没有输出表示当前未被监听。如有输出，换三个空闲端口，并在
+后面的初始化、启动和隧道命令中使用对应数值。不要停止别人占用端口的进程。
 
 ```bash
-./start.sh
+ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
-
-脚本行为：
-
-- 幂等：已在监听的服务会跳过，不会重复启动。
-- 用 `setsid` 脱离终端，关闭终端后服务继续运行。
-- 等待数据库 healthy、服务与 DSH 就绪；失败时打印日志尾部并以非 0 退出。
-- 只认本次启动新产生的 token；180 秒内拿不到会提示 inotify 配额问题，并结束卡住的 DSH。
-- 日志：`.benchforge/logs/spatialforge.log`、`.benchforge/logs/dsh.log`
-- PID：`.benchforge/run/*.pid`
-
-### 5. 访问 DSH Web
-
-服务器本机直接打开 `start.sh` 打印的地址：
-
-```
-http://127.0.0.1:3081/?token=...
-```
-
-本地电脑需要 SSH 隧道（本地 `3081` 被占用时换成 `18081`）：
 
 ```bash
-ssh -N -L 18081:127.0.0.1:3081 <server-alias>
+.venv/bin/python spatialforge_app.py init \
+  --port 3858 --db-port 55548 --project benchforge-main-3092
 ```
 
-然后访问 `http://127.0.0.1:18081/?token=...`。直接打开根路径会返回
-`dsh web authentication required`，必须带 token。进入后新建会话选择
-**BenchForgeV2**，即可使用 `benchforge-tools` 与 `spatialforge-tools`。
+`--project` 是本实例的数据库项目名，同机不同部署必须不同。它保存为
+`config/database.env` 的 `COMPOSE_PROJECT_NAME`，启动和停止会读取同一值；
+无需每次再手动指定。不要设置指向其他实例的 `COMPOSE_PROJECT_NAME` 环境变量。
 
-### 6. 启动后检查
+初始化会自动生成随机数据库密码及两种 token，并建立匹配的客户端、服务端与 worker
+配置。重复 `init` 会保留已有端口、项目配置和凭据，不会按新参数覆盖；因此首次就应
+选好端口。如果默认客户端文件丢失，重跑 `init` 可从已有服务端配置补齐。
+
+| 文件 | 用途 | 基础启动是否需要手改 |
+| --- | --- | --- |
+| `config/database.env` | 数据库密码、端口、独立项目名 | 否 |
+| `config/spatialforge-server.local.json` | API 端口、数据库地址、产物目录、服务凭据 | 否 |
+| `config/spatialforge.local.json` | 插件连接 API 的地址和 operator token | 否 |
+| `config/models.local.json` | 生成模型的解释器和权重位置 | 用模型时配置 |
+| `config/worker.local.json` | Isaac worker 的服务地址和 worker token | 接入 worker 时配置 |
+
+本地配置、虚拟环境、日志、产物都已被 Git 忽略；不要将密码或 token 上传到仓库。
+未使用 `--project` 的旧配置仍沿用 `benchforgev2-spatialforge` 项目名。
+
+### 4. 安装 DSH 并生成完整预设
 
 ```bash
-.venv/bin/python spatialforge_app.py status      # 数据库 + 服务 + 认证
-.venv/bin/python benchforge.py demo              # 不依赖模型与 GPU 的离线链路
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3856/catalog -H "Authorization: Bearer <operator_token>"
+.venv/bin/python spatialforge_app.py dsh-setup
 ```
 
-模型能力还需外部服务：4960 网关（`model_services`）、29002 Qwen（`models.qwen`）、
-8765/8766/8008（SAM3/YOLOE/DepthAnything，按需启动）。网关可用时
-`sam3d` 应返回就绪；`lama`/`flux` 返回 502 表示其上游 worker 未启动，与本仓库配置无关。
+此命令从公开仓库下载锁定版本的 DSH，在 `third_party/deepseek-harness/` 构建，
+然后生成 `config/benchforge.local.json`、`config/benchforge.local.yml` 与
+`.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
+`Ready. Run: python benchforge.py start`，且命令退出码为 0。
 
-### 7. 端口冲突处理
+这里必须使用 **`dsh-setup`**（或下方等价命令），它会将第 3 节的服务配置接入预设：
 
 ```bash
-ss -ltnp | grep -E ':(3856|55546|3081)\b'
+# 与上一条二选一，不需要重复执行。
+.venv/bin/python benchforge.py setup --spatialforge-config config/spatialforge.local.json
 ```
 
-若端口被占用，按组件修改后重启：
+单独执行 `benchforge.py setup` 不会接入 SpatialForge 工具。
+重新生成预设会覆盖手工追加的模型配置，已有修改时先备份本地 YAML。
+DSH 本身默认通过锁定的 pnpm 版本安装；不需要复制另一部署的 DSH。
 
-- SpatialForge：改 `spatialforge-server.local.json` 的 `port`，同步修改
-  `spatialforge.local.json` 的 `service_url` 与 `worker.local.json` 的 `url`。
-- PostgreSQL：改 `database.env` 的 `POSTGRES_PORT`，同步修改服务端
-  `database_url` 端口，然后重新执行 `spatialforge_app.py db`。
-- DSH：`BENCHFORGE_WEB_PORT=3090 ./start.sh`，或手动
-  `benchforge.py start --port <端口>`。
-
-本机若已有现网服务，常见占用为：`3841`（另一套 SpatialForge）、`4960`（共享模型
-网关，应当复用）、`29002`（Qwen）、`3080`（另一套 DSH）、`32768`（旧 harness 的
-PostgreSQL）。这也是示例配置使用 `3856`/`55546`/`3081` 的原因。
-
-### 8. 停止与重启
+### 5. 启动本实例
 
 ```bash
-./shutdown.sh             # 停止应用与数据库，保留数据卷
-./shutdown.sh --keep-db   # 只停两个应用
-./restart.sh              # 保留数据库，重启两个应用
+BENCHFORGE_WEB_PORT=3092 ./start.sh
 ```
 
-`shutdown.sh` 使用 `docker compose down`（不带 `-v`），只删除容器与网络，数据卷保留。
+脚本依次启动本实例的 PostgreSQL、SpatialForge 和 DSH，日志及 PID 写入当前目录的
+`.benchforge/`。成功时会打印带 token 的 Web 地址，例如：
 
-### 9. 常见问题
+```text
+http://127.0.0.1:3092/?token=本次启动的实际令牌
+```
 
-- `spatialforge-tools` 报配置文件 `ENOENT`：检查生成预设里 `serviceConfig` 的实际路径。
-  如果配置已移动到 `config/generated/spatialforge.local.json`，应将该字段指向新位置，
-  或生成预设时显式传入实际路径。默认客户端文件缺失时可重跑
-  `python spatialforge_app.py init`，它沿用已有服务端的端口和令牌。
-  安装入口及预设生成器会拒绝不存在的配置；`benchforge.py start` 和 `start.sh`
-  在启动前检查预设中记录的文件，检查失败时不会启动 DSH。
-- DSH 端口已监听但没有新 token，或日志出现 `ENOSPC: file watchers`：inotify 配额
-  耗尽。能 sudo 时提高 `fs.inotify.max_user_watches`；不能时本项目已通过
-  `hmr: disabled` 规避，改配置后执行 `./restart.sh`。
-- 打开旧 token 地址报 `dsh web authentication required`：DSH 每次启动都会换 token，
-  使用 `start.sh` 本次输出的地址。
-- 插件加载报 `Cannot find module '@deepseek-ai/...'`：执行
-  `npm ci --prefix integrations` 后重启 DSH。
-- 页面模型仍显示已有提供方：这是默认行为；只有在本地 Qwen 服务可用并完成配置后，
-  才在模型选择器中切换或设置 `agent-default-model`。
-- `config/benchforge.local.yml` 是“生成物 + 追加覆盖”，重新生成后需要把追加项补回。
+后台服务与终端分离，安装成功后关闭 SSH 终端不会结束服务。
+每次启动或重启都应显式写 `BENCHFORGE_WEB_PORT=3092`；省略时脚本使用 `3081`。
+DSH 的会话和设置保存在当前目录 `.benchforge/dsh-home/`。
 
-## 验证与文档
+如果没有正常结束或没有新地址，先查看本实例日志；仅端口监听不能证明插件加载完成：
 
 ```bash
-python -m unittest discover -s tests -v
-python integrations/spatialforge/smoke.py
+tail -n 40 .benchforge/logs/spatialforge.log
+tail -n 60 .benchforge/logs/dsh.log
 ```
 
-The SpatialForge smoke test checks its HTTP request contract and delivery-review
-logic without starting Isaac or calling a target-model API. A passing local test
-does not establish current remote service health.
+### 6. 在自己的电脑上打开网页
+
+在**自己的电脑**新开终端，将 `your-user@your-server` 替换为服务器账号与地址
+（也可使用已有 SSH 别名）：
+
+```bash
+ssh -N -o ExitOnForwardFailure=yes -L 13092:127.0.0.1:3092 your-user@your-server
+```
+
+此命令持续运行、不返回提示符是正常现象，保持终端打开。在浏览器中使用第 5 节
+输出的完整 URL，把端口 `3092` 改为本地 `13092`，保留原 token：
+
+```text
+http://127.0.0.1:13092/?token=第5节输出的实际令牌
+```
+
+本地 `13092` 被占用时只改隧道左侧端口，并同步改浏览器 URL。
+直接打开不带 token 的根地址可能返回 `dsh web authentication required`。
+进入页面后，新建会话应能选择 **`BenchForgev2`**；尚未配置模型时先不要发起生产任务。
+
+### 7. 验收基础安装
+
+回到**服务器的仓库目录**执行：
+
+```bash
+# 检查该实例的数据库容器，状态应为 healthy。
+docker compose --env-file config/database.env -f components/spatialforge/deploy/compose.yml ps
+
+# 发起真实、带认证的 POST /catalog，不需要手动复制 token。
+.venv/bin/python spatialforge_app.py status
+.venv/bin/python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+
+# 只运行一次不需要 GPU/模型的离线例子。
+.venv/bin/python benchforge.py demo
+```
+
+两次目录查询应返回 `catalog_schema: spatialforge.operator-catalog/v2` 和 `sections`，
+不应返回认证错误。`model: unconfigured` 表示还没有配置后端规划模型，基础安装允许此状态。
+不要用普通 `GET /catalog` 的 HTTP 200 代替检查：GET 会返回介绍页，实际目录接口是 POST。
+
+离线例子应输出 `Offline demo complete: 2 items, exact-match accuracy 0.5`，
+其中一个预测故意错误，0.5 是预期结果。产物在 `runs/quickstart/`。
+再确认网页能够登录、`BenchForgev2` 预设可选且没有加载错误。
+这些结果验证基础部署；Isaac 画面、生成模型质量和真实生产吞吐需要分别验收。
+
+### 8. 配置自己需要的模型和仿真能力
+
+- **驱动 DSH 对话的模型**：在 DSH 网页的模型/提供方设置中配置自己可访问的提供方、
+  模型 ID 和凭据。新安装不会继承另一部署的账号或 Qwen 服务。可使用官方提供方；
+  自定义 OpenAI 兼容服务的配置按所用 DSH 提供方支持的字段填写。
+- **SpatialForge 自动规划模型**：按
+  [服务端模型配置](docs/SPATIALFORGE_INSTALL.md#4-配置扩散分割生成资产和深度)
+  填写自己的 `model_url`、`model_id`、密钥环境变量。与 DSH 对话模型是两份独立配置。
+- **图像、分割、深度、三维生成服务**：按
+  [模型安装](docs/SPATIALFORGE_MODELS.md) 或 [外部模型接口](docs/MODEL_SERVICES.md)
+  配置所需服务。示例配置中的 localhost 地址只表示连接位置，不代表相应模型已运行。
+- **Isaac 真值与采集**：按 [自托管安装指南](docs/SPATIALFORGE_INSTALL.md)
+  接入自己的 Isaac 和 worker，使用本次生成的 `config/worker.local.json`。
+  先验收文档中的程序化 capture 例子，再让 Agent 发起生成任务。
+- **场景工作台 UI**：基础 Web 是 DSH 对话界面。需要工作台时，继续按
+  [工作台安装说明](docs/frontend-workbench-v2.md) 配置相应预设。
+
+模型凭据可存放在被忽略的 `config/dsh.env` 中，`start.sh` 启动 DSH 时会加载它；
+仅在所用提供方确实读取对应环境变量时才有作用。
+
+### 9. 停止、重启和更新
+
+以下命令仍在**本实例目录**执行，已安装的运行环境应处于激活状态：
+
+```bash
+# 修改本地配置后，保留数据库并重启应用。
+BENCHFORGE_WEB_PORT=3092 ./restart.sh
+
+# 只停止应用，保留数据库运行。
+BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
+
+# 停止本实例全部服务；数据库数据卷仍然保留。
+BENCHFORGE_WEB_PORT=3092 ./shutdown.sh
+```
+
+更新 main 时先保留自己的本地配置和数据，再停止应用、拉取代码、更新依赖：
+
+```bash
+BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
+git pull --ff-only origin main
+.venv/bin/python -m pip install -e '.[dsh,production,research]'
+npm ci --prefix integrations
+.venv/bin/python spatialforge_app.py setup
+BENCHFORGE_WEB_PORT=3092 ./start.sh
+```
+
+除非确实需要重新生成预设，否则不要再次运行 `dsh-setup` 覆盖自己的模型配置。
+需要重新生成时先备份 `config/benchforge.local.yml`，生成后合回自己的追加项。
+不要通过复制另一套实例的配置来升级，也不要删除 `.spatialforge/` 或数据库卷。
+
+### 10. 常见失败及处理
+
+| 现象 | 原因与处理 |
+| --- | --- |
+| `Git 2.26 or newer is required` | 当前终端仍使用旧 Git。执行第 0 节环境激活与版本检查，确认 `git --version` 后重跑第 4 节。不要跳过官方安装检查。 |
+| `Python 3.10+ is required` / `SpatialForge requires Python 3.11` | 选择了旧系统 Python；按第 0 节准备 3.11，再创建 `.venv`。 |
+| `venv` / `ensurepip` 缺失 | Conda 路线包含所需组件；系统 Python 路线需安装对应版本的 venv 包，例如 `python3.11-venv`。 |
+| Docker `permission denied` / daemon 不可用 | 完成 Docker 官方安装后配置并重新登录，先让 `docker info` 成功。 |
+| 端口占用 | 新部署在初始化前换空闲端口和独立 `--project`；不要让启动脚本误认其他实例的监听端口。 |
+| `spatialforge-tools` 的配置文件 `ENOENT` | 先执行第 3 节，再执行第 4 节；文件搬过位置时，修改生成预设里 `serviceConfig` 的实际路径。重跑 `init` 只补齐默认缺失客户端。 |
+| `Cannot find module '@deepseek-ai/...'` | 在仓库执行 `npm ci --prefix integrations`，然后重启当前实例。 |
+| token 无效 / `dsh web authentication required` | 使用当前进程的新 URL；通过隧道时只替换端口，保留完整 token。 |
+| 端口已监听却没有新 token | 查看 `.benchforge/logs/dsh.log` 的真实错误；并非所有情况都是 inotify 问题。 |
+| 明确出现 `ENOSPC: file watchers` | 主机文件监视器配额耗尽；可请管理员提高 inotify 配额，或按下方方法在当前实例关闭配置热更新。 |
+| 页面无可用模型 / 模型请求失败 | 完成第 8 节，核对提供方、模型 ID、地址与凭据；页面能打开不代表模型已配置。 |
+
+关闭当前实例的配置热更新：在 **`config/benchforge.local.yml` 的顶层列表末尾**追加
+以下条目，然后执行第 9 节的重启命令。这是可选修复，生成预设时不会自动追加：
+
+```yaml
+- id: hmr
+  disabled: true
+```
+
+追加前可备份：`cp config/benchforge.local.yml config/benchforge.local.yml.bak-before-hmr`。
+禁用后，每次修改配置需重启；重新生成预设也需重新保留这条覆盖。
+
+## 已有后端时的连接方式
+
+这条路线适用于**明确要复用既有服务**的人，独立部署请使用上面的第 0–7 节。
+复制示例配置，填写自己的真实服务地址与 operator token，再验证连接和生成预设：
+
+```bash
+cp config/spatialforge.example.json config/spatialforge.local.json
+# 用编辑器填写 config/spatialforge.local.json 后继续。
+.venv/bin/python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+.venv/bin/python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+.venv/bin/python benchforge.py start --port 3092 --no-open
+```
+
+这条路线不使用 `start.sh` 创建另一数据库。已构建 DSH 可额外传入
+`--dsh-root /path/to/deepseek-harness`；新手独立安装无需此选项。
+
+## 开发检查与进一步文档
+
+以下是开发者修改代码后的检查，不是部署者必须跑完的安装步骤：
+
+```bash
+.venv/bin/python -m unittest discover -s integrations/tests -v
+.venv/bin/python integrations/spatialforge/smoke.py
+```
 
 - [Pipeline catalog and evidence requirements](docs/pipelines.md)
 - [Spatial learning, training and monitoring](docs/spatial-learning.md)

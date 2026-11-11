@@ -55,8 +55,10 @@ def main():
     init = sub.add_parser('init', help='Create private config and credentials once')
     init.add_argument('--port', type=int, default=3841)
     init.add_argument('--db-port', type=int, default=55432)
+    init.add_argument('--project', default='benchforgev2-spatialforge',
+                      help='Unique database project name, saved in config/database.env')
     db = sub.add_parser('db', help='Start this repository\'s PostgreSQL container')
-    db.add_argument('--project', default='benchforgev2-spatialforge')
+    db.add_argument('--project', help='Override the project saved in config/database.env')
     sub.add_parser('serve')
     sub.add_parser('status')
     dsh = sub.add_parser('dsh-setup')
@@ -94,7 +96,8 @@ def main():
                       task_root=str(STATE / 'artifacts/operator_workspaces'))
         write(SERVER, config)
         env = CONFIG / 'database.env'
-        env.write_text(f'POSTGRES_PASSWORD={password}\nPOSTGRES_PORT={args.db_port}\n', encoding='utf8')
+        env.write_text(f'POSTGRES_PASSWORD={password}\nPOSTGRES_PORT={args.db_port}\n'
+                       f'COMPOSE_PROJECT_NAME={args.project}\n', encoding='utf8')
         if os.name != 'nt':
             env.chmod(0o600)
         ensure_client_config(config)
@@ -106,7 +109,8 @@ def main():
         write(CONFIG / 'worker.local.json', worker)
         print(f'Configuration: {SERVER}; desktop configuration: {CONFIG / "worker.local.json"}')
     elif args.command == 'db':
-        subprocess.run(['docker', 'compose', '-p', args.project, '--env-file', str(CONFIG / 'database.env'),
+        project = ['-p', args.project] if args.project else []
+        subprocess.run(['docker', 'compose', *project, '--env-file', str(CONFIG / 'database.env'),
                         '-f', str(ROOT / 'components/spatialforge/deploy/compose.yml'), 'up', '-d', '--wait'], check=True)
     elif args.command == 'serve':
         subprocess.run([str(PYTHON), '-m', 'spatialforge.service', '--config', str(SERVER)], check=True)

@@ -42,7 +42,12 @@ wait_port() {
 }
 
 # DSH 绑定端口后还要等 Loader 装载完成才打印 token；卡住时 token 永远不出现。
-token_line_count() { grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true; }
+token_line_count() {
+  local count
+  count="$(grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true)"
+  # The log does not exist on the first installation.
+  printf '%s\n' "${count:-0}"
+}
 
 wait_new_token() {
   local before="$1" timeout="$2" i

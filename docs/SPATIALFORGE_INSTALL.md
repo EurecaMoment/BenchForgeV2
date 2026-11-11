@@ -2,7 +2,9 @@
 
 服务、持久任务队列、生成工具、DSH 插件与桌面执行器均在本仓库；FIT 当前
 生产使用的 A800 dispatcher 和远端 Isaac 安装不在本仓库。
-服务机运行 Linux/Python 3.11、Docker Compose 和 Node.js 22.19+；Windows 桌面运行
+先按 [根 README 的独立部署步骤](../README.md#独立部署指令linux) 准备运行环境、
+安装服务并验收页面和目录接口。本页继续说明自托管 worker、模型和实际采集。
+服务机运行 Linux/Python 3.11、Git 2.26+、Docker Compose 和 Node.js 22.19+；Windows 桌面运行
 Isaac Sim。DSH 与服务放在同一 Linux 用户下，便于直接查看产物。
 本指南描述自托管桌面部署，桌面只运行一个 worker/Isaac 实例。FIT 当前生产链路
 是 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
@@ -16,7 +18,7 @@ git clone https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 sudo apt-get install bubblewrap
 python3.11 spatialforge_app.py setup
-python3.11 spatialforge_app.py init
+python3.11 spatialforge_app.py init --project benchforge-spatialforge
 python3.11 spatialforge_app.py db
 python3.11 spatialforge_app.py serve
 ```
@@ -25,7 +27,9 @@ Python 需要 venv/ensurepip。Debian/Ubuntu 可安装与所用 Python 版本匹
 `setup` 在 `.spatialforge/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
 `init` 生成随机凭据及配置，重复运行保留已有文件。PostgreSQL 只绑定本机 55432，
 API 只绑定本机 3841；端口冲突时首次初始化使用 `--port 3856 --db-port 55546`。
-数据库使用独立 Compose 项目和卷。不要让第二个服务连接已有生产数据库。
+数据库项目名保存在 `config/database.env` 的 `COMPOSE_PROJECT_NAME`。
+同机不同部署应选择不同 `--project` 和端口，启动、停止均读取该文件。
+已完成根 README 安装的环境应继续使用已生成的配置，不要重新复制其他实例的配置。
 
 配置在 `config/spatialforge-server.local.json`。可改为现有 **专用 PostgreSQL** 的
 `database_url`；SQLite 不支持本服务的任务和设备锁。`gpu_candidates` 是获准使用的
@@ -146,13 +150,14 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 在服务机的新终端运行：
 
 ```bash
+npm ci --prefix integrations
 python3.11 spatialforge_app.py dsh-setup
 python3.11 spatialforge_app.py dsh-start
 ```
 
 已有构建的 DSH 可用 `dsh-setup --dsh-root /path/to/deepseek-harness`。
 包装入口自动把本服务的 operator token 传给 DSH，无需复制进插件源码。
-在网页配置生产模型，创建 **BenchForgeV2** 会话。例如：
+在网页配置生产模型，创建 **BenchForgev2** 会话。例如：
 
 > 请先生成一张全新的写实书房参考图，再创建尽量还原布局、材质和自然光的三维场景。
 > 加入一个可真实推动的桌面物件，提供多视角渲染、交互演示和可加载的场景文件。

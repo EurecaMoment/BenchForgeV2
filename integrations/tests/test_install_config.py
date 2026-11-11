@@ -50,7 +50,8 @@ class InstallConfigTest(unittest.TestCase):
                   patch.object(spatialforge_app, 'CONFIG', config_dir),
                   patch.object(spatialforge_app, 'STATE', root / '.spatialforge'),
                   patch.object(spatialforge_app, 'SERVER', server),
-                  patch.object(sys, 'argv', ['spatialforge_app.py', 'init', '--port', '3857', '--db-port', '55547']),
+                  patch.object(sys, 'argv', ['spatialforge_app.py', 'init', '--port', '3857', '--db-port', '55547',
+                                           '--project', 'benchforge-install-test']),
                   contextlib.redirect_stdout(io.StringIO())):
                 spatialforge_app.main()
             saved = json.loads(server.read_text(encoding='utf-8'))
@@ -58,6 +59,8 @@ class InstallConfigTest(unittest.TestCase):
             self.assertEqual(client['service_url'], 'http://127.0.0.1:3857')
             self.assertEqual(client['operator_token'], saved['operator_token'])
             self.assertIn(':55547/', saved['database_url'])
+            database_env = (config_dir / 'database.env').read_text(encoding='utf-8')
+            self.assertIn('COMPOSE_PROJECT_NAME=benchforge-install-test\n', database_env)
 
     def test_setup_rejects_missing_client_before_installation(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -69,7 +72,7 @@ class InstallConfigTest(unittest.TestCase):
                   self.assertRaises(SystemExit) as failure):
                 benchforge.main()
             self.assertEqual(failure.exception.code, 2)
-            self.assertIn(str(missing), errors.getvalue())
+            self.assertIn(str(missing.resolve()), errors.getvalue())
             run.assert_not_called()
             self.assertFalse((root / '.benchforge').exists())
 
