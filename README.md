@@ -76,7 +76,7 @@ Near-term work prioritizes clear contracts, configuration ownership, resumable e
 Python 3.10+ can run an offline example without a model API, GPU, or simulator:
 
 ```bash
-git clone --branch spatialforge-cleanup https://github.com/EurecaMoment/BenchForgeV2.git
+git -c http.version=HTTP/1.1 clone --branch spatialforge-cleanup https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 python benchforge.py demo
 ```
@@ -117,7 +117,7 @@ Run the [portable verification steps](docs/VALIDATION.md) locally. CI covers Win
 | Node.js / npm | Node 22.19+ 或 24+；建议 24 LTS | `node --version`、`npm --version` |
 | Docker Engine / Compose | 当前用户可使用 Docker；Compose v2 支持 `--wait` | `docker info`、`docker compose version` |
 | 系统工具 | `bash`、`ss`、`curl`、`setsid`、C/C++ 编译工具 | `command -v bash ss curl setsid cc make` |
-| bubblewrap | 执行隔离任务代码时使用；基础页面验收不调用它 | `bwrap --version` |
+| bubblewrap | 执行隔离任务代码时使用；基础页面验收不调用它 | `command -v bwrap` |
 
 本文统一用 `python3.11` 创建环境；已经安装 3.12/3.13 时，只需把下面创建环境的
 `python3.11` 换成该命令，后续都使用 `.venv/bin/python`。系统的 `python3` 可能仍是
@@ -185,13 +185,16 @@ docker compose version
 
 ```bash
 cd "$HOME"
-git clone --branch spatialforge-cleanup --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-cleanup-3092
+git -c http.version=HTTP/1.1 clone --branch spatialforge-cleanup --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-cleanup-3092
 cd benchforge-cleanup-3092
 git branch --show-current
 ```
 
 最后一行应输出 `spatialforge-cleanup`。之后所有服务器命令都在这个目录执行。
 不要复制旧部署的 `config/`、`.benchforge/` 或 `.deployment/`。
+`-c http.version=HTTP/1.1` 仅对本次克隆生效，用于减少部分网络链路上的 GitHub
+连接中断，不修改全局 Git 配置。若下载仍失败，保留错误并检查网络；重试前确认目标
+目录尚未创建，已有目录则换新名称，不要删除已有部署。
 
 ### 2. 安装 Python 后端与 Node 插件
 
@@ -262,6 +265,17 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 单独执行 `benchforge.py setup` 只安装第一代 `BenchForge`，不会接入另外两个 BenchForgeV2 预设。
 重新生成预设会覆盖手工追加的模型配置，已有修改时先备份本地 YAML。
 DSH 本身默认通过锁定的 pnpm 版本安装；不需要复制另一部署的 DSH。
+
+如果此步骤在下载 DSH 时出现 `unexpected eof`、`SSL_read` 或 `schannel` 连接错误，
+先确认网络恢复。使用 Git 2.31+（上方推荐的 Conda 环境满足要求），可按下面的方式
+重试，让本次安装调用的 Git 也使用 HTTP/1.1；这些环境变量只在该命令中生效：
+
+```bash
+GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.version GIT_CONFIG_VALUE_0=HTTP/1.1 \
+  .venv/bin/python spatialforge_app.py dsh-setup
+```
+
+该命令仍从锁定的公开仓库版本安装，不需要手工复制 DSH 文件或改全局配置。
 
 ### 5. 启动本实例
 

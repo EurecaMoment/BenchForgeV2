@@ -14,7 +14,7 @@ Isaac Sim 6.2.0/A800`；不要把本指南的 Windows worker 说明当作 FIT �
 ## 1. 安装服务和独立数据库
 
 ```bash
-git clone --branch spatialforge-cleanup https://github.com/EurecaMoment/BenchForgeV2.git
+git -c http.version=HTTP/1.1 clone --branch spatialforge-cleanup https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 sudo apt-get install bubblewrap
 python3.11 spatialforge_app.py setup
