@@ -99,13 +99,32 @@ python examples/spatial_learning_demo.py --workspace runs/cpu-training
 source "$HOME/miniconda3/etc/profile.d/conda.sh"
 # Miniforge 用户改用：source "$HOME/miniforge3/etc/profile.d/conda.sh"
 
-conda create -n benchforge-main --override-channels -c conda-forge python=3.11 nodejs=24 'git>=2.26' -y
+conda create -n benchforge-main --override-channels -c conda-forge \
+  --repodata-fn current_repodata.json python=3.11 nodejs=24 'git>=2.26' -y
 conda activate benchforge-main
 git --version
 python3.11 --version
 node --version
 npm --version
 ```
+
+如果长时间停在 `Collecting package metadata`，先按 Ctrl+C 结束这次创建，再用
+[TUNA 的 conda-forge 镜像](https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/) 重试。
+下列命令只为本次创建选择镜像，不修改其他项目的全局 Conda 配置：
+
+```bash
+conda create -n benchforge-main --override-channels \
+  -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge \
+  --repodata-fn current_repodata.json python=3.11 nodejs=24 'git>=2.26' -y
+conda activate benchforge-main
+git --version
+python3.11 --version
+node --version
+npm --version
+```
+
+若提示 `benchforge-main` 已存在，先激活并检查版本；已有环境符合要求时直接使用，
+不符合时为新环境换一个名字，保留旧环境。
 
 没有 Conda 可先按 [Miniforge 官方安装说明](https://github.com/conda-forge/miniforge#install)
 安装，然后执行上述创建环境的命令；已有符合版本要求的工具可跳过创建环境。
