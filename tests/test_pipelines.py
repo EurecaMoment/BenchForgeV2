@@ -38,11 +38,12 @@ class PipelineTests(unittest.TestCase):
             dataset = Path(result['outputs']['questions']['dataset'])
             public, private = rows(dataset/'questions.jsonl'), rows(dataset/'authority.jsonl')
             self.assertEqual(len(public), 51)
+            templates = {template['id']: template for template in all_templates()}
             for question, truth in zip(public, private):
                 self.assertNotIn('answer', question)
                 self.assertNotIn('private_scene_parameters', question)
                 self.assertEqual(oracle(truth['template_id'], read(dataset/truth['source'])), truth['answer'])
-                self.assertTrue(score(truth, truth['answer'])['success'])
+                self.assertTrue(score(truth, truth['answer'], templates[truth['template_id']])['success'])
                 for media in question['media']:
                     self.assertTrue((dataset/media).is_file())
             with zipfile.ZipFile(result['outputs']['package']['public_bundle']) as bundle:
@@ -64,23 +65,25 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(oracle('C01-T02', world)['value'], 3)
         self.assertEqual(oracle('C43-T03', {'segments': [{'speed': 2, 'duration': 3, 'direction': 'forward'}, {'speed': 2, 'duration': 1, 'direction': 'backward'}]})['value'], 8)
         self.assertAlmostEqual(oracle('C44-T01', {'height': 4.9, 'gravity': 9.8})['value'], 1)
-        self.assertFalse(score({'answer': {'value': 5, 'unit': 'm'}, 'tolerance': {'absolute': .02, 'relative': .05}}, {'value': 5, 'unit': 'cm'})['success'])
+        template = next(template for template in all_templates() if template['id'] == 'C01-T01')
+        self.assertFalse(score(
+            {'answer': {'value': 5, 'unit': 'm'}, 'tolerance': {'absolute': .02, 'relative': .05}},
+            {'value': 5, 'unit': 'cm'}, template,
+        )['success'])
 
     def test_unimplemented_interactive_never_substituted(self):
         with tempfile.TemporaryDirectory() as tmp:
             runtime = Runtime(tmp)
             planned = runtime.call('pipeline_plan', {'template_ids': ['C81-T01'], 'target_items': 2})
-            result = runtime.call('pipeline_run', {'plan': planned['plan']})
-            self.assertEqual(result['state'], 'needs_evidence')
-            self.assertEqual(result['steps']['questions']['result']['accepted'], 0)
-            self.assertNotIn('package', result['steps'])
+            with self.assertRaisesRegex(ValueError, 'No deterministic scorer'):
+                runtime.call('pipeline_run', {'plan': planned['plan']})
             runtime.close()
 
     def test_source_binding_and_group_split_immutable(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root/'simulation.json'
-            write(source, {'result': {'label': 'visible'}, 'admission': {'template_id': 'C63-T01', 'protocol_id': 'D89-C63-v1', 'information_sufficient': True, 'oracle_executed': True, 'media_consistent': True, 'no_answer_leakage': True}})
+            write(source, {'result': {'value': False}, 'admission': {'template_id': 'C63-T01', 'protocol_id': 'D89-C63-v1', 'information_sufficient': True, 'oracle_executed': True, 'media_consistent': True, 'no_answer_leakage': True}})
             # This exercises exact source extraction; it is not a real-scene acceptance claim.
             template = next(t for t in all_templates() if t['id'] == 'C63-T01')
             record = {'template_id': template['id'], 'provenance': {'kind': 'program', 'path': str(source)}, 'parameters': {p['name']: 'explicit fixture' for p in template['parameters']}, 'provided_information': ['fixture'], 'media': [], 'answer_selector': '/result', 'admission_selector': '/admission', 'oracle_version': 'fixture-v1', 'reference_frame': 'fixture', 'scene_group_id': 'source-family-1'}
@@ -140,7 +143,10 @@ class PipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             runtime = Runtime(root)
-            planned = runtime.call('pipeline_plan', {'pipeline_id': 'scene.capture', 'inputs': {'scene_program_path': '/workspace/scene.json', 'service_config': 'fixture.json'}})
+            service_config = root/'service.json'
+            write(service_config, {'service_url': 'http://127.0.0.1:3841', 'operator_token': 'fixture',
+                                   'execution_mode': 'exploration'})
+            planned = runtime.call('pipeline_plan', {'pipeline_id': 'scene.capture', 'inputs': {'scene_program_path': '/workspace/scene.json', 'service_config': str(service_config)}})
             calls = []
             submission_keys = []
             ready = [False]
@@ -155,7 +161,7 @@ class PipelineTests(unittest.TestCase):
             final = run({'plan': planned['plan'], 'run': result['run'], '_workspace': str(root)}, root/'resume', client=client)
             self.assertEqual(final['state'], 'completed')
             self.assertEqual(calls.count('/capture'), 1)
-            combined = runtime.call('pipeline_plan', {'objective': '组合采集和数据生产', 'inputs': {}, 'steps': [{'id': 'capture', 'uses': 'pipeline', 'pipeline_id': 'scene.capture', 'arguments': {'scene_program_path': '/workspace/scene.json', 'service_config': 'fixture.json'}}, {'id': 'data', 'uses': 'pipeline', 'pipeline_id': 'data.capability', 'arguments': {'selections': [{'template_ids': ['C43-T01'], 'count': 2, 'reason': 'motion rule'}], 'seed': 5, 'split': 'train'}}]})
+            combined = runtime.call('pipeline_plan', {'objective': '组合采集和数据生产', 'inputs': {'service_config': str(service_config)}, 'steps': [{'id': 'capture', 'uses': 'pipeline', 'pipeline_id': 'scene.capture', 'arguments': {'scene_program_path': '/workspace/scene.json', 'service_config': str(service_config)}}, {'id': 'data', 'uses': 'pipeline', 'pipeline_id': 'data.capability', 'arguments': {'selections': [{'template_ids': ['C43-T01'], 'count': 2, 'reason': 'motion rule'}], 'seed': 5, 'split': 'train'}}]})
             composed = run({'plan': combined['plan'], '_workspace': str(root)}, root/'composed', client=client)
             self.assertEqual(composed['state'], 'completed')
             self.assertEqual(composed['outputs']['data']['outputs']['questions']['accepted'], 2)

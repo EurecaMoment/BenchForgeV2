@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import time
 import uuid
-from sqlalchemy import Table, Column, String, JSON, MetaData, select
+from sqlalchemy import Table, Column, String, JSON, MetaData, select, update as sql_update
 from benchclaw.metadata import Repository, runs, tasks, events, artifacts
 from benchclaw.store import write_json, safe_path
 from .contracts import normalize_native_asset_references
+from .run_context import RunContext
 
 
 def uid(prefix): return prefix+'_'+uuid.uuid4().hex[:16]
@@ -22,16 +23,45 @@ class Store:
         self.device=Table('spatialforge_devices',meta,Column('id',String,primary_key=True),Column('record',JSON))
         meta.create_all(self.repo.engine)
 
-    def submit(self,key,intents,workflow='scene',submitted_programs=None):
+    def submit(self,key,intents,workflow='scene',submitted_programs=None,context=None):
         from .scene_acceptance import policy_for, check_references, admit_program
-        policy=policy_for(self.root)
+        external_context = RunContext.from_request(context)
+        if external_context is None:
+            external_context = RunContext()
+        parent_runs = {
+            str(intent.get(key)).split('.')[0]
+            for intent in intents
+            for key in ('parent_task_id', 'refine_task_id', 'extend_task_id')
+            if intent.get(key)
+        }
+        if len(parent_runs) > 1:
+            raise ValueError('one run cannot have multiple parent runs')
+        inferred_parent = next(iter(parent_runs), None)
+        if inferred_parent and external_context.parent_run_id not in (None, inferred_parent):
+            raise ValueError('context.parent_run_id must match the scene lineage')
+        if inferred_parent and not external_context.parent_run_id:
+            external_context = RunContext(
+                workspace_id=external_context.workspace_id,
+                session_id=external_context.session_id,
+                parent_run_id=inferred_parent,
+            )
+        scene_modes = [intent.get('execution_mode') for intent in intents] if workflow == 'scene' else []
+        policies = {
+            mode: policy_for(self.root, mode)
+            for mode in set(scene_modes)
+        }
+        policy = next((value for value in policies.values() if value), {})
         if policy:
             check_references(intents,policy)
-            if workflow=='scene':
+            requires_scene_programs = workflow == 'scene' and any(
+                mode in (None, 'production') for mode in scene_modes
+            )
+            if requires_scene_programs:
                 if not submitted_programs or len(submitted_programs)!=len(intents) or any(not row for row in submitted_programs):
                     raise ValueError('Realistic production requires complete SceneProgram snapshots; no planner fallback')
                 for intent,submission in zip(intents,submitted_programs):
-                    admission=admit_program(self.root,submission['program'],allow_generated=True)
+                    mode = intent.get('execution_mode')
+                    admission=admit_program(self.root,submission['program'],allow_generated=True,execution_mode=mode)
                     lineage_task_id=intent.get('refine_task_id') or intent.get('extend_task_id')
                     if lineage_task_id:
                         from .scene_design import require_prior_brief
@@ -46,16 +76,25 @@ class Store:
             old=c.execute(select(self.keys).where(self.keys.c.id==key)).mappings().first()
             if old:
                 prior=c.execute(select(runs).where(runs.c.id==old['run_id'])).mappings().one()
-                if prior['plan'].get('intents')!=intents or prior['plan'].get('workflow','scene')!=workflow or prior['plan'].get('submitted_programs',[])!=submitted_programs:
+                prior_context = prior['plan'].get('context') or {}
+                context_matches = all(
+                    prior_context.get(field) == getattr(external_context, field)
+                    for field in ('workspace_id', 'session_id', 'parent_run_id')
+                )
+                if (prior['plan'].get('intents')!=intents or prior['plan'].get('workflow','scene')!=workflow
+                        or prior['plan'].get('submitted_programs',[])!=submitted_programs or not context_matches):
                     raise ValueError('request_key already belongs to a different request')
                 return old['run_id']
             rid=uid('sf')
+            run_context = external_context.for_run(rid)
             plan={'schema':'spatialforge.pipeline/v1','intents':intents,'workflow':workflow,'created':time.time(),'code_version':'0.3.0'}
             if submitted_programs:plan['submitted_programs']=submitted_programs
+            plan['context'] = run_context.to_dict()
             c.execute(runs.insert().values(id=rid,state='PENDING',plan=plan,created_at=str(time.time()),code_revision='spatialforge-0.2.0'))
             for i,intent in enumerate(intents):
                 tid=f'{rid}.scene{i}'
                 unit={'intent':intent,'index':i,'workflow':workflow,'phase':workflow if workflow in {'asset','dataset','layout','generation'} else 'plan','revision':0}
+                unit['run_context'] = run_context.to_dict()
                 if submitted_programs and submitted_programs[i] is not None:unit['submitted_program']=submitted_programs[i]
                 c.execute(tasks.insert().values(id=tid,run_id=rid,task_id=f'scene{i}',unit=unit,state='PENDING',attempt=0,ready_at=0))
             c.execute(self.keys.insert().values(id=key,run_id=rid))
@@ -66,20 +105,103 @@ class Store:
         if isinstance(rid,str) and '.scene' in rid and rid.startswith('sf_'):
             raise ValueError(f'Expected run_id, received task_id {rid}; use run_id={rid.split(".")[0]} for status/wait/inspect/cancel, and the full task_id for evidence/retry')
         value=self.repo.status(rid)
-        if value['plan'].get('schema')!='spatialforge.pipeline/v1': raise ValueError('not a SpatialForge run')
+        if value['plan'].get('schema')!='spatialforge.pipeline/v1': raise ValueError('not a BenchForgeV2 run')
         return value
 
-    def update(self,tid,**fields):
+    def update(self,tid,*,expected_state=None,expected_owner=None,**fields):
         with self.repo.transaction() as c:
             old=c.execute(select(tasks).where(tasks.c.id==tid).with_for_update()).mappings().one()
             run=c.execute(select(runs).where(runs.c.id==old['run_id'])).mappings().one()
+            if expected_state is not None and old['state'] != expected_state:
+                raise ValueError(f'task {tid} state changed before update')
+            if expected_owner is not None and old['lease_owner'] != expected_owner:
+                raise ValueError(f'task {tid} stage lease ownership changed')
             if run['state']=='CANCELED' and fields.get('state')!='CANCELED':return
             if fields.get('state')=='SUCCEEDED' and old['unit'].get('workflow','scene')=='scene':
                 from .scene_acceptance import require_accepted
-                require_accepted(self.root,self.directory(tid,old['unit']['revision']))
+                require_accepted(
+                    self.root,
+                    self.directory(tid,old['unit']['revision']),
+                    old['unit'].get('intent', {}).get('execution_mode'),
+                )
             if 'unit' in fields:fields['unit']={**old['unit'],**fields['unit']}
-            c.execute(tasks.update().where(tasks.c.id==tid).values(**fields))
+            if fields.get('state') not in (None, 'RUNNING'):
+                fields.setdefault('lease_owner', None)
+                fields.setdefault('lease_expires_at', None)
+            conditions = [tasks.c.id == tid, tasks.c.state == old['state']]
+            if old['lease_owner'] is None:
+                conditions.append(tasks.c.lease_owner.is_(None))
+            else:
+                conditions.append(tasks.c.lease_owner == old['lease_owner'])
+            updated = c.execute(tasks.update().where(*conditions).values(**fields))
+            if updated.rowcount != 1:
+                raise ValueError(f'task {tid} changed before update')
             self.repo.event(c,old['run_id'],tid,'spatialforge.transition',{'state':fields.get('state',old['state']),'phase':fields.get('unit',old['unit']).get('phase')})
+
+    def claim_stage(self, tid, owner, lease_seconds=60):
+        """Atomically claim or recover one non-capture stage for a single owner."""
+        now = time.time()
+        with self.repo.transaction() as c:
+            task = c.execute(select(tasks).where(tasks.c.id == tid).with_for_update()).mappings().first()
+            if not task or task['unit'].get('phase') == 'capture':
+                return None
+            run = c.execute(select(runs).where(runs.c.id == task['run_id']).with_for_update()).mappings().one()
+            if run['state'] == 'CANCELED' or (task.get('ready_at') or 0) > now:
+                return None
+            available = task['state'] in {'PENDING', 'READY'}
+            expired = task['state'] == 'RUNNING' and (
+                task.get('lease_expires_at') is None or task['lease_expires_at'] <= now
+            )
+            if not (available or expired):
+                return None
+            unit = dict(task['unit'])
+            base_context = RunContext.from_record(run['plan'].get('context')) or RunContext()
+            if not base_context.run_id:
+                base_context = base_context.for_run(run['id'])
+            unit['run_context'] = base_context.for_stage(tid, owner).to_dict()
+            conditions = [tasks.c.id == tid, tasks.c.state == task['state']]
+            if task.get('lease_owner') is None:
+                conditions.append(tasks.c.lease_owner.is_(None))
+            else:
+                conditions.append(tasks.c.lease_owner == task['lease_owner'])
+            if expired and task.get('lease_expires_at') is not None:
+                conditions.append(tasks.c.lease_expires_at <= now)
+            result = c.execute(
+                tasks.update()
+                .where(*conditions)
+                .values(
+                    state='RUNNING',
+                    unit=unit,
+                    lease_owner=owner,
+                    lease_expires_at=now + lease_seconds,
+                    failure=None,
+                )
+            )
+            if result.rowcount != 1:
+                return None
+            claimed = c.execute(select(tasks).where(tasks.c.id == tid)).mappings().one()
+            self.repo.event(
+                c,
+                task['run_id'],
+                tid,
+                'spatialforge.stage_claimed',
+                {'phase': unit.get('phase'), 'attempt_id': owner},
+            )
+            return dict(claimed)
+
+    def renew_stage(self, tid, owner, lease_seconds=60):
+        now = time.time()
+        with self.repo.transaction() as c:
+            result = c.execute(
+                tasks.update()
+                .where(
+                    tasks.c.id == tid,
+                    tasks.c.state == 'RUNNING',
+                    tasks.c.lease_owner == owner,
+                )
+                .values(lease_expires_at=now + lease_seconds)
+            )
+            return result.rowcount == 1
 
     def retry(self,tid,feedback=None,capture_mode='auto'):
         """Retain old attempts and retry the failed stage; never mutate successful products."""
@@ -98,6 +220,7 @@ class Store:
             if policy_for(self.root) and task['unit'].get('workflow','scene')=='scene':
                 from .scene_acceptance import admit_program
                 from .scene_design import capture_retry_directory,review_retry_directory
+                mode = task['unit'].get('intent', {}).get('execution_mode')
                 capture_failure=(task['unit']['phase']=='capture' and
                     (task.get('failure') or {}).get('stage') in {'capture_transport','capture_execution'} and feedback is None)
                 review_failure=(task['unit']['phase']=='review' and feedback is None and
@@ -106,7 +229,7 @@ class Store:
                     raise ValueError('Only review transport or capture execution/transport failures can retry; repair scene quality through capture/refine')
                 directory=(capture_retry_directory(self.root,tid,task['unit']['revision']) if capture_failure
                     else review_retry_directory(self.root,tid))
-                admit_program(self.root,json.loads((directory/'program.json').read_text()))
+                admit_program(self.root,json.loads((directory/'program.json').read_text()),execution_mode=mode)
                 if review_failure and task['unit'].get('review_transport_retries',0)>=2:
                     marker=self.root/'model_transport_recovery.json'
                     recovery=json.loads(marker.read_text()) if marker.is_file() and marker.stat().st_size<4096 else {}
@@ -191,10 +314,21 @@ class Store:
                 return self._job(task,record['token'])
             for task in self.all_work(c):
                 if task['state']=='READY' and task['unit']['phase']=='capture':
-                    unit=dict(task['unit']);token=unit.pop('resume_capture_token',None) or uid('attempt'); record={'active':True,'worker':worker,'task_id':task['id'],'token':token,'time':time.time()}
+                    unit=dict(task['unit'])
+                    token=unit.pop('resume_capture_token',None) or uid('attempt')
+                    run=c.execute(select(runs).where(runs.c.id==task['run_id'])).mappings().one()
+                    base_context=RunContext.from_record(run['plan'].get('context')) or RunContext()
+                    if not base_context.run_id:
+                        base_context=base_context.for_run(run['id'])
+                    unit['run_context']=base_context.for_stage(task['id'],token).to_dict()
+                    record={'active':True,'worker':worker,'task_id':task['id'],'token':token,'time':time.time()}
                     if device:c.execute(self.device.update().where(self.device.c.id=='desktop-isaac').values(record=record))
                     else:c.execute(self.device.insert().values(id='desktop-isaac',record=record))
-                    c.execute(tasks.update().where(tasks.c.id==task['id']).values(state='RUNNING',unit=unit,lease_owner=token,lease_expires_at=time.time()+1800))
+                    claimed=c.execute(tasks.update().where(
+                        tasks.c.id==task['id'],tasks.c.state=='READY',tasks.c.lease_owner.is_(None)
+                    ).values(state='RUNNING',unit=unit,lease_owner=token,lease_expires_at=time.time()+1800))
+                    if claimed.rowcount != 1:
+                        raise ValueError('capture task ownership changed before claim')
                     self.repo.event(c,task['run_id'],task['id'],'spatialforge.desktop_claim',{'token':token})
                     return self._job(task,token)
             return {'waiting':'no_jobs'}
@@ -254,6 +388,11 @@ class Store:
             if progress:
                 if progress.get('stage') not in {'capture','upload','upload_retry','capture_transport_failed'}:raise ValueError('invalid desktop progress stage')
                 record_progress(self.directory(task['id'],job['revision']),**progress)
+            c.execute(tasks.update().where(
+                tasks.c.id==task['id'],
+                tasks.c.state=='RUNNING',
+                tasks.c.lease_owner==job['token'],
+            ).values(lease_expires_at=time.time()+1800))
             return {'cancel':canceled,'active':True}
 
     def commit_capture(self,job,upload):
@@ -279,7 +418,11 @@ class Store:
                     raise ValueError('immutable capture already exists')
             else:upload.rename(dest)
             unit={**task['unit'],'phase':'review','capture_token':job['token']}
-            c.execute(tasks.update().where(tasks.c.id==task['id']).values(state='READY',unit=unit,lease_owner=None))
+            c.execute(tasks.update().where(
+                tasks.c.id==task['id'],
+                tasks.c.state=='RUNNING',
+                tasks.c.lease_owner==job['token'],
+            ).values(state='READY',unit=unit,lease_owner=None,lease_expires_at=None))
             c.execute(self.device.update().where(self.device.c.id=='desktop-isaac').values(record={'active':False}))
             self.repo.event(c,task['run_id'],task['id'],'spatialforge.capture_committed',{'report':report})
             return {'committed':True}

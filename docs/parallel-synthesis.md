@@ -1,6 +1,6 @@
 # Parallel production in the evaluation workbench
 
-SpatialForge delegates independent scene design, annotation adapters and question
+BenchForgeV2 delegates independent scene design, annotation adapters and question
 generator preparation to fresh native DSH subagents. Three simultaneous workers
 is the default batch size, not a global host limit. Each worker receives the
 frozen plan and its own output directory. This avoids carrying the parent's long

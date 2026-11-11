@@ -1,6 +1,11 @@
 import json
+import csv
+import io
+import os
+import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import zipfile
 import sys
@@ -61,6 +66,22 @@ class RuntimeTests(unittest.TestCase):
     def test_pointer_escapes_and_empty_key(self):
         self.assertEqual(select({'a/b':{'':2}},'/a~1b/'),2)
 
+    def test_legacy_and_shared_json_readers_accept_utf8_bom(self):
+        from benchforge_core.artifacts import read as legacy_read, rows as legacy_rows
+        from benchforge_core.artifact_io import read_json, read_jsonl
+
+        json_path = self.root / 'bom.json'
+        jsonl_path = self.root / 'bom.jsonl'
+        json_path.write_bytes(b'\xef\xbb\xbf{"answer":"ok"}')
+        jsonl_path.write_bytes(b'\xef\xbb\xbf{"item_id":"one"}\n')
+
+        expected_json = {'answer': 'ok'}
+        expected_rows = [{'item_id': 'one'}]
+        self.assertEqual(read_json(json_path), expected_json)
+        self.assertEqual(legacy_read(json_path), expected_json)
+        self.assertEqual(read_jsonl(jsonl_path), expected_rows)
+        self.assertEqual(legacy_rows(jsonl_path), expected_rows)
+
     def test_range_order_can_differ_from_axial_depth(self):
         camera=pinhole_camera(640,480)
         self.assertEqual(axial_depth_to_range(2,camera['cx'],camera['cy'],camera),2)
@@ -75,6 +96,40 @@ class RuntimeTests(unittest.TestCase):
         result=self.runtime.call('habitat',{'argv':['--help']})
         self.assertIn('--scenes',result['help'])
         self.assertFalse(result['capture_started'])
+
+    def test_collector_timeout_reaps_child_process(self):
+        script = self.root / 'spawns_child.py'
+        child_pid_path = self.root / 'child.pid'
+        script.write_text(
+            'import subprocess, sys, time\n'
+            f'child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])\n'
+            f'open({str(child_pid_path)!r}, "w").write(str(child.pid))\n'
+            'time.sleep(60)\n',
+            encoding='utf-8',
+        )
+        self.runtime.config = {
+            'collectors': {'isaac': {'command': [sys.executable], 'script': str(script)}}
+        }
+
+        with self.assertRaises(subprocess.TimeoutExpired):
+            self.runtime.call('isaac', {'timeout_seconds': 0.5})
+
+        child_pid = int(child_pid_path.read_text(encoding='utf-8'))
+        for _ in range(30):
+            if os.name == 'nt':
+                result = subprocess.run(
+                    ['tasklist', '/FI', f'PID eq {child_pid}', '/FO', 'CSV', '/NH'],
+                    capture_output=True, text=True, check=False,
+                )
+                rows = csv.reader(io.StringIO(result.stdout))
+                alive = any(len(row) > 1 and row[1].strip() == str(child_pid) for row in rows)
+            else:
+                stat = Path(f'/proc/{child_pid}/stat')
+                alive = stat.exists() and stat.read_text().split()[2] != 'Z'
+            if not alive:
+                break
+            time.sleep(0.1)
+        self.assertFalse(alive, f'collector child process {child_pid} survived timeout cleanup')
 
     def test_depth_array_stays_private(self):
         evidence=self.evidence()

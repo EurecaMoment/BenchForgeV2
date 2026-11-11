@@ -98,7 +98,7 @@ export function createDeliveryReview({ api, createMessage, visuals = async () =>
       reference: task.unit.intent.layout,
       capture_directory: task.result.directory + '/capture',
     };
-    const text = `Review the requested delivery before finishing this SpatialForge turn.
+    const text = `Review the requested delivery before finishing this BenchForgeV2 turn.
 Latest capture receipt: ${JSON.stringify(facts)}
 capture_scope records the outputs selected for this run. Omitted views and a skipped scene export are not new delivery evidence; reuse earlier evidence where it still applies and request additional outputs only as needed.
 SUCCEEDED here means capture completed. scene_quality_assessed=false means the capture service did not assess scene quality; it does not invalidate a visual review you already performed.

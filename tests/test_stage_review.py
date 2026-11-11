@@ -62,10 +62,13 @@ class StageReviewTests(unittest.TestCase):
     def test_nested_captures_share_one_completed_scene_review_and_resume(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            service_config = root/'service.json'
+            write(service_config, {'service_url': 'http://127.0.0.1:3841', 'operator_token': 'fixture',
+                                   'execution_mode': 'exploration'})
             plan = root/'plan.json'
             write(plan, {'inputs': {}, 'steps': [
                 {'id': name, 'uses': 'pipeline', 'pipeline_id': 'scene.capture',
-                 'arguments': {'scene_program_path': name+'.json', 'service_config': 'fixture.json'}}
+                 'arguments': {'scene_program_path': name+'.json', 'service_config': str(service_config)}}
                 for name in ('kitchen', 'office', 'bedroom')]})
             args = {'plan': str(plan), 'run': str(root/'run'), '_workspace': tmp,
                     '_dsh_context': {'session_id': 'session-one'}}
@@ -166,10 +169,13 @@ class StageReviewTests(unittest.TestCase):
     def test_edit_during_nested_submission_stops_old_plan_before_observation(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
+            service_config = root/'service.json'
+            write(service_config, {'service_url': 'http://127.0.0.1:3841', 'operator_token': 'fixture',
+                                   'execution_mode': 'exploration'})
             plan = root/'plan.json'
             write(plan, {'inputs': {}, 'steps': [
                 {'id': 'scene', 'uses': 'pipeline', 'pipeline_id': 'scene.capture',
-                 'arguments': {'scene_program_path': 'scene.json', 'service_config': 'fixture.json'}}]})
+                 'arguments': {'scene_program_path': 'scene.json', 'service_config': str(service_config)}}]})
             args = {'plan': str(plan), 'run': str(root/'run'), '_workspace': tmp,
                     '_dsh_context': {'session_id': 'session-one'}}
             alias_parent = root/'plan-parent'

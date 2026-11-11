@@ -12,12 +12,16 @@ from ..runtime import read, write, rows, jsonl, select
 from .catalog import all_templates, document
 from .adapters import BUILTINS, generate
 from .question_writing import builtin_spec, contract, question_text, validate_spec
+from .answer_contracts import validate_answer, validate_contract_declaration
 from .scene_policy import load_policy, check_source, check_evidence
 
 PARTITIONS = ('train', 'dev', 'test', 'sealed')
 PRIVATE_ASSET_FIELDS = {'answer', 'answers', 'oracle', 'oracle_detail', 'ground_truth', 'gold',
                         'authority', 'private', 'objects_gt', 'object_gt', 'point_world',
                         'settled_center_m', 'size_xyz_m', 'world_transform'}
+PUBLIC_IMAGE_SUFFIXES = {'.bmp', '.jpeg', '.jpg', '.png', '.tif', '.tiff', '.webp'}
+PUBLIC_VIDEO_SUFFIXES = {'.avi', '.m4v', '.mkv', '.mov', '.mp4', '.webm'}
+PRIVATE_PATH_PARTS = {'answer', 'answers', 'authority', 'gold', 'oracle', 'private', 'sft'}
 
 
 def public_asset_references(value):
@@ -130,6 +134,59 @@ def packaged_public_assets(questions, root):
     return sorted(assets)
 
 
+def validate_public_media(files, private_source=None):
+    """Accept only decodable observations, never arbitrary source files."""
+    private_source = Path(private_source).resolve() if private_source else None
+    validated = []
+    for value in files:
+        file = Path(value).resolve()
+        if file.suffix.lower() not in PUBLIC_IMAGE_SUFFIXES | PUBLIC_VIDEO_SUFFIXES:
+            raise ValueError('Public media must be a supported image or video, not a private source file')
+        if not file.is_file() or not file.stat().st_size:
+            raise ValueError('Missing or empty declared public media: ' + str(file))
+        if file == private_source:
+            raise ValueError('Public media must be a supported image or video, not a private source file')
+        if file.name.casefold() in {'answer.png', 'authority.png', 'gold.png', 'oracle.png'}:
+            raise ValueError('Private answer imagery cannot be published as observation media')
+        if PRIVATE_PATH_PARTS & {part.casefold() for part in file.parts[:-1]}:
+            raise ValueError('Media under a private answer or authority directory cannot be published')
+
+        if file.suffix.lower() in PUBLIC_IMAGE_SUFFIXES:
+            try:
+                from PIL import Image
+                with Image.open(file) as image:
+                    image.verify()
+            except Exception as exc:
+                raise ValueError(f'Public image cannot be decoded: {file}') from exc
+        else:
+            with file.open('rb') as stream:
+                header = stream.read(16)
+            suffix = file.suffix.lower()
+            valid = (
+                (suffix in {'.mp4', '.m4v', '.mov'} and len(header) >= 8 and header[4:8] == b'ftyp') or
+                (suffix in {'.webm', '.mkv'} and header.startswith(b'\x1aE\xdf\xa3')) or
+                (suffix == '.avi' and len(header) >= 12 and header[:4] == b'RIFF' and header[8:12] == b'AVI ')
+            )
+            if not valid:
+                raise ValueError(f'Public video has an invalid container signature: {file}')
+        validated.append(file)
+    return validated
+
+
+def packaged_public_media(questions, root):
+    media_root = (root / 'media').resolve()
+    files = set()
+    for row in questions:
+        for reference in row.get('media', []):
+            if (not isinstance(reference, str) or Path(reference).is_absolute() or
+                    not reference.startswith('media/')):
+                raise ValueError('Only declared relative public media can enter the public bundle')
+            file = (root / reference).resolve()
+            file.relative_to(media_root)
+            files.add(file)
+    return validate_public_media(sorted(files))
+
+
 def partition_counts(items):
     counts = Counter()
     for item in items:
@@ -200,18 +257,23 @@ def produce(args, directory, config=None):
     counts = counts_for(args['selections'])
     if set(counts)-set(templates):
         raise ValueError('Unknown template IDs; choose exact IDs from pipeline_catalog')
+    answer_contracts = {
+        template_id: validate_contract_declaration(templates[template_id])
+        for template_id in counts
+    }
     root = Path(directory)/'dataset'
     root.mkdir(parents=True, exist_ok=True)
     evidence_path = Path(args['evidence']).resolve() if args.get('evidence') else None
     records = rows(evidence_path) if evidence_path else []
-    policy = load_policy(args['_workspace'])
+    service_config = args.get('_service_config') or args.get('service_config')
+    policy = load_policy(args['_workspace'], service_config)
     if evidence_path:check_source(policy,source_path=evidence_path)
     for record in records:
         _require_production_evidence(record)
         source = record.get('provenance', {})
         check_source(policy, task_id=source.get('task_id'), run_id=source.get('run_id'),
                      scene_group=record.get('scene_group_id'), source_path=source.get('path'))
-        check_evidence(args['_workspace'],record,evidence_path)
+        check_evidence(args['_workspace'], record, evidence_path, service_config)
     public, authority, rejected = [], [], []
     asset_roots, asset_copies, asset_checks = {}, {}, {}
     usage = Counter()
@@ -262,6 +324,7 @@ def produce(args, directory, config=None):
                 raise ValueError(f'{tid} parameters missing: {sorted(missing)}')
             spec = sample.get('question_spec') if using_source else builtin_spec(template, sample)
             presentation = validate_spec(spec, sample['parameters'], len(sample['media']))
+            validate_answer(template, sample['oracle'])
             question = question_text(presentation)
             # Workspace ledger prevents train/test reassignment across resumed or separate plans.
             ledger = Path(args['_workspace'])/'pipeline-groups.sqlite'
@@ -273,9 +336,10 @@ def produce(args, directory, config=None):
                 db.execute('INSERT OR IGNORE INTO groups VALUES (?,?)', (group, item_split))
             media = []
             media_dir.mkdir(parents=True, exist_ok=True)
-            for index, source_media in enumerate(sample['media']):
-                if not source_media.is_file():
-                    raise ValueError(f'Missing media: {source_media}')
+            source_media_files = validate_public_media(
+                sample['media'], sample.get('source_provenance', {}).get('path')
+            )
+            for index, source_media in enumerate(source_media_files):
                 target = media_dir/f'observation_{index}{source_media.suffix}'
                 if source_media.resolve() != target.resolve():
                     shutil.copy2(source_media, target)
@@ -289,9 +353,13 @@ def produce(args, directory, config=None):
                            'catalog_capability_links': template['catalog_capability_links'],
                            'provided_information': sample['provided_information'], 'scene_group_id': group,
                            'split': item_split, 'question': question, 'question_presentation': presentation, 'media': media, 'assets': assets,
-                           'output_schema': template['output_schema'], 'reference_frame': sample['reference_frame'],
+                           'output_kind': template['output_kind'], 'output_schema': template['output_schema'],
+                           'reference_frame': sample['reference_frame'],
                            'history_access_mode': sample.get('history_access_mode')})
             authority.append({'item_id': item_id, 'template_id': tid, 'answer': sample['oracle'],
+                              'protocol_id': template['protocol_id'], 'output_kind': template['output_kind'],
+                              'output_schema': template['output_schema'],
+                              'scorer_id': answer_contracts[tid]['scorer'],
                               'oracle_version': sample['oracle_version'], 'source': private_source.relative_to(root).as_posix(),
                               'source_provenance': sample.get('source_provenance', {'kind': 'program', 'generator': 'pipeline-program-v1', 'seed': seed+attempts-1}),
                               'measurement_conditions': template['effective_measurement_conditions'],
@@ -353,7 +421,7 @@ def package(args, directory, config=None):
     training_allowed = set(partitions) == {'train'}
     if not training_allowed and (Path(directory)/'training_bundle.zip').exists():
         raise ValueError('Use a new package directory; an old training bundle cannot accompany a non-training dataset')
-    media = sorted({root/media for row in questions for media in row['media']})
+    media = packaged_public_media(questions, root)
     assets = packaged_public_assets(questions, root)
     public_files = [root/'questions.jsonl', *media, *assets]
     private_files = [root/'authority.jsonl', root/'protocols.json', root/'quality_report.json', *[p for p in (root/'authority').rglob('*') if p.is_file()]]

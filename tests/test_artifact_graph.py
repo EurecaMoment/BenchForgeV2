@@ -12,10 +12,15 @@ class ArtifactGraphTests(unittest.TestCase):
     def test_records_contract_refs_and_parent_bindings(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
+            write(root / 'fixture.json', {
+                'service_url': 'http://127.0.0.1:3841',
+                'operator_token': 'fixture',
+                'execution_mode': 'exploration',
+            })
             plan = {
                 'schema': 'spatialforge.pipeline/v1', 'version': 1,
                 'pipeline_id': 'fixture',
-                'inputs': {'service_config': 'fixture.json'},
+                'inputs': {'service_config': str(root / 'fixture.json')},
                 'steps': [
                     {'id': 'capture', 'uses': 'spatialforge.capture',
                      'artifact_type': 'scene.capture',

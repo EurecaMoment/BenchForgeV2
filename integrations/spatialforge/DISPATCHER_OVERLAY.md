@@ -12,7 +12,7 @@ preserves the outcome, error, stopped-process flag and complete native receipt.
 Control errors and timeout return promptly, without a management fallback or a
 new capture. The existing remote-executor failure acknowledgement is unchanged.
 
-Backend Python needs the configured native SpatialForge/SQLAlchemy/BenchClaw
+Backend Python needs the configured native BenchForgeV2/SQLAlchemy/BenchClaw
 dependencies. It is separate from the interpreter used by the dispatcher and
 renderer: the overlay does not change `sys.executable`, the Client, render
 requests, image transfer, successful-file resume, or slot subprocess commands.
@@ -40,7 +40,7 @@ python deploy_dispatcher_overlay.py --config /private/dispatcher-overlay.json --
 
 Installation backs up and atomically replaces only the named dispatcher source.
 It does not call a service, signal a process, start another worker or restart
-DSH, a model, SpatialForge or Isaac. The existing FIT supervisor observes its
+DSH, a model, BenchForgeV2 or Isaac. The existing FIT supervisor observes its
 source modification time and performs its normal slot handoff; an already bound
 child keeps its current code until that handoff. Job directories, tokens, prior
 remote jobs and successful native files are retained. Restore the printed backup

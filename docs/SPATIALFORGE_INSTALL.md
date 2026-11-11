@@ -1,4 +1,4 @@
-# 从仓库部署 SpatialForge
+# 从仓库部署 BenchForgeV2
 
 服务、持久任务队列、生成工具、DSH 插件与桌面执行器均在本仓库；FIT 当前
 生产使用的 A800 dispatcher 和远端 Isaac 安装不在本仓库。
@@ -7,14 +7,14 @@
 服务机运行 Linux/Python 3.11、Git 2.26+、Docker Compose 和 Node.js 22.19+；Windows 桌面运行
 Isaac Sim。DSH 与服务放在同一 Linux 用户下，便于直接查看产物。
 本指南描述自托管桌面部署，桌面只运行一个 worker/Isaac 实例。FIT 当前生产链路
-是 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
+是 `DSH → FIT BenchForgeV2 → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
 Isaac Sim 6.2.0/A800`；不要把本指南的 Windows worker 说明当作 FIT 现行路由。
 生成模型按任务临时加载，不停止机器上的其他服务。
 
 ## 1. 安装服务和独立数据库
 
 ```bash
-git clone https://github.com/EurecaMoment/BenchForgeV2.git
+git -c http.version=HTTP/1.1 clone --branch main https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 sudo apt-get install bubblewrap
 python3.11 spatialforge_app.py setup
@@ -24,7 +24,7 @@ python3.11 spatialforge_app.py serve
 ```
 
 Python 需要 venv/ensurepip。Debian/Ubuntu 可安装与所用 Python 版本匹配的 `python3.11-venv`。
-`setup` 在 `.spatialforge/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
+`setup` 在 `.deployment/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
 `init` 生成随机凭据及配置，重复运行保留已有文件。PostgreSQL 只绑定本机 55432，
 API 只绑定本机 3841；端口冲突时首次初始化使用 `--port 3856 --db-port 55546`。
 数据库项目名保存在 `config/database.env` 的 `COMPOSE_PROJECT_NAME`。
@@ -47,7 +47,9 @@ GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 G
 模型与软件/资产按各自条款获取，不随本仓库打包。
 
 在 Windows 克隆同一个仓库到短路径，例如 `D:\BenchForgeV2`，安装普通 Python 3.11。
-把服务机生成的 `config/worker.local.json` 安全复制到 Windows 仓库的 `config/` 目录，填写：
+把服务机生成的 `config/worker.local.json` 安全复制到 Windows 仓库的 `config/` 目录。
+默认 `service_config` 引用仅用于同机部署；独立桌面应移除该字段，并按下面的独立配置
+填写服务地址、worker token 和本机路径，无需复制包含 operator token 的服务端配置：
 
 ```json
 {
@@ -74,7 +76,7 @@ python spatialforge_app.py worker --config config/worker.local.json
 
 worker 保留 Windows 单实例互斥锁，按任务用 Isaac 自带 Python 启动执行器。
 无需在 Isaac 环境中安装服务端的 PostgreSQL、DSH 或生成模型依赖。
-请勿同时运行旧 SpatialForge worker 与本仓库 worker。
+请勿同时运行旧 BenchForgeV2 worker 与本仓库 worker。
 
 ## 3. 执行实际渲染和物理交互
 
@@ -90,7 +92,7 @@ python3.11 spatialforge_app.py capture \
 不需要模型权重或语言模型。记录返回的 `run_id`；网络中断后使用相同的请求键和文件
 重连原任务。修改场景时使用新请求键，旧产物保留。退出码 2 表示等待窗口结束、任务仍在运行。
 
-产物在 `.spatialforge/artifacts/<task_id>/revision_0/capture/`：
+产物在 `.deployment/artifacts/<task_id>/revision_0/capture/`：
 `view_*.png/json`、交互前后图和轨迹、`evidence.json`、`report.json`、成对 USD 场景文件。
 以实际交互 `success`、轨迹和前后画面判断推动效果；`SUCCEEDED` 只表示采集任务完成。
 打开 USD 时保持整个 capture 目录一起移动。这个例子的几何全部程序生成；
@@ -157,7 +159,7 @@ python3.11 spatialforge_app.py dsh-start
 
 已有构建的 DSH 可用 `dsh-setup --dsh-root /path/to/deepseek-harness`。
 包装入口自动把本服务的 operator token 传给 DSH，无需复制进插件源码。
-在网页配置生产模型，创建 **BenchForgev2** 会话。例如：
+在网页配置生产模型，创建 **BenchForgeV2_UI** 会话。例如：
 
 > 请先生成一张全新的写实书房参考图，再创建尽量还原布局、材质和自然光的三维场景。
 > 加入一个可真实推动的桌面物件，提供多视角渲染、交互演示和可加载的场景文件。
@@ -173,12 +175,12 @@ python3.11 spatialforge_app.py dsh-start
   在模型使用的 `/observe` 中可读取阶段和具体失败；不要重复提交相同任务。
 - 模型工具失败：查看该任务 `generation_stage/worker/worker.log`，修复实际缺失依赖。
   已有本地模型权重可直接配置路径，不必再下载。
-- 重新生成配置不会迁移已有数据；保留 `.spatialforge` 和桌面 runs 目录。
+- 重新生成配置不会迁移已有数据；保留 `.deployment` 和桌面 runs 目录。
 
 新隔离数据库、没有桌面 worker 的环境可运行服务回归：
 
 ```bash
-.spatialforge/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
+.deployment/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
   --config config/spatialforge-server.local.json --output runs/service-roundtrip
 ```
 

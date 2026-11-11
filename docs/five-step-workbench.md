@@ -1,6 +1,6 @@
 # BenchForge five-step evaluation workbench
 
-Open a **SpatialForge** conversation in DSH. The workbench replaces that preset's
+Open a **BenchForgeV2_UI** conversation in DSH. The workbench replaces that preset's
 main conversation view through `main.conversation`; the original chat and composer
 are hidden. There is no separate sidebar launcher to find. Other agent presets
 keep their ordinary conversation interface.
@@ -13,7 +13,7 @@ capability graph and templates. The advanced target scene count and storage budg
 are optional. A single submission asks the current DSH agent to execute all five
 stages using its integrated tools, rather than stopping at a written plan.
 
-Opening a SpatialForge session applies the official session command
+Opening a BenchForgeV2_UI session applies the official session command
 `/permission danger-full-access`; this is not sent to the model. Production submission
 is disabled until the permissions projection confirms it. Setup failures offer a
 retry action and remain visible. This document describes the implementation;
@@ -89,7 +89,7 @@ is required before IRT diagnostics can be reported.
 All implementation is in `integrations/spatialforge/ui`; official DSH source,
 model deployments, weights and simulator configuration are external. When
 updating an existing deployment, preserve its root-level plugin placement and
-SpatialForge client gate. Do not use a query string in a local plugin file path.
+BenchForgeV2_UI client gate. Do not use a query string in a local plugin file path.
 
 Validation:
 
@@ -112,7 +112,7 @@ Live production
 The production panel reads `view=progress` automatically, scheduling its next
 request three seconds after the previous request completes. It shows the last
 observation time, pipeline completed/total steps and unfinished step, actual
-SpatialForge lifecycle/phase, desktop-device queue reason, failures, capture
+BenchForgeV2 lifecycle/phase, desktop-device queue reason, failures, capture
 and action-trace counts, reported transfer bytes and release counts/status.
 The five navigation steps display observed execution states independently of
 which step the user is viewing. Execution success never implies benchmark approval.
@@ -147,7 +147,7 @@ no schema, starts no jobs and exposes no task result/answer payload. Its local
 service configuration and credentials stay on the server.
 
 Configure the UI plugin with `productionConfig` pointing to the existing
-SpatialForge server config (containing harness DB config path and operator token)
+BenchForgeV2 server config (containing harness DB config path and operator token)
 and `productionPython` pointing to the existing Python with SQLAlchemy. Without
 this configuration the UI explicitly reports that only workspace pipelines are
 observed. Custom request keys without the DSH session prefix are discoverable
@@ -164,7 +164,7 @@ ESM modules. For example, `hmr` can set `base` to the BenchForgeV2 checkout and
 disable/enable does not clear Node's ESM module cache. Preserve any existing roots.
 Do not duplicate the backend into versioned implementation files to bypass it.
 Do not restart DSH while a session is running. Preserve the root placement,
-SpatialForge preset gate, model services, simulator services and other plugins.
+BenchForgeV2_UI preset gate, model services, simulator services and other plugins.
 
 Usability behavior
 ------------------

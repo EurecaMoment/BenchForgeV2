@@ -1,21 +1,17 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
-import vm from 'node:vm';
+import {loadClient} from '../ui/tests/load_client.mjs';
 
-let registration;
 const source = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-  .replace(/return \{\s+inject:/, 'return {ExecutionFeedback}; return {inject:');
 const React = {createElement: (type, props, ...children) => ({type, props: {...props, children}})};
-vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}}});
-const {ExecutionFeedback} = registration.factory(() => React);
+const {api} = loadClient(source, React);
+const {ExecutionFeedback} = api;
 
 test('stage progress measures declared work but never treats recent tool history as a workload total', async () => {
-  let loaded;
   const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {StageProgress}; return {inject:');
-  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}, Date});
-  const {StageProgress} = loaded.factory(() => React);
+  const {api} = loadClient(code, React, {Date});
+  const {StageProgress} = api;
   const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
     : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
   const render = (props) => StageProgress({stage: {id: 'S2', key: 'collection'}, record: {value: {}}, t: (key) => key, ...props});
@@ -36,32 +32,31 @@ test('stage progress measures declared work but never treats recent tool history
   assert.equal(find(savedPlan, (node) => node.type === 'progress').props.max, 1);
 });
 
-test('a confirmed session permission survives a missing projection but an explicit permission change takes effect', async () => {
+test('mounting the workbench never changes session permission; the user can request it explicitly', async () => {
   let loaded, index = 0;
   const hooks = [];
-  const React = {createElement: (type, props) => ({type, props}), useEffect() {},
-    useRef: (initial) => hooks[index++] ||= {current: initial},
+  const PermissionReact = {createElement: (type, props) => ({type, props}), useEffect() {},
     useState: (initial) => {const slot = index++; if (!(slot in hooks)) hooks[slot] = initial; return [hooks[slot], () => {}];}};
-  const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {ProductionEnvironment}; return {inject:');
-  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}});
-  const {ProductionEnvironment} = loaded.factory(() => React);
-  let permission = {currentValue: 'danger-full-access'};
-  const props = {sessionId: 'permission-fixture', useProjection: () => permission, useSession: (read) => read({openState: 'open'})};
-  const renderPermission = () => {index = 0; return ProductionEnvironment(props).props.canSubmit;};
-  assert.equal(renderPermission(), true);
-  permission = undefined;
-  assert.equal(renderPermission(), true, 'a temporary missing projection must not disable an already authorized session');
-  permission = {currentValue: 'workspace-write'};
-  assert.equal(renderPermission(), false, 'an explicit change must not be hidden by retained permissions');
+  const code = await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8');
+  const {api} = loadClient(code, PermissionReact);
+  let permission = {currentValue: 'workspace-write'}, commands = 0;
+  const props = {sessionId: 'permission-fixture', useProjection: () => permission, useSession: (read) => read({openState: 'open'}),
+    sessions: {binding: () => ({session: {command: async () => {commands++; permission = {currentValue: 'danger-full-access'}; return {ok: true, value: {matched: true}};}}})},
+    uiConversation: {binding: () => ({activate() {}})}};
+  index = 0;
+  const view = api.ProductionEnvironment(props);
+  assert.equal(view.props.canSubmit, false);
+  assert.equal(commands, 0, 'mount does not issue a permission command');
+  await view.props.requestPermission();
+  assert.equal(commands, 1);
+  index = 0;
+  assert.equal(api.ProductionEnvironment(props).props.canSubmit, true);
 });
 
 test('running task counters update the meter before the task completes and browsing another stage does not redirect live progress', async () => {
-  let loaded;
   const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {StageProgress, executionStage}; return {inject:');
-  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}, Date});
-  const {StageProgress, executionStage} = loaded.factory(() => React);
+  const {api} = loadClient(code, React, {Date});
+  const {StageProgress, executionStage} = api;
   const find = (node, predicate) => Array.isArray(node) ? node.map((child) => find(child, predicate)).find(Boolean)
     : node && typeof node === 'object' ? predicate(node) ? node : find(node.props.children, predicate) : null;
   const viewed = {id: 'S1', key: 'blueprint'};
@@ -87,11 +82,9 @@ test('running task counters update the meter before the task completes and brows
 });
 
 async function clientExports(names, globals = {}) {
-  let loaded;
   const code = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {' + names.join(', ') + '}; return {inject:');
-  vm.runInNewContext(code, {window: {__ModuleLoader__: {load: (value) => loaded = value}}, Date, URLSearchParams, ...globals});
-  return loaded.factory(() => globals.React || React);
+  const {api} = loadClient(code, globals.React || React, {Date, URLSearchParams, ...globals});
+  return Object.fromEntries(names.map((name) => [name, api[name]]));
 }
 
 const findAll = (node, predicate) => Array.isArray(node) ? node.flatMap((child) => findAll(child, predicate)) :

@@ -111,7 +111,8 @@ def analyze_scores(visible,authority,matrix,targets):
         grouped[model]={k:{'items':len(v),'mean_score':sum(v)/len(v)} for k,v in groups.items()};usage[model]=dict(tokens)
         f1=[r['metrics']['f1'] for r in rows if r['model']==model and 'f1' in r['metrics']]
         if f1:grouped[model]['metric:macro_f1']={'items':len(f1),'mean_score':sum(f1)/len(f1)}
-    path=Path(__file__).resolve().parents[2]/'BenchClaw/tools/cdm_irt_analysis.py'
+    from .resources import benchclaw_root
+    path=benchclaw_root()/'tools/cdm_irt_analysis.py'
     spec=importlib.util.spec_from_file_location('benchclaw_irt',path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     # Failed/missing calls remain visible above; they are not respondent ability data.
     valid=[r for r in rows if r['response_status']=='succeeded']

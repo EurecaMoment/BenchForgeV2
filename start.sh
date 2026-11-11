@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键启动：PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
+# 一键启动：PostgreSQL -> BenchForgeV2 服务 -> BenchForge DSH Web
 # 配置全部来自 config/ 目录；日志写入 .benchforge/logs/，PID 写入 .benchforge/run/。
 set -euo pipefail
 
@@ -7,10 +7,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SF_PY="$ROOT/.spatialforge/venv/bin/python"
+SF_PY="$ROOT/.deployment/venv/bin/python"
 SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
-SERVICE_CONFIG="$ROOT/config/spatialforge.local.json"
-PRESET="$ROOT/config/benchforge.local.yml"
+PRESET="$ROOT/.deployment/benchforge.local.yml"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 LOG_DIR="$STATE/logs"
@@ -22,7 +21,7 @@ mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 die() { echo "错误: $*" >&2; exit 1; }
 
-for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$SERVICE_CONFIG" "$PRESET" "$STATE/runtime.json"; do
+for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$PRESET" "$STATE/runtime.json"; do
   [ -e "$path" ] || die "缺少 $path，请先按 README 的安装步骤准备环境"
 done
 
@@ -67,10 +66,15 @@ url_status() { curl -s -o /dev/null -w '%{http_code}' "$1" 2>/dev/null || true; 
 echo "[1/3] 启动 PostgreSQL"
 "$PY" spatialforge_app.py db
 
-echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 启动 BenchForgeV2 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
+  [ -f "$ROOT/config/database.env" ] || die "缺少 config/database.env，请先运行 spatialforge_app.py init"
+  set -a
+  # shellcheck disable=SC1091
+  . "$ROOT/config/database.env"
+  set +a
   echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/spatialforge.log"
   # setsid 脱离当前终端会话，关闭终端后服务继续运行
   setsid "$SF_PY" -m spatialforge.service --config "$SERVER_CONFIG" >> "$LOG_DIR/spatialforge.log" 2>&1 < /dev/null &
@@ -79,7 +83,7 @@ else
     tail -n 20 "$LOG_DIR/spatialforge.log" >&2 || true
     kill "$(<"$SF_PID_FILE")" 2>/dev/null || true
     rm -f "$SF_PID_FILE"
-    die "SpatialForge 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
+    die "BenchForgeV2 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
   fi
   echo "  已启动 (PID $(<"$SF_PID_FILE"))"
 fi
@@ -124,18 +128,21 @@ echo "验证："
 if "$PY" spatialforge_app.py status > /dev/null 2>&1; then
   echo "  数据库 / 服务 / 令牌：正常"
 else
-  echo "  数据库 / 服务 / 令牌：检查失败，手动执行 .venv/bin/python spatialforge_app.py status"
+  die "数据库 / BenchForgeV2 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
 fi
 
 URL="$(latest_url)"
 WEB_STATUS=""
 [ -n "$URL" ] && WEB_STATUS="$(url_status "$URL")"
+if [ -z "$URL" ]; then
+  die "未找到 DSH Web token 地址，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
+if [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; then
+  die "DSH Web token readiness 检查返回 $WEB_STATUS，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
 echo
 echo "启动完成。"
 echo "  服务端: http://127.0.0.1:$SERVICE_PORT"
 echo "  Web:    ${URL:-http://127.0.0.1:$WEB_PORT/ （token 见 .benchforge/logs/dsh.log）}"
-if [ -n "$URL" ] && { [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; }; then
-  echo "  警告:   该 token 访问返回 $WEB_STATUS，可能属于上一次未完成启动的进程，请查看日志"
-fi
 echo "  日志:   $LOG_DIR"
 echo "  停止:   ./shutdown.sh"

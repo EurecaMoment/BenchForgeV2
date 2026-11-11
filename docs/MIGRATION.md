@@ -22,5 +22,5 @@ adapters. Single RGB frames do not automatically make these tasks answerable.
 Isaac is an independent primitive collector and has not been accepted in an
 installed Isaac runtime. Universal perfect parity is not asserted.
 
-No SpatialForge code or service was used. Private credentials, GPU weights and
+This first-generation migration does not call the scene-production service. Private credentials, GPU weights and
 source datasets are excluded. No content checksum manifests are generated.

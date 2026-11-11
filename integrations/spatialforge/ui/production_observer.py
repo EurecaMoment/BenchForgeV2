@@ -1,4 +1,4 @@
-"""Read session-owned SpatialForge jobs; never construct Store or start work."""
+"""Read session-owned BenchForgeV2 jobs; never construct Store or start work."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import importlib.util

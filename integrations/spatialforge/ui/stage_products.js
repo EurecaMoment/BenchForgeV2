@@ -10,6 +10,11 @@ import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
 import {sessionFamilyReader} from './parallel_sessions.js';
 import {createPreparationProducts} from './preparation_products.js';
+import {ApiError, assertSessionDirectory, exists, inside, matchesSession, readJson, resolveToken, scopeOf,
+  scopeParams, token, workspaceRoots} from './workbench/scope.js';
+import {createDatasetReader, createPublicArtifactProjector, PUBLIC_FIELDS, QUALITY_FIELDS} from './workbench/public_artifacts.js';
+import {createWorkbenchReadRoutes} from './workbench/routes.js';
+import {readAssessmentTemplate, readTaskTemplates} from '../shared/resources.mjs';
 
 export const name = 'benchforge-spatialforge-ui';
 export const inject = ['connection', 'workspaceRegistry'];
@@ -23,19 +28,7 @@ export const Config = z.object({
 });
 
 const STATUSES = ['draft', 'candidate', 'verified', 'rejected', 'superseded'];
-const PUBLIC_FIELDS = ['item_id', 'id', 'task_id', 'template_id', 'protocol_id', 'protocol_version',
-  'measurement_variant', 'primary_operation', 'catalog_capability_links', 'provided_information',
-  'scene_group_id', 'split', 'question', 'question_presentation', 'choices', 'media', 'assets', 'output_schema', 'reference_frame', 'history_access_mode'];
-const QUALITY_FIELDS = ['requested', 'accepted', 'shortfall', 'per_template', 'requested_per_template',
-  'split', 'requested_split', 'preserve_source_splits', 'per_partition', 'per_template_partitions',
-  'sft_split', 'sft_items', 'training_bundle_eligible', 'public_asset_count', 'scene_groups', 'rejections', 'source',
-  'benchmark_approved', 'capability_scope', 'state'];
-
-class ApiError extends Error {
-  constructor(message, status = 400) { super(message); this.status = status; }
-}
 const pick = (row, fields) => Object.fromEntries(fields.filter((key) => key in row).map((key) => [key, row[key]]));
-const token = (root, relative) => Buffer.from(JSON.stringify([root.id, relative])).toString('base64url');
 const counts = () => Object.fromEntries(STATUSES.map((key) => [key, 0]));
 const execute = promisify(execFile);
 const STAGE_OPERATIONS = [
@@ -46,68 +39,18 @@ const STAGE_OPERATIONS = [
   ['S5', /^(score|screen|evaluat|verif|quality|report|package|(?:templates|data)\.package)/],
 ];
 const stageOf = (operation) => STAGE_OPERATIONS.find(([, pattern]) => pattern.test(operation || ''))?.[0] || null;
-const scopeOf = (url, sessions = []) => ({session_id: url.searchParams.get('session_id') || '', session_ids: sessions,
-  history: url.searchParams.get('scope') === 'workspace'});
-const scopeParams = (scope) => scope.history ? {scope: 'workspace'} : {session_id: scope.session_id};
-const matchesSession = (context, scope) => scope.history || !!scope.session_id &&
-  [scope.session_id, ...(scope.session_ids || [])].some((id) => context?.session_id === id || context?.session_ids?.includes(id));
-
-async function assertSessionDirectory(root, directory, scope) {
-  const policy=await readJson(path.join(root.path,'scene-library','policy.json'));
-  if(policy?.enabled && (policy.excluded_paths || []).some(folder=>directory===folder || directory.startsWith(folder+path.sep)))
-    throw new ApiError('此产物使用的立方体场景已删除，请重新制作。',410);
-  if (scope.history) return;
-  let current = directory;
-  while (current !== root.path) {
-    const request = await readJson(path.join(current, 'request.json'));
-    if (matchesSession(request?.context, scope)) return;
-    const state = await readJson(path.join(current, 'state.json'));
-    if (matchesSession(state?.context, scope)) return;
-    const parent = path.dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  throw new ApiError('This artifact is not associated with the current conversation', 403);
-}
-
 function workbenchUrl(params, workspacePath) {
   const query = new URLSearchParams(params);
   if (workspacePath) query.set('workspace_path', workspacePath);
   return 'api/benchforge/workbench?' + query;
 }
 
-const planTemplateTitles = new Map(JSON.parse(await fs.readFile(fileURLToPath(new URL('../../../src/benchforge_core/pipelines/task_templates.json',import.meta.url)),'utf8'))
-  .tasks.flatMap((task)=>task.templates.map((row)=>[row.id,row.title])));
-
-function publicPlan(plan) {
-  if (!plan) return null;
-  const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).filter(([key]) => key === 'authority_source' || !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
-  const assessment = plan.assessment ? clean(plan.assessment) : undefined;
-  // Markdown carries the same public assessment as the structured response.
-  const markdown = typeof plan.user_markdown === 'string' ? plan.user_markdown.replace(
-    /^```assessment-yaml\s*\r?\n[\s\S]*?^```\s*$/gm,
-    () => '```assessment-yaml\n' + JSON.stringify(assessment || {}, null, 2) + '\n```\n') : undefined;
-  return {...pick(plan, ['pipeline_id', 'version', 'objective', 'edit_revision', 'applies_edit',
-    'user_markdown_path']),
-    ...(markdown === undefined ? {} : {user_markdown: markdown}),
-    assessment,
-    selections: (plan.selections || []).map((row) => pick(row, ['template_ids', 'count', 'reason'])),
-    inputs: pick(plan.inputs || {}, ['seed', 'split', 'preserve_source_splits', 'target_items']),
-    template_contracts: (plan.template_contracts || []).map((row) => ({...pick(row, ['id', 'task_id', 'task_name',
-      'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links', 'execution']),title:planTemplateTitles.get(row.id) || row.task_name})),
-    steps: (plan.steps || []).map((step) => pick(step, ['id', 'uses', 'pipeline_id', 'artifact_type', 'await_terminal']))};
-}
-
-const REPORT_FIELDS = [...QUALITY_FIELDS, 'per_template', 'model_api_calls', 'scope', 'metrics',
-  'total', 'count', 'success_rate', 'missing', 'status', 'capabilities', 'limitations',
-  'body_markdown', 'public_verified_count', 'contract_eligible_count', 'source_scene_count', 'captured_view_count'];
-
-function publicReport(report) {
-  const clean = (value) => Array.isArray(value) ? value.map(clean) : value && typeof value === 'object'
-    ? Object.fromEntries(Object.entries(value).filter(([key]) => !/^(?:answers?|answer_?key|correct_?answer|reference_?answer|ground_?truth|gt|authority|gold|oracle|token|password|api_?key|solution)(?:_|$)/i.test(key)).map(([key, child]) => [key, clean(child)])) : value;
-  return clean(pick(report, REPORT_FIELDS));
-}
+const taskTemplates = await readTaskTemplates();
+const {publicPlan, publicReport} = createPublicArtifactProjector({pick, taskTemplates});
+const {readDataset, readMedia, mediaReferences} = createDatasetReader({exists, readJson, pick, publicFields: PUBLIC_FIELDS});
+const dispatchWorkbenchRead = createWorkbenchReadRoutes({discover: (...args) => discover(...args),
+  productionProgress: (...args) => productionProgress(...args), readRun: (...args) => readRun(...args),
+  sceneArtifacts: (...args) => sceneArtifacts(...args), sceneMedia: (...args) => sceneMedia(...args), readDataset, readMedia});
 
 async function deliveryScenePreviews(root, dataset, previews, scope, itemCount = Number.MAX_SAFE_INTEGER) {
   if (typeof dataset !== 'string' || !Array.isArray(previews)) return [];
@@ -147,17 +90,26 @@ async function runProducts(id, root, directory, state, plan, scope) {
   }
   for (const [stepId, step] of Object.entries(state.steps || {})) {
     const result = step.result || {};
-    const candidates = [result.report, result.quality_report,
-      typeof result.dataset === 'string' ? path.join(result.dataset, 'quality_report.json') : null];
+    const receipt = result.delivery_receipt || result.summary;
+    const hasDeliveryReceipt = receipt && ['quantity_contract', 'target_items', 'target_reached', 'delivery_satisfied', 'delivery_status']
+      .some((key) => key in receipt);
+    const candidates = [
+      ...(hasDeliveryReceipt ? [{report: receipt, file: 'release/complete.json'}] : []),
+      {file: path.join(directory, 'release', 'collection_report.json')},
+      {file: path.join(directory, 'release', 'complete.json')},
+      ...[result.report, result.quality_report,
+        typeof result.dataset === 'string' ? path.join(result.dataset, 'quality_report.json') : null]
+        .map((file) => ({file})),
+    ];
     for (const candidate of candidates) {
-      if (typeof candidate !== 'string' || !candidate.endsWith('.json')) continue;
+      if (!candidate.report && (typeof candidate.file !== 'string' || !candidate.file.endsWith('.json'))) continue;
       try {
-        const file = await inside(root, path.resolve(directory, candidate));
-        const report = await readJson(file);
+        const file = candidate.report ? '' : await inside(root, path.resolve(directory, candidate.file));
+        const report = candidate.report || await readJson(file);
         if (!report || typeof report !== 'object') continue;
-        const delivery = path.basename(file) === 'delivery_report.json';
+        const delivery = candidate.file?.includes('release') || path.basename(file) === 'delivery_report.json';
         const data = publicReport(report);
-        if (delivery) data.scene_previews = await deliveryScenePreviews(root, result.dataset, report.scene_previews, scope, report.accepted ?? report.total);
+        if (delivery && report.scene_previews) data.scene_previews = await deliveryScenePreviews(root, result.dataset, report.scene_previews, scope, report.accepted ?? report.total);
         items.push({stage: 'S5', title: delivery ? '数据生产与质检报告' : path.basename(file) === 'quality_report.json' ? '数据质量报告' : '评测报告',
           ...(delivery ? {file: 'release/collection_report.json'} : {}),
           kind: 'json', step_id: stepId, artifact_id: step.artifact?.artifact_id,
@@ -437,9 +389,14 @@ async function productionProgress(roots, config, url, signal) {
     unassociated_records: unassociatedRecords};
 }
 
-async function templateCatalog(url) {
-  const file = fileURLToPath(new URL('../../../src/benchforge_core/pipelines/task_templates.json', import.meta.url));
-  const catalog = await readJson(file);
+function integer(value, fallback, maximum) {
+  if (value === null) return fallback;
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 1 || number > maximum) throw new ApiError('Invalid pagination');
+  return number;
+}
+
+async function templateCatalog(url, catalog) {
   const query = (url.searchParams.get('q') || '').trim().toLocaleLowerCase();
   const capability = url.searchParams.get('capability') || '';
   const page = integer(url.searchParams.get('page'), 1, 1000000);
@@ -458,31 +415,6 @@ async function templateCatalog(url) {
     items: filtered.slice((page - 1) * size, page * size), execution_status: 'catalog_design; check adapters before production'};
 }
 
-async function readJson(file) {
-  try { return JSON.parse(await fs.readFile(file, 'utf8')); }
-  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
-}
-async function exists(file) {
-  try { await fs.access(file); return true; }
-  catch (error) { if (error.code === 'ENOENT') return false; throw error; }
-}
-async function inside(root, file) {
-  const resolved = await fs.realpath(path.resolve(root.path, file));
-  const relative = path.relative(root.path, resolved);
-  if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
-    throw new ApiError('Path is outside the registered workspace', 403);
-  }
-  return resolved;
-}
-async function resolveToken(id, roots) {
-  let parts;
-  try { parts = JSON.parse(Buffer.from(id || '', 'base64url').toString()); }
-  catch { throw new ApiError('Invalid record identity'); }
-  if (!Array.isArray(parts) || parts.length !== 2 || parts.some((x) => typeof x !== 'string')) throw new ApiError('Invalid record identity');
-  const root = roots.find((item) => item.id === parts[0]);
-  if (!root) throw new ApiError('Workspace is no longer registered', 404);
-  return {root, directory: await inside(root, parts[1])};
-}
 async function* jsonLines(file, signal) {
   const stream = createReadStream(file, {encoding: 'utf8', signal});
   const lines = createInterface({input: stream, crlfDelay: Infinity});
@@ -514,23 +446,6 @@ async function tailJsonl(file, limit, signal) {
     total++; rows.push(row); if (rows.length > limit) rows.shift();
   }
   return {rows, total};
-}
-
-async function workspaceRoots(config, registered, requestedPath) {
-  const roots = new Map();
-  const inputs = [...registered, ...(config.workspacePaths || []).map((p) => ({id: 'path:' + p, path: p, title: path.basename(p)}))];
-  for (const input of inputs) {
-    try {
-      const directory = await fs.realpath(input.path);
-      if (!roots.has(directory)) roots.set(directory, {id: String(input.id), path: directory, title: input.title || path.basename(directory)});
-    } catch (error) { if (error.code !== 'ENOENT') throw error; }
-  }
-  const values = [...roots.values()];
-  if (!requestedPath) return [];
-  let resolved;
-  try { resolved = await fs.realpath(requestedPath); }
-  catch (error) { if (error.code === 'ENOENT') return []; throw error; }
-  return values.filter((root) => root.path === resolved);
 }
 
 async function discover(roots, config, signal, scope) {
@@ -666,90 +581,6 @@ function pipelineSceneIds(state) {
   return [...ids];
 }
 
-async function datasetFiles(id, roots, scope) {
-  const {root, directory} = await resolveToken(id, roots);
-  await assertSessionDirectory(root, directory, scope);
-  let publicRoot = directory, questions = path.join(directory, 'questions.jsonl');
-  if (!await exists(questions)) { publicRoot = path.join(directory, 'public'); questions = path.join(publicRoot, 'items.jsonl'); }
-  if (!await exists(questions)) throw new ApiError('Public questions were not found', 404);
-  await inside(root, questions);
-  return {root, directory, publicRoot, questions};
-}
-function integer(value, fallback, maximum) {
-  if (value === null) return fallback;
-  const number = Number(value);
-  if (!Number.isSafeInteger(number) || number < 1 || number > maximum) throw new ApiError('Invalid pagination');
-  return number;
-}
-const PUBLIC_MEDIA_TYPES = {'.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp',
-  '.svg': 'image/svg+xml', '.gif': 'image/gif', '.json': 'application/json', '.md': 'text/markdown; charset=utf-8',
-  '.npy': 'application/octet-stream'};
-function mediaReferences(row, id, index, workspacePath, scope, field = 'media') {
-  return (Array.isArray(row[field]) ? row[field] : []).map((_, media) => {
-    const params = new URLSearchParams({view: 'media', dataset: id, item: String(index),
-      [field === 'assets' ? 'asset' : 'media']: String(media), ...scopeParams(scope)});
-    if (workspacePath) params.set('workspace_path', workspacePath);
-    return 'api/benchforge/workbench?' + params;
-  });
-}
-async function readDataset(url, roots, signal, sessions = []) {
-  const id = url.searchParams.get('dataset');
-  const scope = scopeOf(url, sessions);
-  const {directory, questions} = await datasetFiles(id, roots, scope);
-  const page = integer(url.searchParams.get('page'), 1, 1000000);
-  const pageSize = integer(url.searchParams.get('page_size'), 24, 96);
-  const template = url.searchParams.get('template') || '', split = url.searchParams.get('split') || '';
-  const query = (url.searchParams.get('q') || '').toLocaleLowerCase();
-  const workspacePath = url.searchParams.get('workspace_path') || '';
-  const items = [], templates = new Set(), splits = new Set();
-  let total = 0, all = 0;
-  for await (const {row, index} of jsonLines(questions, signal)) {
-    all++;
-    if (row.template_id) templates.add(row.template_id);
-    if (row.split) splits.add(row.split);
-    if (template && row.template_id !== template || split && row.split !== split) continue;
-    if (query && ![row.item_id, row.id, row.question, row.task_id, row.template_id].some((value) => String(value || '').toLocaleLowerCase().includes(query))) continue;
-    if (total >= (page - 1) * pageSize && items.length < pageSize) {
-      const projected=pick(row,PUBLIC_FIELDS);
-      if(projected.question_presentation) projected.question_presentation=pick(projected.question_presentation,
-        ['schema','stem','context','conditions','options','response','media_labels']);
-      items.push({...projected, row_index: index, media: mediaReferences(row, id, index, workspacePath, scope),
-        assets: mediaReferences(row, id, index, workspacePath, scope, 'assets'),
-        asset_names: (Array.isArray(row.assets) ? row.assets : []).map((reference) => typeof reference === 'string' ? path.basename(reference) : ''),
-        media_types: (Array.isArray(row.media) ? row.media : []).map((reference) => typeof reference === 'string'
-          ? PUBLIC_MEDIA_TYPES[path.extname(reference).toLowerCase()] || 'application/octet-stream' : 'application/octet-stream')});
-    }
-    total++;
-  }
-  const report = await readJson(path.join(directory, 'quality_report.json'));
-  return {id, items, total, all, page, page_size: pageSize, pages: Math.ceil(total / pageSize),
-    facets: {templates: [...templates].sort(), splits: [...splits].sort()}, report: report ? pick(report, QUALITY_FIELDS) : null,
-    authority_exposed: false};
-}
-async function readMedia(url, roots, signal, sessions = []) {
-  const id = url.searchParams.get('dataset');
-  const {root, publicRoot, questions} = await datasetFiles(id, roots, scopeOf(url, sessions));
-  const field = url.searchParams.has('asset') ? 'assets' : 'media';
-  if (url.searchParams.has('asset') && url.searchParams.has('media')) throw new ApiError('Invalid public file reference');
-  const item = Number(url.searchParams.get('item')), media = Number(url.searchParams.get(field === 'assets' ? 'asset' : 'media'));
-  if (![item, media].every((v) => Number.isSafeInteger(v) && v >= 0)) throw new ApiError('Invalid media reference');
-  let reference;
-  for await (const record of jsonLines(questions, signal)) if (record.index === item) {
-    reference = record.row[field]?.[media]; break;
-  }
-  const prefix = field === 'assets' ? 'assets' : 'media';
-  const declared = field === 'assets' ? /^assets[\\/]/ : /^media[\\/]/;
-  if (typeof reference !== 'string' || !declared.test(reference)) throw new ApiError('Only declared public files can be read', 403);
-  const file = await inside(root, path.resolve(publicRoot, reference));
-  const mediaRoot = await fs.realpath(path.join(publicRoot, prefix));
-  const relative = path.relative(mediaRoot, file);
-  if (relative.startsWith('..' + path.sep) || relative === '..' || path.isAbsolute(relative)) throw new ApiError('Media escapes public media directory', 403);
-  const type = PUBLIC_MEDIA_TYPES[path.extname(file).toLowerCase()];
-  if (!type) throw new ApiError('Preview supports declared public images and JSON only', 415);
-  return new Response(await fs.readFile(file, {signal}), {headers: {'content-type': type, 'cache-control': 'private, max-age=60',
-    'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox", 'x-content-type-options': 'nosniff'}});
-}
-
 export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution, associations) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
@@ -762,6 +593,9 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
+      if (view === 'runtime') return Response.json({ui_revision: limits.uiRevision || '',
+        preset_id: 'spatialforge-standard-ptc', preset_name: 'BenchForgeV2_UI'},
+        {headers: {'cache-control': 'no-store'}});
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const parentScope = scopeOf(url);
       const related = !view.startsWith('execution_') && !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
@@ -859,11 +693,8 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
         value = await sceneLibrary(limits, roots, url, request.signal, selection);
       }
       else if (view === 'scene_library' || view === 'scene_selection') value = await sceneLibrary(limits, roots, url, request.signal);
-      else if (view === 'catalog') value = await templateCatalog(url);
-      else if (view === 'plan_template') value = await readJson(fileURLToPath(new URL('../../../src/benchforge_core/pipelines/assessment_template.json', import.meta.url)));
-      else if (view === 'summary') value = await discover(roots, limits, request.signal, scope);
-      else if (view === 'progress') value = await productionProgress(roots, scoped, url, request.signal);
-      else if (view === 'run') value = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
+      else if (view === 'catalog') value = await templateCatalog(url, taskTemplates);
+      else if (view === 'plan_template') value = await readAssessmentTemplate();
       else if (view === 'run_product' && url.searchParams.get('product') === 'preparation') {
         if (roots.length !== 1 || !scope.session_id || scope.history)
           throw new ApiError('Preparation previews require the current workspace and parent conversation',400);
@@ -871,27 +702,11 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
           batchKey: url.searchParams.get('batch_key'), childId: url.searchParams.get('child_id'), file: url.searchParams.get('file'),
         }, request.signal);
       }
-      else if (view === 'run_product') {
-        const run = await readRun(url.searchParams.get('run'), roots, limits, request.signal, scope);
-        const product = url.searchParams.get('product'), step = url.searchParams.get('step');
-        value = product === 'plan' ? run.plan : product === 'config' ? run.stage_artifacts.find((row) => row.stage === 'S4')?.data
-          : product === 'report' ? run.stage_artifacts.find((row) => row.stage === 'S5' && row.step_id === step)?.data : null;
-        if (!value) throw new ApiError('Stage product was not found', 404);
-        if (product === 'report' && url.searchParams.get('format') === 'markdown') {
-          if (typeof value.body_markdown !== 'string' || !value.body_markdown.trim())
-            throw new ApiError('Markdown report was not found', 404);
-          return new Response(value.body_markdown, {headers: {
-            'content-type': 'text/markdown; charset=utf-8',
-            'content-disposition': 'attachment; filename="delivery_report.md"',
-            'cache-control': 'no-store', 'x-content-type-options': 'nosniff',
-          }});
-        }
-      }
-      else if (view === 'stage_artifacts') value = await sceneArtifacts(scoped, roots, url, request.signal);
-      else if (view === 'stage_media') return await sceneMedia(scoped, roots, url, request);
-      else if (view === 'dataset') value = await readDataset(url, roots, request.signal, sessions);
-      else if (view === 'media') return await readMedia(url, roots, request.signal, sessions);
-      else throw new ApiError('Unsupported workbench view');
+      else if (['summary', 'progress', 'run', 'run_product', 'stage_artifacts', 'stage_media', 'dataset', 'media'].includes(view)) {
+        const response = await dispatchWorkbenchRead({view, request, url, roots, limits, scoped, scope, sessions});
+        if (response instanceof Response) return response;
+        value = response;
+      } else throw new ApiError('Unsupported workbench view');
       return Response.json(value, {headers: {'cache-control': 'no-store'}});
     } catch (error) {
       if (error.name === 'AbortError') throw error;

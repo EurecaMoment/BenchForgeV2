@@ -721,5 +721,16 @@ def scene_contract_capabilities():
             'rendering':'only consumed candidates; no rerender or retry of a rejected item',
             'shortfall':'explicit when review budget or eligible unique candidates run out',
             'limits':'size screening is not visibility or semantic acceptance; scene retry/refine limits unchanged'},
+        'delivery_contract': {
+            'execution_modes': ['production', 'exploration'],
+            'quantity_contracts': ['exact', 'minimum', 'best_effort'],
+            'default_quantity_contract': 'best_effort',
+            'receipt_fields': [
+                'quantity_contract', 'target_items', 'accepted', 'shortfall',
+                'target_reached', 'delivery_satisfied', 'delivery_status',
+            ],
+            'delivery_status_values': ['complete', 'partial', 'unsatisfied'],
+            'evaluation_status': 'exploration is recorded as not_evaluated; production requires an enabled scene policy',
+        },
         'quality_policy': 'record capability gaps and repair suggestions; quality review never writes ground truth',
     }

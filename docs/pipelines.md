@@ -1,4 +1,4 @@
-# SpatialForge composable pipelines and exact task templates
+# BenchForgeV2 composable pipelines and exact task templates
 
 The consolidated operator UI for these pipelines is documented in
 [frontend-workbench-v2.md](frontend-workbench-v2.md). It maps plans, runs,
@@ -17,7 +17,17 @@ The production directory is `src/benchforge_core/pipelines/definitions/`. JSON f
 - `benchforge_pipeline_repair_plan`: create a reviewable repair proposal for a failed artifact. It chooses local field repair, template rebinding, candidate resynthesis, skill re-execution, upstream rollback or final rejection; it never edits GT or runs the repair.
 - `benchforge_pipeline_evaluate`: evaluate saved answers with deterministic protocol scorers. No target model API calls.
 
-Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The SpatialForge development preset exposes these seven pipeline tools alongside existing learning and scene tools.
+Evaluation selects a deterministic scorer from the registered `template_id` and
+validates both authority answers and predictions against that template's
+frozen `protocol_id`, `output_kind`, `output_schema` and `scorer_id`; legacy
+authority rows without these fields must be regenerated before evaluation.
+Unsupported output kinds are rejected until they have an
+explicit scorer; the evaluator never falls back to untyped object equality.
+Answer-shape errors are recorded as per-item format errors, duplicate or
+unknown prediction IDs reject the submission, and omitted answers remain
+failures in the denominator.
+
+Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The BenchForgeV2 development preset exposes these seven pipeline tools alongside existing learning and scene tools.
 
 ## Artifact lineage and bounded repair
 

@@ -20,8 +20,12 @@ async function fixture(t,{saveImage=async()=>({id:'fixture-image'}),scenePolicy=
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});});
+  if(scenePolicy){
+    await fs.mkdir(path.join(root,'scene-library'));
+    await fs.writeFile(path.join(root,'scene-library','policy.json'),JSON.stringify({enabled:true,enforce_realism:true,excluded_tasks:[]}));
+  }
   const serviceConfig=path.join(root,'service.json');
-  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token:'test-token',artifacts:root,...tokenConfig}));
+  await fs.writeFile(serviceConfig,JSON.stringify({service_url:`http://127.0.0.1:${server.address().port}`,operator_token:'test-token',execution_mode:scenePolicy?'production':'exploration',...(scenePolicy?{scene_policy_path:'scene-library/policy.json'}:{}),artifacts:root,...tokenConfig}));
   const tools=new Map();
   const ctx={
     tools:{register:tool=>tools.set(tool.name,tool)},on(){},
@@ -136,7 +140,7 @@ test('legacy observation bridge preserves cancellation across snapshot and nativ
 });
 
 test('explicit token environment agrees with service precedence over inline token',async(t)=>{
-  const launchEnvironment={getFrom:()=>({value:'environment-token'})};
+  const launchEnvironment={getFrom:(name)=>name==='OPERATOR_TOKEN'?{value:'environment-token'}:undefined};
   for(const explicit of [false,true]){
     const f=await fixture(t,{tokenConfig:explicit?{operator_token_env:'OPERATOR_TOKEN'}:{},launchEnvironment});
     f.replies.set('/inspect',{run_id:'r',state:'SUCCEEDED',tasks:[]});
@@ -147,25 +151,39 @@ test('explicit token environment agrees with service precedence over inline toke
 
 test('scene policy rejects cube capture and unchecked generation before any service request',async(t)=>{
   const f=await fixture(t,{scenePolicy:true});
-  await fs.mkdir(path.join(f.root,'scene-library'));
-  await fs.writeFile(path.join(f.root,'scene-library/policy.json'),JSON.stringify({enabled:true,excluded_tasks:['sf_removed.scene0']}));
+  await fs.writeFile(path.join(f.root,'scene-library/policy.json'),JSON.stringify({enabled:true,enforce_realism:true,excluded_tasks:['sf_removed.scene0']}));
+  const scenePlan=path.join(f.root,'scene-plan.json');
+  await fs.writeFile(scenePlan,JSON.stringify({assessment:{schema:'spatialforge.assessment/v1',scenes:{designs:[{
+    id:'fixture-design',name:'桌边座椅测试场景',
+    summary:'一把椅子置于稳定地面上，椅腿有明确支撑，周边留出观察空间。',
+    hard_requirements:['椅子保持直立并由地面支撑'],
+    physical_assumptions:['静态重力下检查接触和稳定性'],
+    object_roles:[{object_id:'chair',role:'供人坐下休息的椅子'},{object_id:'ground',role:'承托椅子的地面'}],
+    relations:[{type:'supported_by',source:'chair',target:'ground',description:'椅腿由地面稳定支撑'}],
+  }]}}}));
   const program=path.join(f.root,'program.json');
-  await fs.writeFile(program,JSON.stringify({objects:[{id:'chair',kind:'box'}]}));
+  const sceneProgram={scene_id:'fixture-scene',objects:[{id:'chair',kind:'box'},{id:'ground',kind:'mesh'}],
+    provenance:{sources:[{kind:'scene_plan',path:scenePlan,scene_design_id:'fixture-design'}]}};
+  await fs.writeFile(program,JSON.stringify(sceneProgram));
   await assert.rejects(f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec()),/Scene rejected/);
   await assert.rejects(f.tools.get('spatialforge_run').execute({intents:[{name:'living room',description:'Indoor scene',split:'train'}]},f.exec()),/unchecked default planner/);
   await assert.rejects(f.tools.get('spatialforge_dataset').execute({intent:{source_task_id:'sf_removed.scene0'}},f.exec()),/removed by the user/);
   assert.equal(f.requests.length,0);
-  await fs.writeFile(program,JSON.stringify({objects:[{id:'chair',kind:'mesh'}]}));
+  sceneProgram.objects[0].kind='mesh';
+  await fs.writeFile(program,JSON.stringify(sceneProgram));
   f.replies.set('/capture',{run_id:'r',task_id:'r.scene0',state:'accepted'});
-  await f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec());
-  assert.equal(f.requests.length,1);
+  assert.deepEqual(await f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec()),
+    {run_id:'r',task_id:'r.scene0',state:'accepted'});
+  assert.deepEqual(f.requests.map(request=>request.path),['/capture']);
 });
 
 test('Config rejects missing or mistyped service config and accepts the legacy preset field',async(t)=>{
   assert.throws(()=>Config({}),/serviceConfig/);
   assert.throws(()=>Config({serviceConfig:12}),/serviceConfig/);
   const f=await fixture(t);
-  assert.equal(f.tools.size,22);
+  assert.equal(f.tools.size,23);
+  assert.ok(f.tools.has('spatialforge_trellis'));
+  assert.ok(f.tools.has('spatialforge_sam3d'));
 });
 
 test('HTTP routing uses the configured operator token and stable output families',async(t)=>{

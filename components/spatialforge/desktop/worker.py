@@ -20,6 +20,7 @@ import zlib
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root/'src'))
 from spatialforge.capture_recovery import local_capture_receipt,require_frozen_request
+from spatialforge.runtime_config import load_worker_config
 config={}
 state_root=None
 NO_WINDOW=getattr(subprocess,'CREATE_NO_WINDOW',0)
@@ -438,9 +439,7 @@ def main():
     parser.add_argument('--config',type=Path,default=root/'config/worker.local.json')
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
-    config=json.loads(args.config.read_text(encoding='utf8'))
-    if config.get('worker_token_env'):
-        config['worker_token']=os.environ[config['worker_token_env']]
+    config=load_worker_config(args.config)
     os.environ['SPATIALFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
     state_root=Path(config['runs']);state_root.mkdir(parents=True,exist_ok=True)
     # This supervisor mutex is distinct from durable ownership of an already running Kit.

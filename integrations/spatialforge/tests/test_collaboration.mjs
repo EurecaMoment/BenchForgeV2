@@ -9,7 +9,7 @@ test('SpatialForge plugin exposes shared handoffs without service calls', async 
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'spatialforge-collab-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const config = path.join(root, 'service.json');
-  await fs.writeFile(config, JSON.stringify({port: 9, operator_token: 'test-token'}));
+  await fs.writeFile(config, JSON.stringify({port: 9, operator_token: 'test-token', execution_mode: 'exploration'}));
   const registered = new Map();
   await apply({
     tools: {register: tool => registered.set(tool.name, tool)},

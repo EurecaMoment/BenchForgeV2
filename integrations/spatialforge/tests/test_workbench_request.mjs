@@ -1,12 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
-import vm from 'node:vm';
+import {loadClient} from '../ui/tests/load_client.mjs';
 
 test('workbench submits full production once and requires visible consent for preserved composer content', async () => {
-  let registration;
-  const source = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-    .replace(/return \{\s+inject:/, 'return {Workbench}; return {inject:');
+  const source = await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8');
   const hooks = [];
   let index = 0;
   const React = {
@@ -27,11 +25,11 @@ test('workbench submits full production once and requires visible consent for pr
       task_id: 'sf_selected.scene0', run_id: 'sf_selected', revision: 3, name: 'Selected historical room',
       source_directory: '/captured/sf_selected.scene0/revision_3', program_path: '/captured/sf_selected.scene0/revision_3/program.json'}]};
   let selectionReads = 0, selectionReadFailed = false;
-  vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => {registration = value;}}},
-    localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date,
+  const globals = {localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date,
     fetch: async (url) => {if (url.includes('view=plan_template')) return {ok: true, json: async () => JSON.parse(await fs.readFile(new URL('../../../src/benchforge_core/pipelines/assessment_template.json', import.meta.url), 'utf8'))}; assert.match(url, /view=scene_selection/); selectionReads++;
-      return {ok: !selectionReadFailed, json: async () => selectionReadFailed ? {error: 'fixture unavailable'} : sceneSelection};}});
-  const {Workbench} = registration.factory(() => React);
+      return {ok: !selectionReadFailed, json: async () => selectionReadFailed ? {error: 'fixture unavailable'} : sceneSelection};}};
+  const {api} = loadClient(source, React, globals);
+  const {Workbench} = api;
   assert.equal(typeof Workbench, 'function', 'test seam must expose the actual component');
   const native = {draft: '保留的原草稿', attachmentIds: ['existing-attachment'], phase: 'plain', queue: []};
   let insertions = 0;
@@ -74,7 +72,7 @@ test('workbench submits full production once and requires visible consent for pr
   assert.equal(insertions, 1);
   assert.equal(submissions.length, 1, 'a double click calls the official submission API once');
   assert.match(submissions[0].text, /完整完成五阶段/);
-  assert.match(submissions[0].text, /目标题量：6 条/);
+  assert.match(submissions[0].text, /target_items=6/);
   assert.match(submissions[0].text, /不要只写计划/);
   assert.match(submissions[0].text, /pipeline_plan.assessment/);
   assert.match(submissions[0].text, /spatialforge.assessment\/v1/);
