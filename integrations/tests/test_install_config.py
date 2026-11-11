@@ -30,12 +30,16 @@ def local_configuration(root):
     for name in ('spatialforge-server', 'spatialforge', 'models', 'worker'):
         filename = name + '.example.json'
         shutil.copyfile(ROOT / 'config' / filename, config / filename)
+    # Python 3.10 on Windows needs SystemRoot even before importing any code.
+    # Isolate application settings while preserving the operating environment.
+    environment = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith(('SPATIALFORGE_', 'ISAAC_'))}
     with (patch.multiple(spatialforge_app, ROOT=root, CONFIG=config, STATE=root / '.deployment',
                          SERVER=config / 'spatialforge-server.local.json',
                          SERVER_TEMPLATE=config / 'spatialforge-server.example.json',
                          MODELS_TEMPLATE=config / 'models.example.json',
                          WORKER_TEMPLATE=config / 'worker.example.json'),
-          patch.dict(os.environ, {}, clear=True)):
+          patch.dict(os.environ, environment, clear=True)):
         yield config
 
 
