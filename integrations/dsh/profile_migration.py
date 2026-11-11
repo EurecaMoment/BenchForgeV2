@@ -124,7 +124,7 @@ def update_workbench(profile, root, workspace_paths=None, revision=None):
     """Refresh only UI presentation; all session identities and data paths survive."""
     matches = [row for row in inserted_rows(profile) if preset_id(row) == base.WORKBENCH_PRESET_ID]
     if len(matches) != 1:
-        raise ValueError('BenchForgeV2_UI / legacy SpatialForge preset is missing or duplicated')
+        raise ValueError('BenchForgeV2_UI preset is missing or duplicated')
     preset = deepcopy(matches[0])
     preset['config']['name'] = base.PRESETS[base.WORKBENCH_PRESET_ID]['name']
     preset['config']['plugins'] = [row for row in preset['config'].get('plugins', [])

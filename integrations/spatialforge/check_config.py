@@ -33,13 +33,13 @@ def check_preset(preset):
             continue
         if not path.is_file():
             raise FileNotFoundError(
-                f'SpatialForge configuration referenced by {preset} does not exist: {path}. '
+                f'BenchForgeV2 configuration referenced by {preset} does not exist: {path}. '
                 'Run python spatialforge_app.py init to create the default client configuration. '
                 'If the configuration was moved, update serviceConfig in this preset to its actual path '
                 '(for example config/generated/spatialforge.local.json).')
         config = json.loads(path.read_text(encoding='utf-8'))
         if not isinstance(config, dict):
-            raise ValueError(f'SpatialForge configuration must be a JSON object: {path}')
+            raise ValueError(f'BenchForgeV2 configuration must be a JSON object: {path}')
         checked.add(path)
     return checked
 
@@ -52,7 +52,7 @@ def main():
         checked = check_preset(args.preset)
     except (OSError, ValueError, yaml.YAMLError) as error:
         parser.error(str(error))
-    print(f'Checked {len(checked)} SpatialForge configuration file(s).')
+    print(f'Checked {len(checked)} BenchForgeV2 configuration file(s).')
 
 
 if __name__ == '__main__':

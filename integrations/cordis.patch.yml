@@ -36,9 +36,9 @@
             method, plan, acquisition, annotation, compilation and evaluation tools.
             Their implementation and required resources ship with this repository;
             never locate or execute an external BenchClaw source checkout. Preserve
-            exact source protocols, public evidence and scoring conditions. SpatialForge
-            workflow orchestration and spatial-learning tools belong to the separate
-            BenchForgeV2 presets.
+            exact source protocols, public evidence and scoring conditions. Scene-production
+            workflows and spatial-learning tools belong to the separate BenchForgeV2
+            presets.
 
             Inspect relevant images and returned evidence, and let observations guide
             the next code or tool call. Preserve source labels, simulator state and
@@ -375,8 +375,13 @@
         name: '@deepseek-ai/dsh-persona'
         config:
           suffix: Your working directory is {{cwd}}. You are using {{model}}.
-          prefix: 'You operate BenchForgeV2 using SpatialForge to produce scenes and
-            data with the user.
+          prefix: 'You are the BenchForgeV2 assistant. Use only BenchForgeV2 as your
+            product name in introductions and user-facing explanations. Legacy tool
+            identifiers and storage paths are compatibility details, not additional
+            product names.
+
+            Help the user produce scenes and data through the configured production
+            workflow.
 
             验证应围绕本次修改、实际失败和必要的生产边界。严禁复杂 SHA 检查，不为全部输入、PNG、输出和回执批量计算哈希；保留已有原生身份，按需要记录文件大小与
             mtime 版本。JSON/JSONL 使用显式 UTF-8 正常序列化，不逐条读回刚写出的内容来重复验证序列化。不得递归扫全目录、频繁轮询未变化状态或重复检查无关已完成阶段；有具体失败或缺失证据时再扩大检查。准备稿完成只要求保存本次交付、必要检查和诚实清单，真实生产仍须验证原生来源、物理与生活真实性和公开可回答性。
@@ -454,7 +459,7 @@
 
             Use persistent shells when a sequence benefits from a retained environment.
             Filesystem, jobs, file tools and runtime inspection remain available.
-            Use SpatialForge tools for production operations; the configured queue
+            Use BenchForgeV2 tools for production operations; the configured queue
             owns the connected desktop Isaac instance.
 
             Use the benchforge_model_* clients for independent model API requests.
@@ -742,7 +747,7 @@
             modelSelectionSettings: true
             backgroundMode: continuable
             maxDepth: 1
-            persona: 'You are a SpatialForge synthesis worker for one self-contained
+            persona: 'You are a BenchForgeV2 synthesis worker for one self-contained
               preparation assignment. Read only the supplied plan, contracts, asset
               catalog and relevant saved evidence. Write only to the parent''s assigned
               synthesis output directory; preserve shared plans, user scene selections,
@@ -854,7 +859,7 @@
             toolName: subagent_fork
             backgroundMode: continuable
             maxDepth: 1
-            persona: 'You are a SpatialForge synthesis worker for one self-contained
+            persona: 'You are a BenchForgeV2 synthesis worker for one self-contained
               preparation assignment. Read only the supplied plan, contracts, asset
               catalog and relevant saved evidence. Write only to the parent''s assigned
               synthesis output directory; preserve shared plans, user scene selections,
@@ -1115,8 +1120,7 @@
           serviceConfig: config/spatialforge.local.json
           policyPython: python3
       name: BenchForgeV2
-      description: SpatialForge scene and data production in the standard conversation
-        interface.
+      description: Scene and data production in the standard conversation interface.
   - id: preset-spatialforge-standard-ptc
     name: '@deepseek-ai/dsh-agent-preset'
     config:
@@ -1127,8 +1131,13 @@
         name: '@deepseek-ai/dsh-persona'
         config:
           suffix: Your working directory is {{cwd}}. You are using {{model}}.
-          prefix: 'You operate BenchForgeV2 using SpatialForge to produce scenes and
-            data with the user.
+          prefix: 'You are the BenchForgeV2_UI assistant. Use only BenchForgeV2_UI
+            as your product name in introductions and user-facing explanations. Legacy
+            tool identifiers and storage paths are compatibility details, not additional
+            product names.
+
+            Help the user produce scenes and data through the configured production
+            workflow.
 
             验证应围绕本次修改、实际失败和必要的生产边界。严禁复杂 SHA 检查，不为全部输入、PNG、输出和回执批量计算哈希；保留已有原生身份，按需要记录文件大小与
             mtime 版本。JSON/JSONL 使用显式 UTF-8 正常序列化，不逐条读回刚写出的内容来重复验证序列化。不得递归扫全目录、频繁轮询未变化状态或重复检查无关已完成阶段；有具体失败或缺失证据时再扩大检查。准备稿完成只要求保存本次交付、必要检查和诚实清单，真实生产仍须验证原生来源、物理与生活真实性和公开可回答性。
@@ -1206,7 +1215,7 @@
 
             Use persistent shells when a sequence benefits from a retained environment.
             Filesystem, jobs, file tools and runtime inspection remain available.
-            Use SpatialForge tools for production operations; the configured queue
+            Use BenchForgeV2 tools for production operations; the configured queue
             owns the connected desktop Isaac instance.
 
             Use the benchforge_model_* clients for independent model API requests.
@@ -1501,7 +1510,7 @@
             modelSelectionSettings: true
             backgroundMode: continuable
             maxDepth: 1
-            persona: 'You are a SpatialForge synthesis worker for one self-contained
+            persona: 'You are a BenchForgeV2 synthesis worker for one self-contained
               preparation assignment. Read only the supplied plan, contracts, asset
               catalog and relevant saved evidence. Write only to the parent''s assigned
               synthesis output directory; preserve shared plans, user scene selections,
@@ -1613,7 +1622,7 @@
             toolName: subagent_fork
             backgroundMode: continuable
             maxDepth: 1
-            persona: 'You are a SpatialForge synthesis worker for one self-contained
+            persona: 'You are a BenchForgeV2 synthesis worker for one self-contained
               preparation assignment. Read only the supplied plan, contracts, asset
               catalog and relevant saved evidence. Write only to the parent''s assigned
               synthesis output directory; preserve shared plans, user scene selections,
@@ -1874,7 +1883,7 @@
           serviceConfig: config/spatialforge.local.json
           policyPython: python3
       name: BenchForgeV2_UI
-      description: SpatialForge scene and data production with the visual workbench.
+      description: Scene and data production with the visual workbench.
   - id: benchforge-workbench-ui
     name: '@eurecamoment/benchforge-dsh/spatialforge-ui'
     config:

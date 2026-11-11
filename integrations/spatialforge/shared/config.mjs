@@ -95,12 +95,12 @@ export async function loadServiceConfig(configFile, {getEnvironmentValue} = {}) 
   const source = await fs.readFile(configPath, 'utf8');
   let config = parseStrictJson(source);
   if (!config || typeof config !== 'object' || Array.isArray(config))
-    throw new Error('SpatialForge service configuration must be a JSON object');
+    throw new Error('BenchForgeV2 service configuration must be a JSON object');
   if (config.service_config) {
     const basePath = await resolveConfigPath(config.service_config, configPath, getEnvironmentValue);
     const base = parseStrictJson(await fs.readFile(basePath, 'utf8'));
     if (!base || typeof base !== 'object' || Array.isArray(base))
-      throw new Error('Referenced SpatialForge service configuration must be a JSON object');
+      throw new Error('Referenced BenchForgeV2 service configuration must be a JSON object');
     const {service_config: ignored, ...overrides} = config;
     for (const field of ['port', 'service_url', 'execution_mode', 'scene_policy_path']) {
       if (field in overrides && field in base && overrides[field] !== base[field])

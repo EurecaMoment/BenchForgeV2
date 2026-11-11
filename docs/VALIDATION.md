@@ -20,7 +20,7 @@ node --test integrations/spatialforge/tests/test_workbench.mjs integrations/spat
 node --test integrations/spatialforge/tests/test_parallel_sessions.mjs integrations/spatialforge/tests/test_synthesis_sessions.mjs integrations/spatialforge/tests/test_synthesis_scope.mjs integrations/spatialforge/tests/test_preparation_tool.mjs integrations/spatialforge/tests/test_preparation_products.mjs integrations/spatialforge/tests/test_plugin_contracts.mjs integrations/spatialforge/tests/test_delivery_review.mjs
 ```
 
-The disposable `runs/` directories are ignored by Git. SpatialForge service,
+The disposable `runs/` directories are ignored by Git. BenchForgeV2 service,
 desktop worker, simulator, and optional GPU checks are separately scoped in the
 CI workflow because they require extra dependencies or host capabilities.
 
@@ -32,5 +32,5 @@ production deployment, or model quality. Those claims require a recorded run
 against the named target environment and an explicit acceptance result.
 
 CI runs the portable checks on Windows and Linux with Python 3.10 and 3.12.
-Additional SpatialForge tests run on Python 3.12. Check the GitHub Actions result
+Additional BenchForgeV2 tests run on Python 3.12. Check the GitHub Actions result
 for the exact revision before treating CI as passed.

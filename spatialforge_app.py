@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install and run the bundled SpatialForge service and desktop dispatcher."""
+"""Install and run the bundled BenchForgeV2 service and desktop dispatcher."""
 import argparse
 import json
 import os
@@ -133,7 +133,7 @@ def main():
     args = p.parse_args()
     if args.command == 'setup':
         if not (3, 11) <= sys.version_info < (3, 14):
-            p.error('SpatialForge requires Python 3.11 or 3.12/3.13')
+            p.error('BenchForgeV2 requires Python 3.11 or 3.12/3.13')
         if not PYTHON.exists():
             venv.EnvBuilder(with_pip=True).create(STATE / 'venv')
         subprocess.run([str(PYTHON), '-m', 'pip', 'install', '-e', str(ROOT / 'components/benchclaw') + '[postgres,imports]',

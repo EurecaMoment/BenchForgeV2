@@ -1,6 +1,6 @@
 # GPU services with storage on a separate host
 
-The DSH and SpatialForge process can stay on the orchestration host while a GPU
+The DSH and BenchForgeV2 process can stay on the orchestration host while a GPU
 host runs model workers behind an HTTP endpoint. Model code, Python environments,
 weights, inputs, logs and outputs may all remain on operator-mounted shared
 storage. The GPU host does not require a second copy of model weights.
@@ -68,7 +68,7 @@ also be reused without installing another environment.
 
 The default listener is loopback. Forward the port over SSH to the orchestration
 host, then set `SPATIALFORGE_INFERENCE_URL=http://127.0.0.1:3951` in the
-SpatialForge service environment. `work_root` must contain each per-task output
+BenchForgeV2 service environment. `work_root` must contain each per-task output
 directory supplied by DSH; paths outside it are rejected. The service limits
 active jobs to 32, request bodies to 2 MiB, and retains at most 256 job records.
 It persists job identity before execution and marks in-flight jobs failed after
@@ -81,7 +81,7 @@ Non-loopback startup fails without the token, and all API routes require its
 Bearer value. The model worker subprocess does not inherit this token. Keep the
 transport private or use the SSH tunnel above.
 
-DSH continues to use its normal SpatialForge tools. Local GPU selection and
+DSH continues to use its normal BenchForgeV2 tools. Local GPU selection and
 local model startup are bypassed when the remote endpoint is configured. An
 unavailable endpoint returns an error; it does not start a second model on the
 orchestration host.

@@ -27,7 +27,7 @@ export const name='spatialforge-tools';
 // so the hook remains valid after a normal final response/present boundary.
 export const inject=['tools','llm','attachments'];
 export const Config=z.object({
-  serviceConfig:z.string().required().description('Path to the SpatialForge service JSON configuration.'),
+  serviceConfig:z.string().required().description('Path to the BenchForgeV2 service JSON configuration.'),
   scenePolicyWorkspace:z.string().default(''),
   policyPython:z.string().default('python3'),
   preparationBatchSize:z.natural().min(1).default(3),

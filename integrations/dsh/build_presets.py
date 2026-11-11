@@ -32,7 +32,7 @@ def main():
     args = parser.parse_args()
     # A portable package has no deployment config yet; a local overlay must.
     if not args.package_imports and not args.service_config.is_file():
-        parser.error(f'SpatialForge configuration not found: {args.service_config.resolve()}. '
+        parser.error(f'BenchForgeV2 configuration not found: {args.service_config.resolve()}. '
                      'Run python spatialforge_app.py init, or pass --service-config with the actual file path.')
     sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
     result = build(sources, args.dsh_root, args.python, args.config, args.service_config,

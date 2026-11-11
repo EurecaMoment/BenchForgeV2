@@ -1,4 +1,4 @@
-"""Read real SpatialForge status through its authenticated POST API."""
+"""Read real BenchForgeV2 status through its authenticated POST API."""
 from __future__ import annotations
 import argparse
 import json

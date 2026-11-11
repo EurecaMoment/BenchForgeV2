@@ -1,4 +1,4 @@
-"""Optional, service-owned identifiers that follow a SpatialForge run."""
+"""Optional, service-owned identifiers that follow a BenchForgeV2 run."""
 from dataclasses import dataclass, replace
 from typing import Mapping
 
@@ -82,4 +82,4 @@ class RunCancelled(RuntimeError):
 
 def check_cancelled(stop, stage):
     if stop is not None and stop.is_set():
-        raise RunCancelled(f"SpatialForge run canceled during {stage}")
+        raise RunCancelled(f"BenchForgeV2 run canceled during {stage}")

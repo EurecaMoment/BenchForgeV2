@@ -1,4 +1,4 @@
-"""Refresh the BenchForgeV2_UI workbench, including retained SpatialForge sessions."""
+"""Refresh the BenchForgeV2_UI workbench, including retained workbench sessions."""
 import argparse
 import importlib.util
 import json

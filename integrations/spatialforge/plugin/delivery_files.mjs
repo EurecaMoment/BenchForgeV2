@@ -64,7 +64,7 @@ export function createDeliveryFileReview({ createMessage, inspect = inspectDeliv
       && JSON.stringify(e.data.source.delivery_call_ids) === JSON.stringify(callIds)
       && JSON.stringify(e.data.source.issues) === JSON.stringify(result.issues));
     if (same) return;
-    const text = `The SpatialForge files you presented contain broken image/metadata links. Actual filesystem findings: ${JSON.stringify(result)}
+    const text = `The BenchForgeV2 files you presented contain broken image/metadata links. Actual filesystem findings: ${JSON.stringify(result)}
 Repair these delivered files now: keep the original image filenames, or update each exported view JSON to the matching renamed image. Preserve the original capture and simulator GT. Read the repaired links to verify them before claiming the delivery is usable. This requires no new render, model review or dataset.
 This check only covers view image links in the presented delivery directories. It does not assess scene appearance or USD loading. For USD, binary grep/strings or Stage.Open alone cannot establish dependency completeness; use its asset resolver in the intended loading environment. If files cannot be accessed or repaired, report that concrete blocker. Unchanged findings are not repeatedly injected.`;
     agent.steer(createMessage({ content: [{ type: 'text', text }], source: {

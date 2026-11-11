@@ -1,8 +1,8 @@
 # 下载后快速使用
 
 本仓库是 BenchForgeV2 的统一代码仓库。DSH 官方源码、模型权重、模型启动器、
-Isaac 安装和生产服务仍由各自部署维护，不随仓库复制。FIT 当前 SpatialForge
-场景链路为 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 →
+Isaac 安装和生产服务仍由各自部署维护，不随仓库复制。FIT 当前 BenchForgeV2
+场景链路为 `DSH → FIT BenchForgeV2 → a800-remote-fit → 127.0.0.1:18766 →
 thunlp-node1 Isaac Sim 6.2.0/A800`；本页的 Windows worker 说明只适用于自托管部署。
 
 准备 Python 3.10+、Git、Node.js 22.19+ 或 24+：
@@ -17,7 +17,7 @@ python benchforge.py start
 安装器将固定版本 DSH 作为第三方依赖下载并构建一次，再安装 BenchForge 的生产依赖、
 生成独立模式。界面中配置你的 Qwen 提供方，在新会话选择 **BenchForge**。
 已有编译好的 DSH 可用 `python benchforge.py setup --dsh-root 路径` 复用。
-项目使用自己的 DSH home，不修改 SpatialForge 或官方预设。升级插件后重启本项目的
+项目使用自己的 DSH home，不修改 BenchForgeV2 或官方预设。升级插件后重启本项目的
 DSH 进程，以刷新缓存的工具定义。
 
 ## 先确认下载包可用

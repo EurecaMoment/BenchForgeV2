@@ -1,4 +1,4 @@
-"""Authenticated HTTP client for SpatialForge pipeline operations."""
+"""Authenticated HTTP client for BenchForgeV2 pipeline operations."""
 
 import json
 import urllib.request

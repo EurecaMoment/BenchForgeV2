@@ -130,7 +130,7 @@ def main():
                    "workbench_revision": runtime['ui_revision'],
                    "model_tools": development.MODEL_TOOLS, "services_before": services_before,
                    "services_after": services_after, "restarted": False,
-                   "existing_sessions": "same preset identities and workspace bindings; SpatialForge is displayed as BenchForgeV2_UI; active tool revisions remain bound",
+                   "existing_sessions": "same preset identities and workspace bindings; retained UI sessions use the BenchForgeV2_UI display name; active tool revisions remain bound",
                    "synthesis_worker_reasoning_effort": development.DEFAULT_SYNTHESIS_REASONING_EFFORT,
                    "profile_backup": str(backup), "heavy_model_start": False}
         (deployment / "spatialforge-hot-update.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")

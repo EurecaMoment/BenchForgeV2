@@ -1,4 +1,4 @@
-# 从仓库部署 SpatialForge
+# 从仓库部署 BenchForgeV2
 
 服务、持久任务队列、生成工具、DSH 插件与桌面执行器均在本仓库；FIT 当前
 生产使用的 A800 dispatcher 和远端 Isaac 安装不在本仓库。
@@ -7,7 +7,7 @@
 服务机运行 Linux/Python 3.11、Git 2.26+、Docker Compose 和 Node.js 22.19+；Windows 桌面运行
 Isaac Sim。DSH 与服务放在同一 Linux 用户下，便于直接查看产物。
 本指南描述自托管桌面部署，桌面只运行一个 worker/Isaac 实例。FIT 当前生产链路
-是 `DSH → FIT SpatialForge → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
+是 `DSH → FIT BenchForgeV2 → a800-remote-fit → 127.0.0.1:18766 → thunlp-node1
 Isaac Sim 6.2.0/A800`；不要把本指南的 Windows worker 说明当作 FIT 现行路由。
 生成模型按任务临时加载，不停止机器上的其他服务。
 
@@ -76,7 +76,7 @@ python spatialforge_app.py worker --config config/worker.local.json
 
 worker 保留 Windows 单实例互斥锁，按任务用 Isaac 自带 Python 启动执行器。
 无需在 Isaac 环境中安装服务端的 PostgreSQL、DSH 或生成模型依赖。
-请勿同时运行旧 SpatialForge worker 与本仓库 worker。
+请勿同时运行旧 BenchForgeV2 worker 与本仓库 worker。
 
 ## 3. 执行实际渲染和物理交互
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键关停：DSH Web -> SpatialForge 服务 -> PostgreSQL（--keep-db 可保留数据库）
+# 一键关停：DSH Web -> BenchForgeV2 服务 -> PostgreSQL（--keep-db 可保留数据库）
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -66,8 +66,8 @@ fi
 echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
 stop_port "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start --port"
 
-echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
-stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
+echo "[2/3] 停止 BenchForgeV2 服务 (端口 $SERVICE_PORT)"
+stop_port "BenchForgeV2" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
 
 if [ "$KEEP_DB" -eq 1 ]; then
   echo "[3/3] 保留 PostgreSQL (--keep-db)"

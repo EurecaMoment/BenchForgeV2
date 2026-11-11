@@ -39,7 +39,7 @@ def _rows(value):
 
 def _overview():
     return {
-        'name': 'SpatialForge', 'catalog_schema': 'spatialforge.operator-catalog/v2',
+        'name': 'BenchForgeV2', 'catalog_schema': 'spatialforge.operator-catalog/v2',
         'simulator': 'desktop_isaac_6.0.1',
         'model': os.environ.get('SPATIALFORGE_MODEL_ID') or 'unconfigured',
         'sections': SECTIONS, 'query': {'section': 'one listed section', 'query': 'case-insensitive literal substring; no semantic ranking',

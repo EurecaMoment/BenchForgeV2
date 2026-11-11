@@ -2,7 +2,7 @@
 
 This directory is the Node plugin subpackage of the **same BenchForgeV2
 repository**. It declares public entrypoints and a DSH bundle manifest. Python
-business code and the existing SpatialForge HTTP service remain separate runtime
+business code and the existing BenchForgeV2 HTTP service remain separate runtime
 dependencies; installing the bundle does not provision or restart them.
 
 The bundle exposes exactly three custom presets. Official `standard`, `ptc`,
@@ -11,10 +11,10 @@ The bundle exposes exactly three custom presets. Official `standard`, `ptc`,
 | Display name | Purpose | Stable session identity |
 | --- | --- | --- |
 | **BenchForge** | First-generation benchmark construction using the bundled BenchClaw implementation | `benchforge` |
-| **BenchForgeV2** | SpatialForge scene/data production in the standard DSH conversation | `benchforgev2` |
+| **BenchForgeV2** | BenchForgeV2 scene/data production in the standard DSH conversation | `benchforgev2` |
 | **BenchForgeV2_UI** | The same production capabilities with the visual workbench | `spatialforge-standard-ptc` |
 
-`BenchForgeV2_UI` deliberately retains the former SpatialForge identity. DSH
+`BenchForgeV2_UI` deliberately retains the original workbench preset identity. DSH
 resolves the displayed name from its current preset roster, so old conversations
 show the new name without rewriting their session history. Their workspace,
 session ID, artifact routes and data ownership stay intact. Active sessions keep
@@ -53,7 +53,7 @@ The current production route is:
 
 ```text
 DSH on FIT
-  → FIT SpatialForge service and queue
+  → FIT BenchForgeV2 service and queue
   → external a800-remote-fit dispatcher
   → FIT 127.0.0.1:18766 reverse-SSH endpoint
   → thunlp-node1, Isaac Sim 6.2.0 on A800
@@ -70,9 +70,9 @@ current FIT production worker.
 
 ## FIT checkout location
 
-The maintained FIT checkout is `/home/maqiang/GitHub/BenchForgeV2`, on the
-`SpatialForge` development branch. Update this checkout in place; do not create
-a new top-level directory for each commit. Task templates are under
+For an existing FIT installation, update its maintained checkout at
+`/home/maqiang/GitHub/BenchForgeV2` on the explicitly selected branch. Standalone
+installations follow the root README and use their own directory. Task templates are under
 `src/benchforge_core/pipelines/task_templates.json` and pipeline recipes under
 `src/benchforge_core/pipelines/definitions/`.
 

@@ -1,11 +1,11 @@
-# SpatialForge integration
+# BenchForgeV2 integration
 
 `plugin/tools.mjs` contains the production tool definitions and the delivery
 review hooks, using public DSH package imports, service URL and token environment
 variable. No private host paths or tokens are embedded. `preset_definition.py`
 shares production capabilities between **BenchForgeV2** (standard conversation)
 and **BenchForgeV2_UI** (visual workbench). The latter keeps the historical
-SpatialForge session identity so old conversations and their workbench remain
+workbench session identity so old conversations and their workbench remain
 viewable. `../dsh/build_presets.py` generates those two and the independent
 first-generation **BenchForge** preset together. The installable
 Node bundle and supported package/Node versions are documented in
@@ -17,7 +17,7 @@ The active FIT route for scene work is:
 
 ```text
 DSH on FIT
-  → FIT SpatialForge service and queue
+  → FIT BenchForgeV2 service and queue
   → external a800-remote-fit dispatcher
   → FIT 127.0.0.1:18766 reverse-SSH endpoint
   → thunlp-node1, Isaac Sim 6.2.0 on A800
@@ -46,12 +46,12 @@ python benchforge.py start
 ```
 
 Without a run ID, status calls authenticated `POST /catalog`; with an ID it calls
-`POST /observe`. SpatialForge has no run-status `GET /status` endpoint.
+`POST /observe`. BenchForgeV2 has no run-status `GET /status` endpoint.
 Missing config or credentials fails with an actionable error.
 
 ## Multi-agent collaboration
 
-The combined preset exposes `benchforge_collaboration` and the SpatialForge plugin exposes `spatialforge_collaboration` for lightweight, shared-workspace handoffs. Agents can publish a role, status, inputs, findings, artifact paths, blockers, decisions and next actions, relate or reply to earlier handoffs, then list or read the record when another agent resumes the task. This is an artifact protocol rather than a fixed orchestration graph: agents can work sequentially or in parallel, and the parent agent decides how to merge their findings.
+The combined preset exposes `benchforge_collaboration` and the BenchForgeV2 plugin exposes `spatialforge_collaboration` for lightweight, shared-workspace handoffs. Agents can publish a role, status, inputs, findings, artifact paths, blockers, decisions and next actions, relate or reply to earlier handoffs, then list or read the record when another agent resumes the task. This is an artifact protocol rather than a fixed orchestration graph: agents can work sequentially or in parallel, and the parent agent decides how to merge their findings.
 
 Useful roles include planning, asset/layout construction, visual review, interaction/physics review, dataset/export review and delivery editing. Handoffs can reply to or relate earlier work and can carry a decision and confidence when a parent agent needs to reconcile parallel findings. Keep them short and concrete. Independent work may run in parallel; the single configured Isaac queue remains the shared execution boundary.
 
@@ -161,7 +161,7 @@ events and the report are saved under `--output`; each run uses a fresh workspac
 The adapter uses scripted responses and labeled fixture artifacts, with no model
 API, service request or Isaac process. It tests orchestration and persistence,
 not autonomous model decisions or scene quality. `--plugin` can select another
-deployed SpatialForge `tools.mjs` for the same replay.
+deployed BenchForgeV2 `tools.mjs` for the same replay.
 
 ## Install the bundled service
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键启动：PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
+# 一键启动：PostgreSQL -> BenchForgeV2 服务 -> BenchForge DSH Web
 # 配置全部来自 config/ 目录；日志写入 .benchforge/logs/，PID 写入 .benchforge/run/。
 set -euo pipefail
 
@@ -66,7 +66,7 @@ url_status() { curl -s -o /dev/null -w '%{http_code}' "$1" 2>/dev/null || true; 
 echo "[1/3] 启动 PostgreSQL"
 "$PY" spatialforge_app.py db
 
-echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 启动 BenchForgeV2 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
@@ -83,7 +83,7 @@ else
     tail -n 20 "$LOG_DIR/spatialforge.log" >&2 || true
     kill "$(<"$SF_PID_FILE")" 2>/dev/null || true
     rm -f "$SF_PID_FILE"
-    die "SpatialForge 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
+    die "BenchForgeV2 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
   fi
   echo "  已启动 (PID $(<"$SF_PID_FILE"))"
 fi
@@ -128,7 +128,7 @@ echo "验证："
 if "$PY" spatialforge_app.py status > /dev/null 2>&1; then
   echo "  数据库 / 服务 / 令牌：正常"
 else
-  die "数据库 / SpatialForge 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
+  die "数据库 / BenchForgeV2 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
 fi
 
 URL="$(latest_url)"

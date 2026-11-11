@@ -8,7 +8,7 @@ import {createGalleryComponents} from './components/gallery.js';
 import {createProductComponents} from './components/products.js';
 import {createWorkbenchComponent} from './components/workbench.js';
 
-// BenchForgeV2_UI retains the identity already saved in SpatialForge conversations.
+// BenchForgeV2_UI retains the identity already saved in legacy workbench conversations.
 // Display names live in the preset catalog; never gate history on a renamed label.
 const WORKBENCH_PRESET = 'spatialforge-standard-ptc';
 const NS = 'benchforgeWorkbench';

@@ -1,4 +1,4 @@
-"""Small SpatialForge client-config resolver for BenchForge HTTP calls."""
+"""Small BenchForgeV2 client-config resolver for BenchForge HTTP calls."""
 import json
 import os
 from pathlib import Path
@@ -108,12 +108,12 @@ def load_service_client_config(path):
     config_path = Path(_expand_environment(os.fspath(path))).expanduser().resolve()
     config = json.loads(config_path.read_text(encoding='utf-8'), object_pairs_hook=_reject_duplicate_keys)
     if not isinstance(config, dict):
-        raise ValueError('SpatialForge service configuration must be a JSON object')
+        raise ValueError('BenchForgeV2 service configuration must be a JSON object')
     if config.get('service_config'):
         base_path = _config_path(config['service_config'], config_path)
         base = json.loads(base_path.read_text(encoding='utf-8'), object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(base, dict):
-            raise ValueError('Referenced SpatialForge service configuration must be a JSON object')
+            raise ValueError('Referenced BenchForgeV2 service configuration must be a JSON object')
         overrides = {key: value for key, value in config.items() if key != 'service_config'}
         for field in ('port', 'service_url', 'execution_mode', 'scene_policy_path'):
             if field in overrides and field in base and overrides[field] != base[field]:

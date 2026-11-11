@@ -1,4 +1,4 @@
-"""Resolve SpatialForge service and model configuration files."""
+"""Resolve BenchForgeV2 service and model configuration files."""
 import json
 import os
 from pathlib import Path
@@ -104,12 +104,12 @@ def load_service_config(path, *, required_tokens=('operator', 'worker')):
     path = Path(path).expanduser().resolve()
     config = read_json(path)
     if not isinstance(config, dict):
-        raise ValueError('SpatialForge service configuration must be a JSON object')
+        raise ValueError('BenchForgeV2 service configuration must be a JSON object')
     if config.get('service_config'):
         base_path = resolve_path(config['service_config'], path)
         base = read_json(base_path)
         if not isinstance(base, dict):
-            raise ValueError('referenced SpatialForge service configuration must be a JSON object')
+            raise ValueError('referenced BenchForgeV2 service configuration must be a JSON object')
         overrides = {key: value for key, value in config.items() if key != 'service_config'}
         for key, value in overrides.items():
             if key in base and base[key] != value and key in {'port', 'service_url', 'execution_mode', 'scene_policy_path'}:
@@ -202,11 +202,11 @@ def load_worker_config(path):
     path = Path(path).expanduser().resolve()
     config = read_json(path)
     if not isinstance(config, dict):
-        raise ValueError('SpatialForge worker configuration must be a JSON object')
+        raise ValueError('BenchForgeV2 worker configuration must be a JSON object')
     service_path = config.get('service_config')
     service = read_json(resolve_path(service_path, path)) if service_path else {}
     if service and not isinstance(service, dict):
-        raise ValueError('SpatialForge service configuration must be a JSON object')
+        raise ValueError('BenchForgeV2 service configuration must be a JSON object')
     server_port = int(service.get('port', 3841))
     server_host = service.get('service_host', '127.0.0.1')
     canonical_url = service.get('service_url') or f'http://{server_host}:{server_port}'

@@ -406,7 +406,7 @@ export function createWorkbenchComponent({React, helpers, components}) {
           button(t('nextStep'), () => update({stage: STAGES[STAGES.indexOf(stage) + 1].id}), {disabled: stage.id === 'S5'})));
     return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
       h('header', {className: 'bfw-header'}, h('div', null,
-        h('div', {className: 'bfw-kicker'}, 'SpatialForge'), h('h1', {className: 'bfw-title'}, t('panel'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
+        h('div', {className: 'bfw-kicker'}, 'BenchForgeV2_UI'), h('h1', {className: 'bfw-title'}, t('panel'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
       h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
         className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
         'aria-current': stage.id === step.id ? 'step' : undefined,

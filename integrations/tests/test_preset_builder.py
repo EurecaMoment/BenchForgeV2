@@ -36,6 +36,10 @@ class PresetBuilderTest(unittest.TestCase):
         self.assertNotIn('spatialforge-tools', [p['id'] for p in first['plugins']])
         for preset in presets:
             self.assertNotIn('spatialforge-evaluation-ui', [p['id'] for p in preset['plugins']])
+            persona = next(plugin['config']['prefix'] for plugin in preset['plugins'] if plugin['id'] == 'persona')
+            self.assertIn(preset['name'], persona)
+            self.assertNotIn('SpatialForge', persona)
+            self.assertNotIn('SpatialForge', preset['description'])
         for key in ('spatialforge-tools', 'spatial-learning-tools'):
             a = next(p for p in headless['plugins'] if p['id'] == key)
             b = next(p for p in workbench['plugins'] if p['id'] == key)

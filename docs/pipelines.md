@@ -1,4 +1,4 @@
-# SpatialForge composable pipelines and exact task templates
+# BenchForgeV2 composable pipelines and exact task templates
 
 The consolidated operator UI for these pipelines is documented in
 [frontend-workbench-v2.md](frontend-workbench-v2.md). It maps plans, runs,
@@ -27,7 +27,7 @@ Answer-shape errors are recorded as per-item format errors, duplicate or
 unknown prediction IDs reject the submission, and omitted answers remain
 failures in the denominator.
 
-Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The SpatialForge development preset exposes these seven pipeline tools alongside existing learning and scene tools.
+Existing legacy `spatial_generate` remains for previous experiments; it does not generate these new document templates. Capability-data requests use the new catalog and pipeline tools. The BenchForgeV2 development preset exposes these seven pipeline tools alongside existing learning and scene tools.
 
 ## Artifact lineage and bounded repair
 

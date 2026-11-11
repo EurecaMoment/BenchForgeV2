@@ -174,7 +174,7 @@
       sessionProduction: "\u672C\u4F1A\u8BDD\u573A\u666F\u4EFB\u52A1",
       panel: "\u8BC4\u6D4B\u5DE5\u4F5C\u53F0",
       openEvaluation: "\u8BC4\u6D4B\u96C6",
-      noWorkspace: "\u5F53\u524D SpatialForge \u4F1A\u8BDD\u6CA1\u6709\u767B\u8BB0\u7684\u5DE5\u4F5C\u533A\u3002\u8BF7\u5148\u4E3A\u8FD9\u4E2A\u4F1A\u8BDD\u9009\u62E9\u5DE5\u4F5C\u533A\u3002",
+      noWorkspace: "\u5F53\u524D\u4F1A\u8BDD\u6CA1\u6709\u767B\u8BB0\u7684\u5DE5\u4F5C\u533A\u3002\u8BF7\u5148\u4E3A\u8FD9\u4E2A\u4F1A\u8BDD\u9009\u62E9\u5DE5\u4F5C\u533A\u3002",
       overview: "\u603B\u89C8",
       runs: "\u8FD0\u884C\u4E0E\u4EA7\u7269",
       datasets: "\u6570\u636E\u96C6",
@@ -625,7 +625,7 @@
       sessionProduction: "Session scene job",
       panel: "Evaluation workbench",
       openEvaluation: "Evaluations",
-      noWorkspace: "This SpatialForge session has no registered workspace. Attach one to this session first.",
+      noWorkspace: "This session has no registered workspace. Attach one to this session first.",
       overview: "Overview",
       runs: "Runs & artifacts",
       datasets: "Datasets",
@@ -1204,7 +1204,7 @@
     function productionRequest(demand, selection) {
       if (demand.mode === "append") return "\u8BF7\u5C06\u4EE5\u4E0B\u8981\u6C42\u5E94\u7528\u4E8E\u5F53\u524D\u4F1A\u8BDD\u7684\u751F\u4EA7\u4EFB\u52A1\uFF0C\u4FDD\u7559\u5DF2\u6709\u4EA7\u7269\u548C\u5931\u8D25\u8BC1\u636E\uFF0C\u5E76\u7EE7\u7EED\u5B9E\u9645\u6267\u884C\u81F3\u5B8C\u6210\uFF1A\n" + demand.objective.trim() + sceneConstraint(selection);
       return [
-        "\u8BF7\u5B9E\u9645\u6267\u884C\u4E00\u6B21 SpatialForge \u8BC4\u6D4B\u6570\u636E\u96C6\u751F\u4EA7\u4EFB\u52A1\uFF0C\u5B8C\u6574\u5B8C\u6210\u4E94\u9636\u6BB5\uFF1A\u8BC4\u6D4B\u8BA1\u5212\u3001\u573A\u666F\u751F\u6210\u6216\u590D\u7528\u4E0E\u91C7\u96C6\u3001\u6807\u6CE8\u3001\u6309\u80FD\u529B\u6A21\u677F\u51FA\u9898\u3001\u8D28\u91CF\u68C0\u67E5\u4E0E\u6253\u5305\u4EA4\u4ED8\uFF1B\u4E0D\u8981\u53EA\u5199\u8BA1\u5212\u3002",
+        "\u8BF7\u5B9E\u9645\u6267\u884C\u4E00\u6B21 BenchForgeV2 \u8BC4\u6D4B\u6570\u636E\u96C6\u751F\u4EA7\u4EFB\u52A1\uFF0C\u5B8C\u6574\u5B8C\u6210\u4E94\u9636\u6BB5\uFF1A\u8BC4\u6D4B\u8BA1\u5212\u3001\u573A\u666F\u751F\u6210\u6216\u590D\u7528\u4E0E\u91C7\u96C6\u3001\u6807\u6CE8\u3001\u6309\u80FD\u529B\u6A21\u677F\u51FA\u9898\u3001\u8D28\u91CF\u68C0\u67E5\u4E0E\u6253\u5305\u4EA4\u4ED8\uFF1B\u4E0D\u8981\u53EA\u5199\u8BA1\u5212\u3002",
         "execution_mode=" + (demand.executionMode || "production") + "\uFF1Bquantity_contract=" + (demand.quantityContract || "minimum") + "\u3002",
         "\u751F\u4EA7\u9700\u6C42\uFF1A" + demand.objective.trim(),
         "target_items=" + Number(demand.count) + "\u3002\u8FD9\u662F\u8BF7\u6C42\u76EE\u6807\uFF1B\u6309\u6570\u91CF\u5408\u540C\u5904\u7406\u77ED\u7F3A\uFF0C\u4E0D\u5F97\u628A\u6267\u884C\u5B8C\u6210\u8868\u8FF0\u4E3A\u6570\u91CF\u8FBE\u6807\u6216\u8D28\u91CF\u9A8C\u6536\u901A\u8FC7\u3002",
@@ -3706,7 +3706,7 @@
         h("header", { className: "bfw-header" }, h(
           "div",
           null,
-          h("div", { className: "bfw-kicker" }, "SpatialForge"),
+          h("div", { className: "bfw-kicker" }, "BenchForgeV2_UI"),
           h("h1", { className: "bfw-title" }, t("panel"))
         ), button(t("refresh"), () => setRevision((value) => value + 1), { disabled: summary.loading })),
         h("nav", { className: "bfw-flow", "aria-label": t("navigation") }, STAGES2.map((step) => h(

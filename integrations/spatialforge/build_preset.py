@@ -1,4 +1,4 @@
-"""Generate BenchForgeV2 with SpatialForge capabilities and no workbench UI."""
+"""Generate BenchForgeV2 with BenchForgeV2 capabilities and no workbench UI."""
 import argparse
 import importlib.util
 from pathlib import Path
@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
     if not args.service_config.is_file():
-        parser.error(f'SpatialForge configuration not found: {args.service_config.resolve()}. '
+        parser.error(f'BenchForgeV2 configuration not found: {args.service_config.resolve()}. '
                      'Run python spatialforge_app.py init, or pass --service-config with the actual file path.')
     sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
     result = build(sources, args.dsh_root, args.python, args.config, args.service_config)

@@ -6,7 +6,7 @@
 原 composer 仅在嵌入区域内隐藏，工作台生产表单是唯一可见输入。无需先打开右侧“评测集”面板。
 此替换严格限定于 UI 版；`BenchForge`、`BenchForgeV2` 和官方预设保持原来的对话界面。
 
-UI 版保留旧 `SpatialForge` 会话的内部标识 `spatialforge-standard-ptc`，
+UI 版保留旧会话的内部标识 `spatialforge-standard-ptc`，
 只将列表与会话标签的显示名称统一为 `BenchForgeV2_UI`。迁移不改写会话记录、
 Session ID、工作目录或产物路径。工作台读取服务统一挂在 Host，客户端仍按该内部标识
 决定是否展示，已绑定旧工具版本的会话也可继续查看历史产物。
@@ -17,7 +17,7 @@ BenchForgeV2_UI 会话。界面状态按 Session ID 保存，数据查询按该�
 
 ## 使用流程
 
-1. 在 DSH 中选择或新建 BenchForgeV2_UI 会话，并选择有写权限的工作区；原 SpatialForge 会话继续使用。
+1. 在 DSH 中选择或新建 BenchForgeV2_UI 会话，并选择有写权限的工作区；已有工作台会话继续使用。
 2. 等待“完全权限已开启”。界面通过官方会话命令 `/permission danger-full-access`
    设置本会话权限，不把该命令发给模型；权限投影就绪前不允许提交生产。
    失败时显示原因和“重试开启权限”。
@@ -75,7 +75,7 @@ flowchart LR
   B --> D[public dataset snapshots]
   C --> E[Authenticated workbench API]
   D --> E
-  E --> F[SpatialForge main production workbench]
+  E --> F[BenchForgeV2_UI production workbench]
   F --> G[Natural-language demand form]
   G --> H[Official current-session submit actions]
   H --> B
@@ -108,7 +108,7 @@ flowchart LR
 | `view=dataset&dataset=<id>&workspace_path=<cwd>&session_id=<sid>&page=1&page_size=24` | 当前版本公开样本和分页，可加 template/split/q |
 | `view=media&dataset=<id>&workspace_path=<cwd>&session_id=<sid>&item=<row>&media=<index>` | 当前对话题目声明的公开图片 |
 
-浏览器不接收 SpatialForge operator token。DSH 认证 cookie 不保存进部署回执。
+浏览器不接收 BenchForgeV2 operator token。DSH 认证 cookie 不保存进部署回执。
 运行接口提供操作者使用的来源路径和合同信息；它不是对外考生评测服务。
 
 ## 热加载
@@ -151,7 +151,7 @@ Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DS
 原生组件拥有滚动、尾部跟随和历史加载；外层仅提供响应式高度和布局 token，
 不复制 DSH CSS。官方 Factory 没有隐藏输入框参数，因此仅在 `.bfw-native-chat` 内隐藏稳定的 `[data-composer-seat]`；其他环境保留原输入框。场景和 pipeline 的长期进度仍由五阶段回执显示。
 
-同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 SpatialForge 主视图，
+同一会话的 `agentPreset` 投影暂时未就绪时保留已确认的 BenchForgeV2_UI 主视图，
 明确切换环境或会话后才移除；输入表单本身不注册或卸载主槽。
 同一工作台保留已确认的权限值，临时缺失投影不会禁用已授权输入；
 收到明确的新权限值时立即更新，首次尚未确认权限时仍等待授权。
@@ -164,7 +164,7 @@ Markdown、图片、重试和消息操作。思考与过程展示遵循原有 DS
   candidate/verified 边界、只读数据库、非法路径和官方 slot 注册生命周期。
 - `python -m unittest discover -s integrations/tests -p test_workbench_install.py -v`：
   根插件安装幂等、不改其他模式、当前 DSH boot graph 格式。
-- 本次主视图改造需单独做 DSH 浏览器验收：普通 preset 保持原对话；SpatialForge
+- 本次主视图改造需单独做 DSH 浏览器验收：普通 preset 保持原对话；BenchForgeV2
   显示生产表单和五阶段并隐藏原聊天/composer；权限就绪才可提交；一键生产、
   草稿/附件显式确认、追加要求、停止当前 turn、会话隔离和分页/媒体均符合上述行为。
   旧版右侧面板验收结果不能替代本次验收。本文件描述实现流程，不表示目标部署已经通过验收。

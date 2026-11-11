@@ -54,7 +54,7 @@ disabling remeshing require separate quality acceptance.
 
 For the existing FIT reconstruction route, keep the legacy tool name `sam3d`
 and point its external resident gateway port at this service. Set
-`SPATIALFORGE_RECONSTRUCTION_PROVIDER=trellis2` on the SpatialForge API so
+`SPATIALFORGE_RECONSTRUCTION_PROVIDER=trellis2` on the BenchForgeV2 API so
 reconstruction cache identities and the operator catalog identify the new
 provider. Gateway availability must allow TRELLIS PBR export when legacy
 `texture_baking` is supplied. The plugin exposes `spatialforge_trellis` and

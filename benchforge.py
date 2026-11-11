@@ -22,7 +22,7 @@ def main():
     parser.add_argument('command',choices=['demo','setup','start'])
     parser.add_argument('--dsh-root',type=Path,help='Reuse an already built DSH checkout')
     parser.add_argument('--no-open',action='store_true')
-    parser.add_argument('--spatialforge-config', type=Path, help='Enable SpatialForge tools using an existing service configuration')
+    parser.add_argument('--spatialforge-config', type=Path, help='Enable BenchForgeV2 tools using an existing service configuration')
     parser.add_argument('--port',type=int,default=3080)
     args=parser.parse_args()
     preset=ROOT/'.deployment/benchforge.local.yml'
@@ -30,7 +30,7 @@ def main():
         run([sys.executable,ROOT/'quickstart.py'],cwd=ROOT)
         return
     if args.command=='setup' and args.spatialforge_config and not args.spatialforge_config.is_file():
-        parser.error(f'SpatialForge configuration not found: {args.spatialforge_config.resolve()}. '
+        parser.error(f'BenchForgeV2 configuration not found: {args.spatialforge_config.resolve()}. '
                      'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'

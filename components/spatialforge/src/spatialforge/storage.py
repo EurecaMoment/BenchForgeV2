@@ -105,7 +105,7 @@ class Store:
         if isinstance(rid,str) and '.scene' in rid and rid.startswith('sf_'):
             raise ValueError(f'Expected run_id, received task_id {rid}; use run_id={rid.split(".")[0]} for status/wait/inspect/cancel, and the full task_id for evidence/retry')
         value=self.repo.status(rid)
-        if value['plan'].get('schema')!='spatialforge.pipeline/v1': raise ValueError('not a SpatialForge run')
+        if value['plan'].get('schema')!='spatialforge.pipeline/v1': raise ValueError('not a BenchForgeV2 run')
         return value
 
     def update(self,tid,*,expected_state=None,expected_owner=None,**fields):

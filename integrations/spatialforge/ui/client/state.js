@@ -37,7 +37,7 @@ export function createWorkbenchState({STAGES, sceneName}) {
   function productionRequest(demand, selection) {
     if (demand.mode === 'append') return '请将以下要求应用于当前会话的生产任务，保留已有产物和失败证据，并继续实际执行至完成：\n' + demand.objective.trim() + sceneConstraint(selection);
     return [
-      '请实际执行一次 SpatialForge 评测数据集生产任务，完整完成五阶段：评测计划、场景生成或复用与采集、标注、按能力模板出题、质量检查与打包交付；不要只写计划。',
+      '请实际执行一次 BenchForgeV2 评测数据集生产任务，完整完成五阶段：评测计划、场景生成或复用与采集、标注、按能力模板出题、质量检查与打包交付；不要只写计划。',
       'execution_mode=' + (demand.executionMode || 'production') + '；quantity_contract=' + (demand.quantityContract || 'minimum') + '。',
       '生产需求：' + demand.objective.trim(),
       'target_items=' + Number(demand.count) + '。这是请求目标；按数量合同处理短缺，不得把执行完成表述为数量达标或质量验收通过。',

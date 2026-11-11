@@ -14,7 +14,7 @@ def scene_design_parser():
         from spatialforge import scene_design as module
     except ImportError:
         # Normal installs use the validator bundled from the same source at
-        # wheel build time. SpatialForge itself requires Python >=3.11 and is
+        # wheel build time. BenchForgeV2 itself requires Python >=3.11 and is
         # intentionally optional for the core's Python 3.10 support.
         try:
             from . import _scene_design as module
@@ -73,7 +73,7 @@ def _read_policy(file):
 
 
 def load_policy(workspace, service_config=None):
-    """Load the same policy selected by the SpatialForge service config."""
+    """Load the same policy selected by the BenchForgeV2 service config."""
     if service_config:
         from ..service_config import load_service_client_config
 
