@@ -3843,7 +3843,7 @@
   }
 
   // integrations/spatialforge/ui/client/entry.js
-  var SPATIALFORGE_PRESET = "spatialforge-standard-ptc";
+  var WORKBENCH_PRESET = "spatialforge-standard-ptc";
   var NS = "benchforgeWorkbench";
   var STAGES = [
     { id: "S1", key: "blueprint" },
@@ -4013,7 +4013,7 @@
           const key = current.getSnapshot().key;
           const preset = face?.getSnapshot();
           if (preset === void 0 && mounted && key === confirmedSpatialforgeSession) return;
-          const enabled = preset === SPATIALFORGE_PRESET;
+          const enabled = preset === WORKBENCH_PRESET;
           if (enabled) confirmedSpatialforgeSession = key;
           if (enabled === mounted) return;
           mounted = enabled;

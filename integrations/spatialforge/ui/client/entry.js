@@ -8,7 +8,9 @@ import {createGalleryComponents} from './components/gallery.js';
 import {createProductComponents} from './components/products.js';
 import {createWorkbenchComponent} from './components/workbench.js';
 
-const SPATIALFORGE_PRESET = 'spatialforge-standard-ptc';
+// BenchForgeV2_UI retains the identity already saved in SpatialForge conversations.
+// Display names live in the preset catalog; never gate history on a renamed label.
+const WORKBENCH_PRESET = 'spatialforge-standard-ptc';
 const NS = 'benchforgeWorkbench';
 const STAGES = [
   {id: 'S1', key: 'blueprint'}, {id: 'S2', key: 'collection'}, {id: 'S3', key: 'structure'},
@@ -89,7 +91,7 @@ function createClient(React) {
         const key = current.getSnapshot().key;
         const preset = face?.getSnapshot();
         if (preset === undefined && mounted && key === confirmedSpatialforgeSession) return;
-        const enabled = preset === SPATIALFORGE_PRESET;
+        const enabled = preset === WORKBENCH_PRESET;
         if (enabled) confirmedSpatialforgeSession = key;
         if (enabled === mounted) return;
         mounted = enabled;

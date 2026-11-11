@@ -1,18 +1,23 @@
-# BenchForgeV2 / SpatialForge 评测生产工作台
+# BenchForgeV2_UI 评测生产工作台
 
 工作台代码位于 `integrations/spatialforge/ui`，通过 DSH 官方插件和 Slot API 接入；
-不改 DSH 源码。选择 `SpatialForge` preset (`spatialforge-standard-ptc`) 的会话后，
+不改 DSH 源码。选择 `BenchForgeV2_UI` 预设的会话后，
 工作台通过 `main.conversation` 接管该会话主视图，显示生产需求、原生对话过程和五阶段产物，
 原 composer 仅在嵌入区域内隐藏，工作台生产表单是唯一可见输入。无需先打开右侧“评测集”面板。
-此替换严格限定于 SpatialForge；其他 preset 保持原来的对话界面。
+此替换严格限定于 UI 版；`BenchForge`、`BenchForgeV2` 和官方预设保持原来的对话界面。
+
+UI 版保留旧 `SpatialForge` 会话的内部标识 `spatialforge-standard-ptc`，
+只将列表与会话标签的显示名称统一为 `BenchForgeV2_UI`。迁移不改写会话记录、
+Session ID、工作目录或产物路径。工作台读取服务统一挂在 Host，客户端仍按该内部标识
+决定是否展示，已绑定旧工具版本的会话也可继续查看历史产物。
 
 工作台继续使用当前 DSH 会话执行任务：运行、数据集版本、样本浏览和质量报告都服务于当前
-SpatialForge 会话。界面状态按 Session ID 保存，数据查询按该会话的工作目录限制到
+BenchForgeV2_UI 会话。界面状态按 Session ID 保存，数据查询按该会话的工作目录限制到
 对应 DSH 工作区，并按真实 `session_id` 精确关联生产记录；相同工作目录下的不同对话也互相隔离。工作区缺失或旧记录没有会话关联时显示空状态，不自动选历史运行。
 
 ## 使用流程
 
-1. 在 DSH 中选择或新建 SpatialForge 会话，并选择有写权限的工作区。
+1. 在 DSH 中选择或新建 BenchForgeV2_UI 会话，并选择有写权限的工作区；原 SpatialForge 会话继续使用。
 2. 等待“完全权限已开启”。界面通过官方会话命令 `/permission danger-full-access`
    设置本会话权限，不把该命令发给模型；权限投影就绪前不允许提交生产。
    失败时显示原因和“重试开启权限”。

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
+import {createRequire} from 'node:module';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,8 +29,17 @@ try {
     'package.json',
     'dsh/tools.mjs',
     'dsh/persistent-shell.mjs',
+    'dsh/build_presets.py',
+    'dsh/build_preset.py',
+    'dsh/profile_migration.py',
+    'dsh/install_preset.py',
     'cordis.patch.yml',
     'spatialforge/plugin/tools.mjs',
+    'spatialforge/preset_definition.py',
+    'spatialforge/task_support/README.md',
+    'spatialforge/task_support/public_sensor_cache.py',
+    'spatialforge/task_support/public_geometry_cache.py',
+    'spatialforge/task_support/public_measurements.py',
     'spatialforge/plugin/capture_runtime.mjs',
     'spatialforge/shared/config.mjs',
     'spatialforge/shared/resources.mjs',
@@ -86,9 +96,11 @@ try {
     packageName,
     `${packageName}/benchforge-tools`,
     `${packageName}/spatialforge-tools`,
+    `${packageName}/spatialforge-ui`,
     `${packageName}/persistent-shell`,
   ];
-  for (const specifier of modules) await import(specifier);
+  const consumerRequire = createRequire(path.join(consumer, 'package.json'));
+  for (const specifier of modules) await import(pathToFileURL(consumerRequire.resolve(specifier)));
   for (const entry of await fs.readdir(path.join(installedRoot, 'spatialforge', 'plugin'))) {
     if (entry.endsWith('.mjs')) await import(pathToFileURL(path.join(installedRoot, 'spatialforge', 'plugin', entry)));
   }

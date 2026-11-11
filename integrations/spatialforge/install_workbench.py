@@ -1,6 +1,5 @@
-"""Install the SpatialForge-only workbench in an already running DSH."""
+"""Refresh the BenchForgeV2_UI workbench, including retained SpatialForge sessions."""
 import argparse
-from copy import deepcopy
 import importlib.util
 import json
 from pathlib import Path
@@ -8,41 +7,16 @@ import re
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("benchforge_hot_update", ROOT / "integrations/spatialforge/hot_update.py")
+spec = importlib.util.spec_from_file_location("benchforge_hot_update", Path(__file__).with_name('hot_update.py'))
 hot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(hot)
-PRESET_ID = "spatialforge-standard-ptc"
-PLUGIN_ID = "spatialforge-evaluation-ui"
+PRESET_ID = hot.PRESET_ID
+PLUGIN_ID = hot.migration.UI_ID
 PACKAGE = "@eurecamoment/benchforge-spatialforge-ui"
 
 
 def update_profile(profile, root, workspace_paths, revision=None):
-    result = deepcopy(profile)
-    # Remove the earlier global installation while preserving unrelated host plugins.
-    for patch in result:
-        patch["insert"] = [row for row in patch.get("insert", []) if row.get("id") != "benchforge-workbench-ui"]
-    presets = [row for patch in result for row in patch.get("insert", [])
-               if isinstance(row.get("config"), dict) and row["config"].get("id") == PRESET_ID]
-    if len(presets) != 1:
-        raise ValueError("SpatialForge preset is missing or duplicated")
-    config = presets[0]["config"]
-    rows = config.setdefault("plugins", [])
-    matches = [row for row in rows if row.get("id") == PLUGIN_ID]
-    if len(matches) > 1:
-        raise ValueError("Duplicate workbench plugin rows")
-    source = str(root / "integrations/spatialforge/ui/index.js")
-    if revision:
-        source += "?workbench_revision=" + revision
-    config = deepcopy(matches[0].get("config", {})) if matches else {}
-    if workspace_paths is not None:
-        config["workspacePaths"] = [str(p) for p in workspace_paths]
-    row = {"id": PLUGIN_ID, "name": source, "config": config}
-    if matches:
-        matches[0].clear()
-        matches[0].update(row)
-    else:
-        rows.append(row)
-    return result
+    return hot.migration.update_workbench(profile, root, workspace_paths, revision)
 
 
 def graph_from_html(html):
@@ -65,7 +39,8 @@ def main():
     rpc = hot.DshRpc(args.dsh_url, args.dsh_service, before[args.dsh_service]["MainPID"])
     previous = args.profile.read_bytes()
     profile = hot.yaml.load(previous.decode("utf-8"), Loader=hot.Loader)
-    updated = update_profile(profile, ROOT, args.workspace, str(time.time_ns()))
+    revision = str(time.time_ns())
+    updated = update_profile(profile, ROOT, args.workspace, revision)
     deployment = ROOT / ".deployment"
     deployment.mkdir(exist_ok=True)
     backup = deployment / ("workbench-before-" + time.strftime("%Y%m%d-%H%M%S") + ".yml")
@@ -75,6 +50,10 @@ def main():
         deadline = time.monotonic() + 35
         while True:
             try:
+                with rpc.opener.open(args.dsh_url.rstrip('/') + '/api/benchforge/workbench?view=runtime', timeout=10) as response:
+                    runtime = json.load(response)
+                if runtime.get('ui_revision') != revision:
+                    raise RuntimeError('Workbench reader has not adopted the requested revision')
                 with rpc.opener.open(args.dsh_url + "/api/benchforge/workbench?view=summary", timeout=15) as response:
                     summary = json.load(response)
                 with rpc.opener.open(args.dsh_url, timeout=15) as response:
@@ -93,6 +72,7 @@ def main():
         if before != after:
             raise RuntimeError("A monitored service changed during the update")
         receipt = {"repository": str(ROOT), "plugin": PLUGIN_ID, "client_package": PACKAGE,
+                   "workbench_revision": revision,
                    "profile_backup": str(backup), "services_before": before, "services_after": after,
                    "restarted": False, "api_runs": len(summary["runs"]), "api_datasets": len(summary["datasets"]),
                    "client_bundle_served": True, "browser_render_verified": False,

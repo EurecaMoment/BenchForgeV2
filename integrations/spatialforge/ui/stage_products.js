@@ -593,6 +593,9 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
   return async (request) => {
     try {
       const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
+      if (view === 'runtime') return Response.json({ui_revision: limits.uiRevision || '',
+        preset_id: 'spatialforge-standard-ptc', preset_name: 'BenchForgeV2_UI'},
+        {headers: {'cache-control': 'no-store'}});
       const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
       const parentScope = scopeOf(url);
       const related = !view.startsWith('execution_') && !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)

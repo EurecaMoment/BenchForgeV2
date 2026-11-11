@@ -2,8 +2,12 @@
 
 `plugin/tools.mjs` contains the production tool definitions and the delivery
 review hooks, using public DSH package imports, service URL and token environment
-variable. No private host paths or tokens are embedded. `build_preset.py` combines
-them with BenchForge in a separate **BenchForgev2** preset. The installable
+variable. No private host paths or tokens are embedded. `preset_definition.py`
+shares production capabilities between **BenchForgeV2** (standard conversation)
+and **BenchForgeV2_UI** (visual workbench). The latter keeps the historical
+SpatialForge session identity so old conversations and their workbench remain
+viewable. `../dsh/build_presets.py` generates those two and the independent
+first-generation **BenchForge** preset together. The installable
 Node bundle and supported package/Node versions are documented in
 [the integration guide](../README.md).
 

@@ -1,6 +1,5 @@
-"""Hot-update the SpatialForge preset and its gated workbench in unmodified DSH."""
+"""Hot-update the three BenchForge presets and preserve existing workbench sessions."""
 import argparse
-from copy import deepcopy
 import http.cookiejar
 import importlib.util
 import json
@@ -12,66 +11,23 @@ import time
 import uuid
 from urllib.request import Request, ProxyHandler, HTTPCookieProcessor, build_opener
 
-ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("spatialforge_development", ROOT / "integrations/spatialforge/build_development_preset.py")
-development = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(development)
+INTEGRATIONS = Path(__file__).resolve().parents[1]
+ROOT = INTEGRATIONS.parent
+spec = importlib.util.spec_from_file_location("benchforge_profile_migration", INTEGRATIONS / "dsh/profile_migration.py")
+migration = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(migration)
+development = migration.spatial
 yaml = development.yaml
 Loader, Dumper = development.base.Loader, development.base.Dumper
-PRESET_ID = "spatialforge-standard-ptc"
+PRESET_ID = development.base.WORKBENCH_PRESET_ID
 
 
-def update_profile(profile, root, python, mode_config, service_config, revision):
-    result = deepcopy(profile)
-    preset_patch = next(patch for patch in result if any(isinstance(row.get("config"), dict)
-                        and row["config"].get("id") == PRESET_ID for row in patch.get("insert", [])))
-    preset = next(row for row in preset_patch["insert"]
-                  if isinstance(row.get("config"), dict) and row["config"].get("id") == PRESET_ID)
-    config = preset["config"]
-    config["description"] = "SpatialForge development, runtime revision " + revision
-    # The root plugin serves the live read API. Its client retains the explicit
-    # SpatialForge preset gate; a preset-local copy must not register it again.
-    ui = next((row for patch in result for row in patch.get("insert", [])
-               if row.get("id") == "benchforge-workbench-ui"), None)
-    if ui is None:
-        ui = next((row for row in config["plugins"] if row.get("id") == "spatialforge-evaluation-ui"),
-                  {"config": {}})
-        ui = deepcopy(ui)
-        ui["id"] = "benchforge-workbench-ui"
-        preset_patch["insert"].append(ui)
-    ui["name"] = str(root / "integrations/spatialforge/ui/stage_products.js")
-    ui_config = ui.setdefault("config", {})
-    ui_config.update(uiRevision=revision)
-    ui_config.setdefault("productionConfig", str(service_config))
-    ui_config.setdefault("productionPython", str(python))
-    plugins = {
-        "spatial-learning-tools": root / "integrations/dsh/tools.mjs",
-        "spatialforge-tools": root / "integrations/spatialforge/plugin/tools.mjs",
-        "persistent-bash": root / "integrations/dsh/persistent-shell.mjs",
-        "persistent-pwsh": root / "integrations/dsh/persistent-shell.mjs",
-    }
-
-    def walk(rows):
-        rows[:] = [row for row in rows if row.get("id") != "spatialforge-evaluation-ui"]
-        for row in rows:
-            name = row.get("id")
-            if name in plugins:
-                # DSH HMR indexes source files by their canonical URL. A query
-                # leaves the loaded tools outside that cache invalidation key.
-                row["name"] = str(plugins[name])
-            if name == "spatial-learning-tools":
-                row["config"].update(python=str(python), configPath=str(mode_config),
-                                     includeTools=development.LEARNING_TOOLS)
-            if name == "spatialforge-tools":
-                row["config"]["serviceConfig"] = str(service_config)
-                row["config"]["preparationRevision"] = revision
-            if name == "persona":
-                row["config"]["prefix"] = development.PERSONA + "\n" + development.PARALLEL_SYNTHESIS
-            if isinstance(row.get("config"), list):
-                walk(row["config"])
-    walk(config["plugins"])
-    development.configure_synthesis_delegation(config["plugins"])
-    return result
+def update_profile(profile, root, python, mode_config, service_config, revision, *, sources=None):
+    sources = development.base.load_sources() if sources is None else sources
+    generated = migration.catalog.build(sources, None, str(python), mode_config, service_config)
+    result = migration.migrate_profile(profile, generated, revision)
+    # Canonical URLs participate in DSH HMR. Revision is configuration, not a query.
+    return migration.update_workbench(result, root, revision=revision)
 
 
 def service_state(service):
@@ -107,11 +63,13 @@ class DshRpc:
 def atomic_write(path, content):
     temporary = path.with_name(path.name + ".spatialforge-new")
     temporary.write_bytes(content)
+    temporary.chmod(path.stat().st_mode)
     temporary.replace(path)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    development.base.add_source_arguments(parser)
     parser.add_argument("--profile", type=Path, default=Path.home() / ".local/share/dsh-qwen/home/profiles/web/cordis.patch.yml")
     parser.add_argument("--python", type=Path, default=ROOT / ".deployment/python-development")
     parser.add_argument("--mode-config", type=Path, default=ROOT / "config/benchforge.local.json")
@@ -135,7 +93,9 @@ def main():
     revision = str(time.time_ns())
     previous = args.profile.read_bytes()
     profile = yaml.load(previous.decode("utf-8"), Loader=Loader)
-    updated = update_profile(profile, ROOT, args.python, args.mode_config, args.service_config, revision)
+    sources = development.base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
+    updated = update_profile(profile, ROOT, args.python, args.mode_config, args.service_config, revision,
+                             sources=sources)
     deployment = ROOT / ".deployment"
     deployment.mkdir(exist_ok=True)
     backup = deployment / "spatialforge-before-hot-update.yml"
@@ -144,21 +104,33 @@ def main():
     try:
         deadline = time.monotonic() + 40
         while True:
-            details = rpc.call("agentPresets/read", {"agentPreset": PRESET_ID})
             roster = rpc.call("agentPresets/list", {})
-            preset = next(row for row in roster["presets"] if row["id"] == PRESET_ID)
-            if revision in json.dumps(details) and not preset.get("broken"):
-                break
+            presets = {row['id']: row for row in roster['presets']}
+            ready = all(preset_id in presets and not presets[preset_id].get('broken')
+                        and presets[preset_id].get('name') == metadata['name']
+                        for preset_id, metadata in development.base.PRESETS.items())
+            if ready and all(revision in json.dumps(rpc.call('agentPresets/read', {'agentPreset': preset_id}))
+                             for preset_id in development.base.PRESETS):
+                try:
+                    with rpc.opener.open(args.dsh_url.rstrip('/') + '/api/benchforge/workbench?view=runtime',
+                                         timeout=10) as response:
+                        runtime = json.load(response)
+                    if runtime.get('ui_revision') == revision:
+                        break
+                except (OSError, ValueError):
+                    pass  # The old reader may still be retiring; never count it as adoption.
             if time.monotonic() >= deadline:
-                raise TimeoutError("DSH did not adopt the SpatialForge revision within 40 seconds")
-            time.sleep(.5)
+                raise TimeoutError("DSH did not adopt the three BenchForge presets within 40 seconds")
+            time.sleep(2)
         services_after = {name: service_state(name) for name in services_before}
         if services_after != services_before:
             raise RuntimeError("A monitored service changed during the hot update")
         receipt = {"repository": str(ROOT), "preset": PRESET_ID, "revision": revision,
+                   "presets": {key: value['name'] for key, value in development.base.PRESETS.items()},
+                   "workbench_revision": runtime['ui_revision'],
                    "model_tools": development.MODEL_TOOLS, "services_before": services_before,
                    "services_after": services_after, "restarted": False,
-                   "existing_sessions": "keep their already-bound revision; new sessions use this update",
+                   "existing_sessions": "same preset identities and workspace bindings; SpatialForge is displayed as BenchForgeV2_UI; active tool revisions remain bound",
                    "synthesis_worker_reasoning_effort": development.DEFAULT_SYNTHESIS_REASONING_EFFORT,
                    "profile_backup": str(backup), "heavy_model_start": False}
         (deployment / "spatialforge-hot-update.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")

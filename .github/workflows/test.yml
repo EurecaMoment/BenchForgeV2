@@ -32,6 +32,7 @@ jobs:
       - run: python examples/production_demo.py --workspace runs/ci-production
       - run: python integrations/spatialforge/smoke.py
       - run: python -m unittest discover -s integrations/tests -v
+      - run: node --test integrations/tests/preset_catalog.test.mjs
       - run: node --test integrations/spatialforge/tests/test_workbench.mjs integrations/spatialforge/tests/test_assessment_plan.mjs integrations/spatialforge/tests/test_workbench_request.mjs integrations/spatialforge/tests/test_workbench_feedback.mjs
       - run: node --test integrations/spatialforge/tests/test_request_identity.mjs
       - run: node --test integrations/spatialforge/tests/test_parallel_sessions.mjs integrations/spatialforge/tests/test_synthesis_sessions.mjs integrations/spatialforge/tests/test_synthesis_scope.mjs integrations/spatialforge/tests/test_preparation_tool.mjs integrations/spatialforge/tests/test_preparation_products.mjs integrations/spatialforge/tests/test_plugin_contracts.mjs integrations/spatialforge/tests/test_delivery_review.mjs

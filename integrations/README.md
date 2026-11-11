@@ -5,19 +5,45 @@ repository**. It declares public entrypoints and a DSH bundle manifest. Python
 business code and the existing SpatialForge HTTP service remain separate runtime
 dependencies; installing the bundle does not provision or restart them.
 
-The bundle adds one independent **BenchForgev2** preset. It does not replace
-`standard`, `ptc`, `minimal`, `cordis`, the first-generation **BenchForge** preset,
-or the separately configured **SpatialForge** development preset. Their existing
-deployment bindings remain owned by the user profile. These are three modes in
-one DSH installation, not three maintained application repositories.
+The bundle exposes exactly three custom presets. Official `standard`, `ptc`,
+`minimal` and `cordis` presets remain unchanged.
+
+| Display name | Purpose | Stable session identity |
+| --- | --- | --- |
+| **BenchForge** | First-generation benchmark construction using the bundled BenchClaw implementation | `benchforge` |
+| **BenchForgeV2** | SpatialForge scene/data production in the standard DSH conversation | `benchforgev2` |
+| **BenchForgeV2_UI** | The same production capabilities with the visual workbench | `spatialforge-standard-ptc` |
+
+`BenchForgeV2_UI` deliberately retains the former SpatialForge identity. DSH
+resolves the displayed name from its current preset roster, so old conversations
+show the new name without rewriting their session history. Their workspace,
+session ID, artifact routes and data ownership stay intact. Active sessions keep
+their already-bound tool generation until DSH releases it.
+
+The two V2 presets share `spatialforge/preset_definition.py`; only the UI variant
+adds workbench guidance and the host reader. `dsh/build_preset.py` owns the common
+DSH composition and first-generation capability entry. `dsh/build_presets.py`
+generates the complete catalog, and `dsh/profile_migration.py` owns profile merges.
+Older single-preset builder commands remain compatibility entrypoints.
+
+First-generation runtime code and required BenchClaw resources live under
+`src/benchforge_core/vendor/benchclaw` and the repository's Python packages.
+No external BenchClaw checkout is required. Keep the bundled license and upstream
+attribution files when redistributing it.
 
 ## Evaluation workbench UI
 
 `spatialforge/ui` is a separate root UI plugin in this same repository. It adds
-the DSH SpatialForge session workbench with persisted runs/artifacts, version-isolated dataset
+the DSH BenchForgeV2_UI session workbench with persisted runs/artifacts, version-isolated dataset
 browsing, server-side pagination and generation quality reports. It does not edit
 official DSH source or start model/simulator services. Install or refresh it in an
 already running DSH with `python integrations/spatialforge/install_workbench.py`.
+The reader is registered once at the host level so already-bound conversations
+can still browse their history. The client mounts the workbench only for the
+retained `spatialforge-standard-ptc` identity; BenchForge, BenchForgeV2 and official
+presets keep their normal conversation interface. `install_workbench.py` and
+`hot_update.py` use the same migration logic and preserve configured historical
+workspace roots.
 See [the workbench guide](../docs/frontend-workbench-v2.md) for data boundaries,
 configuration and acceptance requirements.
 
@@ -50,30 +76,35 @@ a new top-level directory for each commit. Task templates are under
 `src/benchforge_core/pipelines/task_templates.json` and pipeline recipes under
 `src/benchforge_core/pipelines/definitions/`.
 
-Machine-local `.deployment/` holds the retained `published` and `legacy`
-versions, Python launchers, deployment receipts and `history/`. These files are
-ignored by Git. The three DSH modes remain distinct: SpatialForge uses the
-checkout root, BenchForgev2 uses `.deployment/published`, and BenchForge uses
-`.deployment/legacy`. Historical external paths may remain compatibility
-symlinks for existing sessions; they are not additional maintained checkouts.
+Machine-local `.deployment/` holds Python launchers, deployment receipts and
+retained historical revisions. These files are ignored by Git. After migration,
+all three preset definitions use this maintained checkout. Do not delete old `published`,
+`legacy` directories or compatibility symlinks while retained sessions still use
+them; migration updates declarations, not in-flight tool bindings.
 Model weights, environments, simulator installations and production artifacts
 remain in their existing runtime locations.
 
-### Hot-update SpatialForge without changing DSH
+### Consolidate an existing profile without changing DSH
 
-Run the following in the fixed FIT checkout with its existing Python environment:
+After integrating this revision into the deployment checkout, run the following
+with its existing Python environment. `--pull` only fast-forwards its current
+branch; it does not switch branches or replace uncommitted deployment edits.
 
 ```bash
 cd /home/maqiang/GitHub/BenchForgeV2
 .deployment/python-development integrations/spatialforge/hot_update.py --pull
 ```
 
-The script fast-forwards the existing `SpatialForge` branch, updates only that
-custom preset in the user's web profile and waits for the official runtime to
-adopt it. Revisioned plugin URLs also refresh the local SpatialForge helpers.
+The script fast-forwards the checkout's current branch, consolidates the three
+custom presets in the user's web profile and waits for the runtime to adopt all
+three names and revisions. It preserves unrelated profile entries, configured
+model options and historical workbench roots. Canonical plugin URLs participate
+in DSH hot reload; the revision is stored in configuration.
 It never edits DSH source or official presets, restarts DSH, or starts model/GPU
-services. Already-bound sessions keep their previous revision; a new SpatialForge
-session uses the update. To use code already deployed, omit `--pull`.
+services. Already-bound sessions keep their previous tool revision and acquire
+the current display name. New sessions use the updated composition. To use code
+already deployed, omit `--pull`. The profile is backed up under `.deployment/`
+and restored if runtime adoption fails.
 
 The private files `config/benchforge.local.json`,
 `config/spatialforge.local.json` and `.deployment/python-development`
@@ -112,14 +143,16 @@ the DSH launch environment, not this package. To select another Python
 environment or absolute config paths, generate a deployment overlay:
 
 ```bash
-python integrations/spatialforge/build_preset.py \
+python integrations/dsh/build_presets.py \
   --dsh-resolve-from /path/to/dsh-cli/package.json \
   --node /path/to/current/node \
   --python /path/to/python \
   --config /private/benchforge-config.json \
   --service-config /private/spatialforge-config.json \
-  --output /private/benchforgev2.patch.yml
-dsh --profile web --patch /private/benchforgev2.patch.yml --dump-config
+  --output /private/benchforge-presets.patch.yml
+python integrations/dsh/install_preset.py \
+  --profile /private/dsh/profiles/web/cordis.patch.yml \
+  --preset /private/benchforge-presets.patch.yml
 ```
 
 `--dsh-root /path/to/deepseek-harness` remains compatible with a source install.
@@ -127,7 +160,22 @@ It only supplies a Node module lookup location; the builder resolves official
 `@deepseek-ai/dsh-web-app/presets/*.patch.yml` exports rather than reading private
 `packages/...` source paths. `--node` can also be set with `BENCHFORGE_DSH_NODE`.
 The generated overlays reference this checkout, and the distributed bundle uses
-the public subpackage exports. Neither path edits official preset files.
+the public subpackage exports, including `@eurecamoment/benchforge-dsh/spatialforge-ui`.
+Neither path edits official preset files. Use one installation source for these
+three declarations: the portable bundle for a fresh installation, or the merged
+profile for an existing deployment. Do not add duplicate preset declarations on
+top of an already-installed bundle.
+
+Regenerate the distributed bundle after changing composition:
+
+```bash
+python integrations/dsh/build_presets.py --package-imports --output integrations/cordis.patch.yml
+```
+
+The merge keeps existing Cordis row IDs, collapses duplicate declarations with
+the same preset identity, and preserves deployment-specific extra plugins and
+environment options. It never renames or moves data directories. Test output,
+profile backups and deployment receipts belong outside tracked source files.
 
 ## Persistent shell configuration
 
@@ -140,10 +188,10 @@ and 16000 output characters. The wrapper preserves the tool names
 session isolation, cancellation and disposal. Legacy `dshRoot` is accepted but
 no longer participates in runtime imports.
 
-The checked-in bundle preset was composed from the public preset exports in
+The checked-in bundle presets are composed from the public preset exports in
 DSH `0.1.7-rc.1`. It copies the standard interaction capabilities, adds PTC in
 `both` mode, the owner-scoped persistent shells and Cordis tools, then adds the
-two business plugins. Static configuration fields are validated by their plugin
+selected business plugins. Static configuration fields are validated by their plugin
 schemas. The bundle ships no weights, credentials, backend executable or model
 service configuration.
 

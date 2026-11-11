@@ -533,7 +533,7 @@ test('parent progress and products include verified children while browser query
   } finally {db.close(); await fs.rm(directory, {recursive: true, force: true});}
 });
 
-test('production workbench replaces only the active SpatialForge main conversation', async () => {
+test('BenchForgeV2_UI preserves legacy SpatialForge sessions and leaves both headless presets alone', async () => {
   const source = await fs.readFile(path.join(ROOT, 'integrations/spatialforge/ui/client.js'), 'utf8');
   const {api: plugin} = loadClient(source, {createElement: (type, props) => ({type, props})});
   const observable = (value) => {
@@ -558,6 +558,10 @@ test('production workbench replaces only the active SpatialForge main conversati
   });
   assert.deepEqual(seats, ['main.conversation']);
   assert.equal(slots.size, 0, 'ordinary environments retain their original conversation');
+  for (const headless of ['benchforge', 'benchforgev2']) {
+    preset.set(headless);
+    assert.equal(slots.size, 0, headless + ' must retain the standard conversation');
+  }
   preset.set('spatialforge-standard-ptc');
   const main = slots.get('main.conversation');
   assert.equal(typeof main, 'function');

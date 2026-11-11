@@ -23,6 +23,10 @@ config/*.env
 *.bak
 *.bak-*
 *.backup
+*.before-benchforge-*
+*.before-spatial-learning
+*.benchforge-new
+*.spatialforge-new
 .deployment/
 .benchforge/
 .spatialforge/

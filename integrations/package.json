@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "type": "module",
   "license": "Apache-2.0",
-  "description": "BenchForgev2 and SpatialForge tools for DeepSeek Harness",
+  "description": "BenchForge, BenchForgeV2 and BenchForgeV2_UI presets for DeepSeek Harness",
   "repository": {
     "type": "git",
     "url": "https://github.com/EurecaMoment/BenchForgeV2.git",
@@ -14,6 +14,7 @@
     ".": "./dsh/tools.mjs",
     "./benchforge-tools": "./dsh/tools.mjs",
     "./spatialforge-tools": "./spatialforge/plugin/tools.mjs",
+    "./spatialforge-ui": "./spatialforge/ui/index.js",
     "./persistent-shell": "./dsh/persistent-shell.mjs",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
@@ -24,6 +25,9 @@
   "files": [
     "dsh/*.mjs",
     "dsh/build_preset.py",
+    "dsh/build_presets.py",
+    "dsh/profile_migration.py",
+    "dsh/install_preset.py",
     "spatialforge/plugin/*.mjs",
     "spatialforge/shared/*.mjs",
     "spatialforge/scene_policy_gate.py",
@@ -34,6 +38,10 @@
     "spatialforge/repair_scene_library.py",
     "spatialforge/build_preset.py",
     "spatialforge/build_development_preset.py",
+    "spatialforge/preset_definition.py",
+    "spatialforge/task_support/*.py",
+    "spatialforge/task_support/README.md",
+    "spatialforge/ui/DESIGN.md",
     "spatialforge/hot_update.py",
     "spatialforge/install_workbench.py",
     "spatialforge/ui/*.js",

@@ -92,11 +92,20 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 import yaml
+from benchforge_core.artifacts import VENDOR
 from benchclaw.resources import resource_path
 from benchclaw.template_engine import catalogue
 
 importlib.import_module('benchforge_core.pipelines._scene_design')
 importlib.import_module('spatialforge.observation')
+vendor_resources = (
+    'annotation-tool/default-annotation/run_image_to_semantic_depth.py',
+    'compiler/benchclaw_stage4_synthesis_base.py',
+    'compiler/grey_batch_eval.py',
+    'compiler/reference_library/answer_type_metric_registry.json',
+    'compiler/reference_library/BENCHMARK_QUALITY_CONTRACT.md',
+)
+assert all((VENDOR / name).is_file() for name in vendor_resources)
 assert catalogue()['templates']
 resources = (
     'BenchClaw/annotation-tool/default-annotation/run_image_to_semantic_depth.py',
