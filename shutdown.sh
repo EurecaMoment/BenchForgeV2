@@ -26,7 +26,7 @@ for arg in "$@"; do
 done
 
 stop_port() {
-  local name="$1" pidfile="$2" expected="$3" pid command
+  local name="$1" pidfile="$2" expected="$3" pid command group target
   if [ ! -f "$pidfile" ]; then
     echo "  $name 未由本脚本启动"
     return 0
@@ -42,13 +42,18 @@ stop_port() {
     *"$expected"*) ;;
     *) echo "  $name 的 PID 与预期命令不符，保留进程和记录"; return 0 ;;
   esac
+  # start.sh uses setsid. Stop the owned session's process group so the Python
+  # launcher does not leave its Node child listening after a restart.
+  group="$(ps -p "$pid" -o pgid= 2>/dev/null | tr -d ' ' || true)"
+  target="$pid"
+  [ "$group" = "$pid" ] && target="-$pid"
   echo "  停止 $name (PID: $pid)"
-  kill -TERM "$pid" 2>/dev/null || true
+  kill -TERM -- "$target" 2>/dev/null || true
   for _ in $(seq 1 20); do
-    kill -0 "$pid" 2>/dev/null || break
+    kill -0 -- "$target" 2>/dev/null || break
     sleep 1
   done
-  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  kill -0 -- "$target" 2>/dev/null && kill -KILL -- "$target" 2>/dev/null || true
   rm -f "$pidfile"
 }
 
@@ -59,7 +64,7 @@ else
 fi
 
 echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
-stop_port "DSH Web" "$DSH_PID_FILE" "benchforge.py start --port"
+stop_port "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start --port"
 
 echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
 stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
@@ -68,7 +73,7 @@ if [ "$KEEP_DB" -eq 1 ]; then
   echo "[3/3] 保留 PostgreSQL (--keep-db)"
 else
   echo "[3/3] 停止 PostgreSQL"
-  docker compose -p benchforgev2-spatialforge --env-file config/database.env \
+  docker compose --env-file config/database.env \
     -f components/spatialforge/deploy/compose.yml down
 fi
 

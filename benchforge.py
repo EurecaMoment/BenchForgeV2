@@ -25,9 +25,13 @@ def main():
     parser.add_argument('--spatialforge-config', type=Path, help='Enable SpatialForge tools using an existing service configuration')
     parser.add_argument('--port',type=int,default=3080)
     args=parser.parse_args()
+    preset=ROOT/'.deployment/benchforge.local.yml'
     if args.command=='demo':
         run([sys.executable,ROOT/'quickstart.py'],cwd=ROOT)
         return
+    if args.command=='setup' and args.spatialforge_config and not args.spatialforge_config.is_file():
+        parser.error(f'SpatialForge configuration not found: {args.spatialforge_config.resolve()}. '
+                     'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
@@ -54,9 +58,9 @@ def main():
         run([sys.executable,ROOT/'quickstart.py','--dsh-root',dsh])
         if args.spatialforge_config:
             python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
-            run([python,ROOT/'integrations/spatialforge/build_preset.py',
+            run([python,ROOT/'integrations/dsh/build_presets.py',
                  '--dsh-root',dsh,'--python',python,'--config',ROOT/'config/benchforge.local.json',
-                 '--service-config',args.spatialforge_config.resolve(),'--output',ROOT/'.deployment/benchforge.local.yml'])
+                 '--service-config',args.spatialforge_config.resolve(),'--output',preset])
         saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
         print('Ready. Run: python benchforge.py start')
         return
@@ -64,9 +68,16 @@ def main():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
     env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
+    python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
+    if not python.is_file():
+        parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
+    try:
+        run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT)
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(error.returncode) from None
     # An overlay and isolated home keep official presets and other installations untouched.
     command=[config['node'],str(Path(config['dsh_root'])/'apps/cli/lib/bin.js'),
-             '--profile','web','--patch',str(ROOT/'.deployment/benchforge.local.yml'),'--host','127.0.0.1','--port',str(args.port)]
+             '--profile','web','--patch',str(preset),'--host','127.0.0.1','--port',str(args.port)]
     if args.no_open:
         command.append('--no-open')
     run(command,cwd=ROOT,env=env)

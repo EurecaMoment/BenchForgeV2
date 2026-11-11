@@ -37,6 +37,7 @@
     "spatialforge/native_asset_facing.json",
     "spatialforge/repair_scene_library.py",
     "spatialforge/build_preset.py",
+    "spatialforge/check_config.py",
     "spatialforge/build_development_preset.py",
     "spatialforge/preset_definition.py",
     "spatialforge/task_support/*.py",

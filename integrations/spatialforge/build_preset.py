@@ -22,6 +22,9 @@ def main():
     parser.add_argument('--service-config', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()
+    if not args.service_config.is_file():
+        parser.error(f'SpatialForge configuration not found: {args.service_config.resolve()}. '
+                     'Run python spatialforge_app.py init, or pass --service-config with the actual file path.')
     sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
     result = build(sources, args.dsh_root, args.python, args.config, args.service_config)
     args.output.write_text(yaml.dump(result, Dumper=base.Dumper, sort_keys=False, allow_unicode=True), encoding='utf-8')

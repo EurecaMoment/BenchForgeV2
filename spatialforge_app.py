@@ -14,6 +14,11 @@ from urllib.request import Request, urlopen
 import venv
 
 ROOT = Path(__file__).resolve().parent
+# This repository launcher also runs outside the private backend environment.
+# Reuse its configuration parser directly from the bundled source.
+sys.path.insert(0, str(ROOT / 'components/spatialforge/src'))
+from spatialforge.runtime_config import read_json
+
 CONFIG = ROOT / 'config'
 STATE = ROOT / '.deployment'
 SERVER = CONFIG / 'spatialforge-server.local.json'
@@ -37,12 +42,11 @@ def write(path, value):
 
 
 def read():
-    from spatialforge.runtime_config import read_json
     return read_json(SERVER)
 
 
-def _init_configs(port, db_port):
-    from spatialforge.runtime_config import read_json
+def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
+    existing_server = SERVER.exists()
     SERVER.parent.mkdir(parents=True, exist_ok=True)
     STATE.mkdir(parents=True, exist_ok=True)
     models_path = CONFIG / 'models.local.json'
@@ -53,7 +57,7 @@ def _init_configs(port, db_port):
         policy_dir.mkdir(parents=True, exist_ok=True)
         write(policy_path, {'enabled': True, 'enforce_realism': True, 'require_scene_brief': True,
                             'excluded_tasks': [], 'excluded_runs': [], 'excluded_scene_groups': [], 'excluded_paths': []})
-    if not SERVER.exists():
+    if not existing_server:
         config = read_json(SERVER_TEMPLATE)
         config.update(port=port, models_config=models_path.name, scene_policy_path='scene-library/policy.json')
         config.pop('operator_token_env', None)
@@ -64,11 +68,12 @@ def _init_configs(port, db_port):
     config = read()
     database_password = secrets.token_urlsafe(24)
     db_env = CONFIG / 'database.env'
-    if not db_env.exists():
+    if not db_env.exists() and not existing_server:
         database_url = config.get('database_url') or f'postgresql+psycopg://spatialforge:{database_password}@127.0.0.1:{db_port}/spatialforge'
-        db_env.write_text(f'POSTGRES_PASSWORD={database_password}\nPOSTGRES_PORT={db_port}\nSPATIALFORGE_DATABASE_URL={database_url}\n', encoding='utf8')
+        db_env.write_text(f'POSTGRES_PASSWORD={database_password}\nPOSTGRES_PORT={db_port}\n'
+                          f'COMPOSE_PROJECT_NAME={project}\nSPATIALFORGE_DATABASE_URL={database_url}\n', encoding='utf8')
         if os.name != 'nt': db_env.chmod(0o600)
-    elif config.get('database_url_env') and not os.environ.get(config['database_url_env']):
+    elif db_env.exists() and config.get('database_url_env') and not os.environ.get(config['database_url_env']):
         lines = db_env.read_text(encoding='utf8').splitlines()
         if not any(line.partition('=')[0] == config['database_url_env'] for line in lines):
             password = next((line.partition('=')[2] for line in lines if line.startswith('POSTGRES_PASSWORD=')), database_password)
@@ -76,8 +81,6 @@ def _init_configs(port, db_port):
             database_url = f'postgresql+psycopg://spatialforge:{password}@127.0.0.1:{db_port_value}/spatialforge'
             with db_env.open('a', encoding='utf8') as stream:
                 stream.write(f'{config["database_url_env"]}={database_url}\n')
-    config['execution_mode'] = config.get('execution_mode', 'production')
-    write(SERVER, config)
     worker_path = CONFIG / 'worker.local.json'
     if not worker_path.exists():
         worker = read_json(WORKER_TEMPLATE)
@@ -89,6 +92,7 @@ def _init_configs(port, db_port):
     client_path = CONFIG / 'spatialforge.local.json'
     if not client_path.exists():
         client = read_json(CONFIG / 'spatialforge.example.json')
+        client['service_config'] = SERVER.name
         write(client_path, client)
 
 
@@ -108,8 +112,10 @@ def main():
     init = sub.add_parser('init', help='Create private config and credentials once')
     init.add_argument('--port', type=int, default=3841)
     init.add_argument('--db-port', type=int, default=55432)
+    init.add_argument('--project', default='benchforgev2-spatialforge',
+                      help='Unique database project name, saved in config/database.env')
     db = sub.add_parser('db', help='Start this repository\'s PostgreSQL container')
-    db.add_argument('--project', default='benchforgev2-spatialforge')
+    db.add_argument('--project', help='Override the project saved in config/database.env')
     sub.add_parser('serve')
     sub.add_parser('status')
     dsh = sub.add_parser('dsh-setup')
@@ -133,10 +139,11 @@ def main():
         subprocess.run([str(PYTHON), '-m', 'pip', 'install', '-e', str(ROOT / 'components/benchclaw') + '[postgres,imports]',
                         '-e', str(ROOT / 'components/spatialforge')], check=True)
     elif args.command == 'init':
-        _init_configs(args.port, args.db_port)
+        _init_configs(args.port, args.db_port, args.project)
         print(f'Configuration: {SERVER}; desktop configuration: {CONFIG / "worker.local.json"}')
     elif args.command == 'db':
-        subprocess.run(['docker', 'compose', '-p', args.project, '--env-file', str(CONFIG / 'database.env'),
+        project = ['-p', args.project] if args.project else []
+        subprocess.run(['docker', 'compose', *project, '--env-file', str(CONFIG / 'database.env'),
                         '-f', str(ROOT / 'components/spatialforge/deploy/compose.yml'), 'up', '-d', '--wait'], check=True)
     elif args.command == 'serve':
         environment = os.environ.copy()

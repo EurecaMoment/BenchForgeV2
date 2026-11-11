@@ -9,8 +9,7 @@ cd "$ROOT"
 PY="$ROOT/.venv/bin/python"
 SF_PY="$ROOT/.deployment/venv/bin/python"
 SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
-SERVICE_CONFIG="$ROOT/config/spatialforge.local.json"
-PRESET="$ROOT/config/benchforge.local.yml"
+PRESET="$ROOT/.deployment/benchforge.local.yml"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 LOG_DIR="$STATE/logs"
@@ -22,9 +21,11 @@ mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 die() { echo "错误: $*" >&2; exit 1; }
 
-for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$SERVICE_CONFIG" "$PRESET" "$STATE/runtime.json"; do
+for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$PRESET" "$STATE/runtime.json"; do
   [ -e "$path" ] || die "缺少 $path，请先按 README 的安装步骤准备环境"
 done
+
+"$PY" "$ROOT/integrations/spatialforge/check_config.py" --preset "$PRESET"
 
 SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG")"
 
@@ -40,7 +41,12 @@ wait_port() {
 }
 
 # DSH 绑定端口后还要等 Loader 装载完成才打印 token；卡住时 token 永远不出现。
-token_line_count() { grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true; }
+token_line_count() {
+  local count
+  count="$(grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true)"
+  # The log does not exist on the first installation.
+  printf '%s\n' "${count:-0}"
+}
 
 wait_new_token() {
   local before="$1" timeout="$2" i
