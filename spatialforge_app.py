@@ -30,6 +30,15 @@ def read():
     return json.loads(SERVER.read_text(encoding='utf8'))
 
 
+def ensure_client_config(config):
+    """Repair an incomplete initialization without rotating server credentials."""
+    client = CONFIG / 'spatialforge.local.json'
+    if not client.exists():
+        write(client, {'service_url': f'http://127.0.0.1:{config["port"]}',
+                       'operator_token': config['operator_token']})
+    return client
+
+
 def api(config, operation, value):
     request = Request(f'http://127.0.0.1:{config["port"]}/{operation}',
                       data=json.dumps(value).encode(),
@@ -72,7 +81,9 @@ def main():
                         '-e', str(ROOT / 'components/spatialforge')], check=True)
     elif args.command == 'init':
         if SERVER.exists():
+            client = ensure_client_config(read())
             print(f'Existing configuration retained: {SERVER}')
+            print(f'Client configuration: {client}')
             return
         password = secrets.token_urlsafe(24)
         config = dict(port=args.port, artifacts=str(STATE / 'artifacts'),
@@ -86,8 +97,7 @@ def main():
         env.write_text(f'POSTGRES_PASSWORD={password}\nPOSTGRES_PORT={args.db_port}\n', encoding='utf8')
         if os.name != 'nt':
             env.chmod(0o600)
-        write(CONFIG / 'spatialforge.local.json', {'service_url': f'http://127.0.0.1:{args.port}',
-                                               'operator_token': config['operator_token']})
+        ensure_client_config(config)
         shutil.copy2(CONFIG / 'models.example.json', CONFIG / 'models.local.json')
         worker = json.loads((CONFIG / 'worker.example.json').read_text())
         worker['worker_token'] = config['worker_token']

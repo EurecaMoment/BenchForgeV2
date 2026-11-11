@@ -26,6 +26,8 @@ for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$SERVICE_CONFIG" "$PRESET" "$STATE/
   [ -e "$path" ] || die "缺少 $path，请先按 README 的安装步骤准备环境"
 done
 
+"$PY" "$ROOT/integrations/spatialforge/check_config.py" --preset "$PRESET"
+
 SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG")"
 
 port_open() { ss -ltn 2>/dev/null | grep ":$1 " > /dev/null; }

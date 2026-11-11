@@ -28,6 +28,9 @@ def main():
     if args.command=='demo':
         run([sys.executable,ROOT/'quickstart.py'],cwd=ROOT)
         return
+    if args.command=='setup' and args.spatialforge_config and not args.spatialforge_config.is_file():
+        parser.error(f'SpatialForge configuration not found: {args.spatialforge_config.resolve()}. '
+                     'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
@@ -64,9 +67,17 @@ def main():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
     env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
+    preset=ROOT/'config/benchforge.local.yml'
+    python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
+    if not python.is_file():
+        parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
+    try:
+        run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT)
+    except subprocess.CalledProcessError as error:
+        raise SystemExit(error.returncode) from None
     # An overlay and isolated home keep official presets and other installations untouched.
     command=[config['node'],str(Path(config['dsh_root'])/'apps/cli/lib/bin.js'),
-             '--profile','web','--patch',str(ROOT/'config/benchforge.local.yml'),'--host','127.0.0.1','--port',str(args.port)]
+             '--profile','web','--patch',str(preset),'--host','127.0.0.1','--port',str(args.port)]
     if args.no_open:
         command.append('--no-open')
     run(command,cwd=ROOT,env=env)

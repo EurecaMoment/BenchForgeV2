@@ -151,9 +151,10 @@ python3.11 spatialforge_app.py setup
 `python benchforge.py setup` 安装，或用
 `python benchforge.py setup --dsh-root /path/to/deepseek-harness` 复用已构建的 DSH。
 
-`init` 仅在 `config/spatialforge-server.local.json` 不存在时执行，会生成
+`init` 首次运行会生成 `config/spatialforge-server.local.json`、
 `config/database.env`（随机密码、权限 600）、客户端配置、`models.local.json` 与
-`worker.local.json`。之后 `./start.sh` 直接复用这些文件。
+`worker.local.json`。重复运行保留已有配置、端口和凭据，并从服务端配置补齐缺失的
+`config/spatialforge.local.json`。之后 `./start.sh` 直接复用这些文件。
 
 需要本地 Qwen 中转密钥时，复制 `config/dsh.env.example` 为 `config/dsh.env`，
 只在被忽略的本地文件里填写密钥；不要提交该文件。
@@ -272,6 +273,12 @@ PostgreSQL）。这也是示例配置使用 `3856`/`55546`/`3081` 的原因。
 
 ### 9. 常见问题
 
+- `spatialforge-tools` 报配置文件 `ENOENT`：检查生成预设里 `serviceConfig` 的实际路径。
+  如果配置已移动到 `config/generated/spatialforge.local.json`，应将该字段指向新位置，
+  或生成预设时显式传入实际路径。默认客户端文件缺失时可重跑
+  `python spatialforge_app.py init`，它沿用已有服务端的端口和令牌。
+  安装入口及预设生成器会拒绝不存在的配置；`benchforge.py start` 和 `start.sh`
+  在启动前检查预设中记录的文件，检查失败时不会启动 DSH。
 - DSH 端口已监听但没有新 token，或日志出现 `ENOSPC: file watchers`：inotify 配额
   耗尽。能 sudo 时提高 `fs.inotify.max_user_watches`；不能时本项目已通过
   `hmr: disabled` 规避，改配置后执行 `./restart.sh`。
