@@ -9,6 +9,7 @@ class BuildPy(build_py):
         super().run()
         source = Path(__file__).parent / 'components/spatialforge/src/spatialforge/scene_design.py'
         target = Path(self.build_lib) / 'benchforge_core/pipelines/_scene_design.py'
+        target.parent.mkdir(parents=True, exist_ok=True)
         self.copy_file(str(source), str(target))
 
 

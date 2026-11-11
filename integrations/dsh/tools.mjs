@@ -72,7 +72,7 @@ export async function apply(ctx, config) {
     habitat:'Capture real Habitat RGB, depth and agent state with the bundled collector in its configured environment.',
     libero:'Collect LIBERO observations and simulator state using demo or zero actions in its configured environment.',
     carla:'Capture CARLA views and actor metadata from a configured running server.',
-    isaac:'Capture a native cuboid scene with the independent Isaac collector in a configured Isaac environment. Supports cameras, depth, labels and recorded poses.',
+    isaac:'Collect visual observations (RGB images, depth maps, labels, poses) from a 3D scene via remote Isaac Sim gRPC service. Indoor spatial intelligence, desktop object reasoning, and any task needing real simulated sensor data MUST use this tool — do NOT generate synthetic text-only items when the user asks for visual simulation or scene-based benchmarks.',
     evidence:'Import evidence JSONL. provenance.path references one JSON source document; selectors are JSON pointers into it. All relative paths resolve against the input JSONL directory. media contains public images only; assets retains private raw depth, labels and oracle code. Derive JSON oracle outputs from binary simulation inputs in task code.',
     build:'Build model-visible items/media plus separate authority sources and private assets, deriving answers from source JSON and reporting coverage. Keep raw depth and authority labels in the evidence side of the bundle.',
     evaluate:'Score saved predictions with exact match; report missing answers. Does not call model APIs.',

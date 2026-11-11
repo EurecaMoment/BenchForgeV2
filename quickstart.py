@@ -40,7 +40,8 @@ def main():
     if not config.exists():
         config.parent.mkdir(parents=True,exist_ok=True)
         config.write_text((root/'config/benchforge.example.json').read_text(encoding='utf-8'),encoding='utf-8')
-    output=root/'config/benchforge.local.yml'
+    output=root/'config/generated/benchforge.local.yml'
+    output.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run([str(python),str(root/'integrations/dsh/build_preset.py'),
         '--dsh-root',str(dsh),'--python',str(python),'--config',str(config),'--output',str(output)],check=True)
     if args.profile:

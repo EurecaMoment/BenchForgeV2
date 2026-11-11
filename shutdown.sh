@@ -6,11 +6,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
+SERVER_CONFIG="$ROOT/config/generated/spatialforge-server.local.json"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 SF_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
+# 端口唯一权威来源是 config/ports.env，这里只做读取
+[ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
 WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
 KEEP_DB=0
 
@@ -53,23 +55,28 @@ stop_port() {
 }
 
 if [ -f "$SERVER_CONFIG" ]; then
-  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo 3856)"
+  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo "${SPATIALFORGE_PORT:-3856}")"
 else
-  SERVICE_PORT=3856
+  SERVICE_PORT="${SPATIALFORGE_PORT:-3856}"
 fi
 
-echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
+echo "[1/4] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
 stop_port "DSH Web" "$DSH_PID_FILE" "benchforge.py start --port"
 
-echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/4] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
 stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
 
+echo "[3/4] 停止 Isaac Sim gRPC mock"
+bash "$ROOT/components/spatialforge/grpc/stop_test_server.sh" || true
+
 if [ "$KEEP_DB" -eq 1 ]; then
-  echo "[3/3] 保留 PostgreSQL (--keep-db)"
+  echo "[4/4] 保留 PostgreSQL (--keep-db)"
 else
-  echo "[3/3] 停止 PostgreSQL"
-  docker compose -p benchforgev2-spatialforge --env-file config/database.env \
+  echo "[4/4] 停止 PostgreSQL"
+  docker compose -p benchforgev2-spatialforge --env-file config/generated/database.env \
     -f components/spatialforge/deploy/compose.yml down
 fi
 
 echo "已停止。"
+echo "💡 提示：下次重启 dsh-home/sessions 还在，旧浏览器 tab 刷新就能续上。"
+echo "   只有在 session 完全损坏时才需要 rm -rf .benchforge/dsh-home"

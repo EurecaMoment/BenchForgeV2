@@ -97,12 +97,12 @@ python examples/spatial_learning_demo.py --workspace runs/cpu-training
 
 
 已有 SpatialForge 后端和桌面 worker 时，复制
-`config/spatialforge.example.json` 为 `config/spatialforge.local.json`，
+`config/spatialforge.example.json` 为 `config/generated/spatialforge.local.json`，
 填写服务 URL 与 `operator_token`，然后执行：
 
 ```bash
-python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
-python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
+python benchforge.py setup --spatialforge-config config/generated/spatialforge.local.json
 
 The simple launcher below builds a private DSH runtime and installs the retained
 first-generation `BenchForge` mode for local use. It does not reproduce FIT's
@@ -132,7 +132,7 @@ alternative deployment, not a migration recipe for FIT's A800 worker.
 | `./shutdown.sh` | 逆序停止全部；`--keep-db` 只停应用 |
 
 示例端口：SpatialForge `3856`、PostgreSQL `55546`、DSH `3081`。`start.sh` 按
-`config/spatialforge-server.local.json` 的 `port` 启动服务，Web 端口可用
+`config/generated/spatialforge-server.local.json` 的 `port` 启动服务，Web 端口可用
 `BENCHFORGE_WEB_PORT` 覆盖。
 
 ### 1. 首次准备（只做一次）
@@ -151,8 +151,8 @@ python3.11 spatialforge_app.py setup
 `python benchforge.py setup` 安装，或用
 `python benchforge.py setup --dsh-root /path/to/deepseek-harness` 复用已构建的 DSH。
 
-`init` 仅在 `config/spatialforge-server.local.json` 不存在时执行，会生成
-`config/database.env`（随机密码、权限 600）、客户端配置、`models.local.json` 与
+`init` 仅在 `config/generated/spatialforge-server.local.json` 不存在时执行，会生成
+`config/generated/database.env`（随机密码、权限 600）、客户端配置、`models.local.json` 与
 `worker.local.json`。之后 `./start.sh` 直接复用这些文件。
 
 需要本地 Qwen 中转密钥时，复制 `config/dsh.env.example` 为 `config/dsh.env`，
@@ -162,26 +162,28 @@ python3.11 spatialforge_app.py setup
 
 | 文件 | 关键字段 | 说明 |
 |---|---|---|
+| `config/ports.env` | `SPATIALFORGE_PORT`、`POSTGRES_PORT`、`BENCHFORGE_WEB_PORT` | **端口唯一权威来源**；改端口只动这里 |
 | `config/benchforge.local.json` | `services.*`、`models.qwen`、`model_services.url` | 外部模型地址；`model_services` 默认复用 4960 网关 |
-| `config/benchforge.local.yml` | `llm-pi-ai`、`agent-default-model`、`hmr` | DSH 预设；由 `build_preset.py` 生成，末尾追加了本项目覆盖项 |
 | `config/dsh.env` | `QWEN_RELAY_API_KEY` | 被忽略的本地密钥文件 |
-| `config/spatialforge.local.json` | `service_url`、`operator_token` | 客户端视角 |
-| `config/spatialforge-server.local.json` | `port`、`database_url`、`artifacts`、`harness`、`model_url`、`models_config` | 服务端视角 |
-| `config/database.env` | `POSTGRES_PORT` | PostgreSQL 宿主机端口；密码由 init 生成，不要手改 |
-| `config/worker.local.json` | `url`、`worker_token` | Windows 采集 worker |
-| `config/models.local.json` | 解释器与权重路径 | 本地模型 |
+| `config/generated/` | — | 以下均为 `init`/`sync`/`build_preset.py` 自动产物，勿手改 |
+| `config/generated/benchforge.local.yml` | `llm-pi-ai`、`agent-default-model`、`hmr` | DSH 预设；由 `build_preset.py` 生成，末尾追加了本项目覆盖项 |
+| `config/generated/spatialforge.local.json` | `service_url`、`operator_token` | 客户端视角 |
+| `config/generated/spatialforge-server.local.json` | `port`、`database_url`、`artifacts`、`harness`、`model_url`、`models_config` | 服务端视角 |
+| `config/generated/database.env` | `POSTGRES_PORT` | PostgreSQL 宿主机端口；密码由 init 生成，不要手改 |
+| `config/generated/worker.local.json` | `url`、`worker_token` | Windows 采集 worker |
+| `config/generated/models.local.json` | 解释器与权重路径 | 本地模型 |
 
-必须保持一致的项：
+端口一致性由 `config/ports.env` 自动保证：`./start.sh` 启动前会执行
+`spatialforge_app.py sync`，把三个端口同步到 `config/generated/` 下的全部
+生成物（服务端 `port`、`database_url`、客户端 `service_url`、worker 的
+`url`/`ssh_forward`、`database.env`）。凭据类字段仍需保持一致：
 
-- `spatialforge-server.local.json` 的 `port` = `spatialforge.local.json` 的
-  `service_url` 端口 = `worker.local.json` 的 `url` 端口。
 - 客户端与服务器端的 `operator_token` 相同；服务器端与 worker 的
   `worker_token` 相同。
-- `database.env` 的 `POSTGRES_PORT` = 服务端 `database_url` 中的端口。
 
 ### 3. 模型提供方（按环境选择）
 
-`config/benchforge.local.yml` 由 `build_preset.py` 生成。若当前环境提供本地 Qwen
+`config/generated/benchforge.local.yml` 由 `build_preset.py` 生成。若当前环境提供本地 Qwen
 中转，可在生成后的本地文件中追加覆盖项；仓库不把该服务作为通用生产默认值：
 
 - `hmr: disabled`：本机 inotify 配额已满，关闭文件热更新，避免 DSH 卡在启动阶段。
@@ -193,7 +195,7 @@ python3.11 spatialforge_app.py setup
 本地 Qwen 的配置只影响当前项目，不改变 FIT 或其他生产部署。
 
 重新执行 `build_preset.py` 会覆盖这些追加项，建议先备份为
-`config/benchforge.local.yml.bak-<日期>`，生成后再把追加项补回。由于已禁用 hmr，
+`config/generated/benchforge.local.yml.bak-<日期>`，生成后再把追加项补回。由于已禁用 hmr，
 修改任何配置后都需要执行 `./restart.sh`。
 
 ### 4. 一键启动
@@ -247,14 +249,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3856/catalog -H "Autho
 ss -ltnp | grep -E ':(3856|55546|3081)\b'
 ```
 
-若端口被占用，按组件修改后重启：
-
-- SpatialForge：改 `spatialforge-server.local.json` 的 `port`，同步修改
-  `spatialforge.local.json` 的 `service_url` 与 `worker.local.json` 的 `url`。
-- PostgreSQL：改 `database.env` 的 `POSTGRES_PORT`，同步修改服务端
-  `database_url` 端口，然后重新执行 `spatialforge_app.py db`。
-- DSH：`BENCHFORGE_WEB_PORT=3090 ./start.sh`，或手动
-  `benchforge.py start --port <端口>`。
+若端口被占用，编辑 `config/ports.env`（三个端口一处修改，原始端口可注释保留），
+然后重跑 `./start.sh`——启动前的自动 `sync` 会把新端口同步到所有生成物。
+DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
 本机若已有现网服务，常见占用为：`3841`（另一套 SpatialForge）、`4960`（共享模型
 网关，应当复用）、`29002`（Qwen）、`3080`（另一套 DSH）、`32768`（旧 harness 的
@@ -281,7 +278,7 @@ PostgreSQL）。这也是示例配置使用 `3856`/`55546`/`3081` 的原因。
   `npm ci --prefix integrations` 后重启 DSH。
 - 页面模型仍显示已有提供方：这是默认行为；只有在本地 Qwen 服务可用并完成配置后，
   才在模型选择器中切换或设置 `agent-default-model`。
-- `config/benchforge.local.yml` 是“生成物 + 追加覆盖”，重新生成后需要把追加项补回。
+- `config/generated/benchforge.local.yml` 是“生成物 + 追加覆盖”，重新生成后需要把追加项补回。
 
 ## 验证与文档
 
