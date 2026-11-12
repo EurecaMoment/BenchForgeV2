@@ -114,7 +114,7 @@ def sync_ports():
     env.write_text(''.join(f'{key}={value}\n' for key, value in values.items()), encoding='utf8')
     if os.name != 'nt':
         env.chmod(0o600)
-    print(f'ports.env 已同步: service={service_port} postgres={db_port}')
+    print(f'Configuration synchronized: service={service_port} postgres={db_port}')
 
 
 def write(path, value):
