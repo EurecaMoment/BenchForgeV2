@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # 一键关停：DSH Web -> BenchForgeV2 服务 -> PostgreSQL（--keep-db 可保留数据库）
+# Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
+SERVER_CONFIG="$ROOT/config/generated/spatialforge-server.local.json"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 SF_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
+# 端口唯一权威来源是 config/ports.env，这里只做读取
+[ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
 WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
 KEEP_DB=0
 
@@ -58,23 +61,29 @@ stop_port() {
 }
 
 if [ -f "$SERVER_CONFIG" ]; then
-  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo 3841)"
+  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo "${SPATIALFORGE_PORT:-3857}")"
 else
-  SERVICE_PORT=3841
+  SERVICE_PORT="${SPATIALFORGE_PORT:-3857}"
 fi
 
 echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
-stop_port "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start --port"
+stop_port "DSH Web" "$DSH_PID_FILE" "benchforge.py start --port"
 
-echo "[2/3] 停止 BenchForgeV2 服务 (端口 $SERVICE_PORT)"
-stop_port "BenchForgeV2" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
+echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
+stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
+
+# Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 
 if [ "$KEEP_DB" -eq 1 ]; then
   echo "[3/3] 保留 PostgreSQL (--keep-db)"
 else
   echo "[3/3] 停止 PostgreSQL"
-  docker compose --env-file config/database.env \
+  COMPOSE_PROJECT="$(grep -E '^COMPOSE_PROJECT_NAME=' config/generated/database.env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  [ -n "$COMPOSE_PROJECT" ] || COMPOSE_PROJECT=benchforgev2-spatialforge
+  docker compose -p "$COMPOSE_PROJECT" --env-file config/generated/database.env \
     -f components/spatialforge/deploy/compose.yml down
 fi
 
 echo "已停止。"
+echo "💡 提示：下次重启 dsh-home/sessions 还在，旧浏览器 tab 刷新就能续上。"
+echo "   只有在 session 完全损坏时才需要 rm -rf .benchforge/dsh-home"

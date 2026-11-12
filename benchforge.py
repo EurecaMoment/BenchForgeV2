@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--spatialforge-config', type=Path, help='Enable BenchForgeV2 tools using an existing service configuration')
     parser.add_argument('--port',type=int,default=3080)
     args=parser.parse_args()
-    preset=ROOT/'.deployment/benchforge.local.yml'
+    preset=ROOT/'config/generated/benchforge.local.yml'
     if args.command=='demo':
         run([sys.executable,ROOT/'quickstart.py'],cwd=ROOT)
         return
@@ -59,7 +59,7 @@ def main():
         if args.spatialforge_config:
             python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
             run([python,ROOT/'integrations/dsh/build_presets.py',
-                 '--dsh-root',dsh,'--python',python,'--config',ROOT/'config/benchforge.local.json',
+                 '--dsh-root',dsh,'--node',node,'--python',python,'--config',ROOT/'config/benchforge.local.json',
                  '--service-config',args.spatialforge_config.resolve(),'--output',preset])
         saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
         print('Ready. Run: python benchforge.py start')

@@ -73,7 +73,7 @@ def main():
     parser.add_argument("--profile", type=Path, default=Path.home() / ".local/share/dsh-qwen/home/profiles/web/cordis.patch.yml")
     parser.add_argument("--python", type=Path, default=ROOT / ".deployment/python-development")
     parser.add_argument("--mode-config", type=Path, default=ROOT / "config/benchforge.local.json")
-    parser.add_argument("--service-config", type=Path, default=ROOT / "config/spatialforge.local.json")
+    parser.add_argument("--service-config", type=Path, default=ROOT / "config/generated/spatialforge.local.json")
     parser.add_argument("--dsh-service", default="dsh-qwen.service")
     parser.add_argument("--dsh-url", default="http://127.0.0.1:3080")
     parser.add_argument("--pull", action="store_true", help="First fast-forward the checkout's current branch")

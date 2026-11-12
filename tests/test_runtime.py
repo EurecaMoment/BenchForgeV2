@@ -98,6 +98,8 @@ class RuntimeTests(unittest.TestCase):
         self.assertFalse(result['capture_started'])
 
     def test_collector_timeout_reaps_child_process(self):
+        # 使用 carla 本地采集路径验证超时后子进程被清理；
+        # isaac 采集已改为远程 gRPC（需 scene_program），不再走本地 subprocess。
         script = self.root / 'spawns_child.py'
         child_pid_path = self.root / 'child.pid'
         script.write_text(
@@ -108,11 +110,11 @@ class RuntimeTests(unittest.TestCase):
             encoding='utf-8',
         )
         self.runtime.config = {
-            'collectors': {'isaac': {'command': [sys.executable], 'script': str(script)}}
+            'collectors': {'carla': {'command': [sys.executable], 'script': str(script)}}
         }
 
         with self.assertRaises(subprocess.TimeoutExpired):
-            self.runtime.call('isaac', {'timeout_seconds': 0.5})
+            self.runtime.call('carla', {'timeout_seconds': 0.5})
 
         child_pid = int(child_pid_path.read_text(encoding='utf-8'))
         for _ in range(30):

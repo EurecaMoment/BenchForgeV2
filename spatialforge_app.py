@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import shutil
 import subprocess
@@ -20,12 +21,102 @@ sys.path.insert(0, str(ROOT / 'components/spatialforge/src'))
 from spatialforge.runtime_config import read_json
 
 CONFIG = ROOT / 'config'
-STATE = ROOT / '.deployment'
-SERVER = CONFIG / 'spatialforge-server.local.json'
+STATE = ROOT / '.spatialforge'
+GENERATED = CONFIG / 'generated'
+SERVER = GENERATED / 'spatialforge-server.local.json'
+PORTS = CONFIG / 'ports.env'
 SERVER_TEMPLATE = CONFIG / 'spatialforge-server.example.json'
 MODELS_TEMPLATE = CONFIG / 'models.example.json'
 WORKER_TEMPLATE = CONFIG / 'worker.example.json'
 PYTHON = STATE / ('venv/Scripts/python.exe' if os.name == 'nt' else 'venv/bin/python')
+
+
+def read_ports():
+    ports = {}
+    if PORTS.exists():
+        for line in PORTS.read_text(encoding='utf8').splitlines():
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, value = line.partition('=')
+                ports[key.strip()] = value.strip()
+    return ports
+
+
+def _rewrite_database_port(url, db_port):
+    return re.sub(r'@([^:/]+):\d+/', lambda match: f'@{match.group(1)}:{db_port}/', url)
+
+
+def sync_ports():
+    """Apply config/ports.env to every generated config; tokens/passwords are preserved."""
+    if not PORTS.exists():
+        print(f'未找到 {PORTS}，跳过端口同步')
+        return
+    ports = read_ports()
+    if not SERVER.exists():
+        raise SystemExit(f'缺少 {SERVER}，请先运行 init')
+    service_port = int(ports['SPATIALFORGE_PORT']) if 'SPATIALFORGE_PORT' in ports else None
+    db_port = int(ports['POSTGRES_PORT']) if 'POSTGRES_PORT' in ports else None
+    config = read()
+    if service_port is not None:
+        config['port'] = service_port
+    if db_port is not None and isinstance(config.get('database_url'), str):
+        config['database_url'] = _rewrite_database_port(config['database_url'], db_port)
+    write(SERVER, config)
+    harness = config.get('harness')
+    if isinstance(harness, str) and harness and config.get('database_url'):
+        # 工作台 python 读取器从 <harness>/deployment.local.json 取数据库地址
+        write(Path(harness, 'deployment.local.json'), {'database_url': config['database_url']})
+    client = GENERATED / 'spatialforge.local.json'
+    if client.exists() and service_port is not None:
+        value = json.loads(client.read_text(encoding='utf8'))
+        if 'service_url' in value:
+            value['service_url'] = f'http://127.0.0.1:{service_port}'
+            write(client, value)
+    worker = GENERATED / 'worker.local.json'
+    if worker.exists():
+        value = json.loads(worker.read_text(encoding='utf8'))
+        if service_port is not None and 'url' in value:
+            value['url'] = f'http://127.0.0.1:{service_port}'
+            value['ssh_forward'] = f'{service_port}:127.0.0.1:{service_port}'
+        # 统一 Isaac 入口：把 benchforge.local.json 的 isaac 区块同步到 worker.local.json
+        # 同步字段：grpc/isaac_asset_root/runs/capture_timeout_seconds（gRPC 远程调用，本地/SSH/HTTP-RPC 模式已删除）
+        # 不覆盖 worker 专属字段：worker_token/worker_id/ssh_host/ssh_forward/url
+        benchforge_path = CONFIG / 'benchforge.local.json'
+        benchforge = json.loads(benchforge_path.read_text(encoding='utf8')) if benchforge_path.exists() else {}
+        isaac_cfg = benchforge.get('isaac') or {}
+        isaac_passthrough_keys = [
+            ('grpc', 'isaac_grpc'), ('isaac_asset_root', 'isaac_asset_root'),
+            ('runs', 'runs'), ('capture_timeout_seconds', 'capture_timeout_seconds'),
+        ]
+        for src_key, dst_key in isaac_passthrough_keys:
+            if src_key in isaac_cfg:
+                value[dst_key] = isaac_cfg[src_key]
+        # 清除旧三模式（local/remote/rpc）遗留的 key，避免 worker 误读死配置
+        for stale_key in ('isaac_mode', 'isaac_root', 'isaac_python', 'isaac_remote',
+                          'isaac_rpc', 'isaac_resident', 'isaac_idle_seconds'):
+            value.pop(stale_key, None)
+        write(worker, value)
+    env = GENERATED / 'database.env'
+    values = {}
+    if env.exists():
+        for line in env.read_text(encoding='utf8').splitlines():
+            key, separator, value = line.partition('=')
+            if separator and key:
+                values[key] = value
+    if 'POSTGRES_PASSWORD' not in values:
+        match = re.search(r'//spatialforge:([^@]+)@', config.get('database_url') or '')
+        if not match:
+            raise SystemExit(f'{env} 缺少 POSTGRES_PASSWORD，且服务端配置没有内嵌数据库密码')
+        values['POSTGRES_PASSWORD'] = match.group(1)
+    if db_port is not None:
+        values['POSTGRES_PORT'] = str(db_port)
+        if 'SPATIALFORGE_DATABASE_URL' in values:
+            values['SPATIALFORGE_DATABASE_URL'] = _rewrite_database_port(
+                values['SPATIALFORGE_DATABASE_URL'], db_port)
+    env.write_text(''.join(f'{key}={value}\n' for key, value in values.items()), encoding='utf8')
+    if os.name != 'nt':
+        env.chmod(0o600)
+    print(f'ports.env 已同步: service={service_port} postgres={db_port}')
 
 
 def write(path, value):
@@ -45,12 +136,22 @@ def read():
     return read_json(SERVER)
 
 
+def compose_project(env_file, default='benchforgev2-spatialforge'):
+    """Read the database project name saved by init, falling back to the legacy default."""
+    if env_file.exists():
+        for line in env_file.read_text(encoding='utf8').splitlines():
+            key, separator, value = line.partition('=')
+            if separator and key == 'COMPOSE_PROJECT_NAME' and value:
+                return value
+    return default
+
+
 def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
     existing_server = SERVER.exists()
     SERVER.parent.mkdir(parents=True, exist_ok=True)
     STATE.mkdir(parents=True, exist_ok=True)
-    models_path = CONFIG / 'models.local.json'
-    policy_dir = CONFIG / 'scene-library'
+    models_path = SERVER.parent / 'models.local.json'
+    policy_dir = SERVER.parent / 'scene-library'
     policy_path = policy_dir / 'policy.json'
     if not models_path.exists(): write(models_path, read_json(MODELS_TEMPLATE))
     if not policy_path.exists():
@@ -59,7 +160,9 @@ def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
                             'excluded_tasks': [], 'excluded_runs': [], 'excluded_scene_groups': [], 'excluded_paths': []})
     if not existing_server:
         config = read_json(SERVER_TEMPLATE)
-        config.update(port=port, models_config=models_path.name, scene_policy_path='scene-library/policy.json')
+        config.update(port=port, artifacts=str(STATE / 'artifacts'),
+                      task_root=str(STATE / 'artifacts/operator_workspaces'),
+                      models_config=models_path.name, scene_policy_path='scene-library/policy.json')
         config.pop('operator_token_env', None)
         config.pop('worker_token_env', None)
         config['operator_token'] = secrets.token_urlsafe(32)
@@ -67,7 +170,7 @@ def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
         write(SERVER, config)
     config = read()
     database_password = secrets.token_urlsafe(24)
-    db_env = CONFIG / 'database.env'
+    db_env = SERVER.parent / 'database.env'
     if not db_env.exists() and not existing_server:
         database_url = config.get('database_url') or f'postgresql+psycopg://spatialforge:{database_password}@127.0.0.1:{db_port}/spatialforge'
         db_env.write_text(f'POSTGRES_PASSWORD={database_password}\nPOSTGRES_PORT={db_port}\n'
@@ -81,15 +184,14 @@ def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
             database_url = f'postgresql+psycopg://spatialforge:{password}@127.0.0.1:{db_port_value}/spatialforge'
             with db_env.open('a', encoding='utf8') as stream:
                 stream.write(f'{config["database_url_env"]}={database_url}\n')
-    worker_path = CONFIG / 'worker.local.json'
+    worker_path = SERVER.parent / 'worker.local.json'
     if not worker_path.exists():
         worker = read_json(WORKER_TEMPLATE)
         worker.update(service_config=SERVER.name,
-                      isaac_root=os.environ.get('ISAAC_SIM_ROOT', worker['isaac_root']),
-                      isaac_asset_root=os.environ.get('ISAAC_ASSET_ROOT', worker['isaac_asset_root']),
-                      runs='../.deployment/worker-runs')
+                      isaac_asset_root=os.environ.get('ISAAC_ASSET_ROOT', worker.get('isaac_asset_root', '')))
+        worker.setdefault('runs', str(STATE / 'worker-runs'))
         write(worker_path, worker)
-    client_path = CONFIG / 'spatialforge.local.json'
+    client_path = SERVER.parent / 'spatialforge.local.json'
     if not client_path.exists():
         client = read_json(CONFIG / 'spatialforge.example.json')
         client['service_config'] = SERVER.name
@@ -106,6 +208,7 @@ def api(config, operation, value):
 
 
 def main():
+    GENERATED.mkdir(parents=True, exist_ok=True)
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='command', required=True)
     sub.add_parser('setup', help='Install bundled server dependencies in a private Python venv')
@@ -113,11 +216,12 @@ def main():
     init.add_argument('--port', type=int, default=3841)
     init.add_argument('--db-port', type=int, default=55432)
     init.add_argument('--project', default='benchforgev2-spatialforge',
-                      help='Unique database project name, saved in config/database.env')
+                      help='Unique database project name, saved in config/generated/database.env')
     db = sub.add_parser('db', help='Start this repository\'s PostgreSQL container')
-    db.add_argument('--project', help='Override the project saved in config/database.env')
+    db.add_argument('--project', help='Override the project saved in config/generated/database.env')
     sub.add_parser('serve')
     sub.add_parser('status')
+    sub.add_parser('sync', help='Apply config/ports.env to all generated configs')
     dsh = sub.add_parser('dsh-setup')
     dsh.add_argument('--dsh-root', type=Path)
     start = sub.add_parser('dsh-start')
@@ -140,14 +244,15 @@ def main():
                         '-e', str(ROOT / 'components/spatialforge')], check=True)
     elif args.command == 'init':
         _init_configs(args.port, args.db_port, args.project)
-        print(f'Configuration: {SERVER}; desktop configuration: {CONFIG / "worker.local.json"}')
+        print(f'Configuration: {SERVER}; desktop configuration: {SERVER.parent / "worker.local.json"}')
     elif args.command == 'db':
-        project = ['-p', args.project] if args.project else []
-        subprocess.run(['docker', 'compose', *project, '--env-file', str(CONFIG / 'database.env'),
+        env_file = GENERATED / 'database.env'
+        project = args.project or compose_project(env_file)
+        subprocess.run(['docker', 'compose', '-p', project, '--env-file', str(env_file),
                         '-f', str(ROOT / 'components/spatialforge/deploy/compose.yml'), 'up', '-d', '--wait'], check=True)
     elif args.command == 'serve':
         environment = os.environ.copy()
-        env_file = CONFIG / 'database.env'
+        env_file = GENERATED / 'database.env'
         if env_file.is_file():
             for line in env_file.read_text(encoding='utf8').splitlines():
                 name, separator, value = line.partition('=')
@@ -158,7 +263,7 @@ def main():
     elif args.command.startswith('dsh-'):
         command = [sys.executable, str(ROOT / 'benchforge.py'), args.command.removeprefix('dsh-')]
         if args.command == 'dsh-setup':
-            command += ['--spatialforge-config', str(CONFIG / 'spatialforge.local.json')]
+            command += ['--spatialforge-config', str(GENERATED / 'spatialforge.local.json')]
             if args.dsh_root:
                 command += ['--dsh-root', str(args.dsh_root)]
         else:
@@ -169,6 +274,8 @@ def main():
             p.error('The Isaac dispatcher runs on the Windows desktop only')
         subprocess.run([sys.executable, str(ROOT / 'components/spatialforge/desktop/worker.py'),
                         '--config', str(args.config.resolve()), *(['--once'] if args.once else [])], check=True)
+    elif args.command == 'sync':
+        sync_ports()
     elif args.command == 'status':
         result = api(read(), 'catalog', {})
         print(json.dumps(result, ensure_ascii=False, indent=2))

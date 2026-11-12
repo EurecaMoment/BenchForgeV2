@@ -1,11 +1,8 @@
 {
   "service_config": "spatialforge-server.local.json",
   "worker_id": "desktop-isaac-main",
-  "isaac_root": "${ISAAC_SIM_ROOT}",
-  "isaac_asset_root": "${ISAAC_ASSET_ROOT}",
-  "runs": "../runs/desktop-worker",
-  "ssh_host": "",
-  "capture_timeout_seconds": 1800,
-  "isaac_resident": true,
-  "isaac_idle_seconds": 300
+  "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
+  "runs": "D:/BenchForgeV2-runs",
+  "ssh_host": "user@server",
+  "capture_timeout_seconds": 1800
 }

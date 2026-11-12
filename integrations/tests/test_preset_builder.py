@@ -85,7 +85,7 @@ class PresetBuilderTest(unittest.TestCase):
                 row['config'].update(backendType='shell',maxOutputChars=8192)
         before=copy.deepcopy(sources)
         result=builder.build(sources,None,'python3',Path('config/benchforge.local.json'),
-                             Path('config/spatialforge.local.json'),package_imports=True)
+                             Path('config/generated/spatialforge.local.json'),package_imports=True)
         self.assertEqual(sources,before)
         row=result[0]['insert'][0]
         self.assertEqual(row['id'],'preset-benchforgev2')

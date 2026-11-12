@@ -1,5 +1,6 @@
 """Shared production capabilities for BenchForgeV2 and BenchForgeV2_UI."""
 import importlib.util
+import json
 from pathlib import Path
 import yaml
 
@@ -145,6 +146,22 @@ def persona(with_ui):
     return prefix + '\n' + UI_GUIDANCE if with_ui else prefix
 
 
+def production_config_reference(service_config, *, package_imports=False):
+    """UI readers open this file directly, so follow a service_config pointer to the full config."""
+    path = Path(service_config)
+    try:
+        value = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return base.config_reference(path, package_imports)
+    reference = value.get('service_config') if isinstance(value, dict) else None
+    if reference:
+        target = Path(str(reference)).expanduser()
+        if not target.is_absolute():
+            target = path.resolve().parent / target
+        return base.config_reference(target, package_imports)
+    return base.config_reference(path, package_imports)
+
+
 def workbench_entry(python, service_config, *, package_imports=False):
     """One host reader serves new and already-bound sessions; the client gates UI."""
     return {
@@ -152,7 +169,7 @@ def workbench_entry(python, service_config, *, package_imports=False):
         'name': '@eurecamoment/benchforge-dsh/spatialforge-ui' if package_imports
                 else str(INTEGRATIONS / 'spatialforge/ui/stage_products.js'),
         'config': {
-            'productionConfig': base.config_reference(service_config, package_imports),
+            'productionConfig': production_config_reference(service_config, package_imports=package_imports),
             'productionPython': str(python),
         },
     }

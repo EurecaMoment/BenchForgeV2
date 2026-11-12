@@ -170,7 +170,7 @@ cd /home/maqiang/GitHub/BenchForgeV2
 
 - `.deployment/python-development`：复用已有 Python 环境，业务导入路径指向仓库 src。
 - `config/benchforge.local.json`：外部推理 API 及操作员请求默认值（`model_services` 段）。
-- `config/spatialforge.local.json`：既有 BenchForgeV2 服务的客户端配置。
+- `config/generated/spatialforge.local.json`：既有 SpatialForge 服务的客户端配置。
 
 脚本通过 DSH 官方 profile 热加载更新定义，并使用带 revision 的插件 URL
 重新导入 BenchForgeV2 本地辅助模块。不会修改

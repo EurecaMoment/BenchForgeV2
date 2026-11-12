@@ -145,20 +145,62 @@ class Runtime:
         return {"service_result": result, "evidence_kind": "model_prediction", "gt_written": False,
                 "note": "Model masks, labels and inferred depth remain predictions; depth scale requires calibration."}
 
+    def _isaac_client(self):
+        client_path = Path(__file__).resolve().parents[2] / "components/spatialforge/grpc/client.py"
+        if not client_path.is_file():
+            raise ValueError(f"Isaac gRPC client not found at {client_path}; run from the BenchForge repository checkout.")
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("_benchforge_isaac_grpc_client", client_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def _isaac_endpoint(self):
+        grpc_cfg = (self.config.get("isaac") or {}).get("grpc") or {}
+        host = grpc_cfg.get("host", "")
+        if not host or str(host).startswith("YOUR_CONFIG"):
+            raise ValueError("Configure isaac.grpc.host/port in config/benchforge.local.json and run spatialforge_app.py sync.")
+        port = grpc_cfg.get("port")
+        timeout = grpc_cfg.get("timeout_seconds")
+        if not port or not timeout:
+            raise ValueError("Configure isaac.grpc.port/timeout_seconds in config/benchforge.local.json.")
+        return f"{host}:{port}", int(timeout)
+
     def collect(self, tool, args, directory):
-        cfg = self.config.get('collectors', {}).get(tool)
-        if not cfg:
-            raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config/benchforge.example.json.')
-        output = directory / "capture"
-        output.mkdir()
+        # isaac 统一走远程 gRPC 服务（顶层 isaac.grpc 区块）；本地 python / collectors.isaac 启动方式已删除
         if tool == "isaac":
-            write(directory / "capture-request.json", {**args, "output_dir": str(output)})
-            script = cfg.get("script") or str(Path(__file__).with_name("collectors") / "isaac.py")
-            command = list(cfg["command"]) + [script, "--request", str(directory / "capture-request.json")]
+            # 远程 gRPC 采集：提交 scene_program -> 轮询 -> 流式回传工件到 capture/
+            program = args.get("scene_program")
+            if not program or not Path(program).is_file():
+                raise ValueError("isaac 采集需要 scene_program 指向场景 JSON 文件。")
+            endpoint, _ = self._isaac_endpoint()
+            client = self._isaac_client()
+            output = directory / "capture"
+            request = {"scene_program": Path(program).read_text(encoding="utf8"),
+                       "source": "benchforge runtime", "transport": "grpc"}
+            job_id = client.new_job_id()
+            result = client.run_capture(endpoint, job_id, json.dumps(request, ensure_ascii=False), output,
+                                        timeout_seconds=int(args.get('timeout_seconds', 3600)))
+            report_path = output / 'report.json'
+            value = {"collector": "isaac", "transport": "grpc", "endpoint": endpoint, "job_id": job_id,
+                     "files": sorted(p.name for p in output.iterdir() if p.is_file()),
+                     "report": json.loads(report_path.read_text(encoding='utf8')) if report_path.exists() else {}}
+            write(directory / "isaac_capture.json", value)
+            return value
         else:
-            script = Path(__file__).with_name("collectors") / (tool + ".py")
+            cfg = self.config.get('collectors', {}).get(tool)
+            if not cfg:
+                raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config/benchforge.example.json.')
+            output = directory / "capture"
+            output.mkdir()
+            # 生产默认用仓库内置的 collectors/<tool>.py；测试或自定义场景可在配置里覆盖 script
+            if cfg.get("script"):
+                script = Path(cfg["script"])
+            else:
+                script = Path(__file__).with_name("collectors") / (tool + ".py")
             command = list(cfg["command"]) + [str(script), *args.get("argv", []), "--output-dir", str(output)]
-        env = {**os.environ, **cfg.get("env", {})}
+            cfg_env = cfg.get("env", {})
+        env = {**os.environ, **cfg_env}
         with (directory / "stdout.log").open("w", encoding="utf-8") as stdout, (directory / "stderr.log").open("w", encoding="utf-8") as stderr:
             options = {'start_new_session': True} if os.name != 'nt' else {
                 'creationflags': subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP,

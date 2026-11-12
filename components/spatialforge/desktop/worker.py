@@ -1,10 +1,10 @@
 """Persistent desktop dispatcher. Only the installed Isaac executor is launched."""
 import argparse
 import ctypes
-from ctypes import wintypes
 import io
 import json
 import os
+import platform
 from pathlib import Path
 import re
 import shutil
@@ -23,7 +23,88 @@ from spatialforge.capture_recovery import local_capture_receipt,require_frozen_r
 from spatialforge.runtime_config import load_worker_config
 config={}
 state_root=None
-NO_WINDOW=getattr(subprocess,'CREATE_NO_WINDOW',0)
+IS_WINDOWS=platform.system()=='Windows'
+NO_WINDOW=getattr(subprocess,'CREATE_NO_WINDOW',0) if IS_WINDOWS else 0
+
+
+def isaac_launch_command(local_script, *extra_args, for_resident=False):
+    """Build the gRPC launch spec for the remote Isaac Sim service.
+
+    Isaac Sim runs on a remote server behind the gRPC service configured in
+    isaac.grpc (components/spatialforge/grpc/). Local and SSH launch modes were
+    removed; every launch is dispatched to the remote service.
+
+    Returns (launch_spec, 'grpc'). launch_spec is a dict with keys
+    'endpoint', 'method', 'args', 'for_resident' — NOT a command list.
+    """
+    grpc_cfg = config.get('isaac_grpc') or {}
+    host = grpc_cfg.get('host', '')
+    port = grpc_cfg.get('port')
+    if not host or str(host).startswith('YOUR_CONFIG') or not port:
+        raise RuntimeError('isaac.grpc.host/port missing — set isaac.grpc in config/benchforge.local.json and run spatialforge_app.py sync')
+    return ({
+        'endpoint': f"{host}:{port}",
+        'method': 'resident_start' if for_resident else 'capture',
+        'args': list(extra_args),
+        'for_resident': bool(for_resident),
+    }, 'grpc')
+
+
+def isaac_client():
+    """Load the shared gRPC client (components/spatialforge/grpc/client.py)."""
+    import importlib.util
+    path=root/'grpc'/'client.py'
+    if not path.is_file():raise RuntimeError(f'Isaac gRPC client missing: {path}')
+    spec=importlib.util.spec_from_file_location('spatialforge_isaac_grpc_client',path)
+    module=importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def grpc_capture(job,directory,output):
+    """Run one remote capture: upload assets, submit, poll with heartbeats, download artifacts."""
+    client=isaac_client()
+    launch_spec, _ = isaac_launch_command('desktop/isaac_capture.py')
+    endpoint=launch_spec['endpoint']
+    started=time.time()
+    timeout=float(config.get('capture_timeout_seconds',1800))
+    stop={'reason':None}
+    next_heartbeat=[0.]
+    def on_status(status):
+        now=time.time()
+        if now-started>timeout:
+            stop['reason']='timeout'
+            return
+        if now-next_heartbeat[0]>=8:
+            next_heartbeat[0]=now
+            try:
+                canceled=api('/worker/heartbeat',{**job_identity(job),'progress':{'stage':'capture','started_at':started,'executor':'grpc','remote_job':status['state']}}).get('cancel')
+            except (OSError,urllib.error.URLError):
+                canceled=False
+            if canceled:stop['reason']='canceled'
+    job_id=f"{job['token']}-{int(time.time()*1000)}"
+    with tempfile.TemporaryDirectory(prefix='isaac_grpc_') as temporary:
+        assets={}
+        for asset_id,path in (job.get('asset_paths') or {}).items():
+            archive=Path(temporary)/f'{asset_id}.zip'
+            base=Path(path).parent
+            with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as bundle:
+                for item in sorted(base.rglob('*')):
+                    if item.is_file():bundle.write(item,str(item.relative_to(base)))
+            assets[f'{asset_id}.zip']=archive
+        try:
+            result=client.run_capture(endpoint,job_id,(directory/'request.json').read_bytes(),output,
+                                      assets=assets,timeout_seconds=timeout+120,
+                                      on_status=on_status,should_stop=lambda:stop['reason'] is not None)
+        except Exception:
+            if stop['reason']:
+                write_json(directory/'termination.json',{'reason':stop['reason'],'time':time.time(),'token':job['token']})
+            raise
+    write_json(directory/'grpc_capture.json',{'token':job['token'],'job_id':job_id,'endpoint':endpoint,
+                                              'state':result['state'],'artifacts':result['artifacts']})
+
+
+root=Path(__file__).resolve().parents[1]
 
 
 def api(path,value=None,data=None,headers=None):
@@ -168,14 +249,29 @@ def prepare_assets(job):
 
 def process_snapshot():
     # Read only candidate process metadata. No credentials or foreign command lines are logged.
-    script="""$ErrorActionPreference='Stop'
+    if IS_WINDOWS:
+        script="""$ErrorActionPreference='Stop'
 $rows=@(Get-CimInstance Win32_Process -Filter \"Name = 'python.exe' OR Name = 'pythonw.exe' OR Name = 'cmd.exe' OR Name = 'kit.exe'\" | Select-Object ProcessId,ParentProcessId,CommandLine)
 ConvertTo-Json -Compress -InputObject $rows
 """
-    result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-WindowStyle','Hidden','-Command',script],capture_output=True,text=True,timeout=25,creationflags=NO_WINDOW)
-    if result.returncode:raise RuntimeError('cannot inspect owned Isaac processes; capture launch postponed')
-    rows=json.loads(result.stdout or '[]')
-    return rows if isinstance(rows,list) else [rows]
+        result=subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-WindowStyle','Hidden','-Command',script],capture_output=True,text=True,timeout=25,creationflags=NO_WINDOW)
+        if result.returncode:raise RuntimeError('cannot inspect owned Isaac processes; capture launch postponed')
+        rows=json.loads(result.stdout or '[]')
+        return rows if isinstance(rows,list) else [rows]
+    else:
+        # Linux: use ps to find python / kit processes. Match by pattern in /proc cmdline.
+        out=subprocess.run(['ps','-eo','pid,ppid,args','--no-headers'],capture_output=True,text=True,timeout=15).stdout
+        rows=[]
+        for line in out.splitlines():
+            line=line.strip()
+            if not line:continue
+            parts=line.split(None,2)
+            if len(parts)<3:continue
+            pid,ppid,cmdline=int(parts[0]),int(parts[1]),parts[2]
+            lower=cmdline.lower()
+            if any(key in lower for key in ('python','kit','isaac_capture','isaac_resident')):
+                rows.append({'ProcessId':pid,'ParentProcessId':ppid,'CommandLine':cmdline})
+        return rows
 
 
 def capture_request(row):
@@ -200,31 +296,73 @@ def owns_resident(row,state):
 
 
 class OwnedProcess:
-    """Keep a Windows handle, so monitoring follows the original process identity."""
+    """Keep a process handle, so monitoring follows the original process identity.
+
+    Windows uses kernel32.WaitForSingleObject; Linux falls back to polling os.kill(pid,0).
+    """
     def __init__(self,row):
         self.pid=int(row['ProcessId']);self.parent=int(row['ParentProcessId'])
-        self.kernel=ctypes.WinDLL('kernel32',use_last_error=True)
-        self.kernel.OpenProcess.argtypes=[wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]
-        self.kernel.OpenProcess.restype=wintypes.HANDLE
-        self.kernel.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
-        self.kernel.WaitForSingleObject.restype=wintypes.DWORD
-        self.kernel.GetProcessTimes.argtypes=[wintypes.HANDLE]+[ctypes.POINTER(wintypes.FILETIME)]*4
-        self.kernel.CloseHandle.argtypes=[wintypes.HANDLE]
-        self.handle=self.kernel.OpenProcess(0x100000|0x1000,False,self.pid)
+        self.handle=None
         self.created=None
-        if self.handle:
-            creation,exit_time,kernel_time,user_time=(wintypes.FILETIME() for _ in range(4))
-            if self.kernel.GetProcessTimes(self.handle,ctypes.byref(creation),ctypes.byref(exit_time),ctypes.byref(kernel_time),ctypes.byref(user_time)):
-                self.created=(creation.dwHighDateTime<<32)|creation.dwLowDateTime
+        if IS_WINDOWS:
+            import ctypes
+            from ctypes import wintypes
+            self.kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+            self.kernel.OpenProcess.argtypes=[wintypes.DWORD,wintypes.BOOL,wintypes.DWORD]
+            self.kernel.OpenProcess.restype=wintypes.HANDLE
+            self.kernel.WaitForSingleObject.argtypes=[wintypes.HANDLE,wintypes.DWORD]
+            self.kernel.WaitForSingleObject.restype=wintypes.DWORD
+            self.kernel.GetProcessTimes.argtypes=[wintypes.HANDLE]+[ctypes.POINTER(wintypes.FILETIME)]*4
+            self.kernel.CloseHandle.argtypes=[wintypes.HANDLE]
+            self.handle=self.kernel.OpenProcess(0x100000|0x1000,False,self.pid)
+            if self.handle:
+                creation,exit_time,kernel_time,user_time=(wintypes.FILETIME() for _ in range(4))
+                if self.kernel.GetProcessTimes(self.handle,ctypes.byref(creation),ctypes.byref(exit_time),ctypes.byref(kernel_time),ctypes.byref(user_time)):
+                    self.created=(creation.dwHighDateTime<<32)|creation.dwLowDateTime
+        else:
+            # Linux: pid-based liveness check; creation time from /proc
+            try:
+                with open(f'/proc/{self.pid}/stat') as f:
+                    stat=f.read().split()
+                    self.created=int(stat[21])  # starttime in clock ticks since boot
+            except (FileNotFoundError,IndexError,PermissionError):
+                self.created=None
 
-    def active(self):return bool(self.handle) and self.kernel.WaitForSingleObject(self.handle,0)==0x102
+    def active(self):
+        if IS_WINDOWS:
+            return bool(self.handle) and self.kernel.WaitForSingleObject(self.handle,0)==0x102
+        else:
+            import signal
+            try:
+                os.kill(self.pid,0)
+                return True
+            except (ProcessLookupError,PermissionError):
+                return False
 
     def close(self):
-        if self.handle:self.kernel.CloseHandle(self.handle);self.handle=None
+        if IS_WINDOWS and self.handle:
+            self.kernel.CloseHandle(self.handle);self.handle=None
+        # Linux: no handle to close
 
     def terminate_tree(self):
         if self.active():
-            subprocess.run(['taskkill','/PID',str(self.pid),'/T','/F'],capture_output=True,timeout=25,creationflags=NO_WINDOW)
+            if IS_WINDOWS:
+                subprocess.run(['taskkill','/PID',str(self.pid),'/T','/F'],capture_output=True,timeout=25,creationflags=NO_WINDOW)
+            else:
+                try:
+                    subprocess.run(['pkill','-TERM','-P',str(self.pid)],capture_output=True,timeout=15)
+                except FileNotFoundError:pass
+                try:
+                    os.kill(self.pid,15)  # SIGTERM
+                except (ProcessLookupError,PermissionError):pass
+                time.sleep(2)
+                if self.active():
+                    try:
+                        subprocess.run(['pkill','-KILL','-P',str(self.pid)],capture_output=True,timeout=15)
+                    except FileNotFoundError:pass
+                    try:
+                        os.kill(self.pid,9)  # SIGKILL
+                    except (ProcessLookupError,PermissionError):pass
 
 
 def owned_processes(request,rows=None):
@@ -257,76 +395,14 @@ def stop_resident(state,processes):
 
 
 def run_resident(job,directory,rows):
-    state=state_root/'resident';state.mkdir(exist_ok=True)
-    request=directory/'request.json';output=directory/'capture'
-    receipt=directory/'resident.json';result_path=directory/'resident_result.json'
-    previous=json.loads(receipt.read_text(encoding='utf8')) if receipt.exists() else {}
-    started=previous.get('started_at',time.time())
-    processes=resident_processes(state,rows)
-    try:
-        while True:
-            if result_path.exists():
-                result=json.loads(result_path.read_text(encoding='utf8'))
-                if result['token']!=job['token']:raise RuntimeError('resident result belongs to another attempt')
-                if result['state']!='restart_required':
-                    if result['state']=='failed' and processes:stop_resident(state,processes)
-                    return result
-                # Incompatible renderer/extension profiles require a fresh process.
-                stop_resident(state,processes)
-                for process in processes:process.close()
-                processes=[];previous={};result_path.unlink()
-            if not processes:
-                if previous:
-                    result={'token':job['token'],'state':'failed','error':'resident ended before task cleanup completed'}
-                    write_json(result_path,result);return result
-                job=prepare_assets(job);write_json(request,job)
-                for name in ('command.json','active.json','status.json'):
-                    (state/name).unlink(missing_ok=True)
-                command=[os.environ['COMSPEC'],'/d','/c',str(Path(config['isaac_root'])/'python.bat'),
-                         str(root/'desktop/isaac_resident.py'),'--state',str(state),
-                         '--idle-seconds',str(config.get('isaac_idle_seconds',300))]
-                with (state/'isaac.log').open('ab') as log:
-                    process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,creationflags=NO_WINDOW)
-                processes=[OwnedProcess({'ProcessId':process.pid,'ParentProcessId':os.getpid()})]
-            if not previous:
-                if not request.exists():write_json(request,prepare_assets(job))
-                status=json.loads((state/'status.json').read_text(encoding='utf8')) if (state/'status.json').exists() else {}
-                if status.get('state') in {'stopping','stopped'}:
-                    stop_resident(state,processes)
-                    for process in processes:process.close()
-                    processes=[]
-                    continue
-                if status.get('token') and status['token']!=job['token']:
-                    raise RuntimeError('resident is still executing another owned attempt')
-                previous={'token':job['token'],'started_at':started,'log':str(state/'isaac.log')}
-                write_json(receipt,previous)
-                write_json(state/'command.json',{'action':'capture','request':str(request),'output':str(output)})
-            elif not (state/'command.json').exists() and not (state/'active.json').exists() and not (output/'report.json').exists():
-                # Recover a supervisor interruption between recording intent and sending it.
-                write_json(state/'command.json',{'action':'capture','request':str(request),'output':str(output)})
-            next_heartbeat=0.
-            while not result_path.exists():
-                if not any(p.active() for p in processes):
-                    # The python.bat shell may have exited while its child survived.
-                    children=resident_processes(state)
-                    for process in processes:process.close()
-                    processes=children
-                    if not processes:
-                        result={'token':job['token'],'state':'failed','error':'resident process ended without completion receipt'}
-                        write_json(result_path,result);return result
-                if time.monotonic()>=next_heartbeat:
-                    try:canceled=api('/worker/heartbeat',{**job_identity(job),'progress':{'stage':'capture','started_at':started,'executor':'resident'}}).get('cancel')
-                    except (OSError,urllib.error.URLError):canceled=False
-                    next_heartbeat=time.monotonic()+8
-                    if canceled or time.time()-started>config.get('capture_timeout_seconds',1800):
-                        stop_resident(state,processes)
-                        reason='canceled' if canceled else 'timeout'
-                        write_json(directory/'termination.json',{'reason':reason,'time':time.time(),'token':job['token']})
-                        result={'token':job['token'],'state':'failed','error':reason}
-                        write_json(result_path,result);return result
-                time.sleep(.25)
-    finally:
-        for process in processes:process.close()
+    """Legacy resident Isaac launcher — 已替换为 grpc_capture 一次性作业。
+
+    旧的常驻仿真进程通过 run_grpc_job 启动，该函数在 gRPC 改造时被移除；
+    现在所有采集都走 Capture + UploadAsset + DownloadArtifacts 全链路。
+    """
+    raise NotImplementedError(
+        'run_resident (resident Isaac 常驻模式) 已废弃；'
+        '请改用 grpc_capture 或 client.run_capture。')
 
 
 def wait_owned(job,directory,processes,launched=None):
@@ -390,39 +466,22 @@ def run_job(job):
             finish_job(job,directory,value['outcome'],value.get('error'));return
     processes=owned_processes(request,rows)
     if processes:
-        # Do not rewrite the request or start another Kit when the same token survived us.
+        # Do not rewrite the request while an older local Isaac process still runs.
         wait_owned(job,directory,processes)
-    elif report.is_file() and json.loads(report.read_text(encoding='utf8')).get('status')=='captured':
-        # A finished capture resumes transfer directly, including an older resident receipt.
-        pass
-    elif job.get('capture_recovery_mode')=='resume_upload':
-        raise ValueError('resume_upload cannot replay an unfinished native capture')
-    elif (directory/'resident.json').exists() or (config.get('isaac_resident',True) and not report.exists()):
-        status=api('/worker/heartbeat',job_identity(job))
-        if status.get('committed') or status.get('finished'):write_json(directory/'commit.json',status);return
-        if status.get('cancel') and not (directory/'resident.json').exists():finish_job(job,directory,'canceled');return
-        result=run_resident(job,directory,rows)
-        if result['state']=='failed':
-            output.mkdir(exist_ok=True)
-            value=json.loads(report.read_text(encoding='utf8')) if report.exists() else {'token':job['token'],'errors':[]}
-            value['status']='failed';value.setdefault('errors',[]).append(result['error'])
-            write_json(report,value)
-            return finish_job(job,directory,'failed',result['error'])
-    elif not report.exists():
+    if not report.exists():
         status=api('/worker/heartbeat',job_identity(job))
         if status.get('cancel'):finish_job(job,directory,'canceled');return
         if status.get('committed') or status.get('finished'):write_json(directory/'commit.json',status);return
         job=prepare_assets(job);write_json(request,job)
-        command=[os.environ['COMSPEC'],'/d','/c',str(Path(config['isaac_root'])/'python.bat'),str(root/'desktop/isaac_capture.py'),'--request',str(request),'--output',str(output)]
-        write_json(directory/'process.json',{'token':job['token'],'started_at':time.time(),'launch_pending':True})
-        with (directory/'isaac.log').open('ab') as log:
-            process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT,creationflags=NO_WINDOW)
-            # Keep the owned shell handle immediately; adoption also discovers the Python child.
-            processes=[OwnedProcess({'ProcessId':process.pid,'ParentProcessId':os.getpid()})]
-            wait_owned(job,directory,processes,process)
-    # A shell can exit before its Python child, including an adopted older shell.
-    remaining=owned_processes(request)
-    if remaining:wait_owned(job,directory,remaining)
+        write_json(directory/'process.json',{'token':job['token'],'started_at':time.time(),'transport':'grpc'})
+        try:
+            grpc_capture(job,directory,output)
+        except Exception as exc:
+            # 远程失败不静默回退本地：写入失败报告，交给 upload_capture 与主服务处理。
+            output.mkdir(exist_ok=True)
+            value=json.loads(report.read_text(encoding='utf8')) if report.exists() else {'token':job['token'],'errors':[]}
+            value['status']='failed';value.setdefault('errors',[]).append(str(exc))
+            write_json(report,value)
     if not report.exists():
         output.mkdir(exist_ok=True)
         write_json(report,{'status':'failed','token':job['token'],'errors':['Isaac process ended without report; inspect owned run log']})
@@ -436,17 +495,29 @@ def run_job(job):
 def main():
     global config,state_root
     parser=argparse.ArgumentParser()
-    parser.add_argument('--config',type=Path,default=root/'config/worker.local.json')
+    parser.add_argument('--config',type=Path,default=root/'config/generated/worker.local.json')
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
     config=load_worker_config(args.config)
     os.environ['SPATIALFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
     state_root=Path(config['runs']);state_root.mkdir(parents=True,exist_ok=True)
-    # This supervisor mutex is distinct from durable ownership of an already running Kit.
-    kernel=ctypes.windll.kernel32
-    kernel.CreateMutexW.restype=ctypes.c_void_p
-    mutex=kernel.CreateMutexW(None,False,'Local\\SpatialForgeDesktopWorker')
-    if kernel.GetLastError()==183:raise SystemExit('SpatialForge worker already active')
+    # 跨平台 supervisor mutex：Windows 用命名内核互斥量，Linux 用 pidfile。
+    pidfile=state_root/'worker.pid'
+    if IS_WINDOWS:
+        kernel=ctypes.windll.kernel32
+        kernel.CreateMutexW.restype=ctypes.c_void_p
+        mutex=kernel.CreateMutexW(None,False,'Local\\SpatialForgeDesktopWorker')
+        if kernel.GetLastError()==183:raise SystemExit('SpatialForge worker already active')
+    else:
+        # Linux pidfile：若存在则检查 pid 是否还活着。
+        if pidfile.exists():
+            try:
+                old_pid=int(pidfile.read_text().strip())
+                os.kill(old_pid,0)
+                raise SystemExit(f'SpatialForge worker already active (pid {old_pid})')
+            except (ValueError,ProcessLookupError,PermissionError):
+                pidfile.unlink(missing_ok=True)
+        pidfile.write_text(str(os.getpid()))
     tunnel=None
     try:
         while True:
@@ -476,7 +547,10 @@ def main():
                 time.sleep(8)
     finally:
         if tunnel and tunnel.poll() is None:tunnel.terminate()
-        kernel.CloseHandle(ctypes.c_void_p(mutex))
+        if IS_WINDOWS:
+            kernel.CloseHandle(ctypes.c_void_p(mutex))
+        else:
+            pidfile.unlink(missing_ok=True)
 
 
 if __name__=='__main__':main()

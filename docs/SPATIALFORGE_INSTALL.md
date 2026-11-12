@@ -24,14 +24,14 @@ python3.11 spatialforge_app.py serve
 ```
 
 Python 需要 venv/ensurepip。Debian/Ubuntu 可安装与所用 Python 版本匹配的 `python3.11-venv`。
-`setup` 在 `.deployment/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
+`setup` 在 `.spatialforge/venv` 安装本仓库的两个组件；没有依赖未公开的 BenchClaw/Pic2Sim 工程。
 `init` 生成随机凭据及配置，重复运行保留已有文件。PostgreSQL 只绑定本机 55432，
 API 只绑定本机 3841；端口冲突时首次初始化使用 `--port 3856 --db-port 55546`。
-数据库项目名保存在 `config/database.env` 的 `COMPOSE_PROJECT_NAME`。
+数据库项目名保存在 `config/generated/database.env` 的 `COMPOSE_PROJECT_NAME`。
 同机不同部署应选择不同 `--project` 和端口，启动、停止均读取该文件。
 已完成根 README 安装的环境应继续使用已生成的配置，不要重新复制其他实例的配置。
 
-配置在 `config/spatialforge-server.local.json`。可改为现有 **专用 PostgreSQL** 的
+配置在 `config/generated/spatialforge-server.local.json`。可改为现有 **专用 PostgreSQL** 的
 `database_url`；SQLite 不支持本服务的任务和设备锁。`gpu_candidates` 是获准使用的
 GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 GPU 加入候选列表。
 
@@ -47,34 +47,42 @@ GPU 索引，以逗号分隔，默认只用 0。不要把共享服务占用的 G
 模型与软件/资产按各自条款获取，不随本仓库打包。
 
 在 Windows 克隆同一个仓库到短路径，例如 `D:\BenchForgeV2`，安装普通 Python 3.11。
-把服务机生成的 `config/worker.local.json` 安全复制到 Windows 仓库的 `config/` 目录。
+把服务机生成的 `config/generated/worker.local.json` 安全复制到 Windows 仓库的 `config/` 目录。
 默认 `service_config` 引用仅用于同机部署；独立桌面应移除该字段，并按下面的独立配置
 填写服务地址、worker token 和本机路径，无需复制包含 operator token 的服务端配置：
 
 ```json
 {
-  "url": "http://127.0.0.1:3841",
+  "url": "http://127.0.0.1:3857",
   "worker_token": "复制服务机生成的 worker_token",
   "worker_id": "desktop-isaac-main",
-  "isaac_root": "D:/isaac-sim",
   "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
   "runs": "D:/BenchForgeV2-runs",
   "ssh_host": "user@server",
-  "ssh_forward": "3841:127.0.0.1:3841"
+  "isaac_grpc": {
+    "host": "仿真器服务器的地址",
+    "port": 50051,
+    "timeout_seconds": 60
+  },
+  "capture_timeout_seconds": 1800
 }
 ```
 
-`isaac_root` 是包含 `python.bat` 的软件目录。先在 Windows 执行 `ssh user@server`，
-完成主机指纹确认和密钥登录；worker 使用非交互 SSH。可以填 SSH config 中的主机别名，
-也可指定 `ssh_config` 文件。配置的 SSH 本地端口和服务端口须一致。
-若已有外部隧道，在配置中删除 `ssh_host`、`ssh_forward`。
+`isaac_grpc` 指向运行 `components/spatialforge/grpc/server.py` 的 Isaac Sim 服务端；
+worker 只通过 gRPC 提交采集作业，不再在本机启动 Kit，也没有 `isaac_root`、
+`isaac_resident` 等本地启动参数。同机部署时该区块由 `spatialforge_app.py sync`
+从 `config/benchforge.local.json` 的顶层 `isaac.grpc` 自动写入，无需手改生成文件。
+
+先在 Windows 执行 `ssh user@server`，完成主机指纹确认和密钥登录；worker 使用非交互
+SSH。可以填 SSH config 中的主机别名，也可指定 `ssh_config` 文件。配置的 SSH 本地端口
+和服务端口须一致。若已有外部隧道，在配置中删除 `ssh_host`、`ssh_forward`。
 
 ```powershell
 cd D:\BenchForgeV2
-python spatialforge_app.py worker --config config/worker.local.json
+python spatialforge_app.py worker --config config/generated/worker.local.json
 ```
 
-worker 保留 Windows 单实例互斥锁，按任务用 Isaac 自带 Python 启动执行器。
+worker 保留 Windows 单实例互斥锁，按任务调用 Isaac Sim gRPC 服务执行采集。
 无需在 Isaac 环境中安装服务端的 PostgreSQL、DSH 或生成模型依赖。
 请勿同时运行旧 BenchForgeV2 worker 与本仓库 worker。
 
@@ -92,7 +100,7 @@ python3.11 spatialforge_app.py capture \
 不需要模型权重或语言模型。记录返回的 `run_id`；网络中断后使用相同的请求键和文件
 重连原任务。修改场景时使用新请求键，旧产物保留。退出码 2 表示等待窗口结束、任务仍在运行。
 
-产物在 `.deployment/artifacts/<task_id>/revision_0/capture/`：
+产物在 `.spatialforge/artifacts/<task_id>/revision_0/capture/`：
 `view_*.png/json`、交互前后图和轨迹、`evidence.json`、`report.json`、成对 USD 场景文件。
 以实际交互 `success`、轨迹和前后画面判断推动效果；`SUCCEEDED` 只表示采集任务完成。
 打开 USD 时保持整个 capture 目录一起移动。这个例子的几何全部程序生成；
@@ -123,13 +131,13 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 ## 4. 配置扩散、分割、生成资产和深度
 
 按 [模型安装](SPATIALFORGE_MODELS.md) 安装需要的模型，编辑
-`config/models.local.json` 中的解释器、权重、源码路径。
+`config/generated/models.local.json` 中的解释器、权重、源码路径。
 每种工具只需要自己的配置；采集及已有网格导入无需先安装 SAM3D 或全部模型。
 `models.flux` 是 FLUX.2 Klein 图像生成模型；这里不调用旧 Pic2Sim 的图像剥离流水线。
 布局参考图也使用 `models.flux.path`，相对路径按模型配置文件所在目录解析。
 `SPATIALFORGE_DIFFUSION_MODEL` 可显式覆盖权重路径；参考图回执记录实际使用的模型名称。
 
-需要服务端自动规划和视觉修正时，在 `config/spatialforge-server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
+需要服务端自动规划和视觉修正时，在 `config/generated/spatialforge-server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
 
 ```json
 {
@@ -175,13 +183,13 @@ python3.11 spatialforge_app.py dsh-start
   在模型使用的 `/observe` 中可读取阶段和具体失败；不要重复提交相同任务。
 - 模型工具失败：查看该任务 `generation_stage/worker/worker.log`，修复实际缺失依赖。
   已有本地模型权重可直接配置路径，不必再下载。
-- 重新生成配置不会迁移已有数据；保留 `.deployment` 和桌面 runs 目录。
+- 重新生成配置不会迁移已有数据；保留 `.spatialforge` 和桌面 runs 目录。
 
 新隔离数据库、没有桌面 worker 的环境可运行服务回归：
 
 ```bash
-.deployment/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
-  --config config/spatialforge-server.local.json --output runs/service-roundtrip
+.spatialforge/venv/bin/python components/spatialforge/tests/service_roundtrip.py \
+  --config config/generated/spatialforge-server.local.json --output runs/service-roundtrip
 ```
 
 它实际测试 HTTP 认证、PostgreSQL、沙箱写文件、重复请求、重启续接和取消，

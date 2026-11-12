@@ -98,7 +98,7 @@ class InstallConfigTest(unittest.TestCase):
                                          'init', '--port', '3857', '--project', 'isolated-test'],
                                         cwd=root, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                client = load_service_client_config(config / 'spatialforge.local.json')
+                client = load_service_client_config(config / 'generated/spatialforge.local.json')
                 self.assertEqual(client['service_url'], 'http://127.0.0.1:3857')
 
     def test_setup_rejects_missing_client_before_installation(self):
@@ -155,7 +155,7 @@ class InstallConfigTest(unittest.TestCase):
                 generation = run.call_args_list[-1].args[0]
                 self.assertEqual(generation[1], root / 'integrations/dsh/build_presets.py')
                 output = generation[generation.index('--output') + 1]
-                self.assertEqual(output, root / '.deployment/benchforge.local.yml')
+                self.assertEqual(output, root / 'config/generated/benchforge.local.yml')
                 run.reset_mock()
                 sys.argv = ['benchforge.py', 'start', '--no-open']
                 benchforge.main()

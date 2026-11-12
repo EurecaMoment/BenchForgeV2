@@ -191,7 +191,7 @@ git branch --show-current
 ```
 
 最后一行应输出 `main`。之后所有服务器命令都在这个目录执行。
-不要复制旧部署的 `config/`、`.benchforge/` 或 `.deployment/`。
+不要复制旧部署的 `config/`、`.benchforge/` 或 `.spatialforge/`。
 `-c http.version=HTTP/1.1` 仅对本次克隆生效，用于减少部分网络链路上的 GitHub
 连接中断，不修改全局 Git 配置。若下载仍失败，保留错误并检查网络；重试前确认目标
 目录尚未创建，已有目录则换新名称，不要删除已有部署。
@@ -205,7 +205,7 @@ npm ci --prefix integrations
 .venv/bin/python spatialforge_app.py setup
 ```
 
-`.venv/` 是核心与 DSH 辅助程序环境，`.deployment/venv/` 是后端环境。
+`.venv/` 是核心与 DSH 辅助程序环境，`.spatialforge/venv/` 是后端环境。
 `npm ci --prefix integrations` 安装插件依赖，不能用 Python 安装替代。
 这一步完成后还没有启动服务，也没有配置模型或仿真器。
 
@@ -224,23 +224,34 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
 
 `--project` 是本实例的数据库项目名，同机不同部署必须不同。它保存为
-`config/database.env` 的 `COMPOSE_PROJECT_NAME`，启动和停止会读取同一值；
+`config/generated/database.env` 的 `COMPOSE_PROJECT_NAME`，启动和停止会读取同一值；
 无需每次再手动指定。不要设置指向其他实例的 `COMPOSE_PROJECT_NAME` 环境变量。
 
 初始化会自动生成随机数据库密码及两种 token，并建立匹配的客户端、服务端与 worker
 配置。重复 `init` 会保留已有端口、项目配置和凭据，不会按新参数覆盖；因此首次就应
 选好端口。如果默认客户端文件丢失，重跑 `init` 可从已有服务端配置补齐。
 
+端口统一收敛在 `config/ports.env`（`SPATIALFORGE_PORT`、`POSTGRES_PORT`、
+`BENCHFORGE_WEB_PORT`）。文件存在时，`./start.sh` 启动前会执行
+`spatialforge_app.py sync`，把端口写回 `config/generated/` 下的全部生成物
+（服务端 `port`、`database_url`、worker 的 `url`/`ssh_forward`、`database.env`）。
+之后改端口只需编辑 `config/ports.env` 并重跑 `./start.sh`；`init --port/--db-port`
+只决定首次初始化写入的初始值。
+
 | 文件 | 用途 | 基础启动是否需要手改 |
 | --- | --- | --- |
-| `config/database.env` | 数据库密码、端口、独立项目名和连接地址 | 否 |
-| `config/spatialforge-server.local.json` | API 端口、数据库环境变量引用、产物目录、服务凭据和生产策略 | 否 |
-| `config/spatialforge.local.json` | 引用服务端配置，继承地址、operator token 和生产策略 | 否 |
-| `config/models.local.json` | 生成模型的解释器和权重位置 | 用模型时配置 |
-| `config/worker.local.json` | 引用服务端配置，另设本机 Isaac 路径和 worker 参数 | 接入 worker 时配置 |
+| `config/ports.env` | **端口唯一权威来源**；`./start.sh` 启动前自动 sync 到生成物 | 改端口时 |
+| `config/benchforge.local.json` | 外部模型地址与顶层 `isaac.grpc`（远程 Isaac Sim gRPC 入口） | 用模型/仿真器时配置 |
+| `config/generated/database.env` | 数据库密码、端口、独立项目名和连接地址 | 否 |
+| `config/generated/spatialforge-server.local.json` | API 端口、数据库环境变量引用、产物目录、服务凭据、生产策略和 `isaac` 透传 | 否 |
+| `config/generated/spatialforge.local.json` | 引用服务端配置，继承地址、operator token 和生产策略 | 否 |
+| `config/generated/models.local.json` | 生成模型的解释器和权重位置 | 用模型时配置 |
+| `config/generated/worker.local.json` | 引用服务端配置，另设本机 Isaac 路径、`isaac_grpc` 和 worker 参数 | 接入 worker 时配置 |
+| `config/generated/benchforge.local.yml` | DSH 三个预设与工作台插件，由 `init`/`sync`/`build_presets.py` 生成 | 否 |
 
-服务端配置是唯一连接信息来源；客户端和同机 worker 不重复保存 token 或端口。
-本地配置、虚拟环境、日志、产物都已被 Git 忽略；不要将密码或 token 上传到仓库。
+`config/generated/` 下的文件都是自动产物，不要手改端口或凭据；服务端配置是唯一
+连接信息来源，客户端和同机 worker 不重复保存 token 或端口。本地配置、虚拟环境、
+日志、产物都已被 Git 忽略；不要将密码或 token 上传到仓库。
 未使用 `--project` 的旧配置仍沿用 `benchforgev2-spatialforge` 项目名。
 
 ### 4. 安装 DSH 并生成完整预设
@@ -251,7 +262,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 此命令从公开仓库下载锁定版本的 DSH，在 `third_party/deepseek-harness/` 构建，
 然后生成 `config/benchforge.local.json`、含三个预设和工作台插件的
-`.deployment/benchforge.local.yml` 与
+`config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
 `Ready. Run: python benchforge.py start`，且命令退出码为 0。
 
@@ -259,7 +270,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 ```bash
 # 与上一条二选一，不需要重复执行。
-.venv/bin/python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+.venv/bin/python benchforge.py setup --spatialforge-config config/generated/spatialforge.local.json
 ```
 
 单独执行 `benchforge.py setup` 只安装第一代 `BenchForge`，不会接入另外两个 BenchForgeV2 预设。
@@ -328,11 +339,11 @@ http://127.0.0.1:13092/?token=第5节输出的实际令牌
 
 ```bash
 # 检查该实例的数据库容器，状态应为 healthy。
-docker compose --env-file config/database.env -f components/spatialforge/deploy/compose.yml ps
+docker compose --env-file config/generated/database.env -f components/spatialforge/deploy/compose.yml ps
 
 # 发起真实、带认证的 POST /catalog，不需要手动复制 token。
 .venv/bin/python spatialforge_app.py status
-.venv/bin/python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
+.venv/bin/python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
 
 # 只运行一次不需要 GPU/模型的离线例子。
 .venv/bin/python benchforge.py demo
@@ -341,6 +352,10 @@ docker compose --env-file config/database.env -f components/spatialforge/deploy/
 两次目录查询应返回 `catalog_schema: spatialforge.operator-catalog/v2` 和 `sections`，
 不应返回认证错误。`model: unconfigured` 表示还没有配置后端规划模型，基础安装允许此状态。
 不要用普通 `GET /catalog` 的 HTTP 200 代替检查：GET 会返回介绍页，实际目录接口是 POST。
+
+若端口被占用，编辑 `config/ports.env`（三个端口一处修改，原始端口可注释保留），
+然后重跑 `./start.sh`——启动前的自动 `sync` 会把新端口同步到所有生成物。
+DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
 离线例子应输出 `Offline demo complete: 2 items, exact-match accuracy 0.5`，
 其中一个预测故意错误，0.5 是预期结果。产物在 `runs/quickstart/`。
@@ -363,7 +378,8 @@ docker compose --env-file config/database.env -f components/spatialforge/deploy/
   [模型安装](docs/SPATIALFORGE_MODELS.md) 或 [外部模型接口](docs/MODEL_SERVICES.md)
   配置所需服务。示例配置中的 localhost 地址只表示连接位置，不代表相应模型已运行。
 - **Isaac 真值与采集**：按 [自托管安装指南](docs/SPATIALFORGE_INSTALL.md)
-  接入自己的 Isaac 和 worker，使用本次生成的 `config/worker.local.json`。
+  接入自己的 Isaac 和 worker，使用本次生成的 `config/generated/worker.local.json`；
+  worker 通过 `config/benchforge.local.json` 的 `isaac.grpc` 调用远程 Isaac Sim gRPC 服务。
   先验收文档中的程序化 capture 例子，再让 Agent 发起生成任务。
 - **场景工作台 UI**：完整安装已经接入。选择 `BenchForgeV2_UI` 使用，见
   [工作台说明](docs/frontend-workbench-v2.md)；另外两个预设使用标准对话界面。
@@ -398,8 +414,8 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
 ```
 
 除非确实需要重新生成预设，否则不要再次运行 `dsh-setup` 覆盖自己的模型配置。
-需要重新生成时先备份 `.deployment/benchforge.local.yml`，生成后合回自己的追加项。
-不要通过复制另一套实例的配置来升级，也不要删除 `.deployment/` 或数据库卷。
+需要重新生成时先备份 `config/generated/benchforge.local.yml`，生成后合回自己的追加项。
+不要通过复制另一套实例的配置来升级，也不要删除 `.spatialforge/` 或数据库卷。
 
 ### 10. 常见失败及处理
 
@@ -417,7 +433,7 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
 | 明确出现 `ENOSPC: file watchers` | 主机文件监视器配额耗尽；可请管理员提高 inotify 配额，或按下方方法在当前实例关闭配置热更新。 |
 | 页面无可用模型 / 模型请求失败 | 完成第 8 节，核对提供方、模型 ID、地址与凭据；页面能打开不代表模型已配置。 |
 
-关闭当前实例的配置热更新：在 **`.deployment/benchforge.local.yml` 的顶层列表末尾**追加
+关闭当前实例的配置热更新：在 **`config/generated/benchforge.local.yml` 的顶层列表末尾**追加
 以下条目，然后执行第 9 节的重启命令。这是可选修复，生成预设时不会自动追加：
 
 ```yaml
@@ -425,7 +441,7 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
   disabled: true
 ```
 
-追加前可备份：`cp .deployment/benchforge.local.yml .deployment/benchforge.local.yml.bak-before-hmr`。
+追加前可备份：`cp config/generated/benchforge.local.yml config/generated/benchforge.local.yml.bak-before-hmr`。
 禁用后，每次修改配置需重启；重新生成预设也需重新保留这条覆盖。
 
 ## 已有后端时的连接方式
@@ -435,10 +451,10 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
 地址、operator token 和生产策略从该文件继承，再验证连接和生成预设：
 
 ```bash
-cp config/spatialforge.example.json config/spatialforge.local.json
+cp config/spatialforge.example.json config/generated/spatialforge.local.json
 # 用编辑器将 service_config 改为既有服务端配置的路径后继续。
-.venv/bin/python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
-.venv/bin/python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+.venv/bin/python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
+.venv/bin/python benchforge.py setup --spatialforge-config config/generated/spatialforge.local.json
 .venv/bin/python benchforge.py start --port 3092 --no-open
 ```
 

@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# 一键启动：PostgreSQL -> BenchForgeV2 服务 -> BenchForge DSH Web
+# 一键启动：PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
 # 配置全部来自 config/ 目录；日志写入 .benchforge/logs/，PID 写入 .benchforge/run/。
+# Isaac Sim gRPC 服务不在此管理：本地 mock 或远程仿真器请单独手动启动。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SF_PY="$ROOT/.deployment/venv/bin/python"
-SERVER_CONFIG="$ROOT/config/spatialforge-server.local.json"
-PRESET="$ROOT/.deployment/benchforge.local.yml"
+SF_PY="$ROOT/.spatialforge/venv/bin/python"
+SERVER_CONFIG="$ROOT/config/generated/spatialforge-server.local.json"
+SERVICE_CONFIG="$ROOT/config/generated/spatialforge.local.json"
+PRESET="$ROOT/config/generated/benchforge.local.yml"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 LOG_DIR="$STATE/logs"
 SF_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
+# 端口唯一权威来源是 config/ports.env 和 config/benchforge.local.json，这里只做读取
+[ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
 WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR"
@@ -64,16 +68,17 @@ latest_url() {
 url_status() { curl -s -o /dev/null -w '%{http_code}' "$1" 2>/dev/null || true; }
 
 echo "[1/3] 启动 PostgreSQL"
+"$PY" spatialforge_app.py sync
 "$PY" spatialforge_app.py db
 
-echo "[2/3] 启动 BenchForgeV2 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
-  [ -f "$ROOT/config/database.env" ] || die "缺少 config/database.env，请先运行 spatialforge_app.py init"
+  [ -f "$ROOT/config/generated/database.env" ] || die "缺少 config/generated/database.env，请先运行 spatialforge_app.py init"
   set -a
   # shellcheck disable=SC1091
-  . "$ROOT/config/database.env"
+  . "$ROOT/config/generated/database.env"
   set +a
   echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/spatialforge.log"
   # setsid 脱离当前终端会话，关闭终端后服务继续运行
@@ -146,3 +151,14 @@ echo "  服务端: http://127.0.0.1:$SERVICE_PORT"
 echo "  Web:    ${URL:-http://127.0.0.1:$WEB_PORT/ （token 见 .benchforge/logs/dsh.log）}"
 echo "  日志:   $LOG_DIR"
 echo "  停止:   ./shutdown.sh"
+echo
+# --- 浏览器操作指引（重启翻车 99% 是旧 tab 没关）---
+HAS_SESSIONS=0
+[ -d "$STATE/dsh-home/sessions" ] && HAS_SESSIONS=1
+if [ "$HAS_SESSIONS" -eq 1 ]; then
+  echo "📋 浏览器操作：直接刷新你现有的 DSH tab 即可（session 文件保留了）"
+else
+  echo "⚠️  浏览器操作：关掉所有旧的 DSH tab，用上面的 Web URL 重新打开！"
+  echo "   （dsh-home/sessions 已被清理，旧 tab 会报 ENOENT）"
+fi
+echo "   不想关 tab? 只要你没手动 rm dsh-home，下次重启就能刷新续上"

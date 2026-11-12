@@ -41,11 +41,6 @@
         "carla",
         "python"
       ]
-    },
-    "isaac": {
-      "command": [
-        "YOUR_ISAAC_PYTHON_LAUNCHER"
-      ]
     }
   },
   "models": {
