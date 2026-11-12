@@ -169,6 +169,11 @@ class RuntimeTests(unittest.TestCase):
             result=self.runtime.call('sam3',{'payload':{'image_path':'image.png','text_prompt':'chair'}})
             self.assertEqual(requests,[('/image/infer',{'image_path':'image.png','text_prompt':'chair'})])
             self.assertFalse(result['gt_written'])
+            self.runtime.config = {'model_roles': {'annotation': 'qwen'}, 'models': {
+                'qwen': {'url': f'http://127.0.0.1:{server.server_port}/v1', 'model': 'fixture-vlm'}}}
+            self.runtime.call('llm_local', {'payload': {'messages': []}})
+            self.assertEqual(requests[-1], ('/v1/chat/completions',
+                                           {'messages': [], 'model': 'fixture-vlm'}))
         finally:
             server.shutdown()
             thread.join()

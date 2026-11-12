@@ -6,7 +6,7 @@
   "database_url_env": "SPATIALFORGE_DATABASE_URL",
   "operator_token_env": "SPATIALFORGE_OPERATOR_TOKEN",
   "worker_token_env": "SPATIALFORGE_WORKER_TOKEN",
-  "models_config": "models.local.json",
+  "models_config": "../benchforge.local.json",
   "gpu_candidates": "0",
   "task_root": "../.deployment/artifacts/operator_workspaces",
   "execution_mode": "production",

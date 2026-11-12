@@ -16,6 +16,24 @@ from benchforge_core.runtime import Runtime
 
 
 class ModelClients(unittest.TestCase):
+    def test_python_clients_default_to_the_shared_operator_file(self):
+        from unittest.mock import patch
+        from benchforge_core.model_services.client import load_config
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'config').mkdir()
+            (root / 'config/benchforge.local.json').write_text(json.dumps({
+                'model_services': {'url': 'https://shared-model-api.example'}
+            }), encoding='utf8')
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                with patch.dict(os.environ, {}, clear=True):
+                    self.assertEqual(load_config()['url'], 'https://shared-model-api.example')
+                    self.assertEqual(ModelService().url, 'https://shared-model-api.example')
+            finally:
+                os.chdir(previous)
+
     def setUp(self):
         self.requests = []
         self.checks = []

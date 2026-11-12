@@ -21,6 +21,13 @@ DSH_PID_FILE="$RUN_DIR/dsh.pid"
 [ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
 WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
 
+# Model secret references are shared by the backend and DSH.
+if [ -f "$ROOT/config/dsh.env" ]; then
+  set -a
+  . "$ROOT/config/dsh.env"
+  set +a
+fi
+
 mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 die() { echo "错误: $*" >&2; exit 1; }
@@ -98,13 +105,6 @@ if port_open "$WEB_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
   TOKEN_BEFORE="$(token_line_count)"
-  # 模型凭据只从本地 gitignored 文件注入（config/dsh.env），供 llm-pi-ai 的 apiKeyEnv 读取。
-  if [ -f "$ROOT/config/dsh.env" ]; then
-    set -a
-    # shellcheck disable=SC1091
-    . "$ROOT/config/dsh.env"
-    set +a
-  fi
   echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/dsh.log"
   setsid "$PY" "$ROOT/benchforge.py" start --port "$WEB_PORT" --no-open >> "$LOG_DIR/dsh.log" 2>&1 < /dev/null &
   echo $! > "$DSH_PID_FILE"

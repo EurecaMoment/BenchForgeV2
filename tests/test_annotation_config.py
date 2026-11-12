@@ -6,6 +6,15 @@ from benchforge_core.annotation import annotation_environment
 
 
 class AnnotationConfig(unittest.TestCase):
+    def test_annotation_role_can_select_a_model_from_the_shared_registry(self):
+        config = {'services': {'sam3': {'url': 'http://sam3'}, 'yoloe': {'url': 'http://yoloe'},
+                               'depthanything3': {'url': 'http://depth'}},
+                  'model_roles': {'annotation': 'review-vlm'},
+                  'models': {'review-vlm': {'url': 'https://review/v1', 'model': 'review-model'}}}
+        env = annotation_environment(config)
+        self.assertEqual(env['LLM_MODEL_ID'], 'review-model')
+        self.assertEqual(env['LLM_BASE_URL'], 'https://review')
+
     def setUp(self):
         self.services = {
             'yoloe': {'url': 'http://127.0.0.1:8766'},

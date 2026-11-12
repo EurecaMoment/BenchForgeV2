@@ -105,6 +105,85 @@ def add_source_arguments(parser):
     parser.add_argument('--dsh-resolve-from',type=Path,help='Package manifest used as the Node public-package lookup location')
     parser.add_argument('--node',help='DSH-compatible Node executable (or BENCHFORGE_DSH_NODE)')
 
+def model_patches(config_path):
+    """Project the DSH model role from the operator's shared registry."""
+    path = Path(config_path)
+    if not path.is_file():
+        return []
+    registry = json.loads(path.read_text(encoding='utf-8'))
+    name = registry.get('model_roles', {}).get('dsh')
+    if not name:
+        return []
+    model = registry.get('models', {}).get(name)
+    if not isinstance(model, dict):
+        raise ValueError(f'model_roles.dsh references an unknown model: {name}')
+    if not model.get('model') or str(model['model']).startswith('YOUR_'):
+        return []
+    if not model.get('url'):
+        raise ValueError(f'Configure models.{name}.url for the DSH model')
+    descriptor = {'id': model['model'], 'name': model.get('name', model['model'])}
+    for source, target in (('context_window', 'contextWindow'), ('max_tokens', 'maxTokens'),
+                           ('input', 'input'), ('reasoning_efforts', 'reasoningEfforts')):
+        if source in model:
+            descriptor[target] = model[source]
+    provider = {'displayName': 'BenchForge models', 'api': model.get('api', 'openai-completions'),
+                'baseURL': model['url'], 'models': [descriptor]}
+    if model.get('token_env'):
+        provider['apiKeyEnv'] = model['token_env']
+    if model.get('compat'):
+        provider['compat'] = model['compat']
+    if 'retries' in model:
+        provider['retryPolicy'] = {'mode': 'normal', 'maxRetries': model['retries']}
+    selection = {'provider': 'benchforge-models', 'model': model['model']}
+    if model.get('reasoning_effort'):
+        selection['reasoningEffort'] = model['reasoning_effort']
+    return [{'id': 'llm-pi-ai', 'config': {'providers': {'benchforge-models': provider}}},
+            {'id': 'agent-default-model', 'config': selection}]
+
+
+def refresh_model_patches(preset_path, config_path):
+    """Refresh generated model snapshots without replacing presets or UI bindings."""
+    preset_path = Path(preset_path)
+    if not preset_path.is_file():
+        return
+    patches = model_patches(config_path)
+    profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader)
+    changed = False
+    if not patches:
+        retained = []
+        for row in profile:
+            if (row.get('id') == 'agent-default-model'
+                    and row.get('config', {}).get('provider') == 'benchforge-models'):
+                changed = True
+                continue
+            if row.get('id') == 'llm-pi-ai':
+                providers = row.get('config', {}).get('providers', {})
+                if 'benchforge-models' in providers:
+                    providers.pop('benchforge-models')
+                    changed = True
+            retained.append(row)
+        profile = retained
+    for patch in patches:
+        existing = next((row for row in profile if row.get('id') == patch['id']), None)
+        if existing is None:
+            profile.append(patch)
+            changed = True
+        else:
+            prior = deepcopy(existing)
+            if patch['id'] == 'llm-pi-ai':
+                existing.setdefault('config', {}).setdefault('providers', {}).update(
+                    patch['config']['providers'])
+            else:
+                existing['config'] = patch['config']
+            changed = changed or prior != existing
+    if changed:
+        temporary = preset_path.with_suffix(preset_path.suffix + '.tmp')
+        temporary.write_text('# Generated model settings read config/benchforge.local.json.\n'
+                             + yaml.dump(profile, Dumper=Dumper, sort_keys=False, allow_unicode=True),
+                             encoding='utf-8', newline='\n')
+        temporary.replace(preset_path)
+
+
 PERSONA = '''You operate BenchForge, an independent benchmark construction mode.
 Keep Standard's conversational interaction, file tools, image inspection and task code. Choose the available tools that fit the current objective; catalog, methods, source processing, annotation, compilation, synthesis, scoring, review and reporting are composable capabilities rather than a required sequence.
 Use direct tools, PTC and collaboration tools when they help. Split genuinely independent work among available agents, keep a shared workspace, and publish concise handoffs so another agent can resume, reply, reconcile evidence or take over a blocked piece. Handoffs may link related work and state a decision, but no fixed graph, round count, role roster or approval step is implied. Coordinate simulator submissions through the configured execution boundary and avoid overwriting active artifacts.
@@ -141,7 +220,7 @@ def build(sources, root, python, config_path, *, package_imports=False):
     plugins.append({'id':'benchforge-tools','name':'@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports else str(Path(__file__).with_name('tools.mjs').resolve()),
                     'config':{'python':str(python),'configPath':config_reference(config_path, package_imports),
                               'includeTools':list(BENCHFORGE_TOOLS)}})
-    return [{'insert':[result]}]
+    return [{'insert':[result]}, *([] if package_imports else model_patches(config_path))]
 
 
 def main():

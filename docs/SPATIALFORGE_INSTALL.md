@@ -131,26 +131,35 @@ worker 上传，可用 evidence 读取路径或复制至任务工作区。
 ## 4. 配置扩散、分割、生成资产和深度
 
 按 [模型安装](SPATIALFORGE_MODELS.md) 安装需要的模型，编辑
-`config/generated/models.local.json` 中的解释器、权重、源码路径。
+`config/benchforge.local.json` 中的 `models` 和 `sources`。
 每种工具只需要自己的配置；采集及已有网格导入无需先安装 SAM3D 或全部模型。
 `models.flux` 是 FLUX.2 Klein 图像生成模型；这里不调用旧 Pic2Sim 的图像剥离流水线。
 布局参考图也使用 `models.flux.path`，相对路径按模型配置文件所在目录解析。
 `SPATIALFORGE_DIFFUSION_MODEL` 可显式覆盖权重路径；参考图回执记录实际使用的模型名称。
 
-需要服务端自动规划和视觉修正时，在 `config/generated/spatialforge-server.local.json` 增加自己的 OpenAI 兼容视觉模型设置：
+需要服务端自动规划和视觉修正时，在同一个 `config/benchforge.local.json` 声明模型，
+用 `model_roles.scene` 引用它；DSH 和标注也可以引用同一个条目：
 
 ```json
 {
-  "model_url": "http://127.0.0.1:8000/v1",
-  "model_id": "your-vision-model-id",
-  "model_api_key_env": "SPATIALFORGE_MODEL_API_KEY"
+  "models": {
+    "qwen": {
+      "url": "http://127.0.0.1:8000/v1",
+      "model": "your-vision-model-id",
+      "token_env": "SPATIALFORGE_MODEL_API_KEY"
+    }
+  },
+  "model_roles": {"dsh": "qwen", "scene": "qwen", "annotation": "qwen"}
 }
 ```
 
-这些字段应合并到已有配置，保留数据库、目录和两个 token；在启动服务的终端设置
+把上述条目合并到统一文件的已有 `models` 和 `model_roles` 中，不要重复 JSON 字段。
+在本地 `config/dsh.env` 或启动服务的终端设置
 `SPATIALFORGE_MODEL_API_KEY`。该模型用于生产与修复，不作为目标评测模型，也不生成 GT。
 仅 `/capture` 和 SceneProgram 路径不需要该模型。
-`model_url` 可填写 `/v1` 基址或完整 `/v1/chat/completions` 地址。
+`models.<名称>.url` 使用 OpenAI 兼容的 `/v1` 基址，供 DSH、规划和标注共同使用。
+服务端的 `models_config` 仅引用统一文件；无需再填写 `model_url/model_id`。
+修改后执行 `spatialforge_app.py sync` 并重启本实例。详见 [统一模型配置](MODEL_CONFIGURATION.md)。
 可使用自己的 HTTP(S) 模型服务；模型服务不再限定到原部署的内网 IP。
 目录查询和关闭语义复审的已有官方数据导出也无需语言模型；未配置时目录显示
 `unconfigured`。请求自动规划、标注或语义复审时，再提供上述模型配置。
@@ -167,7 +176,7 @@ python3.11 spatialforge_app.py dsh-start
 
 已有构建的 DSH 可用 `dsh-setup --dsh-root /path/to/deepseek-harness`。
 包装入口自动把本服务的 operator token 传给 DSH，无需复制进插件源码。
-在网页配置生产模型，创建 **BenchForgeV2_UI** 会话。例如：
+在统一 JSON 中配置生产模型后，创建 **BenchForgeV2_UI** 会话。例如：
 
 > 请先生成一张全新的写实书房参考图，再创建尽量还原布局、材质和自然光的三维场景。
 > 加入一个可真实推动的桌面物件，提供多视角渲染、交互演示和可加载的场景文件。

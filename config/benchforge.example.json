@@ -8,6 +8,11 @@
     },
     "depthanything3": {
       "url": "http://127.0.0.1:8008"
+    },
+    "trellis2": {
+      "url": "http://127.0.0.1:3956",
+      "model": "microsoft/TRELLIS.2-4B",
+      "timeout_seconds": 300
     }
   },
   "collectors": {
@@ -50,7 +55,28 @@
       "token_env": "QWEN_RELAY_API_KEY",
       "max_tokens": 4096,
       "timeout_seconds": 180,
-      "retries": 1
+      "retries": 1,
+      "context_window": 65536,
+      "input": [
+        "text",
+        "image"
+      ]
+    },
+    "flux": {
+      "python": "/opt/venvs/flux/bin/python",
+      "path": "/opt/models/FLUX.2-klein-9B"
+    },
+    "sam3": {
+      "python": "/opt/venvs/sam3/bin/python",
+      "path": "/opt/models/sam3"
+    },
+    "sam3d": {
+      "python": "/opt/venvs/sam3d/bin/python",
+      "path": "/opt/models/sam-3d-objects"
+    },
+    "depth_anything": {
+      "python": "/opt/venvs/depth/bin/python",
+      "path": "/opt/models/depth-anything/depth_anything_v2_vits.pth"
     }
   },
   "cleaning": {
@@ -112,6 +138,29 @@
           "frame": 1
         }
       }
-    }
+    },
+    "token_env": "BENCHFORGE_INFERENCE_API_KEY"
+  },
+  "sources": {
+    "sam3": "/opt/sources/sam3",
+    "sam3d": "/opt/sources/sam-3d-objects",
+    "depth_anything": "/opt/sources/Depth-Anything-V2"
+  },
+  "model_roles": {
+    "dsh": "qwen",
+    "scene": "qwen",
+    "annotation": "qwen"
+  },
+  "generation": {
+    "mode": "remote",
+    "service": "model_services"
+  },
+  "isaac": {
+    "grpc": {
+      "host": "YOUR_ISAAC_GRPC_HOST",
+      "port": 50051,
+      "timeout_seconds": 60
+    },
+    "capture_timeout_seconds": 1800
   }
 }

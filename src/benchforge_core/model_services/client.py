@@ -15,7 +15,7 @@ class ModelUnavailableError(RuntimeError):
 
 class ModelService:
     def __init__(self, config=None):
-        self.config = config or {}
+        self.config = load_config() if config is None else config
         self.url = (self.config.get("url") or os.environ.get("BENCHFORGE_INFERENCE_URL", "")).rstrip("/")
         if not self.url:
             raise ValueError("Configure model_services.url or BENCHFORGE_INFERENCE_URL")
@@ -83,6 +83,8 @@ class ModelService:
 
 def load_config(path=None):
     path = path or os.environ.get("BENCHFORGE_MODEL_SERVICES_CONFIG")
+    if path is None and Path('config/benchforge.local.json').is_file():
+        path = Path('config/benchforge.local.json')
     return json.loads(Path(path).read_text(encoding="utf-8")).get("model_services", {}) if path else {}
 
 

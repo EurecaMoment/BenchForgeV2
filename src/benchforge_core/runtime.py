@@ -122,6 +122,11 @@ class Runtime:
                   "depthanything3": {"infer": ("POST", "/inference"), "health": ("GET", "/status"), "task": ("GET", "/task/")},
                   "llm_local": {"infer": ("POST", "/v1/chat/completions"), "models": ("GET", "/v1/models")}}
         cfg = self.config.get('services', {}).get(tool)
+        if tool == 'llm_local' and not cfg:
+            name = self.config.get('model_roles', {}).get('annotation', 'qwen')
+            model = self.config.get('models', {}).get(name)
+            if model and model.get('url'):
+                cfg = {**model, 'url': model['url'].rstrip('/').removesuffix('/v1')}
         if not cfg:
             raise ValueError(f'Configure services.{tool}.url in config/benchforge.local.json and pass --config; core tools do not require this backend.')
         action = args.get("action", "infer")
@@ -129,7 +134,10 @@ class Runtime:
         if action == "task":
             from urllib.parse import quote
             route += quote(args["task_id"], safe="")
-        body = json.dumps(args.get("payload", {})).encode() if method == "POST" else None
+        payload = dict(args.get("payload", {}))
+        if tool == 'llm_local' and cfg.get('model'):
+            payload.setdefault('model', cfg['model'])
+        body = json.dumps(payload).encode() if method == "POST" else None
         headers = {"Content-Type": "application/json"}
         token = cfg.get("token")
         if not token and cfg.get("token_env"):

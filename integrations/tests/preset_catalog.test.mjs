@@ -3,6 +3,7 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import test from 'node:test';
 import AgentPreset from '@deepseek-ai/dsh-agent-preset';
+import {applyEntryPatches} from '@deepseek-ai/cordis-plugin-include';
 import {presetDisplayText} from '@deepseek-ai/dsh-agent-preset-registry/display';
 import {Config as businessConfig, apply as applyBusinessTools} from '../dsh/tools.mjs';
 import {Config as spatialConfig} from '../spatialforge/plugin/tools.mjs';
@@ -20,6 +21,34 @@ const source = [
   'print(json.dumps(yaml.load(Path("cordis.patch.yml").read_text(encoding="utf-8"), Loader=Loader)))',
 ].join('\n');
 const catalog = JSON.parse(execFileSync(python, ['-X', 'utf8', '-c', source], {cwd: integrations, encoding: 'utf8'}));
+
+test('unified model settings apply through the real DSH overlay contract', () => {
+  const modelSource = [
+    'import json,sys,tempfile',
+    'from pathlib import Path',
+    'sys.path.insert(0, str(Path("dsh").resolve()))',
+    'from build_preset import model_patches',
+    'with tempfile.TemporaryDirectory() as folder:',
+    '    config = Path(folder)/"models.json"',
+    '    config.write_text(json.dumps({"model_roles":{"dsh":"qwen"}, "models":{"qwen":{"url":"https://fixture/v1","model":"fixture-vlm","token_env":"FIXTURE_KEY"}}}), encoding="utf8")',
+    '    print(json.dumps(model_patches(config)))',
+  ].join('\n');
+  const patches = JSON.parse(execFileSync(python, ['-X', 'utf8', '-c', modelSource],
+    {cwd: integrations, encoding: 'utf8'}));
+  const warnings = [];
+  const base = [
+    {id: 'llm-pi-ai', name: '@deepseek-ai/dsh-llm-pi-ai'},
+    {id: 'agent-default-model', name: '@deepseek-ai/dsh-agent-default-model',
+      config: {provider: 'deepseek-official', model: 'deepseek-flash'}},
+    {id: 'historical-workbench', config: {workspace: 'retained'}},
+  ];
+  const result = applyEntryPatches(base, patches, (...warning) => warnings.push(warning));
+  assert.deepEqual(warnings, []);
+  assert.equal(result[0].config.providers['benchforge-models'].baseURL, 'https://fixture/v1');
+  assert.deepEqual(result[1].config, {provider: 'benchforge-models', model: 'fixture-vlm'});
+  assert.deepEqual(result[2], base[2]);
+  assert.equal(base[1].config.model, 'deepseek-flash');
+});
 
 test('shipped custom preset configurations validate against installed DSH and plugin schemas', () => {
   const schemas = new Map([

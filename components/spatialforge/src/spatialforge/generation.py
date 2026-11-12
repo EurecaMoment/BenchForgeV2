@@ -54,7 +54,8 @@ class GenerationTools:
             if source not in sys.path:
                 sys.path.insert(0, source)
             from .runtime_config import RuntimeConfig
-            self._config = RuntimeConfig(os.environ.get('SPATIALFORGE_MODELS_CONFIG', self.project / 'models.local.json'))
+            registry = Path(__file__).resolve().parents[4] / 'config/benchforge.local.json'
+            self._config = RuntimeConfig(os.environ.get('SPATIALFORGE_MODELS_CONFIG', registry))
         return self._config
 
     def catalog(self, asset_ids=None):

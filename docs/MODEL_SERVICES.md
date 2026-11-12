@@ -105,7 +105,8 @@ BenchForgeV2 不包含其部署/启动实现。检查成功表示当前可受理
 
 模型服务配置是统一配置文件 `config/benchforge.local.json` 的 `model_services` 段
 （从 `config/benchforge.example.json` 复制），设置 `model_services.url`。
-需要独立文件时，也可用 `BENCHFORGE_MODEL_SERVICES_CONFIG` 指向任意含 `model_services` 的 JSON。
+独立客户端在仓库根目录会默认读取该文件；在其他目录调用时用 `--config` 或
+`BENCHFORGE_MODEL_SERVICES_CONFIG` 指向同一个文件，无需另建模型配置。
 设置 `model_services.availability_url` 指向部署方的可用性接口；省略时使用同一个推理 API。
 若服务没有逐工具可用性接口，客户端会拒绝提交，不降级为通用在线检查。
 可在 `model_services.tools.<服务端tool>.request_defaults` 保存该工具的

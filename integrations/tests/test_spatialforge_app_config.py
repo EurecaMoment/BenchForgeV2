@@ -22,14 +22,15 @@ class SpatialForgeAppConfig(unittest.TestCase):
             config_dir.mkdir()
             with (patch.object(spatialforge_app, 'ROOT', root),
                   patch.object(spatialforge_app, 'CONFIG', config_dir),
+                  patch.object(spatialforge_app, 'GENERATED', config_dir / 'generated'),
+                  patch.object(spatialforge_app, 'PORTS', config_dir / 'ports.env'),
                   patch.object(spatialforge_app, 'STATE', state_dir),
                   patch.object(spatialforge_app, 'SERVER', config_dir / 'spatialforge-server.local.json'),
                   patch.object(spatialforge_app, 'SERVER_TEMPLATE', root / 'config' / 'spatialforge-server.example.json'),
-                  patch.object(spatialforge_app, 'MODELS_TEMPLATE', root / 'config' / 'models.example.json'),
                   patch.object(spatialforge_app, 'WORKER_TEMPLATE', root / 'config' / 'worker.example.json'),
                   patch.dict(os.environ, {'ISAAC_SIM_ROOT': str(root / 'isaac'),
                                           'ISAAC_ASSET_ROOT': str(root / 'assets')}, clear=True)):
-                for name in ('spatialforge-server.example.json', 'models.example.json', 'worker.example.json', 'spatialforge.example.json'):
+                for name in ('spatialforge-server.example.json', 'benchforge.example.json', 'worker.example.json', 'spatialforge.example.json'):
                     source = Path(__file__).resolve().parents[2] / 'config' / name
                     (config_dir / name).write_bytes(source.read_bytes())
                 spatialforge_app._init_configs(3941, 55432)
@@ -43,6 +44,9 @@ class SpatialForgeAppConfig(unittest.TestCase):
                 self.assertEqual(client['service_config'], server_path.name)
                 self.assertEqual(worker['service_config'], server_path.name)
                 self.assertNotIn('worker_token', worker)
+                self.assertEqual(server['models_config'], 'benchforge.local.json')
+                self.assertTrue((config_dir / server['models_config']).is_file())
+                self.assertFalse((config_dir / 'models.local.json').exists())
                 environment = dict(line.split('=', 1) for line in (config_dir / 'database.env').read_text().splitlines())
                 with patch.dict(os.environ, environment, clear=True):
                     loaded_server = load_service_config(server_path)

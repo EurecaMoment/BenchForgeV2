@@ -18,7 +18,8 @@ def build(sources, dsh_root, python, config_path, service_config, *, package_imp
     workbench = spatial.build(sources, dsh_root, python, service_config, config_path=config_path,
                               with_ui=True, package_imports=package_imports)
     return [{'insert': [row for result in (first, headless, workbench)
-                        for patch in result for row in patch['insert']]}]
+                        for patch in result for row in patch.get('insert', [])]},
+            *([] if package_imports else base.model_patches(config_path))]
 
 
 def main():

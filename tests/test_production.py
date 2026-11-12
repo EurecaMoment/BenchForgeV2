@@ -11,6 +11,17 @@ from benchforge_core.recipes import compute,generate
 
 
 class ProductionTests(unittest.TestCase):
+    def test_model_evaluation_does_not_select_local_generation_models(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / 'empty.jsonl'
+            jsonl(source, [])
+            result = model_eval({'public_items': str(source)}, root, {'models': {
+                'qwen': {'url': 'https://vlm.example/v1', 'model': 'vlm'},
+                'flux': {'python': '/opt/flux/bin/python', 'path': '/opt/flux-model'},
+            }})
+            self.assertEqual([row['model'] for row in result['models']], ['qwen'])
+
     def test_collection_rejects_constant_answer_shortcut(self):
         from benchforge_core.collection import assess
         items=[{'id':str(i),'question':'Compare A and B','template_id':'relation','source':str(i%2),

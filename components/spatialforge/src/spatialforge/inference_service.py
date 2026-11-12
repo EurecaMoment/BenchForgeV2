@@ -41,7 +41,8 @@ def rewrite_paths(value, replacements):
 
 def execute_remote(endpoint, name, request, work, stop):
     endpoint = endpoint.rstrip('/')
-    token = os.environ.get('SPATIALFORGE_INFERENCE_TOKEN')
+    token = os.environ.get(os.environ.get('SPATIALFORGE_INFERENCE_TOKEN_ENV',
+                                         'SPATIALFORGE_INFERENCE_TOKEN'))
     job = rpc(endpoint + '/jobs', {'tool': name, 'request': request, 'work': str(work)}, token=token)
     url = endpoint + '/jobs/' + job['id']
     while job['status'] in {'queued', 'running'}:

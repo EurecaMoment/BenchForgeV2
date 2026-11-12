@@ -178,6 +178,9 @@ def load_service_config(path, *, required_tokens=('operator', 'worker')):
     if mode == 'production' and policy_path is None:
         raise ValueError('execution_mode=production requires scene_policy_path pointing to an existing policy.json')
 
+    from .model_configuration import apply_model_environment
+    apply_model_environment(config)
+
     environment_values = (
         ('gpu_candidates', 'SPATIALFORGE_GPU_CANDIDATES'),
         ('model_url', 'SPATIALFORGE_MODEL_URL'),

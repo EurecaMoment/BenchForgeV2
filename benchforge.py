@@ -67,6 +67,8 @@ def main():
     if not saved.is_file():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
+    from integrations.dsh.build_preset import refresh_model_patches
+    refresh_model_patches(preset, ROOT / 'config/benchforge.local.json')
     env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
     python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
     if not python.is_file():

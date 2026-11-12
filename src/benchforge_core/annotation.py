@@ -13,7 +13,10 @@ def _endpoint_root(value):
 
 def _annotation_model(config):
     services=config.get('services',{})
-    model=config.get('models',{}).get('qwen')
+    name=config.get('model_roles',{}).get('annotation','qwen')
+    model=config.get('models',{}).get(name)
+    if name != 'qwen' and not model:
+        raise ValueError(f'model_roles.annotation references an unknown model: {name}')
     legacy=services.get('llm_local')
     if model and legacy:
         if legacy.get('url') and model.get('url') and _endpoint_root(legacy['url']) != _endpoint_root(model['url']):

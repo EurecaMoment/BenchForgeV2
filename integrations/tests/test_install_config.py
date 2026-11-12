@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def local_configuration(root):
     config = root / 'config'
     config.mkdir()
-    for name in ('spatialforge-server', 'spatialforge', 'models', 'worker'):
+    for name in ('spatialforge-server', 'spatialforge', 'benchforge', 'worker'):
         filename = name + '.example.json'
         shutil.copyfile(ROOT / 'config' / filename, config / filename)
     # Python 3.10 on Windows needs SystemRoot even before importing any code.
@@ -35,9 +35,9 @@ def local_configuration(root):
     environment = {key: value for key, value in os.environ.items()
                    if not key.upper().startswith(('SPATIALFORGE_', 'ISAAC_'))}
     with (patch.multiple(spatialforge_app, ROOT=root, CONFIG=config, STATE=root / '.deployment',
+                         GENERATED=config / 'generated', PORTS=config / 'ports.env',
                          SERVER=config / 'spatialforge-server.local.json',
                          SERVER_TEMPLATE=config / 'spatialforge-server.example.json',
-                         MODELS_TEMPLATE=config / 'models.example.json',
                          WORKER_TEMPLATE=config / 'worker.example.json'),
           patch.dict(os.environ, environment, clear=True)):
         yield config
@@ -61,7 +61,8 @@ class InstallConfigTest(unittest.TestCase):
                 retained = '{"service_url":"https://configured.example","operator_token_env":"LOCAL_KEY"}'
                 client.write_text(retained, encoding='utf-8')
                 spatialforge_app.main()
-            self.assertEqual(server.read_text(encoding='utf-8'), original)
+            self.assertEqual(json.loads(server.read_text(encoding='utf-8')),
+                             {**json.loads(original), 'models_config': 'benchforge.local.json'})
             self.assertEqual(client.read_text(encoding='utf-8'), retained)
             self.assertFalse((config_dir / 'database.env').exists())
 
@@ -91,7 +92,7 @@ class InstallConfigTest(unittest.TestCase):
             shutil.copyfile(ROOT / 'spatialforge_app.py', root / 'spatialforge_app.py')
             package = root / 'components/spatialforge/src/spatialforge'
             package.mkdir(parents=True)
-            for name in ('__init__.py', 'runtime_config.py'):
+            for name in ('__init__.py', 'runtime_config.py', 'model_configuration.py'):
                 shutil.copyfile(ROOT / 'components/spatialforge/src/spatialforge' / name, package / name)
             with local_configuration(root) as config:
                 result = subprocess.run([sys.executable, '-I', '-S', str(root / 'spatialforge_app.py'),

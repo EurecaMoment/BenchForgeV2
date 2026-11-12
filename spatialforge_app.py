@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 # Reuse its configuration parser directly from the bundled source.
 sys.path.insert(0, str(ROOT / 'components/spatialforge/src'))
 from spatialforge.runtime_config import read_json
+from spatialforge.model_configuration import initialize_model_config
 
 CONFIG = ROOT / 'config'
 STATE = ROOT / '.spatialforge'
@@ -26,7 +27,6 @@ GENERATED = CONFIG / 'generated'
 SERVER = GENERATED / 'spatialforge-server.local.json'
 PORTS = CONFIG / 'ports.env'
 SERVER_TEMPLATE = CONFIG / 'spatialforge-server.example.json'
-MODELS_TEMPLATE = CONFIG / 'models.example.json'
 WORKER_TEMPLATE = CONFIG / 'worker.example.json'
 PYTHON = STATE / ('venv/Scripts/python.exe' if os.name == 'nt' else 'venv/bin/python')
 
@@ -48,9 +48,7 @@ def _rewrite_database_port(url, db_port):
 
 def sync_ports():
     """Apply config/ports.env to every generated config; tokens/passwords are preserved."""
-    if not PORTS.exists():
-        print(f'未找到 {PORTS}，跳过端口同步')
-        return
+    sync_model_config()
     ports = read_ports()
     if not SERVER.exists():
         raise SystemExit(f'缺少 {SERVER}，请先运行 init')
@@ -146,14 +144,29 @@ def compose_project(env_file, default='benchforgev2-spatialforge'):
     return default
 
 
+def sync_model_config():
+    """Keep model declarations in config/benchforge.local.json only."""
+    if not SERVER.is_file():
+        raise SystemExit(f'缺少 {SERVER}，请先运行 init')
+    config = read()
+    path = CONFIG / 'benchforge.local.json'
+    initialize_model_config(path, CONFIG / 'benchforge.example.json', SERVER, config, write)
+    reference = Path(os.path.relpath(path, SERVER.parent)).as_posix()
+    changed = config.get('models_config') != reference
+    config['models_config'] = reference
+    for key in ('model_url', 'model_id', 'model_api_key_env'):
+        changed = key in config or changed
+        config.pop(key, None)
+    if changed:
+        write(SERVER, config)
+
+
 def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
     existing_server = SERVER.exists()
     SERVER.parent.mkdir(parents=True, exist_ok=True)
     STATE.mkdir(parents=True, exist_ok=True)
-    models_path = SERVER.parent / 'models.local.json'
     policy_dir = SERVER.parent / 'scene-library'
     policy_path = policy_dir / 'policy.json'
-    if not models_path.exists(): write(models_path, read_json(MODELS_TEMPLATE))
     if not policy_path.exists():
         policy_dir.mkdir(parents=True, exist_ok=True)
         write(policy_path, {'enabled': True, 'enforce_realism': True, 'require_scene_brief': True,
@@ -162,12 +175,14 @@ def _init_configs(port, db_port, project='benchforgev2-spatialforge'):
         config = read_json(SERVER_TEMPLATE)
         config.update(port=port, artifacts=str(STATE / 'artifacts'),
                       task_root=str(STATE / 'artifacts/operator_workspaces'),
-                      models_config=models_path.name, scene_policy_path='scene-library/policy.json')
+                      models_config=Path(os.path.relpath(CONFIG / 'benchforge.local.json', SERVER.parent)).as_posix(),
+                      scene_policy_path='scene-library/policy.json')
         config.pop('operator_token_env', None)
         config.pop('worker_token_env', None)
         config['operator_token'] = secrets.token_urlsafe(32)
         config['worker_token'] = secrets.token_urlsafe(32)
         write(SERVER, config)
+    sync_model_config()
     config = read()
     database_password = secrets.token_urlsafe(24)
     db_env = SERVER.parent / 'database.env'
@@ -221,7 +236,7 @@ def main():
     db.add_argument('--project', help='Override the project saved in config/generated/database.env')
     sub.add_parser('serve')
     sub.add_parser('status')
-    sub.add_parser('sync', help='Apply config/ports.env to all generated configs')
+    sub.add_parser('sync', help='Sync the unified model registry and config/ports.env')
     dsh = sub.add_parser('dsh-setup')
     dsh.add_argument('--dsh-root', type=Path)
     start = sub.add_parser('dsh-start')
@@ -252,12 +267,12 @@ def main():
                         '-f', str(ROOT / 'components/spatialforge/deploy/compose.yml'), 'up', '-d', '--wait'], check=True)
     elif args.command == 'serve':
         environment = os.environ.copy()
-        env_file = GENERATED / 'database.env'
-        if env_file.is_file():
-            for line in env_file.read_text(encoding='utf8').splitlines():
-                name, separator, value = line.partition('=')
-                if separator and name and name not in environment:
-                    environment[name] = value
+        for env_file in (GENERATED / 'database.env', CONFIG / 'dsh.env'):
+            if env_file.is_file():
+                for line in env_file.read_text(encoding='utf8').splitlines():
+                    name, separator, value = line.partition('=')
+                    if separator and name and not name.startswith('#') and name not in environment:
+                        environment[name] = value
         subprocess.run([str(PYTHON), '-m', 'spatialforge.service', '--config', str(SERVER)],
                        env=environment, check=True)
     elif args.command.startswith('dsh-'):

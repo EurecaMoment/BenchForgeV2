@@ -1,6 +1,10 @@
 # 生成模型安装
 
 模型工具通过独立解释器加载权重，结果写入服务的任务目录。
+以下所有 `models.*` 和 `sources.*` 都填写在 **`config/benchforge.local.json`**，
+不再维护独立的 `models.local.json`。本地加载设置 `generation.mode=local`；
+使用已部署模型服务则设置 `remote` 并填写同一文件中的 `model_services`，
+无需在客户端安装权重。完整字段见 [统一模型配置](MODEL_CONFIGURATION.md)。
 可复用已有合规安装；不要复制其他工程的私有配置。
 以下路径示例使用 `$HOME/bfv2-models`，替换为自己的磁盘目录。
 生成工具使用显存门槛和进程锁，只在显式允许且空闲的 GPU 上运行。

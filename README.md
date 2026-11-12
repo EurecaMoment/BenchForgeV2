@@ -241,11 +241,10 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 | 文件 | 用途 | 基础启动是否需要手改 |
 | --- | --- | --- |
 | `config/ports.env` | **端口唯一权威来源**；`./start.sh` 启动前自动 sync 到生成物 | 改端口时 |
-| `config/benchforge.local.json` | 外部模型地址与顶层 `isaac.grpc`（远程 Isaac Sim gRPC 入口） | 用模型/仿真器时配置 |
+| `config/benchforge.local.json` | **所有模型的唯一配置入口**：模型地址、ID、角色、解释器/权重、请求默认值，以及 `isaac.grpc` | 用模型/仿真器时配置 |
 | `config/generated/database.env` | 数据库密码、端口、独立项目名和连接地址 | 否 |
 | `config/generated/spatialforge-server.local.json` | API 端口、数据库环境变量引用、产物目录、服务凭据、生产策略和 `isaac` 透传 | 否 |
 | `config/generated/spatialforge.local.json` | 引用服务端配置，继承地址、operator token 和生产策略 | 否 |
-| `config/generated/models.local.json` | 生成模型的解释器和权重位置 | 用模型时配置 |
 | `config/generated/worker.local.json` | 引用服务端配置，另设本机 Isaac 路径、`isaac_grpc` 和 worker 参数 | 接入 worker 时配置 |
 | `config/generated/benchforge.local.yml` | DSH 三个预设与工作台插件，由 `init`/`sync`/`build_presets.py` 生成 | 否 |
 
@@ -368,15 +367,18 @@ DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
 ### 8. 配置自己需要的模型和仿真能力
 
-- **驱动 DSH 对话的模型**：在 DSH 网页的模型/提供方设置中配置自己可访问的提供方、
-  模型 ID 和凭据。新安装不会继承另一部署的账号或 Qwen 服务。可使用官方提供方；
-  自定义 OpenAI 兼容服务的配置按所用 DSH 提供方支持的字段填写。
-- **BenchForgeV2 自动规划模型**：按
-  [服务端模型配置](docs/SPATIALFORGE_INSTALL.md#4-配置扩散分割生成资产和深度)
-  填写自己的 `model_url`、`model_id`、密钥环境变量。与 DSH 对话模型是两份独立配置。
-- **图像、分割、深度、三维生成服务**：按
-  [模型安装](docs/SPATIALFORGE_MODELS.md) 或 [外部模型接口](docs/MODEL_SERVICES.md)
-  配置所需服务。示例配置中的 localhost 地址只表示连接位置，不代表相应模型已运行。
+所有模型统一在 **`config/benchforge.local.json`** 声明，初始化时从
+[`config/benchforge.example.json`](config/benchforge.example.json) 创建。
+不要再新建或编辑 `config/generated/models.local.json`，也不要在服务端 JSON 或预设 YAML
+中重复维护模型地址。各字段的完整说明见 [统一模型配置](docs/MODEL_CONFIGURATION.md)。
+
+- **DSH 对话、自动规划、标注大模型**：在 `models` 声明一次地址、模型 ID 和密钥环境变量名，
+  再让 `model_roles.dsh/scene/annotation` 引用它；使用不同模型时分别声明和引用。
+- **图像、分割、深度、三维模型**：`services` 保存原生标注接口，
+  `model_services` 保存异步推理网关及各工具默认参数，
+  `models` 和 `sources` 保存可选本地执行所需的解释器、权重和源码路径。
+  `generation.mode=remote` 使用网关，`local` 使用本地已安装模型。
+  地址和路径示例不代表相应服务、权重或依赖已经可用。
 - **Isaac 真值与采集**：按 [自托管安装指南](docs/SPATIALFORGE_INSTALL.md)
   接入自己的 Isaac 和 worker，使用本次生成的 `config/generated/worker.local.json`；
   worker 通过 `config/benchforge.local.json` 的 `isaac.grpc` 调用远程 Isaac Sim gRPC 服务。
@@ -384,8 +386,20 @@ DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 - **场景工作台 UI**：完整安装已经接入。选择 `BenchForgeV2_UI` 使用，见
   [工作台说明](docs/frontend-workbench-v2.md)；另外两个预设使用标准对话界面。
 
-模型凭据可存放在被忽略的 `config/dsh.env` 中，`start.sh` 启动 DSH 时会加载它；
-仅在所用提供方确实读取对应环境变量时才有作用。
+模型凭据存放在被忽略的 `config/dsh.env` 中，以统一 JSON 里的 `token_env` 引用；
+`start.sh` 会在启动后端和 DSH 前加载，`spatialforge_app.py serve` 也会加载此文件。
+不要把密钥值写进示例或提交 GitHub。
+
+编辑统一配置后，在本实例执行：
+
+```bash
+.venv/bin/python spatialforge_app.py sync
+BENCHFORGE_WEB_PORT=3092 ./restart.sh
+```
+
+`sync` 首次执行会把旧的模型路径和服务端模型字段补入统一文件，已有统一字段优先，
+旧文件保留；服务端改为引用统一文件。DSH 启动时自动刷新模型配置快照，不重建三个预设或改写
+已有会话。占位模型不会覆盖 DSH 默认模型；填写实际模型后，新会话默认使用 `model_roles.dsh`。
 
 ### 9. 停止、重启和更新
 

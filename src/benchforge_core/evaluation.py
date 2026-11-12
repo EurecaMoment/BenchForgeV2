@@ -214,13 +214,17 @@ def model_eval(args,directory,config):
     public=rows(args['public_items'])
     # Construct allowlisted request rows even if caller accidentally passes audit items.
     configs=config.get('models',{})
-    names=args.get('models') or list(configs)
+    names=args.get('models') or [name for name, spec in configs.items()
+                                 if spec.get('url') and spec.get('model') and 'python' not in spec
+                                 and 'path' not in spec]
     if not names:raise ValueError('Configure named models or explicitly request baselines')
     items_path=Path(args['public_items']).resolve()
     results=[]
     for name in names:
         if name not in configs:raise ValueError(f'Model not configured: {name}')
         cfg=configs[name];predictions=[];failures=[]
+        if not cfg.get('url') or not cfg.get('model'):
+            raise ValueError(f'Model {name} must declare an HTTP chat URL and model ID for evaluation')
         for index,row in enumerate(public):
             content=[{'type':'text','text':json.dumps(public_row(row,[]),ensure_ascii=False)+'\nReturn only the option key for a choice question (e.g. A), a number for a numeric question, or the requested JSON array/object. Do not include reasoning.'}]
             media=row.get('media',[])
