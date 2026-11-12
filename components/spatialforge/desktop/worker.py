@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
@@ -17,6 +18,9 @@ import zipfile
 import zlib
 
 root=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(root/'src'))
+from spatialforge.capture_recovery import local_capture_receipt,require_frozen_request
+from spatialforge.runtime_config import load_worker_config
 config={}
 state_root=None
 IS_WINDOWS=platform.system()=='Windows'
@@ -137,7 +141,12 @@ def finish_job(job,directory,outcome,error=None):
             active=bool(processes)
             for process in processes:process.close()
             if active:raise RuntimeError('cannot release desktop during resident capture')
-    pending={'job':job_identity(job),'outcome':outcome,'processes_stopped':True,'error':error,'transport_retry':job.get('transport_retry',0)}
+    try:receipt=local_capture_receipt(job,directory)
+    except ValueError as exc:
+        receipt=None
+        error=(str(error)+'; ' if error else '')+str(exc)
+    pending={'job':job_identity(job),'outcome':outcome,'processes_stopped':True,'error':error,
+             'capture_complete':receipt is not None,'capture_receipt':receipt,'transport_retry':job.get('transport_retry',0)}
     write_json(directory/'finish_pending.json',pending)
     result=api('/worker/finish',pending)
     write_json(directory/'commit.json',result)
@@ -146,6 +155,8 @@ def finish_job(job,directory,outcome,error=None):
 
 def upload_capture(job,directory,output):
     """Keep native files on disk; restart with server offsets after a broken connection."""
+    if local_capture_receipt(job,directory) is None:
+        raise ValueError('incomplete native capture requires executor recovery before upload')
     identity=job_identity(job);receipt=directory/'transport.json'
     state=json.loads(receipt.read_text(encoding='utf8')) if receipt.exists() else {}
     retry=job.get('transport_retry',0)
@@ -446,6 +457,7 @@ def run_job(job):
     if not re.fullmatch(r'attempt_[a-f0-9]{16}',job['token']):raise ValueError('invalid capture attempt token')
     directory=state_root/job['token'];directory.mkdir(exist_ok=True)
     request=directory/'request.json';output=directory/'capture';report=output/'report.json'
+    if request.is_file():require_frozen_request(job,json.loads(request.read_text(encoding='utf8')))
     rows=process_snapshot();recover_other_attempts(job,rows)
     pending=directory/'finish_pending.json'
     if pending.exists():
@@ -473,6 +485,9 @@ def run_job(job):
     if not report.exists():
         output.mkdir(exist_ok=True)
         write_json(report,{'status':'failed','token':job['token'],'errors':['Isaac process ended without report; inspect owned run log']})
+    value=json.loads(report.read_text(encoding='utf8'))
+    if value.get('status')!='captured':
+        return finish_job(job,directory,'failed','; '.join(value.get('errors',[])) or 'Isaac capture did not complete')
     result=upload_capture(job,directory,output)
     write_json(directory/'commit.json',result)
 
@@ -483,9 +498,7 @@ def main():
     parser.add_argument('--config',type=Path,default=root/'config/generated/worker.local.json')
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
-    config=json.loads(args.config.read_text(encoding='utf8'))
-    if config.get('worker_token_env'):
-        config['worker_token']=os.environ[config['worker_token_env']]
+    config=load_worker_config(args.config)
     os.environ['SPATIALFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
     state_root=Path(config['runs']);state_root.mkdir(parents=True,exist_ok=True)
     # 跨平台 supervisor mutex：Windows 用命名内核互斥量，Linux 用 pidfile。

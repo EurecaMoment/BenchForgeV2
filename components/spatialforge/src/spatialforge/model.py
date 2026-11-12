@@ -4,53 +4,54 @@ import os
 from pathlib import Path
 import time
 import urllib.request
+from .run_context import RunContext, check_cancelled
+from .model_json import json_text as _json_text, parse_saved as _parse_saved
 
 
-def _json_text(value):
-    value=value.strip()
-    if value.startswith('```'):
-        lines=value.splitlines()[1:]
-        if lines and lines[-1].strip().startswith('```'):lines=lines[:-1]
-        value='\n'.join(lines).strip()
-    try:return json.loads(value)
-    except json.JSONDecodeError:
-        start=value.find('{')
-        if start<0:raise
-        depth=0;quoted=False;escape=False
-        for index in range(start,len(value)):
-            char=value[index]
-            if quoted:
-                if escape:escape=False
-                elif char=='\\':escape=True
-                elif char=='"':quoted=False
-            elif char=='"':quoted=True
-            elif char=='{':depth+=1
-            elif char=='}':
-                depth-=1
-                if depth==0:return json.loads(value[start:index+1])
-        raise
-
-
-def completion(prompt, trace_dir, images=(), max_tokens=10000, *, bounded_review=False):
+def completion(
+    prompt,
+    trace_dir,
+    images=(),
+    max_tokens=10000,
+    *,
+    bounded_review=False,
+    stop=None,
+    context=None,
+):
     """Retry malformed JSON without replaying a poisoned completed-response cache."""
     for attempt in range(3):
-        try:return _completion_once(prompt,trace_dir,images,max_tokens,bounded_review=bounded_review)
+        check_cancelled(stop, 'model request')
+        try:
+            return _completion_once(
+                prompt,
+                trace_dir,
+                images,
+                max_tokens,
+                bounded_review=bounded_review,
+                stop=stop,
+                context=context,
+            )
         except json.JSONDecodeError:
-            if attempt==2:raise
+            if attempt == 2:
+                raise
 
 
-def _parse_saved(saved, path):
-    try:return _json_text(saved['content'])
-    except json.JSONDecodeError as error:
-        (path.parent/'parse_error.json').write_text(json.dumps({'error':'JSONDecodeError','detail':str(error),'response_file':path.name},indent=2),encoding='utf8')
-        raise
-
-
-def _completion_once(prompt, trace_dir, images, max_tokens, *, bounded_review=False):
+def _completion_once(
+    prompt,
+    trace_dir,
+    images,
+    max_tokens,
+    *,
+    bounded_review=False,
+    stop=None,
+    context=None,
+):
+    check_cancelled(stop, 'model request')
     trace_dir=Path(trace_dir); trace_dir.mkdir(parents=True,exist_ok=True)
     previous=list(trace_dir.rglob('response.json'))
     invalid_json=False
     for path in sorted(previous,key=lambda p:p.stat().st_mtime,reverse=True):
+        check_cancelled(stop, 'model response recovery')
         saved=json.loads(path.read_text(encoding='utf8'))
         if saved.get('done') and saved.get('finish_reason')=='stop':
             try:return _parse_saved(saved,path)
@@ -63,6 +64,7 @@ def _completion_once(prompt, trace_dir, images, max_tokens, *, bounded_review=Fa
         prompt+='\nYour previous response was not valid JSON. Return strict JSON only: double-quoted strings and keys, no single-quoted strings or trailing commas. Keep the original task criteria unchanged.'
     content=[{'type':'text','text':prompt}]
     for path in images:
+        check_cancelled(stop, 'model image preparation')
         content.append({'type':'image_url','image_url':{'url':'data:image/png;base64,'+base64.b64encode(Path(path).read_bytes()).decode()}})
     thinking_budget=min(8192,max(1024,max_tokens//2))
     model_id=os.environ.get('SPATIALFORGE_MODEL_ID')
@@ -80,7 +82,15 @@ def _completion_once(prompt, trace_dir, images, max_tokens, *, bounded_review=Fa
         body.update(reasoning_effort='none', max_tokens=max_tokens, temperature=.2,
                     chat_template_kwargs={'enable_thinking':False})
         body.pop('thinking_token_budget',None)
-    (trace_dir/'request.json').write_text(json.dumps({**body,'messages':[{'role':'user','content':prompt}], 'image_files':[str(p) for p in images]},ensure_ascii=False,indent=2),encoding='utf8')
+    run_context = RunContext.from_record(context)
+    request_record = {
+        **body,
+        'messages':[{'role':'user','content':prompt}],
+        'image_files':[str(p) for p in images],
+    }
+    if run_context:
+        request_record['run_context'] = run_context.to_dict()
+    (trace_dir/'request.json').write_text(json.dumps(request_record,ensure_ascii=False,indent=2),encoding='utf8')
     base=model_url.rstrip('/')
     url=base if base.endswith('/chat/completions') else base+'/chat/completions'
     request=urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Content-Type':'application/json','Authorization':'Bearer '+os.environ.get(os.environ.get('SPATIALFORGE_MODEL_API_KEY_ENV','QWEN_RELAY_API_KEY'),'local')})
@@ -90,6 +100,7 @@ def _completion_once(prompt, trace_dir, images, max_tokens, *, bounded_review=Fa
     try:
         with (trace_dir/'stream.jsonl').open('w',encoding='utf8') as trace, urllib.request.urlopen(request,timeout=90 if bounded_review else 600) as response:
             for raw in response:
+                check_cancelled(stop, 'model response stream')
                 now=time.time()
                 if now-start>(420 if bounded_review else 900): raise TimeoutError('model wall-time budget exceeded')
                 line=raw.decode().strip()

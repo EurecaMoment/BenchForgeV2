@@ -95,9 +95,17 @@ def export_mesh(source, output, glb_output=None, source_frame='sam3d_camera'):
         mesh.apply_transform(transform)
         if authored_normals is not None:
             from .mesh_geometry import transform_mesh_normals
-            transformed_normals = transform_mesh_normals(authored_normals, transform)
-            normals.append(transformed_normals[np.asarray(mesh.faces)].reshape((-1, 3)))
-            normal_sources.append({'geometry': name, 'origin': 'source_vertex_normals'})
+            authored_normals = np.asarray(authored_normals, dtype=np.float64)
+            valid = np.isfinite(authored_normals).all(axis=1) & (np.linalg.norm(authored_normals, axis=1) > 1e-12)
+            transformed_normals = np.zeros_like(authored_normals)
+            transformed_normals[valid] = transform_mesh_normals(authored_normals[valid], transform)
+            corner_normals = transformed_normals[np.asarray(mesh.faces)].reshape((-1, 3))
+            fallback = ~valid[np.asarray(mesh.faces)].reshape(-1)
+            if fallback.any():
+                corner_normals[fallback] = np.repeat(mesh.face_normals, 3, axis=0)[fallback]
+            normals.append(corner_normals)
+            normal_sources.append({'geometry': name, 'origin': 'source_vertex_normals',
+                                   'geometric_fallback_corners': int(fallback.sum())})
         else:
             normals.append(np.repeat(mesh.face_normals, 3, axis=0))
             normal_sources.append({'geometry': name, 'origin': 'geometric_face_normals'})

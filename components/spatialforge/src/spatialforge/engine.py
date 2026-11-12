@@ -18,7 +18,15 @@ from .progress import record_progress
 from .geometry_preview import preview_scene_geometry,compact_preview,GUIDANCE as GEOMETRY_GUIDANCE
 from .program_submission import handoff_receipt
 from .scene_acceptance import policy_for, admit_program, capture_acceptance
+from .scene_review_reference import review_spatial_context, GUIDANCE as REFERENCE_GUIDANCE
 from .repair_context import build_repair_context,bound_repair_context,scene_changes,GUIDANCE as REPAIR_GUIDANCE
+from .scene_scheduler import capture_handoff as _scheduler_capture_handoff
+from .scene_scheduler import coordinate as _coordinate
+
+
+def _strict_policy(root, execution_mode):
+    policy = policy_for(root) if execution_mode is None else policy_for(root, execution_mode)
+    return policy if execution_mode != 'exploration' else {}
 
 
 def apply_scene_replacements(proposal, edits):
@@ -60,11 +68,16 @@ def scene_repair_prompt(raw, error, intent, base=None):
 
 
 def plan_scene(store,task,stop):
+    if stop.is_set():
+        if getattr(stop, 'canceled', False):
+            store.update(task['id'],state='CANCELED',failure={'stage':'plan','error':'run canceled'})
+        return
     unit=task['unit'];directory=store.directory(task['id'],unit['revision'])
+    execution_mode=unit.get('intent',{}).get('execution_mode')
     record_progress(directory,'scene_planning')
     submission=unit.get('submitted_program')
     direct=bool(submission) and not unit.get('quality_repairs',0) and not unit.get('operator_feedback')
-    strict=bool(policy_for(store.root))
+    strict=bool(_strict_policy(store.root,execution_mode))
     if strict and not submission:raise ValueError('Unchecked scene planners are disabled; submit a complete SceneProgram')
     prompt='' if direct else 'You plan scenes for an embodied dataset. Realize the requested function with recognizable registered or generated assets, plausible scale, supports, access paths and functional layout. Never substitute cubes, primitives or composite proxies for real objects. Missing assets or execution evidence must cause an explicit failure. Produce a coherent scene for this frozen requirement. '+json.dumps(unit['intent'],ensure_ascii=False)+'\n'+SCENE_SCHEMA_DESCRIPTION
     tools=GenerationTools(store.root)
@@ -189,11 +202,11 @@ def plan_scene(store,task,stop):
                             feedback+='\n'+REPAIR_GUIDANCE+'\nBounded repair capture/history context: '+json.dumps(repair_context,ensure_ascii=False)
                             if repair_baseline is not None and raw!=repair_baseline:
                                 feedback+='\nUncaptured candidate changes so far (not executed): '+json.dumps(scene_changes(repair_baseline,raw,repair_older),ensure_ascii=False)
-                        response=completion(scene_repair_prompt(raw,feedback,unit['intent'],base)+layout_instruction,trace,images,49152)
+                        response=completion(scene_repair_prompt(raw,feedback,unit['intent'],base)+layout_instruction,trace,images,49152,stop=stop,context=unit.get('run_context'))
                         # Accept either a complete scene or field edits.
                         raw=response if isinstance(response,dict) and response.get('schema') in {'spatialforge.scene/v1','spatialforge.scene/v2'} else apply_scene_replacements(raw,response)
                     else:
-                        response=completion(prompt+('\nPrevious response failed: '+error if error else ''),trace,images,49152)
+                        response=completion(prompt+('\nPrevious response failed: '+error if error else ''),trace,images,49152,stop=stop,context=unit.get('run_context'))
                         raw=response if isinstance(response,dict) and isinstance(response.get('objects'),list) else None
                         if raw is None:raise ValueError('planner response must be a scene object with objects list')
                     p=merge_scene_extension(base,raw) if base else raw
@@ -227,7 +240,7 @@ def plan_scene(store,task,stop):
             obj.pop('generation',None)
     p=normalize_native_asset_references(p)
     validate_program(p)
-    admission=admit_program(store.root,p)
+    admission=admit_program(store.root,p,execution_mode=execution_mode)
     if admission.get('enforced'):write_json(directory/'scene_admission.json',admission)
     if admission.get('scene_brief'):write_json(directory/'scene_brief.json',admission['scene_brief'])
     if store.snapshot(task['run_id'])['state']=='CANCELED':return
@@ -246,12 +259,20 @@ def plan_scene(store,task,stop):
 
 
 def review_scene(store,task,stop,*,capture_only=False):
+    if stop.is_set():
+        if getattr(stop, 'canceled', False):
+            store.update(task['id'],state='CANCELED',failure={'stage':'review','error':'run canceled'})
+        return
     unit=task['unit'];directory=store.directory(task['id'],unit['revision']);capture=directory/'capture'
+    execution_mode=unit.get('intent',{}).get('execution_mode')
     record_progress(directory,'scene_review')
     report=json.loads((capture/'report.json').read_text())
     program=json.loads((directory/'program.json').read_text())
     evidence=json.loads((capture/'evidence.json').read_text()) if (capture/'evidence.json').is_file() else {}
-    physical_issues=capture_acceptance(store.root,program,report,evidence,{},capture).get('physical_issues',[]) if policy_for(store.root) else []
+    strict_policy = _strict_policy(store.root, execution_mode)
+    physical_precheck=capture_acceptance(store.root,program,report,evidence,{},capture,execution_mode) if strict_policy else {}
+    physical_issues=physical_precheck.get('physical_issues',[])
+    spatial_context=None
     if report['status']=='captured' and not physical_issues:
         prompt='检查实际 Isaac 视图和执行证据是否满足原始场景需求：'+json.dumps(unit['intent'],ensure_ascii=False)+'''。
 返回 JSON：{"acceptable":boolean,"visual_quality":1到5,"semantic_fidelity":1到5,"issues":[string],"repair_suggestions":[string],"visual_realism":{"status":"needs_improvement"|"visually_plausible"|"matches_declared_geometry"|"not_requested","issues":[string],"prioritized_repairs":[string],"basis":"rendered_views_only"}}。
@@ -262,14 +283,17 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
 模型意见不写入 GT，也不等同人审、照片真实感认证或正式 benchmark 通过。
 '''
         prompt+='\n沉降记录：'+json.dumps(report.get('physics',{}),ensure_ascii=False)
-        if policy_for(store.root):
+        if strict_policy:
             prompt+='''\n严格生产验收：默认要求真实可辨识的场景资产和符合生活常识的布局。简化几何只有保存计划明确声明的实验范围才可合格，不能以几何形状冒充真实家具。逐一检查物体身份、正常尺度、支撑与安装、房间用途与物品关系、通行与操作空间、材质与照明。任何不确定、缺图或问题必须 passed=false；不得仅凭名字、设计图或全静态 stable=true 宣称物理合理。额外返回 life_review:{checks:[{check:object_identity|realistic_scale|support_and_attachment|functional_layout|access_and_clearance|materials_and_lighting,passed:boolean,evidence:[{view:"view_0.png",observation:"该实际视图中的具体可见现象"}]}]}。六项分别恰好一条，每条给出真实已附图片文件名和具体观察；不合格给出可执行修改。visual_realism.status 必须根据实拍作出判断。模型意见不是物理测量或GT。'''
-        if policy_for(store.root):
-            admission = admit_program(store.root, program)
+        if strict_policy:
+            admission = admit_program(store.root, program,execution_mode=execution_mode)
             if admission.get('scene_brief'):
                 brief=admission['scene_brief']
                 context={k:brief[k] for k in ('name','summary','hard_requirements','object_roles','physical_assumptions')}
                 if brief.get('spatial_reference'):context['spatial_reference']=brief['spatial_reference']
+                spatial_context=review_spatial_context(brief,evidence,physical_precheck.get('native_relation_checks',[]))
+                write_json(directory/'scene_spatial_context.json',spatial_context)
+                prompt+='\n明确参照和本次原生方向/支撑事实（不能代替实际逐图生活检查）：'+json.dumps(spatial_context,ensure_ascii=False)
                 context['visual_relations']=[{'index':i,**r} for i,r in enumerate(brief['relations']) if r['type'] not in {'supported_by','mounted_to'}]
                 prompt += '\n必须对照的场景标题、摘要、角色及空间关系：' + json.dumps(context, ensure_ascii=False)
                 prompt += ('\n额外返回 brief_alignment:{passed:boolean,hard_requirements_preserved:boolean,observations:[{view:"view_0.png",observation:"实际可见依据"}],'
@@ -295,7 +319,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         dependency_fields={'appearance_scope','render_representation','gaussian','entity_id','kind','asset_id','asset_kind','embedded_geometry','vertices','triangles','source_frame','world_frame','source_up_axis','normalization','normalization_scale_xyz','uniform_scale','scale_mode','requested_size_limits_m','actual_size_m','source_bounds','oriented_bounds_before_scale','orientation_deg_xyz','orientation_source','source_watertight','appearance','appearance_overrides','transported_materials','transported_uvs','bound_texture_materials','texture_sampling','native_colliders_preserved','portability'}
         material_fields={'appearance_scope','entity_id','prim_path','kind','texture_id','texture_tint','uv_scale_m','color_space','normal_convention','calibration','source','roughness','metallic','applied','skipped'}
         receipt={'origin':evidence.get('origin'),'entities':[{key:value for key,value in entity.items() if key in entity_fields} for entity in evidence.get('entities',{}).values() if isinstance(entity,dict)],'asset_dependencies':[{key:value for key,value in dependency.items() if key in dependency_fields} for dependency in evidence.get('asset_dependencies',[]) if isinstance(dependency,dict)],'material_dependencies':[{key:value for key,value in dependency.items() if key in material_fields} for dependency in evidence.get('material_dependencies',[]) if isinstance(dependency,dict)],'realism':evidence.get('realism',{})}
-        if policy_for(store.root):
+        if strict_policy:
             # Full native receipts remain saved and are checked deterministically.
             # Repeating all material paths and primitive parts in a visual prompt
             # makes complex rooms time out without adding visible observations.
@@ -315,7 +339,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
             changes={**changes,'comparison_recorded_at':'before_capture','capture_status':report['status'],
                      'capture_token':report.get('token')}
             prompt+='\n本次程序改动对照：'+json.dumps(changes,ensure_ascii=False)
-        if geometry_path.is_file() and not policy_for(store.root):
+        if geometry_path.is_file() and not strict_policy:
             prompt+='\n仿真前的程序几何建议：'+json.dumps(compact_preview(json.loads(geometry_path.read_text())),ensure_ascii=False)
         camera_receipts=[{'frame_id':frame.get('frame_id'),'image':frame.get('image'),'camera':frame.get('camera'),'step_id':frame.get('step_id')} for frame in evidence.get('frames',[])]
         prompt+='\n相机执行记录：'+json.dumps(camera_receipts,ensure_ascii=False)
@@ -331,16 +355,18 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         prompt+='\n实拍相机位置、朝向与图片对应：'+json.dumps([{'view':f'view_{i}.png',**c} for i,c in enumerate(program['cameras'])],ensure_ascii=False)
         prompt+='\n关系判断须区分画面坐标、世界坐标及使用者视角；左右前后按摘要明确参照判断，不得随相机换位而改变场景关系。未定义参照时指出文字歧义，不臆造世界方向。相机高度以执行位置为准，不能仅凭俯视构图判断拍摄高度。外观名称须由实际形态和材质支持，禁止把未观察到的颜色或品牌当事实。'
         prompt+='\n全部机位共同覆盖场景，不要求每张照片同时看见所有物体。单一视角遮挡不能证明物体缺失、穿插或悬空；须检查其它对应机位和原生姿态证据。全部机位仍无法辨认或验证的项目应失败并列为未解；清晰可见的缺陷必须保留，不能由程序名称替代外观。'
+        prompt+='\n'+REFERENCE_GUIDANCE
         layout_reference=directory/'layout_reference.png'
         if layout_reference.is_file():
             review_images.append(layout_reference)
             prompt+='\n最后一张是扩散设计参考，其余是实际 Isaac 视图。额外返回 design_alignment:{status:"aligned"|"partial"|"diverged",issues:[string]}，比较功能分区、主要物体、材质、采光和氛围；参考仅用于设计比较，不是仿真成品、GT 或像素匹配目标。'
         review=completion(prompt,directory/'model_calls'/'scene_review',review_images,
-                          10000 if policy_for(store.root).get('require_scene_brief') else 5000,
-                          bounded_review=bool(policy_for(store.root)))
+                          10000 if strict_policy.get('require_scene_brief') else 5000,
+                          bounded_review=bool(strict_policy),stop=stop,context=unit.get('run_context'))
     else: review={'acceptable':False,'issues':physical_issues or report.get('errors',[]),
                  'repair_suggestions':['Repair the actual support, attachment or layout issue in a new complete program and capture again.'],
                  'visual_review_skipped':bool(physical_issues)}
+    if spatial_context is not None:review['spatial_reference_context']=spatial_context
     review['physical_stable']=report.get('physics',{}).get('stable',False);review['renderable']=report.get('renderable',False)
     frames=evidence.get('frames',[])
     native=evidence.get('origin')=='isaac_native'
@@ -369,7 +395,7 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
         review.setdefault('repair_suggestions',[]).append('Repair action force, duration, surface clearance or dynamic support using the captured action trace')
     review['interaction_requested']=bool(requested_actions)
     review['interaction_passed']=interaction_passed
-    acceptance=capture_acceptance(store.root,program,report,evidence,review,capture)
+    acceptance=capture_acceptance(store.root,program,report,evidence,review,capture,execution_mode)
     if acceptance.get('enforced'):
         review['production_acceptance']=acceptance
         write_json(directory/'scene_acceptance.json',acceptance)
@@ -378,9 +404,12 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
                        'observation': review.get('brief_alignment', {}), 'passed': acceptance['passed'],
                        'iteration_required': not acceptance['passed'], 'hard_requirements_may_be_relaxed': False})
         review.setdefault('issues',[]).extend(acceptance['issues'])
-    passed=review.get('acceptable') is True and review['physical_stable'] and review['renderable'] and interaction_passed is not False and acceptance['passed']
+    acceptance_passed = acceptance.get('passed') is not False
+    passed=review.get('acceptable') is True and review['physical_stable'] and review['renderable'] and interaction_passed is not False and acceptance_passed
     review['passed']=passed
     review['publication_status']='pilot_candidate' if passed else 'exploration_requires_improvement'
+    review['execution_mode']=execution_mode or 'exploration'
+    review['evaluation_status']='not_evaluated' if not acceptance.get('enforced') else ('passed' if acceptance.get('passed') else 'failed')
     write_json(directory/'scene_review.json',review)
     if not passed:
         if acceptance.get('enforced'):
@@ -407,90 +436,25 @@ physics 是动作前沉降；interaction 是实际施力轨迹，view_N 是动�
             'report':report,'scene_review':review,'scene_quality_assessed':True,'data_exported':False},unit={**unit,'phase':'complete'})
         return
     record_progress(directory,'data_export')
-    summary=produce(directory,unit['intent'].get('split','dev'),unit['intent'])
+    summary=produce(directory,unit['intent'].get('split','dev'),unit['intent'],stop=stop,context=unit.get('run_context'))
     record_progress(directory,'complete')
     store.update(task['id'],state='SUCCEEDED',result={'summary':summary,'directory':str(directory),'scene_review':review},unit={**unit,'phase':'complete'})
 
 
 def _capture_handoff(unit):
-    """CPU-only preparation/completion should not queue behind asset generation."""
-    if unit['phase']=='review':return unit['intent'].get('capture_only',False)
-    if unit['phase']!='plan' or not unit.get('submitted_program'):return False
-    if unit.get('quality_repairs') or unit.get('operator_feedback'):return False
-    if any(unit['intent'].get(key) for key in ('layout','parent_task_id','refine_task_id')):return False
-    return not any(obj['kind']=='generated' for obj in unit['submitted_program']['program']['objects'])
+    return _scheduler_capture_handoff(unit)
 
 
 def coordinate(store,stop):
-    # One scheduler owns FIT stages. A slow GPU/model task does not block reviews.
-    # GPU tool locks and desktop DB ownership independently serialize their devices.
-    def execute(task):
-            try:
-                class TaskSignal:
-                    def __init__(self):self.checked=0;self.canceled=False
-                    def is_set(self):
-                        if stop.is_set():return True
-                        if time.monotonic()-self.checked>3:
-                            self.canceled=store.snapshot(task['run_id'])['state']=='CANCELED';self.checked=time.monotonic()
-                        return self.canceled
-                task_stop=TaskSignal()
-                phase=task['unit']['phase']
-                if phase=='layout':
-                    execute_design(store,task,task_stop)
-                elif phase=='generation':
-                    from .generation_stage import execute_generation_stage
-                    execute_generation_stage(store,task,task_stop)
-                elif phase=='asset':
-                    directory=store.directory(task['id'],task['unit']['revision'])
-                    intent=task['unit']['intent']
-                    spec={'label':intent.get('label',intent['name']),'prompt':intent['description']}
-                    spec.update({k:v for k,v in intent.items() if k in {'source_image','source_mask','source_mesh','source_gaussian','asset_id','seed','source_up_axis','size_hint_m','subject_box','edit_reference','texture_baking'}})
-                    result=GenerationTools(store.root).generate_asset(spec,directory/'generation',task_stop)
-                    if not (spec.get('source_mesh') or spec.get('asset_id')):
-                        result=review_generated_asset(GenerationTools(store.root),spec,result,directory/'asset_review',task_stop,repair=False)
-                    store.update(task['id'],state='SUCCEEDED',result=result,unit={**task['unit'],'phase':'complete'})
-                elif phase=='dataset':
-                    from .integration import run_dataset
-                    result=run_dataset(store,task,stop=task_stop)
-                    store.update(task['id'],state='SUCCEEDED',result=result,unit={**task['unit'],'phase':'complete'})
-                elif phase=='review' and task['unit']['intent'].get('capture_only') and policy_for(store.root):
-                    review_scene(store,task,task_stop,capture_only=True)
-                elif phase=='review' and task['unit']['intent'].get('capture_only'):
-                    directory=store.directory(task['id'],task['unit']['revision'])
-                    report=json.loads((directory/'capture/report.json').read_text())
-                    files=[{'file':p.relative_to(directory).as_posix(),'source_path':str(p)} for p in sorted((directory/'capture').glob('*')) if p.is_file()]
-                    captured=report.get('status')=='captured'
-                    result={'operation':'capture_only','directory':str(directory),'files':files,'report':report,
-                            'scene_quality_assessed':False,'data_exported':False}
-                    store.update(task['id'],state='SUCCEEDED' if captured else 'FAILED_FINAL',result=result,
-                                 unit={**task['unit'],'phase':'complete' if captured else 'review'},failure=None if captured else {'capture_report':report})
-                else:(plan_scene if phase=='plan' else review_scene)(store,task,task_stop)
-            except ResourceWait as exc:
-                store.update(task['id'],state='READY',ready_at=time.time()+30,failure={'waiting_resource':str(exc)})
-            except Exception as exc:
-                traceback.print_exc()
-                store.update(task['id'],state='FAILED_FINAL',failure={'error':type(exc).__name__,'detail':str(exc)[:1000]})
-    active={};handoffs={}
-    with ThreadPoolExecutor(max_workers=3,thread_name_prefix='production') as pool, \
-         ThreadPoolExecutor(max_workers=1,thread_name_prefix='capture-handoff') as capture_pool:
-        while not stop.is_set():
-            active={key:future for key,future in active.items() if not future.done()}
-            handoffs={key:future for key,future in handoffs.items() if not future.done()}
-            try:work=store.all_work()
-            except (DatabaseTimeout,OperationalError):
-                traceback.print_exc();stop.wait(2);continue
-            for task in work:
-                if task['id'] in active or task['id'] in handoffs:continue
-                if task['unit']['phase'] not in {'plan','review','asset','dataset','layout','generation'} or task['state'] not in {'PENDING','READY'} or (task.get('ready_at') or 0)>time.time():continue
-                lightweight=_capture_handoff(task['unit'])
-                if task['unit']['phase']=='review' and policy_for(store.root):
-                    # A model review is CPU/network work, not a short capture
-                    # handoff. It must not block preparing the next real scene.
-                    lightweight=False
-                pending=handoffs if lightweight else active
-                if len(pending)>=(1 if lightweight else 3):continue
-                store.update(task['id'],state='RUNNING',failure=None)
-                pending[task['id']]=(capture_pool if lightweight else pool).submit(execute,task)
-            try:store.settle_runs()
-            except (DatabaseTimeout,OperationalError):traceback.print_exc()
-            stop.wait(2)
+    return _coordinate(
+        store,
+        stop,
+        plan_scene=plan_scene,
+        review_scene=review_scene,
+        policy_for=policy_for,
+        capture_only_review=review_scene,
+        capture_handoff=_capture_handoff,
+        generation_tools=GenerationTools,
+        generated_asset_reviewer=review_generated_asset,
+        resource_wait=ResourceWait,
+    )

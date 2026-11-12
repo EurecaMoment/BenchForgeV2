@@ -17,7 +17,7 @@ Issues = "https://github.com/EurecaMoment/BenchForgeV2/issues"
 
 [project.optional-dependencies]
 dsh = ["PyYAML>=6"]
-production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10", "SQLAlchemy>=2.0"]
+production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10", "SQLAlchemy>=2.0", "psycopg[binary]>=3.2"]
 research = ["pypdf>=5"]
 datasets = ["pyarrow>=15"]
 training = ["torch>=2.4", "transformers>=4.49", "tokenizers>=0.21", "peft>=0.14", "Pillow>=10", "numpy>=1.24"]
@@ -36,3 +36,16 @@ benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+extend-exclude = [
+    "src/benchforge_core/vendor/**",
+    "components/benchclaw/BenchClaw/**",
+    "components/benchclaw/src/benchclaw/resources/BenchClaw/**",
+    "work/**",
+]
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]

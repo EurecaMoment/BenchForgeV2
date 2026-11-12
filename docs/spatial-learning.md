@@ -50,7 +50,7 @@ python -m benchforge_core.spatial_learning.monitor --run runs/training --port 87
 
 监控页可暂停、继续更新或在当前窗口结束后保存并停止。`training_monitor` 的 `guidance` 参数还可调整 `learning_rate`、`hint_fraction` 和 `difficulty`；训练器在下一批前记录并应用指令。`spatial_train` 使用 `action:"start"` 可后台启动并返回 PID、日志和运行目录，随后用监控工具跟踪。
 
-BenchForgeV2 新生成的模式自动包含这些核心工具。现有自定义 SpatialForge 模式可显式安装：
+BenchForgeV2 新生成的模式自动包含这些核心工具。现有自定义 BenchForgeV2 模式可显式安装：
 
 ```bash
 python integrations/dsh/install_learning.py --preset /path/to/custom.patch.yml --python /path/to/venv/bin/python --dsh-root /path/to/deepseek-harness

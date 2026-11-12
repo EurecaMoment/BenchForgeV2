@@ -1,0 +1,91 @@
+{
+  "schema": "spatialforge.native_asset_facing/v1",
+  "scope": "Verified front-axis metadata for planning only; not physical scene acceptance.",
+  "coordinate_convention": {
+    "up_axis": "+Z",
+    "positive_yaw": "+X toward +Y around +Z",
+    "yaw_units": "degrees",
+    "front_axis_frame": "native mesh local axes"
+  },
+  "capture_provenance": {
+    "verified_on": "2026-11-06",
+    "scene_id": "sf_f389debd96fb4f5f.scene0",
+    "revision": 0,
+    "capture_scene_usdc": "/var/local/maqiang/spatialforge-20260927/runtime/sf_f389debd96fb4f5f.scene0/revision_0/capture/scene.usdc",
+    "capture_evidence_json": "/var/local/maqiang/spatialforge-20260927/runtime/sf_f389debd96fb4f5f.scene0/revision_0/capture/evidence.json",
+    "method": "Read composed mesh geometry and ancestor transforms with pxr; no render or service restart.",
+    "transform_evidence": "Source is identity; AssetNormalization has only translation and positive diagonal scale; mesh scale is positive 0.01. No internal axis rotation."
+  },
+  "assets": {
+    "office_monitor": {
+      "source_usd": "Environments/Office/Props/SM_MonitorPC.usd",
+      "front_axis": "+X",
+      "observed_mesh_path": "/World/Objects/monitor_c/AssetNormalization/Source/SM_MonitorPC",
+      "shape_evidence": {
+        "description": "Screen rectangle consists of two large coplanar triangles with outward normal +X; rear geometry lies toward negative X.",
+        "screen_triangle_face_indices": [14, 15],
+        "screen_plane_x_cm": 3.2851,
+        "screen_y_range_cm": [-25.9531, 25.92],
+        "screen_z_range_cm": [19.9, 52.3],
+        "screen_outward_normal": [1, 0, 0]
+      },
+      "captured_entity_yaw_deg": 180,
+      "captured_world_forward_xy": [-1, 0]
+    },
+    "office_armchair": {
+      "source_usd": "Environments/Office/Props/SM_Armchair.usd",
+      "front_axis": "+X",
+      "observed_mesh_path": "/World/Objects/armchair_c/AssetNormalization/Source/SM_Armchair",
+      "shape_evidence": {
+        "description": "Tall backrest is on negative X; the positive-X front panel is lower. Opposite Y side panels are symmetric.",
+        "high_back_vertex_examples_cm": [[-39, 33.9127, 79], [-26.3729, 33.9127, 79], [-23.9899, 29.9127, 75.021]],
+        "back_panel_x_cm": -39,
+        "back_panel_area_weighted_center_z_cm": 45.9721,
+        "front_panel_x_cm": 39,
+        "front_panel_area_weighted_center_z_cm": 34.0941
+      },
+      "captured_entity_yaw_deg": 180,
+      "captured_world_forward_xy": [-1, 0]
+    },
+    "office_chair": {
+      "source_usd": "Environments/Office/Props/SM_ChairOffice.usd",
+      "front_axis": "+X",
+      "observed_mesh_path": "/World/Objects/chair_c1/AssetNormalization/Source/SM_ChairOffice",
+      "shape_evidence": {
+        "description": "Uppermost 15 percent of backrest vertices are entirely on negative X; seat geometry extends toward positive X. Opposite Y sides are symmetric.",
+        "upper_15_percent_vertex_x_range_cm": [-35.9458, -27.8339],
+        "upper_15_percent_vertex_z_range_cm": [106.2839, 117.6997],
+        "positive_x_seat_face_center_example_cm": [16.6264, -8.3334, 41.0542]
+      },
+      "captured_entity_yaw_deg": 175,
+      "captured_world_forward_xy": [-0.9961946980917454, 0.08715574274765818]
+    },
+    "office_sofa": {
+      "source_usd": "Environments/Office/Props/SM_Sofa.usd",
+      "front_axis": "+X",
+      "observed_mesh_path": "/World/Objects/sofa_b/AssetNormalization/Source/SM_Sofa",
+      "shape_evidence": {
+        "description": "Uppermost 15 percent of backrest vertices are entirely on negative X; the positive-X front panel is lower, and the seat extends toward positive X. Opposite Y side panels are symmetric.",
+        "upper_15_percent_vertex_x_range_cm": [-39, -23.9899],
+        "upper_15_percent_vertex_z_range_cm": [75.021, 79],
+        "back_panel_x_cm": -39,
+        "back_panel_area_weighted_center_z_cm": 47.1259,
+        "front_panel_x_cm": 39,
+        "front_panel_area_weighted_center_z_cm": 32.0065,
+        "positive_x_seat_face_center_example_cm": [16.4177, -26.6376, 44.7299]
+      },
+      "captured_entity_yaw_deg": 90,
+      "captured_world_forward_xy": [0, 1],
+      "capture_provenance": {
+        "verified_on": "2026-11-06",
+        "scene_id": "sf_c7beeeef38a142ba.scene0",
+        "revision": 0,
+        "capture_scene_usdc": "/var/local/maqiang/spatialforge-20260927/runtime/sf_c7beeeef38a142ba.scene0/revision_0/capture/scene.usdc",
+        "capture_evidence_json": "/var/local/maqiang/spatialforge-20260927/runtime/sf_c7beeeef38a142ba.scene0/revision_0/capture/evidence.json",
+        "method": "Read the specified composed sofa mesh geometry and ancestor transforms with pxr.",
+        "transform_evidence": "Source is identity; AssetNormalization has only translation and positive diagonal scale; mesh scale is positive 0.01. No internal axis rotation."
+      }
+    }
+  },
+  "unverified_kinds": []
+}

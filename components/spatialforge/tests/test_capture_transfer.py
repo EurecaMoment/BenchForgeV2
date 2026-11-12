@@ -71,14 +71,20 @@ class TransferTests(unittest.TestCase):
         spec=importlib.util.spec_from_file_location('transfer_desktop_worker',Path(__file__).resolve().parents[1]/'desktop/worker.py')
         worker=importlib.util.module_from_spec(spec);spec.loader.exec_module(worker)
         with tempfile.TemporaryDirectory() as temp:
+            job={**JOB,'program':{'cameras':[]}}
+            directory=Path(temp)/'desktop';output=directory/'capture';output.mkdir(parents=True)
+            (directory/'request.json').write_text(json.dumps(job))
+            (directory/'program.json').write_text(json.dumps(job['program']))
             class Store:
                 root=Path(temp)/'server'
+                def directory(self,*args):return directory
+                def snapshot(self,*args):return {'tasks':[{'id':job['task_id'],'unit':{'intent':{}}}]}
                 def worker_update(self,*args,**kwargs):return {'active':True}
                 def commit_capture(self,job,data):return {'committed':True}
             store=Store();transfer=CaptureTransfer(store)
-            directory=Path(temp)/'desktop';output=directory/'capture';output.mkdir(parents=True)
-            raw=json.dumps({'status':'failed','token':JOB['token']}).encode()
+            raw=json.dumps({'status':'captured','token':job['token']}).encode()
             (output/'report.json').write_bytes(raw)
+            (output/'evidence.json').write_text(json.dumps({'origin':'isaac_native','token':job['token']}))
             (output/'scene.usda').write_bytes(b'#usda 1.0\n'+b' '*80)
             lost=False;resumed=[];encodings=[]
             def api(path,value=None,data=None,headers=None):
@@ -89,13 +95,13 @@ class TransferTests(unittest.TestCase):
                 if path=='/worker/upload-chunk':
                     encodings.append(headers['X-SpatialForge-Encoding'])
                     result=transfer.chunk(json.loads(headers['X-SpatialForge-Job']),headers['X-SpatialForge-File'],int(headers['X-SpatialForge-Offset']),decode_chunk(data,headers['X-SpatialForge-Encoding']))
-                    if not lost:lost=True;raise OSError('lost reply after write')
+                    if not lost and headers['X-SpatialForge-File']=='report.json':lost=True;raise OSError('lost reply after write')
                     return result
                 if path=='/worker/heartbeat':return {'active':True}
                 if path=='/worker/upload-commit':return transfer.commit(value['job'])
                 raise AssertionError(path)
             with patch.object(worker,'api',side_effect=api),patch.object(worker.time,'sleep'):
-                result=worker.upload_capture(JOB,directory,output)
+                result=worker.upload_capture(job,directory,output)
             self.assertTrue(result['committed']);self.assertEqual(resumed,[0,32]);self.assertIn('deflate',encodings)
             self.assertEqual((store.root/'transfers'/JOB['token']/'capture/report.json').read_bytes(),raw)
 

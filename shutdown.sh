@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# 一键关停：DSH Web -> SpatialForge 服务 -> PostgreSQL（--keep-db 可保留数据库）
+# 一键关停：DSH Web -> BenchForgeV2 服务 -> PostgreSQL（--keep-db 可保留数据库）
+# Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,7 +29,7 @@ for arg in "$@"; do
 done
 
 stop_port() {
-  local name="$1" pidfile="$2" expected="$3" pid command
+  local name="$1" pidfile="$2" expected="$3" pid command group target
   if [ ! -f "$pidfile" ]; then
     echo "  $name 未由本脚本启动"
     return 0
@@ -44,36 +45,42 @@ stop_port() {
     *"$expected"*) ;;
     *) echo "  $name 的 PID 与预期命令不符，保留进程和记录"; return 0 ;;
   esac
+  # start.sh uses setsid. Stop the owned session's process group so the Python
+  # launcher does not leave its Node child listening after a restart.
+  group="$(ps -p "$pid" -o pgid= 2>/dev/null | tr -d ' ' || true)"
+  target="$pid"
+  [ "$group" = "$pid" ] && target="-$pid"
   echo "  停止 $name (PID: $pid)"
-  kill -TERM "$pid" 2>/dev/null || true
+  kill -TERM -- "$target" 2>/dev/null || true
   for _ in $(seq 1 20); do
-    kill -0 "$pid" 2>/dev/null || break
+    kill -0 -- "$target" 2>/dev/null || break
     sleep 1
   done
-  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  kill -0 -- "$target" 2>/dev/null && kill -KILL -- "$target" 2>/dev/null || true
   rm -f "$pidfile"
 }
 
 if [ -f "$SERVER_CONFIG" ]; then
-  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo "${SPATIALFORGE_PORT:-3856}")"
+  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo "${SPATIALFORGE_PORT:-3857}")"
 else
-  SERVICE_PORT="${SPATIALFORGE_PORT:-3856}"
+  SERVICE_PORT="${SPATIALFORGE_PORT:-3857}"
 fi
 
-echo "[1/4] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
+echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
 stop_port "DSH Web" "$DSH_PID_FILE" "benchforge.py start --port"
 
-echo "[2/4] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
 stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
 
-echo "[3/4] 停止 Isaac Sim gRPC mock"
-bash "$ROOT/components/spatialforge/grpc/stop_test_server.sh" || true
+# Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 
 if [ "$KEEP_DB" -eq 1 ]; then
-  echo "[4/4] 保留 PostgreSQL (--keep-db)"
+  echo "[3/3] 保留 PostgreSQL (--keep-db)"
 else
-  echo "[4/4] 停止 PostgreSQL"
-  docker compose -p benchforgev2-spatialforge --env-file config/generated/database.env \
+  echo "[3/3] 停止 PostgreSQL"
+  COMPOSE_PROJECT="$(grep -E '^COMPOSE_PROJECT_NAME=' config/generated/database.env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  [ -n "$COMPOSE_PROJECT" ] || COMPOSE_PROJECT=benchforgev2-spatialforge
+  docker compose -p "$COMPOSE_PROJECT" --env-file config/generated/database.env \
     -f components/spatialforge/deploy/compose.yml down
 fi
 

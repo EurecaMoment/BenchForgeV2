@@ -1,5 +1,6 @@
+# Dependencies and compiler/tool caches
 __pycache__/
-node_modules/
+*.py[cod]
 # 本地测试 gRPC 服务的 pid / 日志
 components/spatialforge/grpc/.test_server.pid
 components/spatialforge/grpc/.test_server.log
@@ -7,46 +8,72 @@ components/spatialforge/grpc/.test_server.log
 components/spatialforge/grpc/_mock_jobs/
 *.egg-info/
 .venv/
+venv/
+node_modules/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
 build/
 dist/
-# Local configuration and secrets live in config/; tracked samples use .example suffixes.
-config/*.local.json
-config/*.local.yml
-config/*.env
-config/*.bak-*
+
+# Private inputs and generated deployment state; examples remain tracked.
 *.local.json
 *.local.yml
-runs/
+*.local.yaml
 .env
+.env.*
+!.env.example
+config/*.env
+/config/scene-library/
+*.bak
+*.bak-*
+*.backup
+*.before-benchforge-*
+*.before-spatial-learning
+*.benchforge-new
+*.spatialforge-new
+.deployment/
 .benchforge/
+.spatialforge/
+**/.execution.lock
 third_party/deepseek-harness/
 
-# Initial GitHub repository exclusions
-### AL ###
-#Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
+# Production artifacts and disposable development/test output
+/runs/
+/work/
+/outputs/
+/tmp/
+/temp/
+*.log
+*.log.*
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+test-results/
+playwright-report/
+TestResults.xml
+*.tgz
+*.whl
+
+# Editor and operating-system state
 .vscode/
-#Cache folder
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# AL project outputs
+# .vscode launch settings are covered above.
 .alcache/
-#Symbols folder
 .alpackages/
-#Snapshots folder
 .snapshots/
-#Testing Output folder
 .output/
-#Extension App-file
 *.app
-#Rapid Application Development File
 rad.json
-#Translation Base-file
 *.g.xlf
-#License-files
 *.bclicense
 *.flf
-#Test results file
-TestResults.xml
-
-.spatialforge/
-outputs/
-.deployment/
 config/generated/

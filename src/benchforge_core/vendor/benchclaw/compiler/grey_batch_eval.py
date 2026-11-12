@@ -42,29 +42,10 @@ DEFAULT_PER_FORMAT = 100
 DEFAULT_SEED = 20260601
 
 
-def find_benchclaw_root() -> Path:
-    here = Path(__file__).resolve()
-    env_root = os.environ.get("BENCHCLAW_ROOT")
-    if env_root:
-        return Path(env_root).expanduser().resolve()
-    for parent in here.parents:
-        if (parent / "modelNeedMeasured").is_dir() and (parent / "skills").is_dir():
-            return parent
-    # Stage4 subskill scripts must also run inside isolated skill packages during smoke tests.
-    # Fall back to the nearest ancestor containing a skills directory, then to cwd.
-    for parent in here.parents:
-        if (parent / "skills").is_dir():
-            return parent
-    return Path.cwd().resolve()
-
-
-BENCHCLAW_ROOT = find_benchclaw_root()
-DEFAULT_CONFIG = BENCHCLAW_ROOT / "modelNeedMeasured" / "model_config.json"
-
+MODEL_CONFIG_ENV = "BENCHFORGE_MODEL_CONFIG"
 DEFAULT_ENDPOINT = "https://api.ephone.ai/v1/chat/completions"
 
-# Legacy env fallback is still accepted for local compatibility, but the
-# canonical source of truth is BENCHCLAW_ROOT/modelNeedMeasured/model_config.json.
+# Credentials come from the caller's config or environment, never bundled defaults.
 DEFAULT_API_KEY_SLOTS: Dict[str, str] = {
     "key1": "",
     "key2": "",
@@ -141,6 +122,16 @@ def load_config(path_value: Optional[str]) -> Dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"Config file must contain a JSON object: {path}")
     return payload
+
+
+def load_inference_config(path_value: Optional[str]) -> Dict[str, Any]:
+    if path_value is None:
+        path_value = os.environ.get(MODEL_CONFIG_ENV)
+    if not path_value or not path_value.strip():
+        raise SystemExit(
+            f"infer-ephone requires an existing JSON config via --config or {MODEL_CONFIG_ENV}."
+        )
+    return load_config(path_value)
 
 
 def is_opencode_model_config(config: Dict[str, Any]) -> bool:
@@ -1574,11 +1565,11 @@ def write_ephone_outputs(
 
 
 def infer_ephone(args: argparse.Namespace) -> None:
-    config = load_config(args.config)
+    config = load_inference_config(args.config)
     if not is_opencode_model_config(config):
         raise SystemExit(
-            "infer-ephone requires BENCHCLAW_ROOT/modelNeedMeasured/model_config.json "
-            "or another config with the same opencode-style provider/grey_test/full_test schema."
+            "infer-ephone requires an opencode-style config with provider and "
+            "grey_test/full_test model groups."
         )
 
     model_plan: List[Dict[str, Any]]
@@ -1998,14 +1989,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_ephone.add_argument("--out-dir", default="", help="Output directory for raw results, scores, and tables.")
     p_ephone.add_argument(
         "--config",
-        default=str(DEFAULT_CONFIG),
-        help="JSON config path. Must use the modelNeedMeasured opencode-style config schema.",
+        help=f"Existing opencode-style JSON config path; defaults only to {MODEL_CONFIG_ENV}.",
     )
     p_ephone.add_argument(
         "--test-group",
         default="grey_test",
         choices=["grey_test", "full_test"],
-        help="When using modelNeedMeasured/model_config.json, select which configured model group to run.",
+        help="Select which model group from the supplied config to run.",
     )
     p_ephone.add_argument("--endpoint", default="")
     p_ephone.add_argument(
@@ -2022,7 +2012,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_ephone.add_argument(
         "--tiers",
         default="",
-        help="Deprecated no-op for old configs. Keep empty when using modelNeedMeasured config.",
+        help="Deprecated no-op for old configs. Keep empty when using an opencode-style config.",
     )
     p_ephone.add_argument(
         "--models",

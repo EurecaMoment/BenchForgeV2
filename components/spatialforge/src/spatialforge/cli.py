@@ -7,7 +7,7 @@ import uuid
 
 
 def main():
-    p=argparse.ArgumentParser(description='SpatialForge production client')
+    p=argparse.ArgumentParser(description='BenchForgeV2 production client')
     p.add_argument('--config',default=str(Path(__file__).resolve().parents[2]/'service.local.json'))
     p.add_argument('operation',choices=['catalog','start','asset','extend','refine','dataset','inspect','retry','cancel','download','capture','status','evidence','preview','diffusion','sam3','sam3d','depth','mesh-import','call'])
     p.add_argument('value',nargs='?',help='SceneProgram path, run/task ID, or API route for call')

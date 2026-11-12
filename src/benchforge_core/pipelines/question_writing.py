@@ -8,6 +8,7 @@ from copy import deepcopy
 
 SCHEMA = 'benchforge.question-writing/v1'
 INSTRUCTIONS = (
+    '新题面的 schema 使用 benchforge.question-writing/v1。'
     '每题提交 question_spec：简短自然题干 stem、公开已知条件 context、必要作答规则 conditions、'
     '候选 options、作答说明 response、逐项媒体标题 media_labels，以及与 parameters 完全一致的 parameter_bindings。'
     '题干先说看什么和问什么；采集说明、坐标定义、单位和容差分别放在条件中，必要条件不能藏在技术详情。'
@@ -45,8 +46,10 @@ def public_value(value):
 
 
 def validate_spec(spec, parameters, media_count):
-    if not isinstance(spec, dict) or spec.get('schema') != SCHEMA:
+    if not isinstance(spec, dict):
         raise ValueError('Source evidence needs question_spec; read pipeline_catalog question_authoring')
+    if 'schema' in spec and spec['schema'] != SCHEMA:
+        raise ValueError('Unsupported question_spec.schema; use ' + SCHEMA)
     if spec.get('parameter_bindings') != parameters:
         raise ValueError('question_spec.parameter_bindings must preserve the exact source parameters')
     for key in ('stem', 'response'):
@@ -72,7 +75,10 @@ def validate_spec(spec, parameters, media_count):
         raise ValueError('Rewrite protocol jargon or malformed question punctuation in public wording')
     if len(set(spec['options'])) != len(spec['options']):
         raise ValueError('Question options must be distinct')
-    return {key: deepcopy(spec[key]) for key in ('schema', 'stem', 'context', 'conditions', 'options', 'response', 'media_labels')}
+    # Older source writers emitted the complete v1 fields without the version
+    # label. Normalize that metadata after validating every substantive field.
+    return {'schema': SCHEMA, **{key: deepcopy(spec[key]) for key in
+            ('stem', 'context', 'conditions', 'options', 'response', 'media_labels')}}
 
 
 def builtin_spec(template, sample):

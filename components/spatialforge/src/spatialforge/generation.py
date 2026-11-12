@@ -362,6 +362,10 @@ class GenerationTools:
             if selected_mask.convert('L').getextrema()[1] < 128:
                 raise ValueError('subject mask is empty')
         request = {'output_dir': str(work / 'mesh'), 'objects': [{'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': spec.get('seed', 42)}]}
+        if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER'):
+            request['provider'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROVIDER']
+        if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROFILE'):
+            request['profile'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROFILE']
         if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
             request.update(source_root=self.config.data['sources']['sam3d'],
                            config_path=str(Path(self.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
@@ -369,6 +373,6 @@ class GenerationTools:
         reconstructed = self.execute('sam3d', request, work / 'sam3d', stop)
         selected_asset = next(a for a in reconstructed['assets'] if a['object_id'] == 'subject')
         source = work / 'mesh' / selected_asset['asset']
-        tools.append('SAM3D')
+        tools.append(selected_asset.get('model', 'SAM3D'))
         provenance = {'tools': tools, 'inputs': sources, 'segmentation': selection, 'reconstruction': selected_asset, 'seed': spec.get('seed', 42), 'metric_reconstruction': False}
-        return self._publish(spec, work, source, 'sam3d_camera', provenance, 'generated', image, mask)
+        return self._publish(spec, work, source, selected_asset.get('source_frame', 'sam3d_camera'), provenance, 'generated', image, mask)

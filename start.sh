@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# 一键启动：gRPC mock -> PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
+# 一键启动：PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
 # 配置全部来自 config/ 目录；日志写入 .benchforge/logs/，PID 写入 .benchforge/run/。
+# Isaac Sim gRPC 服务不在此管理：本地 mock 或远程仿真器请单独手动启动。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,8 +17,6 @@ RUN_DIR="$STATE/run"
 LOG_DIR="$STATE/logs"
 SF_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
-GRPC_DIR="$ROOT/components/spatialforge/grpc"
-GRPC_PID_FILE="$GRPC_DIR/.test_server.pid"
 # 端口唯一权威来源是 config/ports.env 和 config/benchforge.local.json，这里只做读取
 [ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
 WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
@@ -26,14 +25,13 @@ mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 die() { echo "错误: $*" >&2; exit 1; }
 
-for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$SERVICE_CONFIG" "$PRESET" "$STATE/runtime.json"; do
+for path in "$PY" "$SF_PY" "$SERVER_CONFIG" "$PRESET" "$STATE/runtime.json"; do
   [ -e "$path" ] || die "缺少 $path，请先按 README 的安装步骤准备环境"
 done
 
+"$PY" "$ROOT/integrations/spatialforge/check_config.py" --preset "$PRESET"
+
 SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG")"
-# gRPC 端点从 config/benchforge.local.json 读取，跟 client.py / runtime.py 一致
-GRPC_HOST="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["isaac"]["grpc"]["host"])' "$ROOT/config/benchforge.local.json")"
-GRPC_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["isaac"]["grpc"]["port"])' "$ROOT/config/benchforge.local.json")"
 
 port_open() { ss -ltn 2>/dev/null | grep ":$1 " > /dev/null; }
 
@@ -47,7 +45,12 @@ wait_port() {
 }
 
 # DSH 绑定端口后还要等 Loader 装载完成才打印 token；卡住时 token 永远不出现。
-token_line_count() { grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true; }
+token_line_count() {
+  local count
+  count="$(grep -c 'dsh web: .*token=' "$LOG_DIR/dsh.log" 2>/dev/null || true)"
+  # The log does not exist on the first installation.
+  printf '%s\n' "${count:-0}"
+}
 
 wait_new_token() {
   local before="$1" timeout="$2" i
@@ -64,21 +67,19 @@ latest_url() {
 
 url_status() { curl -s -o /dev/null -w '%{http_code}' "$1" 2>/dev/null || true; }
 
-echo "[1/4] 启动 Isaac Sim gRPC mock ($GRPC_HOST:$GRPC_PORT)"
-if port_open "$GRPC_PORT"; then
-  echo "  端口已监听，保留现有进程"
-else
-  GRPC_HOST="$GRPC_HOST" GRPC_PORT="$GRPC_PORT" bash "$GRPC_DIR/start_test_server.sh"
-fi
-
-echo "[2/4] 启动 PostgreSQL"
+echo "[1/3] 启动 PostgreSQL"
 "$PY" spatialforge_app.py sync
 "$PY" spatialforge_app.py db
 
-echo "[3/4] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
+  [ -f "$ROOT/config/generated/database.env" ] || die "缺少 config/generated/database.env，请先运行 spatialforge_app.py init"
+  set -a
+  # shellcheck disable=SC1091
+  . "$ROOT/config/generated/database.env"
+  set +a
   echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/spatialforge.log"
   # setsid 脱离当前终端会话，关闭终端后服务继续运行
   setsid "$SF_PY" -m spatialforge.service --config "$SERVER_CONFIG" >> "$LOG_DIR/spatialforge.log" 2>&1 < /dev/null &
@@ -87,12 +88,12 @@ else
     tail -n 20 "$LOG_DIR/spatialforge.log" >&2 || true
     kill "$(<"$SF_PID_FILE")" 2>/dev/null || true
     rm -f "$SF_PID_FILE"
-    die "SpatialForge 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
+    die "BenchForgeV2 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
   fi
   echo "  已启动 (PID $(<"$SF_PID_FILE"))"
 fi
 
-echo "[4/4] 启动 BenchForge DSH Web (端口 $WEB_PORT)"
+echo "[3/3] 启动 BenchForge DSH Web (端口 $WEB_PORT)"
 if port_open "$WEB_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
@@ -132,20 +133,22 @@ echo "验证："
 if "$PY" spatialforge_app.py status > /dev/null 2>&1; then
   echo "  数据库 / 服务 / 令牌：正常"
 else
-  echo "  数据库 / 服务 / 令牌：检查失败，手动执行 .venv/bin/python spatialforge_app.py status"
+  die "数据库 / BenchForgeV2 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
 fi
 
 URL="$(latest_url)"
 WEB_STATUS=""
 [ -n "$URL" ] && WEB_STATUS="$(url_status "$URL")"
+if [ -z "$URL" ]; then
+  die "未找到 DSH Web token 地址，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
+if [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; then
+  die "DSH Web token readiness 检查返回 $WEB_STATUS，未报告启动成功；请检查 $LOG_DIR/dsh.log"
+fi
 echo
 echo "启动完成。"
-echo "  gRPC:   $GRPC_HOST:$GRPC_PORT (Isaac Sim)"
 echo "  服务端: http://127.0.0.1:$SERVICE_PORT"
 echo "  Web:    ${URL:-http://127.0.0.1:$WEB_PORT/ （token 见 .benchforge/logs/dsh.log）}"
-if [ -n "$URL" ] && { [ "$WEB_STATUS" != "200" ] && [ "$WEB_STATUS" != "303" ]; }; then
-  echo "  警告:   该 token 访问返回 $WEB_STATUS，可能属于上一次未完成启动的进程，请查看日志"
-fi
 echo "  日志:   $LOG_DIR"
 echo "  停止:   ./shutdown.sh"
 echo

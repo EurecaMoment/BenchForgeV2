@@ -31,7 +31,12 @@ class ConfiguredOperations(unittest.TestCase):
     def test_layout_uses_configured_weights_and_actual_model_receipt(self):
         (self.root/'models.json').write_text(json.dumps({'models':{'flux':{'path':'weights/chosen-klein','python':'venv/bin/python'}},'sources':{}}))
         config = self.root/'server.json'
-        config.write_text(json.dumps({'models_config':'models.json','operator_token':'fixture','worker_token':'fixture'}))
+        config.write_text(json.dumps({
+            'models_config':'models.json',
+            'operator_token':'fixture',
+            'worker_token':'fixture',
+            'execution_mode':'exploration',
+        }))
         load_service_config(config)
         tools = GenerationTools(self.root/'artifacts')
         directory = self.root/'task/revision_0'

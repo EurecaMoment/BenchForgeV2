@@ -1,5 +1,6 @@
 """Operator scene exclusions and a lightweight box-proxy admission rule."""
 import json
+import os
 from pathlib import Path
 import re
 
@@ -13,7 +14,7 @@ def scene_design_parser():
         from spatialforge import scene_design as module
     except ImportError:
         # Normal installs use the validator bundled from the same source at
-        # wheel build time. SpatialForge itself requires Python >=3.11 and is
+        # wheel build time. BenchForgeV2 itself requires Python >=3.11 and is
         # intentionally optional for the core's Python 3.10 support.
         try:
             from . import _scene_design as module
@@ -64,9 +65,38 @@ def classify_planned(program, policy=None):
     return verdict
 
 
-def load_policy(workspace):
-    file = Path(workspace) / 'scene-library' / 'policy.json'
-    policy=json.loads(file.read_text(encoding='utf-8')) if file.is_file() else {}
+def _read_policy(file):
+    path = Path(file) if file else None
+    if path is None or not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding='utf-8'))
+
+
+def load_policy(workspace, service_config=None):
+    """Load the same policy selected by the BenchForgeV2 service config."""
+    if service_config:
+        from ..service_config import load_service_client_config
+
+        config = load_service_client_config(service_config)
+        mode = config['execution_mode']
+        file = config.get('scene_policy_path')
+    else:
+        mode = os.environ.get('SPATIALFORGE_EXECUTION_MODE')
+        file = os.environ.get('SPATIALFORGE_SCENE_POLICY')
+        if not file:
+            legacy = Path(workspace) / 'scene-library' / 'policy.json'
+            file = legacy if legacy.is_file() else None
+        if not mode:
+            mode = 'production' if file else 'exploration'
+
+    if mode not in {'production', 'exploration'}:
+        raise ValueError('execution_mode must be production or exploration')
+    policy = _read_policy(file)
+    if mode == 'production' and (not file or not policy.get('enabled') or not policy.get('enforce_realism')):
+        raise ValueError('Production execution requires an enabled, realism-enforcing scene policy')
+    if mode == 'exploration':
+        return {'execution_mode': mode}
+    policy['execution_mode'] = mode
     if policy.get('enabled') and policy.get('enforce_realism'):
         policy['require_scene_brief']=True
     return policy
@@ -102,8 +132,8 @@ def check_program(policy, program):
             raise ValueError('Scene rejected: ' + verdict['reason'] + '. Default to recognizable assets; declare any intentional simplified geometry and its exact scope in the saved scene production plan.')
 
 
-def check_submission(workspace, route, arguments):
-    policy = load_policy(workspace)
+def check_submission(workspace, route, arguments, service_config=None):
+    policy = load_policy(workspace, service_config)
     if not policy.get('enabled'):
         return
     if route not in ('/start', '/capture', '/refine', '/extend', '/retry', '/dataset'):
@@ -125,7 +155,7 @@ def check_submission(workspace, route, arguments):
             config=Path(workspace)/'service.local.json'
             if not config.is_file():raise ValueError('Unreviewed scene retries are disabled; provide a compliant SceneProgram through capture/refine')
             root=json.loads(config.read_text())['artifacts']
-            directory=scene_design_parser().review_retry_directory(root,arguments['task_id'])
+            directory=scene_design_parser().capture_retry_directory(root,arguments['task_id'])
             if arguments.get('feedback') is not None:raise ValueError('Scene changes require capture/refine')
             check_program(policy,json.loads((directory/'program.json').read_text()))
     intents = arguments.get('intents', []) if route == '/start' else [arguments]
@@ -140,8 +170,8 @@ def check_submission(workspace, route, arguments):
             check_program(policy, json.loads(Path(source).read_text(encoding='utf-8-sig')))
 
 
-def check_evidence(workspace, record, evidence_path):
-    policy=load_policy(workspace)
+def check_evidence(workspace, record, evidence_path, service_config=None):
+    policy=load_policy(workspace, service_config)
     if not policy.get('enabled') or not policy.get('enforce_realism'):return
     references=[str(record.get('scene_group_id','')),*[str(v) for v in record.get('media',[])],
                 str(record.get('provenance',{}).get('path',''))]

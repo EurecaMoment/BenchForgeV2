@@ -5,7 +5,6 @@ overlaps are unresolved, not proof of penetration; unresolved scenes cannot ship
 """
 import json
 import math
-import os
 from pathlib import Path
 import re
 
@@ -14,10 +13,15 @@ from .geometry_preview import preview_scene_geometry
 from .scene_preflight import preflight_scene
 from .scene_design import geometry_exception, scene_brief
 from .scene_relations import native_part_bounds, supported_by_parts, supported_by_native_parts, overlap_unresolved, transported_mesh_bounds
+from .scene_policy import check_references, check_request, policy_for
 
 STRUCTURE = re.compile(r'^(?:floor|ceiling|wall(?:_|$)|ground|terrain|pavement|asphalt|roof|road(?:_|$)|bay_line|rug|carpet|window|door(?:_|$))', re.I)
 VISUAL_CHECKS = {'object_identity', 'realistic_scale', 'support_and_attachment',
                  'functional_layout', 'access_and_clearance', 'materials_and_lighting'}
+
+
+def _policy_for_mode(root, execution_mode):
+    return policy_for(root) if execution_mode is None else policy_for(root, execution_mode)
 
 
 def captured_observation(row, frames):
@@ -49,17 +53,6 @@ def attachment(obj, by_id):
     return value
 
 
-def policy_for(root):
-    explicit = os.environ.get('SPATIALFORGE_SCENE_POLICY')
-    local=Path(root)/'scene_policy.json'
-    path = Path(explicit) if explicit else local if local.is_file() else Path(root).absolute().parent / 'scene-library/policy.json'
-    value = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
-    if value.get('enabled') and value.get('enforce_realism'):
-        value['require_scene_brief']=True
-        return value
-    return {}
-
-
 def structure(obj):
     # A name cannot turn a chair-sized cube into a floor or wall.
     size = obj.get('size', [])
@@ -68,57 +61,16 @@ def structure(obj):
             and max(size) >= 1)
 
 
-def _inside_exclusion(value, policy):
-    if value in set(policy.get('excluded_tasks', [])) | set(policy.get('excluded_runs', [])) | set(policy.get('excluded_scene_groups', [])):
-        return True
-    if Path(value).is_absolute():
-        path = Path(value).resolve()
-        return any(path == Path(p).resolve() or path.is_relative_to(Path(p).resolve()) for p in policy.get('excluded_paths', []))
-    return False
-
-
-def check_references(value, policy):
-    if isinstance(value, dict):
-        for child in value.values():check_references(child, policy)
-    elif isinstance(value, list):
-        for child in value:check_references(child, policy)
-    elif isinstance(value, str) and _inside_exclusion(value, policy):
-        raise ValueError('Scene was removed by the user; its source and derived artifacts cannot be reused')
-
-
-def check_request(root, route, arguments):
-    policy = policy_for(root)
-    if not policy:return
-    if route not in {'/start', '/capture', '/refine', '/extend', '/retry', '/dataset'}:return
-    check_references(arguments, policy)
-    if route == '/retry':
-        from .scene_design import review_retry_directory
-        if arguments.get('feedback') is not None:raise ValueError('Scene design changes require capture/refine, not review retries')
-        directory=review_retry_directory(root,arguments.get('task_id'))
-        admit_program(root,json.loads((directory/'program.json').read_text()))
-        # Store.retry additionally checks the actual failed phase and error.
-        return
-    if route in {'/start', '/capture', '/refine', '/extend'}:
-        from .program_submission import read_program_submission
-        intents = arguments.get('intents', []) if route == '/start' else [arguments]
-        if not intents:raise ValueError('A complete SceneProgram is required')
-        for intent in intents:
-            path = intent.get('scene_program_path')
-            if not path:raise ValueError('The unchecked default planner is disabled; provide scene_program_path')
-            check_references(path, policy)
-            submission = read_program_submission(root, path)
-            admit_program(root, submission['program'], allow_generated=True)
-
-
-def admit_program(root, program, *, allow_generated=False):
-    if not policy_for(root):return {'enforced': False}
-    check_references(program, policy_for(root))
+def admit_program(root, program, *, allow_generated=False, execution_mode=None):
+    policy = _policy_for_mode(root, execution_mode)
+    if not policy:return {'enforced': False, 'passed': None, 'evaluation_status': 'not_evaluated'}
+    check_references(program, policy)
     validate_program(program)
     program = normalize_native_asset_references(program)
     props = [obj for obj in program['objects'] if not structure(obj)]
     if not props:raise ValueError('Realistic scenes need recognizable foreground assets')
-    declaration=geometry_exception(program,policy_for(root))
-    brief = scene_brief(program, policy_for(root), root)
+    declaration = geometry_exception(program, policy)
+    brief = scene_brief(program, policy, root)
     simplified=set(declaration['object_ids']) if declaration else set()
     by_id = {obj['id']: obj for obj in program['objects']}
     problems = []
@@ -170,12 +122,19 @@ def admit_program(root, program, *, allow_generated=False):
             'scope': 'assets or declared simplification, scale, support and camera sanity; capture validation still required'}
 
 
-def capture_acceptance(root, program, report, evidence, review, capture):
+def capture_acceptance(root, program, report, evidence, review, capture, execution_mode=None):
     """Require actual native capture, physics, geometry and per-view life review."""
-    if not policy_for(root):return {'enforced': False, 'passed': True}
+    policy = _policy_for_mode(root, execution_mode)
+    if execution_mode == 'exploration' or not policy:
+        return {
+            'enforced': False,
+            'passed': None,
+            'evaluation_status': 'not_evaluated',
+            'execution_mode': execution_mode or 'exploration',
+        }
     issues = []
     admission={}
-    try:admission=admit_program(root, program)
+    try:admission=admit_program(root, program, execution_mode=execution_mode)
     except (ValueError, OSError, KeyError, TypeError) as error:issues.append(str(error))
     physics = evidence.get('physics', {})
     if report.get('status') != 'captured' or report.get('renderable') is not True or evidence.get('origin') != 'isaac_native':
@@ -360,14 +319,15 @@ def capture_acceptance(root, program, report, evidence, review, capture):
             'on_failure':'retain failed evidence; repair within budget; never export or mark complete'}
 
 
-def require_accepted(root, directory):
-    if not policy_for(root):return
+def require_accepted(root, directory, execution_mode=None):
+    policy = _policy_for_mode(root, execution_mode)
+    if not policy:return
     directory=Path(directory)
     file=directory/'scene_acceptance.json'
     receipt=json.loads(file.read_text(encoding='utf-8')) if file.is_file() else {}
     if receipt.get('passed') is not True or receipt.get('enforced') is not True:
         raise ValueError('Scene has no passing physical and life acceptance; do not export, select or mark complete')
-    if policy_for(root).get('require_scene_brief') and not receipt.get('scene_brief'):
+    if policy.get('require_scene_brief') and not receipt.get('scene_brief'):
         raise ValueError('Scene has no saved brief and capture alignment acceptance')
     for relative in ('program.json','capture/report.json','capture/evidence.json'):
         path=directory/relative

@@ -31,10 +31,14 @@ def assessment_template():
     value['scene_authoring']['scene_brief'] = {
         'location': 'assessment.scenes.designs[]', 'name': '清晰的场景标题',
         'summary': '先写200到400字的详细段落，说明用途、空间、物体、朝向、支撑、光照、动线和取用关系。',
+        'spatial_reference': '使用前后左右先明确世界/使用者参照和对象原点。桌面前沿是靠使用者侧，使用者前方是其面朝方向，二者不得混用；不按相机画面上下左右判定。可填写具体说明文本，或按 spatial_reference_example 给出可解析的参照。方向关系用 reference_frame 与 expected_direction 显式绑定；支撑与朝向仍需实图和原生回执共同检查。',
+        'spatial_reference_example': {'schema': 'spatialforge.review-reference/v1', 'world_up': [0, 0, 1], 'frames': [{'id': 'left_work_surface_user', 'kind': 'user', 'origin_object_id': 'desk_c1', 'observer_object_id': 'chair_c1', 'facing_target_object_id': 'desk_c1', 'front': 'toward_observer'}]},
         'hard_requirements': ['用户原始硬要求，自动修复不得降低或删去'],
         'object_roles': [{'object_id': '实际物体 id', 'role': '物体在场景中的作用与位置'}],
         'relations': [{'source': '实际物体 id', 'type': 'supported_by|mounted_to|clearance|near|facing|inside',
                        'target': '实际物体 id 或 ground', 'description': '具体空间关系与使用理由'}],
+        'directional_relation_example': {'source': 'lamp_c', 'type': 'supported_by', 'target': 'desk_c1', 'description': '台灯底座由桌面支撑，并位于靠使用者的右前区域。', 'reference_frame': 'left_work_surface_user', 'expected_direction': ['right', 'front']},
+        'optional_direction_fields': '只有含前后左右/上下要求的关系填写 reference_frame 与 expected_direction，其余关系省略；不把方向例子套给全部支撑关系。',
         'physical_assumptions': ['明确质量、摩擦、支撑、固定安装的先验与验证限制'],
         'previous_capture_directory': '修订已有场景时填写上一版实际采集目录；继承该目录冻结的全部硬要求',
         'revision_history': [{'revision': 1, 'changes': ['根据实拍或回执发现的问题修改具体设计'], 'evidence_directory': '实际依据目录',
@@ -48,6 +52,8 @@ def assessment_template():
         'physical_relations': '明确支撑链、实际接触面、固定安装连接；空心家具按真实层板和箱底检查，叶片、把手和桌腿保留余量。不能只靠整体包围盒或声明支撑。',
         'actions': '检查动作前沉降、实际施力轨迹和动作后画面；推动后的滑移、倾倒、掉落及最终支撑须符合原实验目的。修复不得悄悄移除交互或放宽用户硬指标。',
         'evidence_and_iteration': '采用全景布局与关键接触近景，逐图、逐关系核对；看不清则补机位。硬要求保持，软设计按证据修订，保留旧版、差异、依据与未解问题。',
+        'spatial_reference': '使用前后左右先明确世界/使用者参照和对象原点。桌面前沿是靠使用者侧，使用者前方是其面朝方向，二者不得混用；不按相机画面上下左右判定。可填写具体说明文本，或按 spatial_reference_example 给出可解析的参照。方向关系用 reference_frame 与 expected_direction 显式绑定；支撑与朝向仍需实图和原生回执共同检查。',
+        'multi_view_and_repair': '用全部本次机位查证必要事实；某图遮挡但另一实图和原生回执已确认支撑时，不把单图不可见当作支撑缺失。低可信或互相矛盾的意见先澄清参照/改善观察，不直接移动已获支持的物体。确需移位先保护支撑余量、碰撞、操作空间和硬要求，重新实拍验收。',
         'limits': '原生碰撞与沉降只证明本次参数和动作范围；静态布局不证明动力学，合成质量摩擦不等于实测。无法验证的要求明确失败并停在场景阶段。'}
     value['instructions'] += (' 场景质量约束：默认使用真实可辨识资产。模型在保存的场景生产计划中明确声明测量目的、简化原因、物体范围、保留约束和不声称的能力时，允许简化几何实验；按 scene_authoring 合同填写可选声明并绑定程序。'
                               '先审查完整SceneProgram再采集，实际看图并检查物理、支撑及符合实验设定的生活合理性后出题。已删除场景及派生产物不得复用；资产不足不能成为未经计划声明的自动降级理由。')

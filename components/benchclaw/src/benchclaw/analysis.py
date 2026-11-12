@@ -4,9 +4,11 @@ import json
 import sys
 from pathlib import Path
 
+from .resources import benchclaw_root
+
 
 def export_kinship(bundle,output):
-    path=Path(__file__).resolve().parents[2]/'BenchClaw/tools/gt_kinship_base.py'
+    path=benchclaw_root()/'tools/gt_kinship_base.py'
     name='benchclaw_kinship'
     if name not in sys.modules:
         spec=importlib.util.spec_from_file_location(name,path);module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)

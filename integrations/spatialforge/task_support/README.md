@@ -1,0 +1,11 @@
+# Public reconstruction support for task builders
+
+Copy `public_sensor_cache.py`, `public_geometry_cache.py` and `public_measurements.py` together into the task's code directory or isolated public worker directory. They import each other by filename and contain no machine paths. Runtime dependencies are NumPy and Pillow; only the existing C01-T02 point-distance predictor additionally imports SciPy.
+
+Use `PublicReconstruction(public_calibration_card)` from `public_measurements`. For a measurement matching the saved public protocol, call `geometry(label)` for the center/size and `point_count(label)` for the diagnostic sample count. Use `points(label)` when the actual point cloud is required. The supplied `predict`/`public_query` bindings cover their existing frozen templates; preserve other templates' definitions and exact public bindings when composing their measurement from these primitives.
+
+Run related public predictions in one batch process so the module LRU can be reused across fresh reconstruction instances. An isolated worker must carry all three files. Do not replace the declared reference frame, K, depth units, masks, local axes, mathematical reconstruction, visibility requirements or acceptance tolerances. Private oracle comparison is still executed for each question; it is never cached. Retain accepted native surface certificates according to the existing production contract.
+
+The geometry-result LRU holds at most 128 results and 2 MiB. It keys the resolved public sensor file paths with size/mtime, K, relative pose, units, sampling offset, the actual reference sensor and local axes. It stores immutable center/size/basis/point-count results and returns fresh arrays. Public images and metric frames keep their original separate bounded caches.
+
+Existing narrow evidence from three retained center questions: complete geometry and predictions exactly matched; warm time was 1.394s to 0.439s (3.17x), with 438990 bytes for 15 results and zero warm pointcloud materializations. File-version and reference-pose invalidations and mutation isolation passed. This is a narrow result, not a claim that a new full dataset is accepted or has the same speedup. Reuse this evidence for the unchanged support algorithms; check the new task's actual public measurements and contracts during its normal acceptance.

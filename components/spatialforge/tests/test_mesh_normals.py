@@ -10,6 +10,18 @@ from spatialforge.mesh_geometry import transform_mesh_geometry, transform_mesh_n
 
 
 class MeshNormalsTests(unittest.TestCase):
+    def test_zero_source_normal_uses_face_direction_without_replacing_valid_normals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / 'zero-normal.obj'
+            source.write_text('v 0 0 0\nv 1 0 0\nv 0 1 0\n'
+                              'vn 0 0 0\nvn 0 1 0\nf 1//1 2//2 3//2\n')
+            record = export_mesh(source, root / 'mesh.json', source_frame='z_up')
+            np.testing.assert_allclose(record['normals'], [[0, 0, 1], [0, 1, 0], [0, 1, 0]])
+            self.assertEqual(record['normal_sources'][0]['geometric_fallback_corners'], 1)
+            self.assertTrue(np.isfinite(record['normals']).all())
+            json.dumps(record, allow_nan=False)
+
     def test_obj_corner_normals_survive_instance_scale_and_y_up(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)

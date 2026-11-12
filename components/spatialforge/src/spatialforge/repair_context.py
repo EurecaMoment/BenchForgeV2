@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import re
 
+from .scene_review_reference import review_spatial_context
+
 FIELDS = ('kind', 'asset_id', 'mesh_transform', 'size', 'xy', 'base_z', 'support',
           'yaw_deg', 'dynamic', 'mass_kg', 'physics', 'appearance', 'render_representation', 'cast_shadows', 'parts')
 GUIDANCE = ('Repair evidence distinguishes current capture, previous capture, and design reference. '
@@ -11,6 +13,9 @@ GUIDANCE = ('Repair evidence distinguishes current capture, previous capture, an
             'before undoing a prior pose/support/action correction. A field reversal is not automatically wrong; '
             'decide from the caller requirement and actual images/state. Do not infer semantic up from zero Euler '
             'angles, or contact from a bounding envelope. Model review issues are fallible opinions, not GT. '
+            'Resolve work-surface front versus observer forward from the saved spatial reference, then compare every relevant captured view. '
+            'A low-confidence visual opinion or a single occluded view cannot reverse native support plus clear contact in another actual view. '
+            'Clarify the reference or improve observation first when facts conflict; positional edits must preserve support margin, clearance and protected requirements. '
             'This context never locks poses, adds retries, or changes acceptance thresholds.')
 
 
@@ -93,11 +98,18 @@ def build_repair_context(current, previous=None):
     program = _read(current, 'program.json')
     evidence = _read(current, 'capture/evidence.json')
     review = _read(current, 'scene_review.json')
-    feedback = json.dumps({key: review.get(key) for key in ('issues', 'repair_suggestions')}, ensure_ascii=False)
+    support_evidence = [row for check in (review.get('life_review') or {}).get('checks', [])
+                        if isinstance(check, dict) and check.get('check') == 'support_and_attachment' and check.get('passed') is True
+                        for row in check.get('evidence', []) if isinstance(row, dict)]
+    feedback = json.dumps({**{key: review.get(key) for key in ('issues', 'repair_suggestions')},
+                           'confirmed_support_evidence': support_evidence}, ensure_ascii=False)
     images, missing = _view_paths(current, feedback, 6)
     context = {'schema': 'spatialforge.repair-context/v1', 'authority': 'program diff and simulator receipts; model opinions separate; not GT',
                'source_revision': current.name, 'current_review_opinion': _review(current),
                'missing_review_views': missing, 'attachment_manifest': []}
+    context['spatial_reference_and_support'] = (_read(current, 'scene_spatial_context.json') or
+        review_spatial_context(_read(current, 'scene_brief.json'), evidence,
+                               review.get('production_acceptance', {}).get('native_relation_checks', [])))
     if previous is not None:
         previous = Path(previous)
         context['previous_revision'] = previous.name

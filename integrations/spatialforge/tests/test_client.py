@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import os
+import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -38,3 +40,21 @@ class ClientTests(unittest.TestCase):
         with patch.dict('os.environ', {}, clear=True):
             with self.assertRaisesRegex(ValueError, 'operator_token'):
                 client.status({'service_url': 'http://127.0.0.1:1'})
+
+    def test_load_config_follows_local_service_reference(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root/'scene-library').mkdir()
+            (root/'scene-library/policy.json').write_text(
+                '{"enabled":true,"enforce_realism":true}', encoding='utf-8')
+            (root/'server.local.json').write_text(json.dumps({
+                'port': 3941, 'operator_token_env': 'SPATIALFORGE_TEST_TOKEN',
+                'execution_mode': 'production', 'scene_policy_path': 'scene-library/policy.json',
+            }), encoding='utf-8')
+            client_config = root/'spatialforge.local.json'
+            client_config.write_text('{"service_config":"server.local.json"}', encoding='utf-8')
+            with patch.dict(os.environ, {'SPATIALFORGE_TEST_TOKEN': 'fixture-token'}, clear=True):
+                loaded = client.load_config(client_config)
+        self.assertEqual(loaded['service_url'], 'http://127.0.0.1:3941')
+        self.assertEqual(loaded['operator_token'], 'fixture-token')
+        self.assertEqual(loaded['execution_mode'], 'production')

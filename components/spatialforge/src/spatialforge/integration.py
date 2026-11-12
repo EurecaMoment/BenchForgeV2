@@ -1,6 +1,6 @@
-"""Reuse BenchClaw's data engine; SpatialForge owns the production request.
+"""Reuse BenchClaw's data engine; BenchForgeV2 owns the production request.
 
-The linked run shares PostgreSQL with SpatialForge and keeps the original
+The linked run shares PostgreSQL with BenchForgeV2 and keeps the original
 plugin receipts. This adapter never imports or invokes target-model evaluation.
 """
 from __future__ import annotations
@@ -257,7 +257,7 @@ def _brief(snapshot):
 def run_dataset(store, task, stop=None):
     """Execute acquisition → GT/synthesis → critique → collection → export.
 
-    The caller may resume the same SpatialForge task after a service restart.
+    The caller may resume the same BenchForgeV2 task after a service restart.
     The linked child and successful plugin artifacts are reused, never reset.
     """
     from benchclaw.compiler import compile_spec
@@ -321,5 +321,5 @@ def run_dataset(store, task, stop=None):
             failed = [t['task_id']+':'+t['state'] for t in snapshot['tasks'] if t['state'] in {'FAILED_FINAL','QUARANTINED','BLOCKED_DEPENDENCY','CANCELED'}]
             raise RuntimeError('Dataset candidate retained in '+str(directory)+'; '+child+' '+', '.join(failed)+'; gate issues and metrics: dataset_status.json')
         # Retry delays and a surviving worker lease should not occupy the entire
-        # SpatialForge coordinator; its next turn resumes this same linked run.
+        # BenchForgeV2 coordinator; its next turn resumes this same linked run.
         raise ResourceWait('Dataset child is waiting on its recorded worker/retry lease: '+child)

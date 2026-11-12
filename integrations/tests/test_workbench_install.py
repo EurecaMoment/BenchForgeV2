@@ -11,7 +11,7 @@ spec.loader.exec_module(install)
 
 
 class WorkbenchInstall(unittest.TestCase):
-    def test_ui_plugin_is_installed_only_in_spatialforge_preset_and_is_idempotent(self):
+    def test_single_host_reader_preserves_legacy_identity_and_is_idempotent(self):
         profile = [{"insert": [
             {"id": "official", "name": "@deepseek-ai/dsh-client-ui-sidebar"},
             {"id": "benchforge-workbench-ui", "name": "/old/global/workbench/index.js"},
@@ -22,16 +22,33 @@ class WorkbenchInstall(unittest.TestCase):
         self.assertEqual(profile, original)
         self.assertEqual(result[0]["insert"][0], original[0]["insert"][0])
         self.assertEqual(result[0]["insert"][0]["name"], "@deepseek-ai/dsh-client-ui-sidebar")
-        self.assertEqual([row["id"] for row in result[0]["insert"]], ["official", "spatialforge"])
-        spatial_plugins = result[0]["insert"][1]["config"]["plugins"]
+        self.assertEqual([row["id"] for row in result[0]["insert"]], ["official", "benchforge-workbench-ui", "spatialforge"])
+        spatial = result[0]['insert'][2]['config']
+        self.assertEqual(spatial['id'], 'spatialforge-standard-ptc')
+        self.assertEqual(spatial['name'], 'BenchForgeV2_UI')
+        spatial_plugins = spatial['plugins']
         self.assertEqual(spatial_plugins[0]["id"], "existing")
-        self.assertEqual(spatial_plugins[-1]["id"], "spatialforge-evaluation-ui")
+        self.assertNotIn('spatialforge-evaluation-ui', [row['id'] for row in spatial_plugins])
         self.assertEqual(install.update_profile(result, ROOT, [ROOT / "task-workspace"]), result)
-        spatial_plugins[-1]["config"]["maxRuns"] = 20
+        reader = result[0]['insert'][1]
+        reader['config']['maxRuns'] = 20
         refreshed = install.update_profile(result, ROOT, None, "next")
-        updated = refreshed[0]["insert"][1]["config"]["plugins"][-1]
-        self.assertEqual(updated["config"], spatial_plugins[-1]["config"])
-        self.assertTrue(updated["name"].endswith("?workbench_revision=next"))
+        updated = refreshed[0]['insert'][1]
+        self.assertEqual(updated['config'], {**reader['config'], 'uiRevision': 'next'})
+        self.assertEqual(updated['name'], str(ROOT / 'integrations/spatialforge/ui/stage_products.js'))
+
+    def test_moves_preset_local_settings_to_reader_without_losing_history_roots(self):
+        profile = [{'insert': [
+            {'id': 'benchforge-workbench-ui', 'config': {'workspacePaths': ['/existing'], 'maxRuns': 20}},
+            {'id': 'legacy-ui', 'config': {'id': install.PRESET_ID, 'plugins': [
+                {'id': 'spatialforge-evaluation-ui', 'config': {'workspacePaths': ['/older'], 'maxArtifacts': 75}},
+            ]}},
+        ]}]
+        result = install.update_profile(profile, ROOT, None)
+        reader = result[0]['insert'][0]
+        self.assertEqual(reader['config'], {'workspacePaths': ['/older', '/existing'], 'maxRuns': 20, 'maxArtifacts': 75})
+        self.assertEqual(result[0]['insert'][1]['config']['plugins'], [])
+        self.assertEqual(install.update_profile(result, ROOT, None), result)
 
     def test_refuses_profile_without_exactly_one_spatialforge_preset(self):
         with self.assertRaises(ValueError):

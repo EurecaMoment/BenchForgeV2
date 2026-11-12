@@ -121,6 +121,10 @@ def execute_generation_stage(store, task, stop):
         objects = [{'object_id': item['object_id'], 'image': value['source_image'],
                     'mask': item['source_mask'], 'seed': item.get('seed', value.get('seed',42))} for item in value['objects']]
         request = {'output_dir': str(output), 'objects': objects}
+        if os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROVIDER'):
+            request['provider'] = os.environ['SPATIALFORGE_RECONSTRUCTION_PROVIDER']
+        if value.get('profile') or os.environ.get('SPATIALFORGE_RECONSTRUCTION_PROFILE'):
+            request['profile'] = value.get('profile') or os.environ['SPATIALFORGE_RECONSTRUCTION_PROFILE']
         if not os.environ.get('SPATIALFORGE_INFERENCE_URL'):
             request.update(source_root=tools.config.data['sources']['sam3d'],
                            config_path=str(Path(tools.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
@@ -131,7 +135,7 @@ def execute_generation_stage(store, task, stop):
         for asset in worker['assets']:
             source = output / asset['asset']
             result['assets'].append({**asset, **({'gaussian_source_path':str(output / asset['gaussian'])} if asset.get('gaussian') else {}), 'source_path': str(source),
-                                     'source_frame': 'sam3d_camera', 'metric_reconstruction': False})
+                                     'source_frame': asset.get('source_frame', 'sam3d_camera'), 'metric_reconstruction': False})
     else:
         if stop.is_set():
             raise RuntimeError('mesh import canceled')

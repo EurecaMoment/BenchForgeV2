@@ -1,4 +1,4 @@
-"""Generate a new BenchForge mode. Never writes official presets or profiles."""
+"""Compose the first-generation BenchForge preset from public DSH exports."""
 import argparse
 from copy import deepcopy
 import json
@@ -24,6 +24,51 @@ Loader.add_constructor('tag:yaml.org,2002:js', lambda loader,node:JavaScript(loa
 Dumper.add_representer(JavaScript, lambda dumper,value:dumper.represent_scalar('tag:yaml.org,2002:js',str(value)))
 
 
+BENCHFORGE_ID = 'benchforge'
+BENCHFORGE_V2_ID = 'benchforgev2'
+# Existing session logs contain this identity. Only its display name changes.
+WORKBENCH_PRESET_ID = 'spatialforge-standard-ptc'
+PRESETS = {
+    BENCHFORGE_ID: {
+        'name': 'BenchForge', 'order': -3,
+        'description': 'First-generation benchmark construction with bundled BenchClaw capabilities.',
+    },
+    BENCHFORGE_V2_ID: {
+        'name': 'BenchForgeV2', 'order': -2,
+        'description': 'Scene and data production in the standard conversation interface.',
+    },
+    WORKBENCH_PRESET_ID: {
+        'name': 'BenchForgeV2_UI', 'order': -1,
+        'description': 'Scene and data production with the visual workbench.',
+    },
+}
+MODEL_TOOLS = [
+    'model_yoloe', 'model_sam3', 'model_moge', 'model_lama', 'model_flux_fill',
+    'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
+    'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
+]
+BENCHFORGE_TOOLS = [
+    'catalog', 'status', 'plan', 'method', 'literature', 'research_review', 'design',
+    'acquire', 'normalize', 'clean', 'annotate', 'sam3', 'yoloe', 'depthanything3', 'llm_local',
+    'habitat', 'libero', 'carla', 'isaac', 'adapt_capture', 'backend',
+    'evidence', 'build', 'evaluate', 'kinship', 'images', 'compile', 'synthesize', 'screen',
+    'score', 'model_eval', 'baselines', 'diagnose', 'package', 'report', 'usage',
+    'collaboration', 'view_image', *MODEL_TOOLS,
+]
+
+
+def set_identity(row, preset_id):
+    """Keep preset metadata in one place, independent of tool composition."""
+    row['id'] = 'preset-' + preset_id
+    row['config'].update(id=preset_id, **PRESETS[preset_id])
+
+
+def config_reference(path, package_imports=False):
+    """Bundle defaults stay relative; deployment overlays use absolute paths."""
+    path = Path(path)
+    return path.as_posix() if package_imports else str(path.resolve())
+
+
 def load_sources(dsh_root=None, node=None, resolve_from=None):
     """Resolve official preset assets through the package's supported exports."""
     if resolve_from is None:
@@ -37,19 +82,21 @@ def load_sources(dsh_root=None, node=None, resolve_from=None):
             resolve_from=cli_manifest if cli_manifest.exists() else root/'package.json'
     names=['standard','ptc','minimal','cordis']
     script="""const {createRequire}=require('node:module');
+const {readFileSync}=require('node:fs');
 const requireFrom=createRequire(process.argv[1]);
 const names=JSON.parse(process.argv[2]);
 console.log(JSON.stringify(Object.fromEntries(names.map(name=>
-  [name,requireFrom.resolve('@deepseek-ai/dsh-web-app/presets/'+name+'.patch.yml')]))));"""
+  [name,readFileSync(requireFrom.resolve('@deepseek-ai/dsh-web-app/presets/'+name+'.patch.yml'),'utf8')]))));"""
     command=[node or os.environ.get('BENCHFORGE_DSH_NODE','node'),'-e',script,
              str(Path(resolve_from).resolve()),json.dumps(names)]
-    result=subprocess.run(command,capture_output=True,text=True)
+    result=subprocess.run(command,capture_output=True,text=True,encoding='utf-8')
     if result.returncode:
         raise RuntimeError('Cannot resolve official @deepseek-ai/dsh-web-app preset exports. '
                            'Use a current DSH Node interpreter (--node) and installed package '
                            'lookup location (--dsh-resolve-from).\n'+result.stderr.strip())
     assets=json.loads(result.stdout)
-    return {name:yaml.load(Path(assets[name]).read_text(encoding='utf-8'),Loader=Loader)
+    # Node also handles Windows long package-manager paths that pathlib cannot open.
+    return {name:yaml.load(assets[name],Loader=Loader)
             for name in names}
 
 
@@ -62,8 +109,7 @@ PERSONA = '''You operate BenchForge, an independent benchmark construction mode.
 Keep Standard's conversational interaction, file tools, image inspection and task code. Choose the available tools that fit the current objective; catalog, methods, source processing, annotation, compilation, synthesis, scoring, review and reporting are composable capabilities rather than a required sequence.
 Use direct tools, PTC and collaboration tools when they help. Split genuinely independent work among available agents, keep a shared workspace, and publish concise handoffs so another agent can resume, reply, reconcile evidence or take over a blocked piece. Handoffs may link related work and state a decision, but no fixed graph, round count, role roster or approval step is implied. Coordinate simulator submissions through the configured execution boundary and avoid overwriting active artifacts.
 Discover exact tool contracts from the session catalog when needed, then use the listed tools directly. Arrays of capabilities, sources, templates and metrics contain objects with id fields. Prefer supplied domain methods, compilers, annotation chains and validation evidence; write an adapter only when the source or task actually needs one.
-Spatial learning tools provide capability and template discovery, program-grounded data generation and export, local-model training, condition-specific curricula, experiments and live monitoring. Use matched observations and explicit input conditions when attributing capability gains; choose tasks and schedules that fit the requested training objective.
-For user capability-data requests use pipeline_catalog to discover the imported 89-task/267-template measurement catalog, interpret intent and record exact template selections/counts/reasons with pipeline_plan. Run or resume registered recipes through pipeline_run. A capability link is retrieval metadata, not a primary measurement claim. Keep exact protocol conditions and produce task-specific evidence when requested; do not substitute old template IDs. Compose recipes through their output artifacts and inspect pipeline_status before repeating a submission.
+Use the bundled first-generation BenchClaw capabilities through catalog, method, plan, acquisition, annotation, compilation and evaluation tools. Their implementation and required resources ship with this repository; never locate or execute an external BenchClaw source checkout. Preserve exact source protocols, public evidence and scoring conditions. Scene-production workflows and spatial-learning tools belong to the separate BenchForgeV2 presets.
 Inspect relevant images and returned evidence, and let observations guide the next code or tool call. Preserve source labels, simulator state and provenance. Model masks, inferred depth and review findings are predictions or guidance; they do not replace GT from official records, task programs or simulation.
 For simulation distance questions, use the declared depth semantics and camera intrinsics so the oracle matches the wording. Keep authority data and raw arrays separate from public media, and resolve relative evidence paths from their source document.
 Package public questions/media separately from authority data. Scale synthesis when the requested coverage and scorer controls are met; use configured model evaluation only on public inputs and label proxy baselines as such. Report concrete artifacts, evidence and remaining gaps.
@@ -76,10 +122,8 @@ def build(sources, root, python, config_path, *, package_imports=False):
     def preset(name):
         return next(row for patch in sources[name] for row in patch.get('insert',[]) if row['id']=='preset-'+name)
     result=deepcopy(preset('standard'))
-    result['id']='preset-benchforgev2'
+    set_identity(result, BENCHFORGE_ID)
     cfg=result['config']
-    cfg.update(id='benchforgev2',name='BenchForgev2',order=-2,
-               description='Composable benchmark construction, annotation, simulation and evidence.')
     plugins=cfg['plugins']
     persona=next(p for p in plugins if p['id']=='persona')
     persona['config']['prefix']=PERSONA
@@ -95,7 +139,8 @@ def build(sources, root, python, config_path, *, package_imports=False):
     plugins.append(persistent)
     plugins.append(deepcopy(next(p for p in preset('cordis')['config']['plugins'] if p['id']=='tool-cordis')))
     plugins.append({'id':'benchforge-tools','name':'@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports else str(Path(__file__).with_name('tools.mjs').resolve()),
-                    'config':{'python':python,'configPath':str(config_path.resolve())}})
+                    'config':{'python':str(python),'configPath':config_reference(config_path, package_imports),
+                              'includeTools':list(BENCHFORGE_TOOLS)}})
     return [{'insert':[result]}]
 
 

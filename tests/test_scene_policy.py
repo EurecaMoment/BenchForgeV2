@@ -10,6 +10,61 @@ from benchforge_core.pipelines.runner import execute_step
 
 
 class ScenePolicyTests(unittest.TestCase):
+    def test_pipeline_uses_policy_selected_by_service_config(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy = root / 'scene-library' / 'policy.json'
+            legacy.parent.mkdir()
+            legacy.write_text(json.dumps({'enabled': True, 'excluded_tasks': ['sf_legacy.scene0']}))
+            canonical = root / 'configured-policy.json'
+            canonical.write_text(json.dumps({'enabled': True, 'enforce_realism': True,
+                                             'excluded_tasks': ['sf_configured.scene0']}))
+            service_config = {
+                'execution_mode': 'production',
+                'scene_policy_path': str(canonical),
+            }
+            with patch('benchforge_core.service_config.load_service_client_config', return_value=service_config):
+                policy = load_policy(root, 'service.json')
+            self.assertEqual(policy['execution_mode'], 'production')
+            with self.assertRaisesRegex(ValueError, 'removed by the user'):
+                check_source(policy, task_id='sf_configured.scene0')
+            check_source(policy, task_id='sf_legacy.scene0')
+
+    def test_explicit_exploration_mode_does_not_apply_production_admission_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            policy_file = root / 'policy.json'
+            policy_file.write_text(json.dumps({'enabled': True, 'enforce_realism': True,
+                                               'excluded_tasks': ['sf_exploration.scene0']}))
+            service_config = {'execution_mode': 'exploration',
+                              'scene_policy_path': str(policy_file)}
+            with patch('benchforge_core.service_config.load_service_client_config', return_value=service_config):
+                policy = load_policy(root, 'service.json')
+            self.assertEqual(policy, {'execution_mode': 'exploration'})
+
+    def test_production_environment_cannot_silently_run_without_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict('os.environ', {'SPATIALFORGE_EXECUTION_MODE': 'production',
+                                           'SPATIALFORGE_SCENE_POLICY': str(Path(tmp) / 'missing.json')}):
+                with self.assertRaisesRegex(ValueError, 'requires an enabled'):
+                    load_policy(tmp)
+
+    def test_explicit_policy_environment_path_is_authoritative(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy = root / 'scene-library' / 'policy.json'
+            legacy.parent.mkdir()
+            legacy.write_text(json.dumps({'enabled': True, 'excluded_tasks': ['legacy']}))
+            selected = root / 'canonical.json'
+            selected.write_text(json.dumps({'enabled': True, 'enforce_realism': True,
+                                            'excluded_tasks': ['canonical']}))
+            with patch.dict('os.environ', {'SPATIALFORGE_SCENE_POLICY': str(selected)}):
+                policy = load_policy(root)
+            self.assertEqual(policy['execution_mode'], 'production')
+            with self.assertRaisesRegex(ValueError, 'removed by the user'):
+                check_source(policy, task_id='canonical')
+            check_source(policy, task_id='legacy')
+
     def test_scene_extend_pipeline_is_registered_with_scene_program_binding(self):
         from benchforge_core.pipelines.catalog import pipeline_files
         from benchforge_core.pipelines.runner import stage_of
@@ -113,19 +168,30 @@ class ScenePolicyTests(unittest.TestCase):
 
     def policy(self, root):
         folder=root/'scene-library';folder.mkdir()
-        (folder/'policy.json').write_text(json.dumps({'enabled':True,'excluded_tasks':['sf_removed.scene0'],
+        (folder/'policy.json').write_text(json.dumps({'enabled':True,'enforce_realism':True,'excluded_tasks':['sf_removed.scene0'],
             'excluded_scene_groups':['scene-v1:removed'],'excluded_paths':[str(root/'deleted')]}))
 
     def test_submit_and_pipeline_reject_before_queue_and_accept_recognizable_assets(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);self.policy(root)
-            program=root/'program.json';program.write_text(json.dumps({'objects':[{'id':'chair','kind':'box'}]}))
+            plan=root/'plan.json'
+            plan.write_text(json.dumps({'schema':'spatialforge.assessment/v1','scenes':{'designs':[{
+                'id':'chair-scene','name':'Chair scene','summary':'A chair stands on the floor with clear access around it.',
+                'hard_requirements':['The chair remains upright'],'physical_assumptions':['Static support'],
+                'object_roles':[{'object_id':'chair','role':'A chair used to test scene admission'}],
+                'relations':[{'source':'chair','type':'supported_by','target':'ground','description':'The floor supports the chair'}]
+            }]}}))
+            program_value={'scene_id':'chair-scene',
+                'objects':[{'id':'chair','kind':'box'}],
+                'provenance':{'sources':[{'kind':'scene_plan','path':str(plan),'scene_design_id':'chair-scene'}]}}
+            program=root/'program.json';program.write_text(json.dumps(program_value))
             client=Mock()
-            environment={'_workspace':str(root),'inputs':{'service_config':'unused'},'_run_key':'fixture'}
+            environment={'_workspace':str(root),'inputs':{},'_run_key':'fixture'}
             with self.assertRaisesRegex(ValueError,'Scene rejected'):
                 execute_step({'id':'capture','uses':'spatialforge.capture'},{'scene_program_path':str(program)},root,environment,client)
             client.assert_not_called()
-            program.write_text(json.dumps({'objects':[{'id':'chair','kind':'mesh'}]}))
+            program_value['objects'][0]['kind']='mesh'
+            program.write_text(json.dumps(program_value))
             check_submission(root,'/capture',{'scene_program_path':str(program)})
             with self.assertRaisesRegex(ValueError,'unchecked default planner'):
                 check_submission(root,'/start',{'intents':[{'name':'house'}]})

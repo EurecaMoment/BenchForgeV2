@@ -2,6 +2,7 @@
 import argparse
 from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -102,17 +103,148 @@ def completed_tasks(config):
         engine.dispose()
 
 
-def sync_catalog(config, folder):
-    previous = read_json(folder / 'catalog.json', {'schema': SCHEMA, 'items': []})
-    if previous.get('schema') != SCHEMA:
-        raise LibraryError('This scene catalog uses an unsupported format', 409)
+@contextmanager
+def catalog_locked(folder):
+    """Share the finalizer's OS lock; .write.lock only protects UI selections."""
+    path = folder / 'catalog.json.lock'
+    if path.is_symlink():
+        raise LibraryError('Invalid library lock', 403)
+    with path.open('a+b') as handle:
+        if os.name == 'nt':
+            import msvcrt
+            if handle.tell() == 0:
+                handle.write(b'\0')
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if os.name == 'nt':
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def native_identity(row, source_root):
+    task = row.get('task_id')
+    revision = row.get('revision')
+    if not isinstance(task, str) or not re.fullmatch(r'sf_[a-zA-Z0-9_-]+\.scene\d+', task):
+        return None
+    if type(revision) is not int or revision < 0 or row.get('id') != task:
+        return None
+    try:
+        source = Path(row['source_directory'])
+        if not source.is_absolute() or source.is_symlink():
+            return None
+        canonical = source.resolve()
+        canonical.relative_to(source_root)
+        if canonical != (source_root / task / ('revision_' + str(revision))).resolve():
+            return None
+        return task, revision, str(canonical)
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def registration_metadata(previous, fresh, folder, source_root):
+    """Retain finalizer metadata, never its cached eligibility or admission."""
+    identity = native_identity(fresh, source_root)
+    if not identity or native_identity(previous, source_root) != identity:
+        return {}
+    if previous.get('source_role') != 'accepted_native_revision':
+        return {}
+    try:
+        path = Path(previous['native_contract_path'])
+        if not path.is_absolute() or path.is_symlink():
+            return {}
+        path.resolve().relative_to(folder.parent.resolve())
+        if not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
+            return {}
+        receipt = read_json(path, {})
+        contract = receipt.get('native_contract', {})
+        if (receipt.get('source_task_id') != identity[0] or receipt.get('revision') != identity[1] or
+            str(Path(receipt['runtime_revision']).resolve()) != identity[2] or
+            str(Path(contract['source_directory']).resolve()) != identity[2] or
+            receipt.get('capture_origin') != 'isaac_native' or
+            receipt.get('acceptance_passed') is not True or receipt.get('acceptance_enforced') is not True or
+            receipt.get('scene_design_id') != previous.get('scene_design_id') or
+            receipt.get('scene_id') != previous.get('logical_scene_id') or
+            not isinstance(previous.get('applied_plan'), dict) or
+            receipt.get('applied_plan') != previous['applied_plan']):
+            return {}
+        fields = ('origin_session', 'scene_family', 'logical_scene_id', 'scene_design_id', 'split',
+                  'applied_plan', 'source_role', 'native_contract_path', 'captured_view_count',
+                  'program_path', 'scene_brief_provenance', 'source_history')
+        saved = {key: previous[key] for key in fields if key in previous}
+        acceptance = Path(identity[2]) / 'scene_acceptance.json'
+        stat = acceptance.stat()
+        version = {'path': str(acceptance.resolve()), 'bytes': stat.st_size, 'mtime_ns': stat.st_mtime_ns}
+        if fresh.get('production_eligible') is True and contract.get('acceptance') == version:
+            if isinstance(receipt.get('name'), str):
+                saved['name'] = receipt['name']
+            if isinstance(receipt.get('summary'), str):
+                saved['description'] = receipt['summary']
+        return saved
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+
+
+def current_production_status(previous, items, folder):
+    """Recompute optional progress from the live applied ledger, not old 3/3."""
+    status = previous.get('production_status')
+    if not isinstance(status, dict) or not isinstance(status.get('session'), str):
+        return None
+    try:
+        from benchforge_core.pipelines.plan_versions import current
+        active = current(folder.parent, status['session'])
+        if not active or active.get('pending') or not active.get('plan'):
+            return None
+        path = Path(active['plan']).resolve()
+        stat = path.stat()
+        if not path.is_file() or stat.st_size > 2 * 1024 * 1024:
+            return None
+        version = {'path': str(path), 'bytes': stat.st_size, 'mtime_ns': stat.st_mtime_ns}
+        plan = read_json(path, {})
+        if plan.get('schema') != 'spatialforge.pipeline/v1' or plan.get('version') != 1:
+            return None
+        scenes = plan['assessment']['scenes']
+        target = scenes['target_scene_count']
+        selected = {row['id'] for row in scenes['designs']}
+        if type(target) is not int or target < 1 or len(selected) < target:
+            return None
+        reference = {'path': str(path), 'ledger_version': active['version'], 'pending': False,
+                     'file_version': version, 'previous_plan': active.get('previous')}
+        after = current(folder.parent, status['session'])
+        stat = path.stat()
+        if (not after or after.get('pending') or after.get('plan') != active['plan'] or
+            after.get('version') != active['version'] or after.get('previous') != active.get('previous') or
+            [stat.st_size, stat.st_mtime_ns] != [version['bytes'], version['mtime_ns']]):
+            return None
+        completed = {row.get('scene_design_id') for row in items
+                     if row.get('origin_session') == status['session'] and
+                     row.get('scene_family') == status.get('scene_family') and
+                     row.get('production_eligible') is True and row.get('available') is True and
+                     row.get('source_role') == 'accepted_native_revision' and row.get('applied_plan') == reference} & selected
+        return {'scene_family': status.get('scene_family'), 'session': status['session'], 'plan': str(path),
+                'accepted': len(completed), 'target': target, 'complete': len(completed) >= target,
+                'remaining_design_ids': sorted(selected - completed)}
+    except Exception:
+        # Progress is optional; an unverifiable ledger must not leave a stale pass.
+        return None
+
+
+def scanned_items(config, folder, previous, tasks=None):
     source_root = Path(config['artifacts']).resolve()
     policy = load_policy(folder.parent)
     prior = {row['id']: row for row in previous['items']}
     repaired = read_json(folder / 'repairs.json', {})
     repaired_from = {value['task_id']: key for key, value in repaired.items()}
     items = []
-    for task in completed_tasks(config):
+    for task in completed_tasks(config) if tasks is None else tasks:
         if task['id'] in repaired:continue
         if not re.fullmatch(r'sf_[a-zA-Z0-9_-]+\.scene\d+', task['id']):
             continue
@@ -135,7 +267,12 @@ def sync_catalog(config, folder):
                 continue
             stat = program.stat()
             version = [stat.st_size, stat.st_mtime_ns]
-            cached = prior.get(task['id'], {}).get('scene_admission', {})
+            prior_item = prior.get(task['id'], {})
+            identity = {'id': task['id'], 'task_id': task['id'], 'revision': revision,
+                        'source_directory': str(source)}
+            current_identity = native_identity(identity, source_root)
+            cached = (prior_item.get('scene_admission', {})
+                      if current_identity and native_identity(prior_item, source_root) == current_identity else {})
             declaration = cached.get('geometry_exception')
             plan_current = not declaration or scene_design_parser().plan_declaration_current(declaration)
             try:
@@ -171,11 +308,62 @@ def sync_catalog(config, folder):
             items[-1]['repaired_from'] = repaired_from[task['id']]
         if admission is not None:
             items[-1]['scene_admission'] = admission
-    if previous.get('items') != items:
-        previous = {'schema': SCHEMA, 'updated_at': time.time(), 'items': items,
-                    'scope': 'shared captured scenes from this operator service; original files retained'}
-        write_json(folder / 'catalog.json', previous)
-    return previous
+    return items
+
+
+def sync_catalog(config, folder):
+    path = folder / 'catalog.json'
+    previous = read_json(path, {'schema': SCHEMA, 'items': []})
+    if previous.get('schema') != SCHEMA:
+        raise LibraryError('This scene catalog uses an unsupported format', 409)
+    items = scanned_items(config, folder, previous)
+    source_root = Path(config['artifacts']).resolve()
+    before = {row['id']: row for row in previous['items']}
+    with catalog_locked(folder):
+        # A finalizer can commit while the metadata query/native scan is running.
+        latest = read_json(path, {'schema': SCHEMA, 'items': []})
+        if latest.get('schema') != SCHEMA:
+            raise LibraryError('This scene catalog uses an unsupported format', 409)
+        registered = {row['id']: row for row in latest['items']}
+        fresh = {row['id']: row for row in items}
+        for task_id, row in registered.items():
+            if (task_id in fresh and native_identity(row, source_root) == native_identity(fresh[task_id], source_root)):
+                continue
+            earlier = before.get(task_id, {})
+            changed = (native_identity(row, source_root) != native_identity(earlier, source_root) or
+                       row.get('native_contract_path') != earlier.get('native_contract_path') or
+                       row.get('applied_plan') != earlier.get('applied_plan'))
+            if not changed or not registration_metadata(row, row, folder, source_root):
+                continue
+            # Recheck only a newly committed native source missed by the query.
+            # Ownership comes from its verified registration, never program provenance.
+            task = {'id': row['task_id'], 'run_id': row['run_id'], 'unit': {'revision': row['revision']},
+                    'request_key': None, 'created_at': row.get('created_at')}
+            current = scanned_items(config, folder, latest, tasks=[task])
+            if current:
+                fresh[task_id] = current[0]
+            else:
+                fresh.pop(task_id, None)
+        policy = load_policy(folder.parent)
+        items = []
+        for row in fresh.values():
+            try:
+                check_source(policy, task_id=row['task_id'], run_id=row['run_id'])
+            except ValueError:
+                continue
+            row.update(registration_metadata(registered.get(row['id'], {}), row, folder, source_root))
+            items.append(row)
+        catalog = {**latest, 'schema': SCHEMA, 'items': items,
+                   'scope': 'shared captured scenes from this operator service; original files retained'}
+        status = current_production_status(latest, items, folder)
+        if status is None:
+            catalog.pop('production_status', None)
+        else:
+            catalog['production_status'] = status
+        if catalog != latest:
+            catalog['updated_at'] = time.time()
+            write_json(path, catalog)
+        return catalog
 
 
 def public_media(row):

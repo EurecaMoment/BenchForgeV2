@@ -8,8 +8,11 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {createWorkbenchHandler} from '../ui/index.js';
 
-const source = (await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8'))
-  .replace(/return \{\s+inject:/, 'return {PlanProduct, planMarkdown, planEditInstruction}; return {inject:');
+const bundle = await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8');
+const clientExport = /return \{\s+ProductionEnvironment, Workbench, dictionaries, apply, \.\.\.helpers, \.\.\.components\s+\};/;
+assert.match(bundle, clientExport, 'the built client exposes its UI factory result');
+const source = bundle.replace(clientExport,
+  'return {PlanProduct: components.PlanProduct, planMarkdown: helpers.planMarkdown, planEditInstruction: helpers.planEditInstruction, ProductionEnvironment, Workbench, dictionaries, apply, ...helpers, ...components};');
 let registration;
 vm.runInNewContext(source, {window: {__ModuleLoader__: {load: (value) => registration = value}}, encodeURIComponent});
 let hooks=[],hookIndex=0;
@@ -122,9 +125,10 @@ test('plan view displays saved model content, exports it and sends changes only 
   for (const {title} of template.sections) assert.ok(planMarkdown(plan).includes('## '+title));
   const yamlBlock=JSON.stringify(document,null,2);
   const applyInstruction=planEditInstruction('/fixture/edited/plan.json');
-  for (const phrase of ['Markdown 正文','_plan_edit.base_plan','markdown_resolution','{path, before, after, instruction}',
-    '逐字引用正文','assessment、selections、inputs','split 与场景选择保持锁定']) assert.ok(applyInstruction.includes(phrase),phrase);
-  assert.doesNotMatch(applyInstruction,/原样保留.*assessment/);
+  for (const phrase of ['Markdown 正文','edit_revision.base_plan','markdown_normalization=false','markdown_normalization=true',
+    'markdown_resolution','{path, before, after, instruction}','逐字引用正文','assessment、selections、inputs',
+    'split 与场景选择保持锁定','request_path=','plan_request_cli.py','重复应用不重开阶段窗口']) assert.ok(applyInstruction.includes(phrase),phrase);
+  assert.doesNotMatch(applyInstruction,/_plan_edit\.base_plan/);
   const savedMarkdown='# Saved user plan\n\n## Body\n\nExact authored Markdown';
   assert.equal(planMarkdown({...plan,user_markdown:savedMarkdown}),savedMarkdown);
   hooks=[];hookIndex=0;

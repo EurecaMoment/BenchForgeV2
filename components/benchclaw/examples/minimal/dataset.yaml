@@ -1,0 +1,16 @@
+contract_version: benchclaw.dataset-spec/v1
+name: minimal_rgb
+objective: Build a small image-based spatial benchmark from reviewed annotations.
+sources:
+  - source_id: reviewed_images
+    plugin: source.entities
+    parameters:
+      path: ./images
+      source_uri: https://example.invalid/minimal-rgb
+      license_id: replace-with-source-license
+      scene_id: demo_scene
+      revision: v1
+      annotation_producer: human
+      annotation_version: v1
+      producer_type: human
+      review_status: accepted

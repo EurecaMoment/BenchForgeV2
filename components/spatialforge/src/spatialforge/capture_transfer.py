@@ -53,6 +53,25 @@ def validate_manifest(files):
     return files
 
 
+def required_capture_files(program, report, options=None):
+    scope = capture_scope(program, options)
+    required = ['report.json', 'evidence.json'] + (['scene.usda'] if scope['scene_export_requested'] else [])
+    required += [f'view_{i}{suffix}' for i in scope['view_indices'] for suffix in ('.png', '.json', '_depth.npy', '_semantic.npy', '_instance.npy')]
+    if report.get('scene_format')=='usdc':required.append('scene.usdc')
+    required.extend(resource['file'] for resource in report.get('scene_resources',[]))
+    action_results = report.get('interaction', {}).get('action_results', [])
+    for action in program.get('interactions', program.get('affordances', [])):
+        if 'spatialtree' not in action.get('recording', {}):
+            continue
+        result = next((row for row in action_results if row.get('id') == action['id']), None)
+        if result is None or not result.get('recording', {}).get('spatialtree'):
+            raise ValueError('SpatialTree interaction did not produce a complete native trajectory')
+        spatialtree = result.get('recording', {}).get('spatialtree', {})
+        required.extend([result['recording']['video'], result['recording']['frames_archive'],
+                         result['recording']['timeline_file'], spatialtree['bundle']])
+    return list(dict.fromkeys(required))
+
+
 def validate_capture(directory, job, store):
     report = json.loads((directory/'report.json').read_text())
     if report.get('token') != job['token']:
@@ -62,21 +81,7 @@ def validate_capture(directory, job, store):
     if report['status'] == 'captured':
         stored = json.loads((store.directory(job['task_id'], job['revision'])/'program.json').read_text())
         task = next(t for t in store.snapshot(job['task_id'].split('.')[0])['tasks'] if t['id'] == job['task_id'])
-        scope = capture_scope(stored, task['unit']['intent'].get('capture_options'))
-        required = ['evidence.json'] + (['scene.usda'] if scope['scene_export_requested'] else [])
-        required += [f'view_{i}{suffix}' for i in scope['view_indices'] for suffix in ('.png', '.json', '_depth.npy', '_semantic.npy', '_instance.npy')]
-        if report.get('scene_format')=='usdc':required.append('scene.usdc')
-        required.extend(resource['file'] for resource in report.get('scene_resources',[]))
-        action_results = report.get('interaction', {}).get('action_results', [])
-        for action in stored.get('interactions', stored.get('affordances', [])):
-            if 'spatialtree' not in action.get('recording', {}):
-                continue
-            result = next((row for row in action_results if row.get('id') == action['id']), None)
-            if result is None or not result.get('recording', {}).get('spatialtree'):
-                raise ValueError('SpatialTree interaction did not produce a complete native trajectory')
-            spatialtree = result.get('recording', {}).get('spatialtree', {})
-            required.extend([result['recording']['video'], result['recording']['frames_archive'],
-                             result['recording']['timeline_file'], spatialtree['bundle']])
+        required = required_capture_files(stored, report, task['unit']['intent'].get('capture_options'))
         if not all((directory/p).is_file() and (directory/p).stat().st_size for p in required):
             raise ValueError('incomplete native capture bundle')
 

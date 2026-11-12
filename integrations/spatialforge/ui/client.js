@@ -1,287 +1,913 @@
-window.__ModuleLoader__.load({
-  id: '@eurecamoment/benchforge-spatialforge-ui',
-  factory(require) {
-    const React = require('react');
-    const h = React.createElement;
-    const SPATIALFORGE_PRESET = 'spatialforge-standard-ptc';
-    const NS = 'benchforgeWorkbench';
-    const STAGES = [
-      {id: 'S1', key: 'blueprint'},
-      {id: 'S2', key: 'collection'},
-      {id: 'S3', key: 'structure'},
-      {id: 'S4', key: 'synthesis'},
-      {id: 'S5', key: 'verification'},
-    ];
-    const PLAN_SECTIONS = [
-      ['objectives', '评测目标与边界'], ['coverage', '能力、模板与题量分配'], ['scenes', '场景与采集设计'],
-      ['annotations', '标注与真值来源'], ['questions', '出题规则与公开样例'], ['dataset', '数据集规模与分区'],
-      ['scoring', '评分方法与对照'], ['quality_gates', '质量检查与验收'], ['execution', '五阶段执行安排'],
-      ['delivery', '交付物与验收入口'], ['risks', '风险与待解决事项'],
-    ];
-    const PLAN_FIELDS = {
-      id: '编号', capability: '测量能力', research_question: '具体评测问题', success_criterion: '成功条件', exclusions: '范围边界',
-      objective_id: '目标编号', template_id: '模板', count: '题数', difficulty: '难度', conditions: '测量条件', selection_reason: '选择理由',
-      source_policy: '来源策略', selection_path: '场景选择记录', selected_scenes: '选用场景', allow_new_scenes: '允许新增场景',
-      target_scene_count: '目标场景数', designs: '场景设计', name: '场景名称', purpose: '测量用途', layout: '布局', objects: '物体配置',
-      cameras: '视角与采集', variation: '变化维度', artifact: '预览产物', reuse_constraints: '复用约束', preview_policy: '视频或全景展示',
-      authority_source: '真值来源', fields: '字段与单位', derivation: '推导方法', alignment: '媒体与标注对齐', validation: '校验规则',
-      public_observations: '公开观测', answerability: '可回答性', output_contract: '输出格式', difficulty_design: '难度设计',
-      anti_shortcut_checks: '捷径与歧义检查', example: '公开题目样例', target_items: '目标题量', split_policy: '分区策略', seed: '随机种子',
-      grouping: '分组单位', deduplication: '去重规则', balance: '分布平衡', metrics: '逐模板评分', metric: '指标', unit: '单位',
-      tolerance: '容差', aggregation: '聚合方式', missing_response: '缺失与无效响应', baselines: '对照基线', model_evaluation: '模型评测安排',
-      check: '检查内容', threshold: '通过阈值', evidence: '证据位置', on_failure: '失败处理', stage: '阶段', action: '执行动作',
-      inputs: '输入', outputs: '输出', completion_condition: '完成条件', artifacts: '交付文件', path: '保存位置', format: '格式',
-      contents: '内容', acceptance: '交付验收', issue: '风险或限制', impact: '影响', mitigation: '应对方式', status: '状态',
-      task_id: '场景任务', revision: '版本', run_id: '运行', program_path: '场景程序', source_directory: '来源目录',
-      geometry_exceptions: '简化几何实验声明', reason: '简化原因', simplifications: '简化内容与范围',
-      retained_constraints: '保留的物理与实验约束', excluded_claims: '能力边界',
-      summary: '场景摘要', hard_requirements: '必须满足的要求', object_roles: '物体用途', role: '用途与位置',
-      relations: '空间与使用关系', description: '具体说明', physical_assumptions: '物理假设与验证范围',
-      revision_history: '设计修订依据', changes: '修改内容', type: '关系',
-    };
-    const dictionaries = {
-      zh: {
-        reviewWaiting:'等待你的指令', reviewPaused:'已暂停，等待你的指令', reviewInstruction:'新指令已保存，等待处理', reviewContinue:'立即继续', reviewPause:'暂停自动继续', reviewChange:'补充指令', reviewNote:'无新指令，5 分钟后继续', reviewFinished:'阶段等待已结束',
-        executionProgress: '执行进展', productionHint: '每阶段完成后等待你的指令 5 分钟。',
-        blueprintNav: '计划', collectionNav: '场景', structureNav: '标注', synthesisNav: '题目', verificationNav: '报告', stageDone: '已完成',
-        previewable: '可预览', savedStageProducts: '已保存产物', observationReadFailed: '公开观测加载失败，请重试。', unsupportedObservation: '暂不支持预览这种公开观测。',
-        sceneProject: '场景项目', sceneTour: '视角巡览视频', sceneViews: '场景视角', recordedViews: '已采集视角', sceneVideoFailed: '场景视频读取失败，请重试。', pairedAnnotations: '场景图与标注已配对',
-        currentConversation: '当前对话', sessionIdle: '等待你的要求', sessionRunning: '正在执行', sessionSubmitting: '正在提交', sessionFailed: '对话异常', sessionLoading: '正在连接对话',
-        toolPreparing: '正在准备工具调用', toolRunning: '正在调用工具', recentToolFailure: '最近一次工具错误', toolFailureHistory: '历史记录，不代表当前仍阻塞', toolResultError: '工具返回错误',
-        queuedMessages: '排队消息', requestChange: '提出修改要求', requestPlaceholder: '输入本阶段的生产或修改要求', requestRequired: '请先填写要求。',
-        requestNote: '要求提交到当前工作台会话，由 DSH 执行；实际进度和产物在下方更新。',
-        productionRequest: '数据集生产需求', startProduction: '开始生产', appendRequest: '追加要求', newProduction: '新建生产任务',
-        sceneLibrary: '场景库', sceneLibraryHelp: '历史与本次场景统一归档，可预览、多选。',
-        sceneSelected: '已选场景', useScene: '使用此场景', sceneSearch: '搜索场景名称或编号', sceneOrigin: '场景来源',
-        currentScenes: '当前会话', historyScenes: '历史及其他', selectScenePage: '选择本页', clearScenePage: '取消本页',
-        allowNewScenes: '允许生成新场景', sceneSelectionHelp: '仅使用勾选场景；新场景自动归档。',
-        sceneSaving: '正在保存选择…', sceneSaved: '选择已保存', sceneLibraryLoading: '正在更新场景列表…', sceneSaveFailed: '场景选择保存失败，请重试。',
-        sceneUnavailable: '采集文件不可用', sceneStorage: '统一存放位置', chooseSceneRequired: '请在场景页勾选场景，或允许生成新场景。',
-        sceneChanged: '场景选择已在其他窗口更新，请确认最新选择后再次提交。', sceneSelectionReadFailed: '读取场景约束失败，尚未发送生产请求。',
-        productionPlaceholder: '例如：生产室内物体相对位置与遮挡推理题，覆盖多种布局，公开观测足以作答。',
-        capabilityRequest: '能力或模板要求（可选）', capabilityPlaceholder: '用自然语言描述能力，或填写已有模板编号；留空由 DSH 拆解。',
-        productionRequirements: '生产要求', changeRequirements: '追加或修改要求', advancedOptions: '高级选项（可选）', sceneCount: '目标场景数',
-        targetQuantityNote: '这里填写的是目标题量，实际生成量以生产回执为准。', optionalAuto: '留空由 DSH 安排',
-        fullWorkflowNote: '一次提交后执行完整五阶段：评测计划 → 场景 → 标注 → 出题 → 质量检查与交付。',
-        appendNote: '追加要求发送到当前会话；执行中会进入消息队列，不会另起一个隐藏任务。',
-        preservedDraft: '当前会话保留的原输入草稿', preservedAttachments: '当前会话保留的附件',
-        includeDraft: '本次一并发送上面已展示的草稿和附件', draftConsentRequired: '原输入中还有草稿或附件。请先查看，并勾选是否随本次要求发送；未勾选不会更改或发送它们。',
-        positiveCount: '目标题量必须是正整数。', positiveSceneCount: '场景数必须是正整数或留空。', positiveBudget: '存储预算必须大于 0 或留空。',
-        previousUnsentRequest: '上次提交未完成，要求仍保留在原输入草稿中。请使用相同要求重试，避免重复插入。',
-        permissionsPending: '正在准备本会话的完全权限，完成后即可提交生产。',
-        fullPermissions: '完全权限已开启', permissionFailed: '权限准备失败', permissionRetry: '重试开启权限',
-        executionFeedback: '当前对话与执行反馈', currentRequest: '当前要求', submissionEcho: '要求正在提交', assistantFeedback: '执行反馈',
-        liveReply: '正在生成回复', awaitingFeedback: '模型正在处理，尚未返回可见反馈。', noConversationFeedback: '提交要求后，这里会实时显示执行反馈。',
-        toolOutput: '工具返回内容', stoppedReply: '已停止', stopExecution: '停止当前执行', stopping: '正在停止…',
-        stopNote: '停止当前助手执行；已提交的后台任务和排队要求以各自状态为准。',
-        productionMonitor: '生产实况', autoRefresh: '自动更新 · 约 3 秒', staleSnapshot: '观测异常 · 非最新状态', pollingPaused: '隐藏时暂停更新',
-        lastObserved: '最近观测', conversationRunning: 'DSH 对话执行中；以下为工具记录', productionScope: '仅当前对话的生产记录',
-        retainedSnapshot: '连接异常，保留上次成功观测，恢复后自动续更', partialObservation: '部分来源读取失败；显示的是可读取记录，不能据此判断全部任务正常。',
-        persistedSteps: '已落盘完成步骤', currentStep: '当前待完成步骤', unrecordedStep: '尚无执行回执', sceneJobs: '本会话场景任务',
-        completedTasks: '执行完成任务', phase: '生产阶段', workerStage: 'worker 最近上报', workerAge: '距 worker 上报', transfer: '已接收产物',
-        capturedViews: '已记录图像', actionTraces: '交互轨迹', publication: '发布状态', canceled: '已取消',
-        waiting_user:'等待你的指令',needs_plan_application:'待应用计划修改',plan_superseded:'已由新版计划替代',
-        taskLimit: '本页显示前 12 项任务；完整状态可在对话使用 spatialforge_status 查看。',
-        noProduction: '当前对话尚无生产回执；任务开始后将在这里更新。',
-        recentOperations: '最近工具操作', observerNotConfigured: '场景队列观察器未配置；当前仅读取工作区 pipeline。',
-        productionDetails: '查看生产明细', runFilter: '筛选运行名称、ID 或状态', versionFilter: '筛选版本、运行或任务',
-        noMatchingRuns: '没有符合筛选条件的运行。', noMatchingVersions: '没有符合筛选条件的数据集版本。',
-        chooseVersionForReport: '先选择一个数据集版本，再查看对应的质量报告。',
-        noMatchingTemplates: '没有符合条件的模板。', clearFilters: '清空筛选', searchTemplates: '搜索模板',
-        readFailed: '读取失败，请重试。', retry: '重试', sampleRemoved: '该样本已不在当前结果中，已返回列表。',
-        stageStateSource: '步骤状态来源', workspacePipeline: '工作区流水线', sessionProduction: '本会话场景任务',
-        panel: '评测工作台', openEvaluation: '评测集', noWorkspace: '当前 SpatialForge 会话没有登记的工作区。请先为这个会话选择工作区。', overview: '总览', runs: '运行与产物', datasets: '数据集', quality: '质量报告',
-        subtitle: '实时跟随当前对话，展示五阶段的生产进度和实际产物。', refresh: '刷新', loading: '读取中…',
-        scope: '仅展示与当前对话明确关联的生产记录和产物。', snapshot: '快照时间',
-        draft: '草稿', candidate: '候选', verified: '已验证', rejected: '已拒绝', superseded: '已替代',
-        failed: '失败', completed: '执行完成', waiting: '等待', needs_input: '缺输入', needs_evidence: '缺证据',
-        running: '运行中', proposed: '待审阅', unknown: '未记录', unassessed: '未评估',
-        recent: '最近运行', workspace: '工作区', state: '状态', steps: '步骤', artifacts: '产物',
-        updated: '更新时间', open: '查看', noRuns: '当前索引中没有持久化 pipeline 运行。', all: '全部',
-        sources: '数据来源', indexed: '已读取操作索引', no_index: '没有运行索引', index_error: '索引读取失败',
-        record_error: '记录读取失败', limit: '条最近操作上限', truncated: '列表已截断；更早记录不计入本页',
-        chooseRun: '从运行列表选择一项，查看步骤、产物和修复建议。', plan: '冻结计划摘要', next: '运行提示',
-        lineage: '产物与来源', contracts: '结构合同', shapeNote: '结构合同通过不代表 GT 或场景质量已通过。',
-        noArtifacts: '该运行没有产物 manifest；不能据此推断候选或验证数量。', producer: '生成操作',
-        parents: '父产物', evidence: '证据引用', version: '版本', repairs: '修复建议', noRepairs: '没有持久化修复建议。',
-        repairNote: '以下是已保存的建议，不代表修复已执行。继续生产仍使用原 DSH 工具。',
-        reason: '原因', operator: '操作', repairScope: '范围', newRun: '要求新运行', yes: '是', no: '否',
-        directory: '数据集版本目录', datasetNote: '每个产物目录独立作为一个版本；只展示公开题目和声明的媒体。',
-        noDatasets: '当前操作索引中没有可读取的公开数据集。', generationAccepted: '生成接纳数', browse: '浏览样本',
-        chooseDataset: '选择数据集版本', template: '模板', split: '分区', search: '题目、ID 或任务', apply: '检索',
-        previous: '上一页', nextPage: '下一页', page: '页', matches: '符合条件', total: '全集记录', pageSize: '每页',
-        grid: '网格', table: '表格', question: '公开题目', noItems: '没有符合条件的记录。', item: '样本',
-        details: '公开条件与输出格式', media: '公开观测', noMedia: '未声明公开媒体', close: '返回列表',
-        publicNote: '公开题目与配套媒体。',
-        report: '生成质量报告', noReport: '该版本没有 quality_report.json，不能宣称已完成集合质量验收。',
-        requested: '请求数', accepted: '生成接纳数', shortfall: '缺口', scene_groups: '场景组',
-        approval: '评测验证通过', reportNote: '生成接纳数不等于已验证样本数；未收集模型响应时不显示 IRT。',
-        coverage: '各模板实际接纳数', rejections: '缺口与拒绝原因', noRejections: '报告没有记录缺口或拒绝原因。',
-        local_field_repair: '局部字段修复', template_rebinding: '模板重绑定', candidate_resynthesis: '候选重合成',
-        skill_reexecution: '重新执行步骤', upstream_rollback: '上游回滚', final_rejection: '最终拒绝',
-        task: '任务', capability: '能力', path: '来源目录', runCount: '运行', datasetCount: '数据集版本',
-        workflow: '五步工作流', blueprint: '评测计划', collection: '场景预览', structure: '标注预览', synthesis: '评测配置与题目表', verification: '最终报告',
-        productionProgress: '生产进度', progressUpload: '产物上传', progressItems: '已完成数量', progressStages: '已完成阶段', progressUpdated: '更新', progressTasks: '场景任务', progressSteps: '步骤', progressProducts: '标注配对', progressPending: '执行中', progressWaiting: '等待回执', progressPaused: '已停止', stageProgress: '阶段进度', waitingForReceipt: '等待执行回执', observedSteps: '已完成步骤', stageProcess: '步骤明细',
-        parallelTasks: '并行任务', parallelTask: '合成任务', parallelCompleted: '已完成子任务', parallelRunning: '正在执行', parallelArtifacts: '公开产物', parallelOpenArtifact: '查看产物',
-        inactive: '等待后续任务', unavailable: '状态暂不可用',
-        keyProduct: '关键产物', draftOnly: '浏览器草稿 · 尚未提交生产', planPending: '当前对话尚未生成评测计划。在对话中提出需求，生成后这里会自动展示。',
-        planEditor: '编辑评测要求与模板', productionRecord: '生产记录', automaticRecord: '自动跟随本会话生产', artifactPending: '尚无可预览产物；生产中生成的内容将在这里更新。',
-        selectionTotal: '本组总题数',
-        sceneSelection: '选择场景', selectedScenes: '已选场景', preview: '预览', previewClose: '关闭预览', selectArtifact: '选择',
-        sceneGallery: '可用场景', annotationGallery: '标注数据', annotationNote: '点击预览查看公开标注与证据；模型候选标注与仿真真值保留各自来源。',
-        evaluationConfig: '评测配置', questionTable: '题目表', finalReport: '最终报告', artifactFiles: '产物文件与来源',
-        insertStage: '填入对话', stepInstruction: '查看本步指令', chooseSceneHint: '可多选，所选场景会随本步指令填入对话。',
-        persistedPlan: '已落盘评测计划', planSteps: '计划步骤', reportPending: '最终报告尚未生成；执行完成不等于评测通过。',
-        completePlan: '完整评测设计', legacyPlan: '当前仅有执行摘要，尚缺完整评测设计。', completePlanRequest: '按模板补全计划',
-        revisePlan: '修改计划', continuePlan: '按此计划继续生产', exportPlan: '导出计划', exportPlanText: '导出 Markdown',
-        planMarkdownEditor: '完整计划 Markdown', planEditNote: '编辑整篇文档，保存后由生产代理同步题量、规则和执行步骤。',
-        savePlan: '保存并应用', cancelPlanEdit: '取消', savingPlan: '保存中…',
-        planDesignNote: '以下数量和阈值为计划目标；执行结果见各阶段产物。', templateReadFailed: '评测计划模板读取失败，尚未发送请求。',
-        planTemplate: '大模型评测计划模板', planTemplateNote: '提交需求后由大模型填写并保存，计划页显示真实内容。',
-        knownProgress: '以执行回执为准', unmeasuredProgress: '尚无可测量的完成总量', noStageSteps: '当前生产记录尚未提供本阶段的执行回执。',
-        downloadArtifact: '打开产物', artifactReadFailed: '产物读取失败，请重试。', runHistory: '本对话的计划与运行', runDetails: '当前运行明细与产物来源',
-        confirmSend: '确认发送', confirmTitle: '向当前对话提出要求', cancel: '取消', sending: '提交中…', sent: '本步任务已提交到当前对话，执行状态以对话回执为准。',
-        confirmSendNote: '确认后直接提交。原输入中的草稿和附件只有查看并勾选后才会一同发送；取消不会更改它们。',
-        sendBusy: '输入框正在处理提交或命令，请完成后重试。', sendFailed: '提交失败，已保留任务内容，请重试。', noSendInterface: '当前 DSH 未提供对话提交接口。',
-        existingDraft: '将一同发送的输入框文字', existingAttachments: '将一同发送的附件数',
-        blueprintDesc: '定义测量目标，选择能力与模板，明确产量和来源。', collectionDesc: '一个项目对应一个场景，打开项目播放场景巡览视频。',
-        structureDesc: '整理公开观测、标定和对象关系，绑定程序或仿真证据。', synthesisDesc: '按模板批量出题，查看数据集全集和样本。', verificationDesc: '审查有效性、分区与覆盖，生成报告和交付版本。',
-        objective: '评测目标', objectivePlaceholder: '例如：测试室内遮挡条件下的距离估计和相对位置推理，生成 300 道评测题。',
-        targetItems: '目标题量', storageBudget: '存储上限（GB）', sourceType: '数据来源', simulator: '仿真场景', program: '程序生成', official: '官方数据',
-        templateCatalog: '能力与出题模板', catalogDesign: '目录是出题设计；执行能力由 DSH 检查适配器。', selectedTemplates: '已选模板', selectTemplate: '选择', removeTemplate: '移除',
-        noSelection: '还未选择模板；也可让 DSH 根据目标拆解。', allocate: '计划分配', saveBlueprint: '保存蓝图草稿', blueprintSaved: '蓝图已保存到当前会话浏览器草稿。',
-        preparePlan: '填入对话：制定生产计划', prepareStage: '填入对话：执行当前步骤', draftReady: '步骤指令已插入当前对话输入框，请查看后发送。',
-        draftBusy: '当前输入框忙碌，请稍后重试。', nativeInputMissing: '当前会话未提供输入接口，请使用下方复制指令。', copyInstruction: '复制步骤指令', copied: '已复制步骤指令。',
-        stepOutput: '本步产物', noStepArtifacts: '所选运行尚无可归属本步骤的产物记录。', chooseProduction: '查看生产运行', stageEvidence: '本步产物与来源',
-        nextStep: '下一步', previousStep: '上一步', openData: '打开数据集全集', openQuality: '查看质量报告', openRun: '查看完整运行',
-        workflowNote: '五步用于组织操作与产物，可按需组合或返回修复。', chatNote: '指令进入现有 DSH 对话，发送后由工具执行；页面从持久化产物读取结果。',
-        blueprintOutput: '需求、模板与数量分配', collectionOutput: '参考、场景、媒体与采集记录', structureOutput: '证据、标定、状态与来源关系', synthesisOutput: '题目、公开观测与数据集版本', verificationOutput: '质量结果、修复建议与交付包',
-        sceneFirst: '场景先行', sceneFirstNote: '复用或生成场景 → 采集 RGB / 深度 / 分割 / 轨迹 → 返回可追溯证据。',
-        evidencePolicy: 'GT 来自官方、程序或仿真；模型推断保持为候选标注。', qualityPolicy: '执行完成、生成接纳和验证通过分别展示；没有响应矩阵时不展示 IRT。',
-        savedAt: '草稿保存于', navigation: 'BenchForge 五步', liveRecords: '当前会话的实际产物', requiredGoal: '先填写评测目标。', perTemplate: '题 / 模板',
-      },
-      en: {
-        reviewWaiting:'Waiting for your instructions', reviewPaused:'Paused for your instructions', reviewInstruction:'Instruction saved for processing', reviewContinue:'Continue now', reviewPause:'Pause automatic continuation', reviewChange:'Add instructions', reviewNote:'Continue after 5 minutes without new instructions', reviewFinished:'Stage review finished',
-        executionProgress: 'Execution', productionHint: 'Runs all five stages; outputs update below.',
-        blueprintNav: 'Plan', collectionNav: 'Scenes', structureNav: 'Labels', synthesisNav: 'Items', verificationNav: 'Report', stageDone: 'Done',
-        previewable: 'Preview available', savedStageProducts: 'Saved products', observationReadFailed: 'Public observation failed to load. Please retry.', unsupportedObservation: 'This public observation type cannot be previewed yet.',
-        sceneProject: 'Scene project', sceneTour: 'Recorded viewpoint video', sceneViews: 'Scene viewpoints', recordedViews: 'Recorded views', sceneVideoFailed: 'Scene video failed to load. Please retry.', pairedAnnotations: 'Scene images and annotations are paired',
-        currentConversation: 'Current conversation', sessionIdle: 'Waiting for your request', sessionRunning: 'Running', sessionSubmitting: 'Submitting', sessionFailed: 'Conversation error', sessionLoading: 'Connecting',
-        toolPreparing: 'Preparing tool call', toolRunning: 'Calling tool', recentToolFailure: 'Most recent tool error', toolFailureHistory: 'Historical record; does not establish a current blocker', toolResultError: 'Tool returned an error',
-        queuedMessages: 'Queued messages', requestChange: 'Request a change', requestPlaceholder: 'Enter your production or change request for this stage', requestRequired: 'Enter your request first.',
-        requestNote: 'The current workbench session sends your request to DSH. Progress and real artifacts appear below.',
-        productionRequest: 'Dataset production request', startProduction: 'Start production', appendRequest: 'Add requirements', newProduction: 'New production task',
-        sceneLibrary: 'Scene library', sceneLibraryHelp: 'Past and newly produced scenes share this library. Preview each scene, then select it for this request.',
-        sceneSelected: 'Selected scenes', useScene: 'Use this scene', sceneSearch: 'Search scene name or ID', sceneOrigin: 'Scene origin',
-        currentScenes: 'This conversation', historyScenes: 'Past and other scenes', selectScenePage: 'Select this page', clearScenePage: 'Clear this page',
-        allowNewScenes: 'Allow new scenes', sceneSelectionHelp: 'Unchecked existing scenes are excluded from subsequent requests. New scenes also enter this library.',
-        sceneSaving: 'Saving selection…', sceneSaved: 'Selection saved', sceneLibraryLoading: 'Updating scene list…', sceneSaveFailed: 'Could not save scene selection. Retry the change.',
-        sceneUnavailable: 'Capture files unavailable', sceneStorage: 'Shared storage location', chooseSceneRequired: 'Select scenes on the scene page or allow new scenes.',
-        sceneChanged: 'Another window updated the scene selection. Review it before submitting again.', sceneSelectionReadFailed: 'Could not read scene constraints. No production request was sent.',
-        productionPlaceholder: 'For example: produce indoor relative-position and occlusion questions across varied layouts, answerable from public observations.',
-        capabilityRequest: 'Capabilities or templates (optional)', capabilityPlaceholder: 'Describe capabilities or enter template IDs. Leave blank for DSH to decompose.',
-        productionRequirements: 'Production requirements', changeRequirements: 'Additional or revised requirements', advancedOptions: 'Advanced options (optional)', sceneCount: 'Target scenes',
-        targetQuantityNote: 'This is the requested quantity. Actual output is reported by production receipts.', optionalAuto: 'Leave blank for DSH to plan',
-        fullWorkflowNote: 'One submission runs all five stages: plan → scenes → annotations → questions → quality review and delivery.',
-        appendNote: 'Requirements go to this session. While running, they join its message queue.',
-        preservedDraft: 'Existing session composer draft', preservedAttachments: 'Existing session attachments',
-        includeDraft: 'Include the draft and attachments shown above in this submission', draftConsentRequired: 'The original composer contains a draft or attachments. Review and explicitly include them to continue; they remain untouched otherwise.',
-        positiveCount: 'Target quantity must be a positive integer.', positiveSceneCount: 'Scenes must be a positive integer or blank.', positiveBudget: 'Storage budget must be greater than zero or blank.',
-        previousUnsentRequest: 'The last request remains in the composer after an incomplete submission. Retry the same request to avoid inserting it twice.',
-        permissionsPending: 'Preparing full permissions for this session. Production can be submitted when ready.',
-        fullPermissions: 'Full permissions enabled', permissionFailed: 'Permission setup failed', permissionRetry: 'Retry permissions',
-        executionFeedback: 'Current conversation and execution feedback', currentRequest: 'Current requirement', submissionEcho: 'Submitting requirement', assistantFeedback: 'Execution feedback',
-        liveReply: 'Reply streaming', awaitingFeedback: 'The model is processing; no visible feedback has arrived yet.', noConversationFeedback: 'Submit a requirement to see live execution feedback here.',
-        toolOutput: 'Tool output', stoppedReply: 'Stopped', stopExecution: 'Stop current execution', stopping: 'Stopping…',
-        stopNote: 'Stops the current assistant turn. Submitted background jobs and queued requests retain their own state.',
-        productionMonitor: 'Live production', autoRefresh: 'Auto update · about 3 s', staleSnapshot: 'Observation issue · not current', pollingPaused: 'Updates paused while hidden',
-        lastObserved: 'Last observed', conversationRunning: 'DSH conversation running; tool records below', productionScope: 'Production records for this conversation only',
-        retainedSnapshot: 'Connection failed. Keeping the last successful observation and retrying automatically', partialObservation: 'Some sources could not be read. Available records do not establish that all jobs are healthy.',
-        persistedSteps: 'Persisted completed steps', currentStep: 'Current unfinished step', unrecordedStep: 'No execution receipt yet', sceneJobs: 'Session scene jobs',
-        completedTasks: 'Completed tasks', phase: 'Production phase', workerStage: 'Last worker report', workerAge: 'Since worker report', transfer: 'Artifacts received',
-        capturedViews: 'Recorded images', actionTraces: 'Action traces', publication: 'Publication status', canceled: 'Canceled',
-        waiting_user:'Waiting for your instructions',needs_plan_application:'Plan edits need application',plan_superseded:'Replaced by a newer plan',
-        taskLimit: 'Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.',
-        noProduction: 'This conversation has no production receipts yet. They will appear when a task starts.',
-        recentOperations: 'Recent tool operations', observerNotConfigured: 'Scene observer is not configured; only workspace pipelines are observed.',
-        productionDetails: 'View production details', runFilter: 'Filter runs by name, ID or state', versionFilter: 'Filter versions, runs or tasks',
-        noMatchingRuns: 'No runs match this filter.', noMatchingVersions: 'No dataset versions match this filter.',
-        chooseVersionForReport: 'Choose a dataset version to view its quality report.',
-        noMatchingTemplates: 'No templates match these filters.', clearFilters: 'Clear filters', searchTemplates: 'Search templates',
-        readFailed: 'Could not read the records. Please retry.', retry: 'Retry', sampleRemoved: 'This sample is no longer in the current results. Returned to the list.',
-        stageStateSource: 'Step status source', workspacePipeline: 'Workspace pipeline', sessionProduction: 'Session scene job',
-        panel: 'Evaluation workbench', openEvaluation: 'Evaluations', noWorkspace: 'This SpatialForge session has no registered workspace. Attach one to this session first.', overview: 'Overview', runs: 'Runs & artifacts', datasets: 'Datasets', quality: 'Quality reports',
-        subtitle: 'From evaluation goals to dataset delivery: actions and artifacts at every step.', refresh: 'Refresh', loading: 'Loading…',
-        scope: 'Only records and artifacts explicitly associated with this conversation.', snapshot: 'Snapshot',
-        draft: 'Draft', candidate: 'Candidate', verified: 'Verified', rejected: 'Rejected', superseded: 'Superseded',
-        failed: 'Failed', completed: 'Execution completed', waiting: 'Waiting', needs_input: 'Needs input', needs_evidence: 'Needs evidence',
-        running: 'Running', proposed: 'Proposed', unknown: 'Not recorded', unassessed: 'Unassessed',
-        recent: 'Recent runs', workspace: 'Workspace', state: 'State', steps: 'Steps', artifacts: 'Artifacts',
-        updated: 'Updated', open: 'Open', noRuns: 'No persisted pipeline runs in the current index.', all: 'All',
-        sources: 'Sources', indexed: 'Operation index read', no_index: 'No run index', index_error: 'Index read failed',
-        record_error: 'Record read failed', limit: 'recent operation limit', truncated: 'List truncated; older records are excluded from these totals',
-        chooseRun: 'Select a run to inspect steps, artifacts and repair proposals.', plan: 'Frozen plan summary', next: 'Run note',
-        lineage: 'Artifacts & provenance', contracts: 'Shape contracts', shapeNote: 'Shape checks do not establish GT or scene quality.',
-        noArtifacts: 'This run has no artifact manifest. Candidate and verified counts are unknown.', producer: 'Producer',
-        parents: 'Parents', evidence: 'Evidence references', version: 'Version', repairs: 'Repair proposals', noRepairs: 'No saved repair proposals.',
-        repairNote: 'Saved proposals are not executed repairs. Production continues through the existing DSH tools.',
-        reason: 'Reason', operator: 'Operator', repairScope: 'Scope', newRun: 'Requires new run', yes: 'Yes', no: 'No',
-        directory: 'Dataset versions', datasetNote: 'Each artifact directory is an isolated version. Only public questions and declared media are exposed.',
-        noDatasets: 'No readable public datasets in the operation index.', generationAccepted: 'Generation accepted', browse: 'Browse samples',
-        chooseDataset: 'Choose dataset version', template: 'Template', split: 'Split', search: 'Question, ID or task', apply: 'Search',
-        previous: 'Previous', nextPage: 'Next', page: 'Page', matches: 'Matches', total: 'All records', pageSize: 'Per page',
-        grid: 'Grid', table: 'Table', question: 'Public question', noItems: 'No matching records.', item: 'Sample',
-        details: 'Public conditions & output format', media: 'Public observations', noMedia: 'No declared public media', close: 'Back to list',
-        publicNote: 'Public questions and supporting media.',
-        report: 'Generation quality report', noReport: 'No quality_report.json. Collection acceptance cannot be inferred.',
-        requested: 'Requested', accepted: 'Generation accepted', shortfall: 'Shortfall', scene_groups: 'Scene groups',
-        approval: 'Benchmark validation passed', reportNote: 'Generation acceptance is not verified-item count. IRT is hidden without model responses.',
-        coverage: 'Accepted items per template', rejections: 'Shortfalls & rejections', noRejections: 'No shortfall or rejection recorded in this report.',
-        local_field_repair: 'Local field repair', template_rebinding: 'Template rebinding', candidate_resynthesis: 'Candidate resynthesis',
-        skill_reexecution: 'Step re-execution', upstream_rollback: 'Upstream rollback', final_rejection: 'Final rejection',
-        task: 'Task', capability: 'Capability', path: 'Source directory', runCount: 'Runs', datasetCount: 'Dataset versions',
-        workflow: 'Five-step workflow', blueprint: 'Evaluation plan', collection: 'Scene preview', structure: 'Annotation preview', synthesis: 'Evaluation config & questions', verification: 'Final report',
-        productionProgress: 'Production progress', progressUpload: 'Artifact upload', progressItems: 'Completed items', progressStages: 'Completed stages', progressUpdated: 'Updated', progressTasks: 'Scene tasks', progressSteps: 'Steps', progressProducts: 'Annotation pairs', progressPending: 'In progress', progressWaiting: 'Awaiting receipt', progressPaused: 'Stopped', stageProgress: 'Stage progress', waitingForReceipt: 'Waiting for execution receipt', observedSteps: 'Completed steps', stageProcess: 'Stage execution details',
-        parallelTasks: 'Parallel tasks', parallelTask: 'Synthesis task', parallelCompleted: 'Completed subtasks', parallelRunning: 'Running tasks', parallelArtifacts: 'Public artifacts', parallelOpenArtifact: 'View artifact',
-        inactive: 'Awaiting next task', unavailable: 'Status unavailable',
-        keyProduct: 'Key product', draftOnly: 'Browser draft · not submitted', planPending: 'This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.',
-        planEditor: 'Edit requirements & templates', productionRecord: 'Production record', automaticRecord: 'Follow this session’s production', artifactPending: 'No previewable artifacts yet. New production outputs will appear here.',
-        selectionTotal: 'Total items in this selection',
-        sceneSelection: 'Select scenes', selectedScenes: 'Selected scenes', preview: 'Preview', previewClose: 'Close preview', selectArtifact: 'Select',
-        sceneGallery: 'Available scenes', annotationGallery: 'Annotations', annotationNote: 'Open public annotations and evidence. Candidate model annotations retain their source separately from simulation truth.',
-        evaluationConfig: 'Evaluation configuration', questionTable: 'Questions', finalReport: 'Final report', artifactFiles: 'Artifact files & provenance',
-        insertStage: 'Draft in chat', stepInstruction: 'View stage instruction', chooseSceneHint: 'Select multiple scenes to include in the stage instruction.',
-        persistedPlan: 'Persisted evaluation plan', planSteps: 'Planned steps', reportPending: 'No final report yet. Execution completion is not benchmark approval.',
-        completePlan: 'Assessment design', legacyPlan: 'This execution summary needs a complete assessment design.', completePlanRequest: 'Complete from template',
-        revisePlan: 'Revise plan', continuePlan: 'Continue production from plan', exportPlan: 'Export plan', exportPlanText: 'Export Markdown',
-        planMarkdownEditor: 'Full plan Markdown', planEditNote: 'Edit the complete document. After saving, the production agent updates item counts, rules and execution steps.',
-        savePlan: 'Save and apply', cancelPlanEdit: 'Cancel', savingPlan: 'Saving…',
-        planDesignNote: 'Counts and thresholds are design targets. Execution results appear in stage artifacts.', templateReadFailed: 'Could not read the assessment template. Nothing was submitted.',
-        planTemplate: 'Model assessment template', planTemplateNote: 'The model fills and saves the template after submission. This page shows its saved content.',
-        knownProgress: 'From execution receipts', unmeasuredProgress: 'No measurable total reported', noStageSteps: 'No execution receipt for this stage in this production record.',
-        downloadArtifact: 'Open artifact', artifactReadFailed: 'Could not read this artifact. Retry.', runHistory: 'Past plans and runs', runDetails: 'Current run details and artifact provenance',
-        confirmSend: 'Confirm and send', confirmTitle: 'Confirm stage task', cancel: 'Cancel', sending: 'Submitting…', sent: 'Stage task submitted to this conversation; follow its execution receipt in chat.',
-        confirmSendNote: 'Confirm submits directly. Existing composer drafts and attachments are only included after explicit review and selection. Cancel keeps them unchanged.',
-        sendBusy: 'The composer is processing a submission or command. Try again after it finishes.', sendFailed: 'Submission failed. Task retained; please retry.', noSendInterface: 'This DSH session has no submission interface.',
-        existingDraft: 'Composer text included in this submission', existingAttachments: 'Attachments included in this submission',
-        blueprintDesc: 'Define the goal, capabilities, templates, quantity and sources.', collectionDesc: 'Each project represents one scene. Open it to play the recorded scene video.',
-        structureDesc: 'Organize public observations, calibration and source evidence.', synthesisDesc: 'Produce questions and inspect dataset versions and samples.', verificationDesc: 'Inspect validity, splits and coverage; prepare reports and releases.',
-        objective: 'Evaluation goal', objectivePlaceholder: 'For example: 300 indoor distance and relative-position questions with varied occlusion.',
-        targetItems: 'Target items', storageBudget: 'Storage limit (GB)', sourceType: 'Source', simulator: 'Simulation scenes', program: 'Program generation', official: 'Official data',
-        templateCatalog: 'Capabilities & templates', catalogDesign: 'Design catalog. DSH checks execution adapters before production.', selectedTemplates: 'Selected templates', selectTemplate: 'Select', removeTemplate: 'Remove',
-        noSelection: 'No templates selected. DSH can decompose the goal.', allocate: 'Allocation', saveBlueprint: 'Save blueprint draft', blueprintSaved: 'Blueprint saved in this session’s browser draft.',
-        preparePlan: 'Draft in chat: production plan', prepareStage: 'Draft in chat: current step', draftReady: 'Instruction inserted into this session’s composer. Review and send.',
-        draftBusy: 'The composer is busy. Try again shortly.', nativeInputMissing: 'No input interface in this session. Copy the instruction below.', copyInstruction: 'Copy step instruction', copied: 'Instruction copied.',
-        stepOutput: 'Step outputs', noStepArtifacts: 'No recorded artifacts map to this step in the selected run.', chooseProduction: 'Production run', stageEvidence: 'Step artifacts & sources',
-        nextStep: 'Next step', previousStep: 'Previous step', openData: 'Browse all dataset items', openQuality: 'Open quality report', openRun: 'Open full run',
-        workflowNote: 'Five steps organize actions and artifacts. Compose or revisit them as needed.', chatNote: 'Instructions use the existing DSH conversation and tools. Results come from persisted artifacts.',
-        blueprintOutput: 'Goal, templates and allocation', collectionOutput: 'References, scenes, media and captures', structureOutput: 'Evidence, calibration, state and provenance', synthesisOutput: 'Questions, public observations and dataset versions', verificationOutput: 'Quality results, repair proposals and packages',
-        sceneFirst: 'Scenes first', sceneFirstNote: 'Reuse or generate scenes → capture RGB / depth / masks / trajectories → retain traceable evidence.',
-        evidencePolicy: 'GT comes from official sources, programs or simulation. Model inference remains candidate annotation.', qualityPolicy: 'Completion, generation acceptance and verification are distinct. No IRT without response data.',
-        savedAt: 'Draft saved at', navigation: 'BenchForge five steps', liveRecords: 'Actual artifacts in this session', requiredGoal: 'Enter an evaluation goal first.', perTemplate: 'items / template',
-      },
-    };
-    const styles = `
+/* @auto-generated by integrations/spatialforge/ui/build_client.mjs; edit ui/client/ sources. */
+(() => {
+  // integrations/spatialforge/ui/client/i18n.js
+  var dictionaries = {
+    zh: {
+      reviewWaiting: "\u7B49\u5F85\u4F60\u7684\u6307\u4EE4",
+      reviewPaused: "\u5DF2\u6682\u505C\uFF0C\u7B49\u5F85\u4F60\u7684\u6307\u4EE4",
+      reviewInstruction: "\u65B0\u6307\u4EE4\u5DF2\u4FDD\u5B58\uFF0C\u7B49\u5F85\u5904\u7406",
+      reviewContinue: "\u7ACB\u5373\u7EE7\u7EED",
+      reviewPause: "\u6682\u505C\u81EA\u52A8\u7EE7\u7EED",
+      reviewChange: "\u8865\u5145\u6307\u4EE4",
+      reviewNote: "\u65E0\u65B0\u6307\u4EE4\uFF0C5 \u5206\u949F\u540E\u7EE7\u7EED",
+      reviewFinished: "\u9636\u6BB5\u7B49\u5F85\u5DF2\u7ED3\u675F",
+      executionProgress: "\u6267\u884C\u8FDB\u5C55",
+      productionHint: "\u6BCF\u9636\u6BB5\u5B8C\u6210\u540E\u7B49\u5F85\u4F60\u7684\u6307\u4EE4 5 \u5206\u949F\u3002",
+      blueprintNav: "\u8BA1\u5212",
+      collectionNav: "\u573A\u666F",
+      structureNav: "\u6807\u6CE8",
+      synthesisNav: "\u9898\u76EE",
+      verificationNav: "\u62A5\u544A",
+      stageDone: "\u5DF2\u5B8C\u6210",
+      previewable: "\u53EF\u9884\u89C8",
+      savedStageProducts: "\u5DF2\u4FDD\u5B58\u4EA7\u7269",
+      observationReadFailed: "\u516C\u5F00\u89C2\u6D4B\u52A0\u8F7D\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      unsupportedObservation: "\u6682\u4E0D\u652F\u6301\u9884\u89C8\u8FD9\u79CD\u516C\u5F00\u89C2\u6D4B\u3002",
+      sceneProject: "\u573A\u666F\u9879\u76EE",
+      sceneTour: "\u89C6\u89D2\u5DE1\u89C8\u89C6\u9891",
+      sceneViews: "\u573A\u666F\u89C6\u89D2",
+      recordedViews: "\u5DF2\u91C7\u96C6\u89C6\u89D2",
+      sceneVideoFailed: "\u573A\u666F\u89C6\u9891\u8BFB\u53D6\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      pairedAnnotations: "\u573A\u666F\u56FE\u4E0E\u6807\u6CE8\u5DF2\u914D\u5BF9",
+      currentConversation: "\u5F53\u524D\u5BF9\u8BDD",
+      sessionIdle: "\u7B49\u5F85\u4F60\u7684\u8981\u6C42",
+      sessionRunning: "\u6B63\u5728\u6267\u884C",
+      sessionSubmitting: "\u6B63\u5728\u63D0\u4EA4",
+      sessionFailed: "\u5BF9\u8BDD\u5F02\u5E38",
+      sessionLoading: "\u6B63\u5728\u8FDE\u63A5\u5BF9\u8BDD",
+      toolPreparing: "\u6B63\u5728\u51C6\u5907\u5DE5\u5177\u8C03\u7528",
+      toolRunning: "\u6B63\u5728\u8C03\u7528\u5DE5\u5177",
+      recentToolFailure: "\u6700\u8FD1\u4E00\u6B21\u5DE5\u5177\u9519\u8BEF",
+      toolFailureHistory: "\u5386\u53F2\u8BB0\u5F55\uFF0C\u4E0D\u4EE3\u8868\u5F53\u524D\u4ECD\u963B\u585E",
+      toolResultError: "\u5DE5\u5177\u8FD4\u56DE\u9519\u8BEF",
+      queuedMessages: "\u6392\u961F\u6D88\u606F",
+      requestChange: "\u63D0\u51FA\u4FEE\u6539\u8981\u6C42",
+      requestPlaceholder: "\u8F93\u5165\u672C\u9636\u6BB5\u7684\u751F\u4EA7\u6216\u4FEE\u6539\u8981\u6C42",
+      requestRequired: "\u8BF7\u5148\u586B\u5199\u8981\u6C42\u3002",
+      requestNote: "\u8981\u6C42\u63D0\u4EA4\u5230\u5F53\u524D\u5DE5\u4F5C\u53F0\u4F1A\u8BDD\uFF0C\u7531 DSH \u6267\u884C\uFF1B\u5B9E\u9645\u8FDB\u5EA6\u548C\u4EA7\u7269\u5728\u4E0B\u65B9\u66F4\u65B0\u3002",
+      productionRequest: "\u6570\u636E\u96C6\u751F\u4EA7\u9700\u6C42",
+      startProduction: "\u5F00\u59CB\u751F\u4EA7",
+      appendRequest: "\u8FFD\u52A0\u8981\u6C42",
+      newProduction: "\u65B0\u5EFA\u751F\u4EA7\u4EFB\u52A1",
+      sceneLibrary: "\u573A\u666F\u5E93",
+      sceneLibraryHelp: "\u5386\u53F2\u4E0E\u672C\u6B21\u573A\u666F\u7EDF\u4E00\u5F52\u6863\uFF0C\u53EF\u9884\u89C8\u3001\u591A\u9009\u3002",
+      sceneSelected: "\u5DF2\u9009\u573A\u666F",
+      useScene: "\u4F7F\u7528\u6B64\u573A\u666F",
+      sceneSearch: "\u641C\u7D22\u573A\u666F\u540D\u79F0\u6216\u7F16\u53F7",
+      sceneOrigin: "\u573A\u666F\u6765\u6E90",
+      currentScenes: "\u5F53\u524D\u4F1A\u8BDD",
+      historyScenes: "\u5386\u53F2\u53CA\u5176\u4ED6",
+      selectScenePage: "\u9009\u62E9\u672C\u9875",
+      clearScenePage: "\u53D6\u6D88\u672C\u9875",
+      allowNewScenes: "\u5141\u8BB8\u751F\u6210\u65B0\u573A\u666F",
+      sceneSelectionHelp: "\u4EC5\u4F7F\u7528\u52FE\u9009\u573A\u666F\uFF1B\u65B0\u573A\u666F\u81EA\u52A8\u5F52\u6863\u3002",
+      sceneSaving: "\u6B63\u5728\u4FDD\u5B58\u9009\u62E9\u2026",
+      sceneSaved: "\u9009\u62E9\u5DF2\u4FDD\u5B58",
+      sceneLibraryLoading: "\u6B63\u5728\u66F4\u65B0\u573A\u666F\u5217\u8868\u2026",
+      sceneSaveFailed: "\u573A\u666F\u9009\u62E9\u4FDD\u5B58\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      sceneUnavailable: "\u91C7\u96C6\u6587\u4EF6\u4E0D\u53EF\u7528",
+      sceneStorage: "\u7EDF\u4E00\u5B58\u653E\u4F4D\u7F6E",
+      chooseSceneRequired: "\u8BF7\u5728\u573A\u666F\u9875\u52FE\u9009\u573A\u666F\uFF0C\u6216\u5141\u8BB8\u751F\u6210\u65B0\u573A\u666F\u3002",
+      sceneChanged: "\u573A\u666F\u9009\u62E9\u5DF2\u5728\u5176\u4ED6\u7A97\u53E3\u66F4\u65B0\uFF0C\u8BF7\u786E\u8BA4\u6700\u65B0\u9009\u62E9\u540E\u518D\u6B21\u63D0\u4EA4\u3002",
+      sceneSelectionReadFailed: "\u8BFB\u53D6\u573A\u666F\u7EA6\u675F\u5931\u8D25\uFF0C\u5C1A\u672A\u53D1\u9001\u751F\u4EA7\u8BF7\u6C42\u3002",
+      productionPlaceholder: "\u4F8B\u5982\uFF1A\u751F\u4EA7\u5BA4\u5185\u7269\u4F53\u76F8\u5BF9\u4F4D\u7F6E\u4E0E\u906E\u6321\u63A8\u7406\u9898\uFF0C\u8986\u76D6\u591A\u79CD\u5E03\u5C40\uFF0C\u516C\u5F00\u89C2\u6D4B\u8DB3\u4EE5\u4F5C\u7B54\u3002",
+      capabilityRequest: "\u80FD\u529B\u6216\u6A21\u677F\u8981\u6C42\uFF08\u53EF\u9009\uFF09",
+      capabilityPlaceholder: "\u7528\u81EA\u7136\u8BED\u8A00\u63CF\u8FF0\u80FD\u529B\uFF0C\u6216\u586B\u5199\u5DF2\u6709\u6A21\u677F\u7F16\u53F7\uFF1B\u7559\u7A7A\u7531 DSH \u62C6\u89E3\u3002",
+      productionRequirements: "\u751F\u4EA7\u8981\u6C42",
+      changeRequirements: "\u8FFD\u52A0\u6216\u4FEE\u6539\u8981\u6C42",
+      advancedOptions: "\u9AD8\u7EA7\u9009\u9879\uFF08\u53EF\u9009\uFF09",
+      sceneCount: "\u76EE\u6807\u573A\u666F\u6570",
+      targetQuantityNote: "\u8FD9\u91CC\u586B\u5199\u7684\u662F\u76EE\u6807\u9898\u91CF\uFF0C\u5B9E\u9645\u751F\u6210\u91CF\u4EE5\u751F\u4EA7\u56DE\u6267\u4E3A\u51C6\u3002",
+      optionalAuto: "\u7559\u7A7A\u7531 DSH \u5B89\u6392",
+      fullWorkflowNote: "\u4E00\u6B21\u63D0\u4EA4\u540E\u6267\u884C\u5B8C\u6574\u4E94\u9636\u6BB5\uFF1A\u8BC4\u6D4B\u8BA1\u5212 \u2192 \u573A\u666F \u2192 \u6807\u6CE8 \u2192 \u51FA\u9898 \u2192 \u8D28\u91CF\u68C0\u67E5\u4E0E\u4EA4\u4ED8\u3002",
+      appendNote: "\u8FFD\u52A0\u8981\u6C42\u53D1\u9001\u5230\u5F53\u524D\u4F1A\u8BDD\uFF1B\u6267\u884C\u4E2D\u4F1A\u8FDB\u5165\u6D88\u606F\u961F\u5217\uFF0C\u4E0D\u4F1A\u53E6\u8D77\u4E00\u4E2A\u9690\u85CF\u4EFB\u52A1\u3002",
+      preservedDraft: "\u5F53\u524D\u4F1A\u8BDD\u4FDD\u7559\u7684\u539F\u8F93\u5165\u8349\u7A3F",
+      preservedAttachments: "\u5F53\u524D\u4F1A\u8BDD\u4FDD\u7559\u7684\u9644\u4EF6",
+      includeDraft: "\u672C\u6B21\u4E00\u5E76\u53D1\u9001\u4E0A\u9762\u5DF2\u5C55\u793A\u7684\u8349\u7A3F\u548C\u9644\u4EF6",
+      draftConsentRequired: "\u539F\u8F93\u5165\u4E2D\u8FD8\u6709\u8349\u7A3F\u6216\u9644\u4EF6\u3002\u8BF7\u5148\u67E5\u770B\uFF0C\u5E76\u52FE\u9009\u662F\u5426\u968F\u672C\u6B21\u8981\u6C42\u53D1\u9001\uFF1B\u672A\u52FE\u9009\u4E0D\u4F1A\u66F4\u6539\u6216\u53D1\u9001\u5B83\u4EEC\u3002",
+      positiveCount: "\u76EE\u6807\u9898\u91CF\u5FC5\u987B\u662F\u6B63\u6574\u6570\u3002",
+      positiveSceneCount: "\u573A\u666F\u6570\u5FC5\u987B\u662F\u6B63\u6574\u6570\u6216\u7559\u7A7A\u3002",
+      positiveBudget: "\u5B58\u50A8\u9884\u7B97\u5FC5\u987B\u5927\u4E8E 0 \u6216\u7559\u7A7A\u3002",
+      previousUnsentRequest: "\u4E0A\u6B21\u63D0\u4EA4\u672A\u5B8C\u6210\uFF0C\u8981\u6C42\u4ECD\u4FDD\u7559\u5728\u539F\u8F93\u5165\u8349\u7A3F\u4E2D\u3002\u8BF7\u4F7F\u7528\u76F8\u540C\u8981\u6C42\u91CD\u8BD5\uFF0C\u907F\u514D\u91CD\u590D\u63D2\u5165\u3002",
+      permissionsPending: "\u6B64\u4F1A\u8BDD\u5C1A\u672A\u542F\u7528\u751F\u4EA7\u6240\u9700\u6743\u9650\u3002",
+      permissionEnable: "\u4E3A\u6B64\u4F1A\u8BDD\u542F\u7528\u751F\u4EA7\u6743\u9650",
+      permissionRequesting: "\u6B63\u5728\u8BF7\u6C42\u6743\u9650\u2026",
+      fullPermissions: "\u672C\u4F1A\u8BDD\u6743\u9650\u5DF2\u5C31\u7EEA",
+      permissionFailed: "\u6743\u9650\u8BF7\u6C42\u5931\u8D25",
+      permissionRetry: "\u91CD\u8BD5\u5F00\u542F\u6743\u9650",
+      executionMode: "\u4EFB\u52A1\u6A21\u5F0F",
+      productionMode: "\u6B63\u5F0F\u751F\u4EA7",
+      explorationMode: "\u63A2\u7D22\u8BD5\u8DD1",
+      quantityContract: "\u6570\u91CF\u5408\u540C",
+      exactQuantity: "\u7CBE\u786E\u8FBE\u5230\u76EE\u6807",
+      minimumQuantity: "\u81F3\u5C11\u8FBE\u5230\u76EE\u6807",
+      bestEffortQuantity: "\u5C3D\u529B\u751F\u6210",
+      deliveryReceipt: "\u4EA4\u4ED8\u4E0E\u9A8C\u6536\u56DE\u6267",
+      targetReached: "\u6570\u91CF\u76EE\u6807\u8FBE\u6210",
+      targetNotReached: "\u6570\u91CF\u76EE\u6807\u672A\u8FBE\u6210",
+      deliverySatisfaction: "\u4EA4\u4ED8\u6761\u4EF6",
+      deliverySatisfied: "\u4EA4\u4ED8\u6761\u4EF6\u6EE1\u8DB3",
+      deliveryNotSatisfied: "\u4EA4\u4ED8\u6761\u4EF6\u672A\u6EE1\u8DB3",
+      deliveryComplete: "\u5B8C\u6574\u4EA4\u4ED8",
+      deliveryPartial: "\u90E8\u5206\u4EA4\u4ED8",
+      deliveryUnsatisfied: "\u4EA4\u4ED8\u6761\u4EF6\u672A\u6EE1\u8DB3",
+      deliveryUnknown: "\u672A\u8BC4\u4F30",
+      backgroundProductionRunning: "\u540E\u53F0\u751F\u4EA7\u4EFB\u52A1\u8FD0\u884C\u4E2D",
+      backgroundProductionIdle: "\u672A\u89C2\u6D4B\u5230\u8FD0\u884C\u4E2D\u7684\u540E\u53F0\u4EFB\u52A1",
+      backgroundProductionUnknown: "\u540E\u53F0\u4EFB\u52A1\u72B6\u6001\u672A\u77E5",
+      cancelProductionInConversation: "\u5355\u72EC\u53D6\u6D88\u6B64\u751F\u4EA7\u4EFB\u52A1\uFF0C\u8BF7\u5728\u5F53\u524D\u5BF9\u8BDD\u8C03\u7528",
+      executionFeedback: "\u5F53\u524D\u5BF9\u8BDD\u4E0E\u6267\u884C\u53CD\u9988",
+      currentRequest: "\u5F53\u524D\u8981\u6C42",
+      submissionEcho: "\u8981\u6C42\u6B63\u5728\u63D0\u4EA4",
+      assistantFeedback: "\u6267\u884C\u53CD\u9988",
+      liveReply: "\u6B63\u5728\u751F\u6210\u56DE\u590D",
+      awaitingFeedback: "\u6A21\u578B\u6B63\u5728\u5904\u7406\uFF0C\u5C1A\u672A\u8FD4\u56DE\u53EF\u89C1\u53CD\u9988\u3002",
+      noConversationFeedback: "\u63D0\u4EA4\u8981\u6C42\u540E\uFF0C\u8FD9\u91CC\u4F1A\u5B9E\u65F6\u663E\u793A\u6267\u884C\u53CD\u9988\u3002",
+      toolOutput: "\u5DE5\u5177\u8FD4\u56DE\u5185\u5BB9",
+      stoppedReply: "\u5DF2\u505C\u6B62",
+      stopExecution: "\u505C\u6B62\u5F53\u524D\u52A9\u624B\u8F6E\u6B21",
+      stopping: "\u6B63\u5728\u505C\u6B62\u2026",
+      stopNote: "\u53EA\u505C\u6B62\u5F53\u524D\u52A9\u624B\u8F6E\u6B21\uFF1B\u5DF2\u63D0\u4EA4\u7684\u540E\u53F0\u4EFB\u52A1\u4E0D\u4F1A\u56E0\u6B64\u53D6\u6D88\u3002",
+      productionMonitor: "\u751F\u4EA7\u5B9E\u51B5",
+      autoRefresh: "\u81EA\u52A8\u66F4\u65B0 \xB7 \u7EA6 3 \u79D2",
+      staleSnapshot: "\u89C2\u6D4B\u5F02\u5E38 \xB7 \u975E\u6700\u65B0\u72B6\u6001",
+      pollingPaused: "\u9690\u85CF\u65F6\u6682\u505C\u66F4\u65B0",
+      lastObserved: "\u6700\u8FD1\u89C2\u6D4B",
+      conversationRunning: "DSH \u5BF9\u8BDD\u6267\u884C\u4E2D\uFF1B\u4EE5\u4E0B\u4E3A\u5DE5\u5177\u8BB0\u5F55",
+      productionScope: "\u4EC5\u5F53\u524D\u5BF9\u8BDD\u7684\u751F\u4EA7\u8BB0\u5F55",
+      retainedSnapshot: "\u8FDE\u63A5\u5F02\u5E38\uFF0C\u4FDD\u7559\u4E0A\u6B21\u6210\u529F\u89C2\u6D4B\uFF0C\u6062\u590D\u540E\u81EA\u52A8\u7EED\u66F4",
+      partialObservation: "\u90E8\u5206\u6765\u6E90\u8BFB\u53D6\u5931\u8D25\uFF1B\u663E\u793A\u7684\u662F\u53EF\u8BFB\u53D6\u8BB0\u5F55\uFF0C\u4E0D\u80FD\u636E\u6B64\u5224\u65AD\u5168\u90E8\u4EFB\u52A1\u6B63\u5E38\u3002",
+      persistedSteps: "\u5DF2\u843D\u76D8\u5B8C\u6210\u6B65\u9AA4",
+      currentStep: "\u5F53\u524D\u5F85\u5B8C\u6210\u6B65\u9AA4",
+      unrecordedStep: "\u5C1A\u65E0\u6267\u884C\u56DE\u6267",
+      sceneJobs: "\u672C\u4F1A\u8BDD\u573A\u666F\u4EFB\u52A1",
+      completedTasks: "\u6267\u884C\u5B8C\u6210\u4EFB\u52A1",
+      phase: "\u751F\u4EA7\u9636\u6BB5",
+      workerStage: "worker \u6700\u8FD1\u4E0A\u62A5",
+      workerAge: "\u8DDD worker \u4E0A\u62A5",
+      transfer: "\u5DF2\u63A5\u6536\u4EA7\u7269",
+      capturedViews: "\u5DF2\u8BB0\u5F55\u56FE\u50CF",
+      actionTraces: "\u4EA4\u4E92\u8F68\u8FF9",
+      publication: "\u53D1\u5E03\u72B6\u6001",
+      canceled: "\u5DF2\u53D6\u6D88",
+      waiting_user: "\u7B49\u5F85\u4F60\u7684\u6307\u4EE4",
+      needs_plan_application: "\u5F85\u5E94\u7528\u8BA1\u5212\u4FEE\u6539",
+      plan_superseded: "\u5DF2\u7531\u65B0\u7248\u8BA1\u5212\u66FF\u4EE3",
+      taskLimit: "\u672C\u9875\u663E\u793A\u524D 12 \u9879\u4EFB\u52A1\uFF1B\u5B8C\u6574\u72B6\u6001\u53EF\u5728\u5BF9\u8BDD\u4F7F\u7528 spatialforge_status \u67E5\u770B\u3002",
+      noProduction: "\u5F53\u524D\u5BF9\u8BDD\u5C1A\u65E0\u751F\u4EA7\u56DE\u6267\uFF1B\u4EFB\u52A1\u5F00\u59CB\u540E\u5C06\u5728\u8FD9\u91CC\u66F4\u65B0\u3002",
+      recentOperations: "\u6700\u8FD1\u5DE5\u5177\u64CD\u4F5C",
+      observerNotConfigured: "\u573A\u666F\u961F\u5217\u89C2\u5BDF\u5668\u672A\u914D\u7F6E\uFF1B\u5F53\u524D\u4EC5\u8BFB\u53D6\u5DE5\u4F5C\u533A pipeline\u3002",
+      productionDetails: "\u67E5\u770B\u751F\u4EA7\u660E\u7EC6",
+      runFilter: "\u7B5B\u9009\u8FD0\u884C\u540D\u79F0\u3001ID \u6216\u72B6\u6001",
+      versionFilter: "\u7B5B\u9009\u7248\u672C\u3001\u8FD0\u884C\u6216\u4EFB\u52A1",
+      noMatchingRuns: "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u8FD0\u884C\u3002",
+      noMatchingVersions: "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u6570\u636E\u96C6\u7248\u672C\u3002",
+      chooseVersionForReport: "\u5148\u9009\u62E9\u4E00\u4E2A\u6570\u636E\u96C6\u7248\u672C\uFF0C\u518D\u67E5\u770B\u5BF9\u5E94\u7684\u8D28\u91CF\u62A5\u544A\u3002",
+      noMatchingTemplates: "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u6A21\u677F\u3002",
+      clearFilters: "\u6E05\u7A7A\u7B5B\u9009",
+      searchTemplates: "\u641C\u7D22\u6A21\u677F",
+      readFailed: "\u8BFB\u53D6\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      retry: "\u91CD\u8BD5",
+      sampleRemoved: "\u8BE5\u6837\u672C\u5DF2\u4E0D\u5728\u5F53\u524D\u7ED3\u679C\u4E2D\uFF0C\u5DF2\u8FD4\u56DE\u5217\u8868\u3002",
+      stageStateSource: "\u6B65\u9AA4\u72B6\u6001\u6765\u6E90",
+      workspacePipeline: "\u5DE5\u4F5C\u533A\u6D41\u6C34\u7EBF",
+      sessionProduction: "\u672C\u4F1A\u8BDD\u573A\u666F\u4EFB\u52A1",
+      panel: "\u8BC4\u6D4B\u5DE5\u4F5C\u53F0",
+      openEvaluation: "\u8BC4\u6D4B\u96C6",
+      noWorkspace: "\u5F53\u524D\u4F1A\u8BDD\u6CA1\u6709\u767B\u8BB0\u7684\u5DE5\u4F5C\u533A\u3002\u8BF7\u5148\u4E3A\u8FD9\u4E2A\u4F1A\u8BDD\u9009\u62E9\u5DE5\u4F5C\u533A\u3002",
+      overview: "\u603B\u89C8",
+      runs: "\u8FD0\u884C\u4E0E\u4EA7\u7269",
+      datasets: "\u6570\u636E\u96C6",
+      quality: "\u8D28\u91CF\u62A5\u544A",
+      subtitle: "\u5B9E\u65F6\u8DDF\u968F\u5F53\u524D\u5BF9\u8BDD\uFF0C\u5C55\u793A\u4E94\u9636\u6BB5\u7684\u751F\u4EA7\u8FDB\u5EA6\u548C\u5B9E\u9645\u4EA7\u7269\u3002",
+      refresh: "\u5237\u65B0",
+      loading: "\u8BFB\u53D6\u4E2D\u2026",
+      scope: "\u4EC5\u5C55\u793A\u4E0E\u5F53\u524D\u5BF9\u8BDD\u660E\u786E\u5173\u8054\u7684\u751F\u4EA7\u8BB0\u5F55\u548C\u4EA7\u7269\u3002",
+      snapshot: "\u5FEB\u7167\u65F6\u95F4",
+      draft: "\u8349\u7A3F",
+      candidate: "\u5019\u9009",
+      verified: "\u5DF2\u9A8C\u8BC1",
+      rejected: "\u5DF2\u62D2\u7EDD",
+      superseded: "\u5DF2\u66FF\u4EE3",
+      failed: "\u5931\u8D25",
+      completed: "\u6267\u884C\u5B8C\u6210",
+      waiting: "\u7B49\u5F85",
+      needs_input: "\u7F3A\u8F93\u5165",
+      needs_evidence: "\u7F3A\u8BC1\u636E",
+      running: "\u8FD0\u884C\u4E2D",
+      proposed: "\u5F85\u5BA1\u9605",
+      unknown: "\u672A\u8BB0\u5F55",
+      unassessed: "\u672A\u8BC4\u4F30",
+      recent: "\u6700\u8FD1\u8FD0\u884C",
+      workspace: "\u5DE5\u4F5C\u533A",
+      state: "\u72B6\u6001",
+      steps: "\u6B65\u9AA4",
+      artifacts: "\u4EA7\u7269",
+      updated: "\u66F4\u65B0\u65F6\u95F4",
+      open: "\u67E5\u770B",
+      noRuns: "\u5F53\u524D\u7D22\u5F15\u4E2D\u6CA1\u6709\u6301\u4E45\u5316 pipeline \u8FD0\u884C\u3002",
+      all: "\u5168\u90E8",
+      sources: "\u6570\u636E\u6765\u6E90",
+      indexed: "\u5DF2\u8BFB\u53D6\u64CD\u4F5C\u7D22\u5F15",
+      no_index: "\u6CA1\u6709\u8FD0\u884C\u7D22\u5F15",
+      index_error: "\u7D22\u5F15\u8BFB\u53D6\u5931\u8D25",
+      record_error: "\u8BB0\u5F55\u8BFB\u53D6\u5931\u8D25",
+      limit: "\u6761\u6700\u8FD1\u64CD\u4F5C\u4E0A\u9650",
+      truncated: "\u5217\u8868\u5DF2\u622A\u65AD\uFF1B\u66F4\u65E9\u8BB0\u5F55\u4E0D\u8BA1\u5165\u672C\u9875",
+      chooseRun: "\u4ECE\u8FD0\u884C\u5217\u8868\u9009\u62E9\u4E00\u9879\uFF0C\u67E5\u770B\u6B65\u9AA4\u3001\u4EA7\u7269\u548C\u4FEE\u590D\u5EFA\u8BAE\u3002",
+      plan: "\u51BB\u7ED3\u8BA1\u5212\u6458\u8981",
+      next: "\u8FD0\u884C\u63D0\u793A",
+      lineage: "\u4EA7\u7269\u4E0E\u6765\u6E90",
+      contracts: "\u7ED3\u6784\u5408\u540C",
+      shapeNote: "\u7ED3\u6784\u5408\u540C\u901A\u8FC7\u4E0D\u4EE3\u8868 GT \u6216\u573A\u666F\u8D28\u91CF\u5DF2\u901A\u8FC7\u3002",
+      noArtifacts: "\u8BE5\u8FD0\u884C\u6CA1\u6709\u4EA7\u7269 manifest\uFF1B\u4E0D\u80FD\u636E\u6B64\u63A8\u65AD\u5019\u9009\u6216\u9A8C\u8BC1\u6570\u91CF\u3002",
+      producer: "\u751F\u6210\u64CD\u4F5C",
+      parents: "\u7236\u4EA7\u7269",
+      evidence: "\u8BC1\u636E\u5F15\u7528",
+      version: "\u7248\u672C",
+      repairs: "\u4FEE\u590D\u5EFA\u8BAE",
+      noRepairs: "\u6CA1\u6709\u6301\u4E45\u5316\u4FEE\u590D\u5EFA\u8BAE\u3002",
+      repairNote: "\u4EE5\u4E0B\u662F\u5DF2\u4FDD\u5B58\u7684\u5EFA\u8BAE\uFF0C\u4E0D\u4EE3\u8868\u4FEE\u590D\u5DF2\u6267\u884C\u3002\u7EE7\u7EED\u751F\u4EA7\u4ECD\u4F7F\u7528\u539F DSH \u5DE5\u5177\u3002",
+      reason: "\u539F\u56E0",
+      operator: "\u64CD\u4F5C",
+      repairScope: "\u8303\u56F4",
+      newRun: "\u8981\u6C42\u65B0\u8FD0\u884C",
+      yes: "\u662F",
+      no: "\u5426",
+      directory: "\u6570\u636E\u96C6\u7248\u672C\u76EE\u5F55",
+      datasetNote: "\u6BCF\u4E2A\u4EA7\u7269\u76EE\u5F55\u72EC\u7ACB\u4F5C\u4E3A\u4E00\u4E2A\u7248\u672C\uFF1B\u53EA\u5C55\u793A\u516C\u5F00\u9898\u76EE\u548C\u58F0\u660E\u7684\u5A92\u4F53\u3002",
+      noDatasets: "\u5F53\u524D\u64CD\u4F5C\u7D22\u5F15\u4E2D\u6CA1\u6709\u53EF\u8BFB\u53D6\u7684\u516C\u5F00\u6570\u636E\u96C6\u3002",
+      generationAccepted: "\u751F\u6210\u63A5\u7EB3\u6570",
+      browse: "\u6D4F\u89C8\u6837\u672C",
+      chooseDataset: "\u9009\u62E9\u6570\u636E\u96C6\u7248\u672C",
+      template: "\u6A21\u677F",
+      split: "\u5206\u533A",
+      search: "\u9898\u76EE\u3001ID \u6216\u4EFB\u52A1",
+      apply: "\u68C0\u7D22",
+      previous: "\u4E0A\u4E00\u9875",
+      nextPage: "\u4E0B\u4E00\u9875",
+      page: "\u9875",
+      matches: "\u7B26\u5408\u6761\u4EF6",
+      total: "\u5168\u96C6\u8BB0\u5F55",
+      pageSize: "\u6BCF\u9875",
+      grid: "\u7F51\u683C",
+      table: "\u8868\u683C",
+      question: "\u516C\u5F00\u9898\u76EE",
+      noItems: "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u8BB0\u5F55\u3002",
+      item: "\u6837\u672C",
+      details: "\u516C\u5F00\u6761\u4EF6\u4E0E\u8F93\u51FA\u683C\u5F0F",
+      media: "\u516C\u5F00\u89C2\u6D4B",
+      publicAssets: "\u516C\u5F00\u6D4B\u91CF\u9644\u4EF6",
+      noMedia: "\u672A\u58F0\u660E\u516C\u5F00\u5A92\u4F53",
+      close: "\u8FD4\u56DE\u5217\u8868",
+      publicNote: "\u516C\u5F00\u9898\u76EE\u4E0E\u914D\u5957\u5A92\u4F53\u3002",
+      report: "\u751F\u6210\u8D28\u91CF\u62A5\u544A",
+      noReport: "\u8BE5\u7248\u672C\u6CA1\u6709 quality_report.json\uFF0C\u4E0D\u80FD\u5BA3\u79F0\u5DF2\u5B8C\u6210\u96C6\u5408\u8D28\u91CF\u9A8C\u6536\u3002",
+      requested: "\u8BF7\u6C42\u6570",
+      accepted: "\u751F\u6210\u63A5\u7EB3\u6570",
+      shortfall: "\u7F3A\u53E3",
+      scene_groups: "\u573A\u666F\u7EC4",
+      approval: "\u8BC4\u6D4B\u9A8C\u8BC1\u901A\u8FC7",
+      reportNote: "\u751F\u6210\u63A5\u7EB3\u6570\u4E0D\u7B49\u4E8E\u5DF2\u9A8C\u8BC1\u6837\u672C\u6570\uFF1B\u672A\u6536\u96C6\u6A21\u578B\u54CD\u5E94\u65F6\u4E0D\u663E\u793A IRT\u3002",
+      coverage: "\u5404\u6A21\u677F\u5B9E\u9645\u63A5\u7EB3\u6570",
+      rejections: "\u7F3A\u53E3\u4E0E\u62D2\u7EDD\u539F\u56E0",
+      noRejections: "\u62A5\u544A\u6CA1\u6709\u8BB0\u5F55\u7F3A\u53E3\u6216\u62D2\u7EDD\u539F\u56E0\u3002",
+      local_field_repair: "\u5C40\u90E8\u5B57\u6BB5\u4FEE\u590D",
+      template_rebinding: "\u6A21\u677F\u91CD\u7ED1\u5B9A",
+      candidate_resynthesis: "\u5019\u9009\u91CD\u5408\u6210",
+      skill_reexecution: "\u91CD\u65B0\u6267\u884C\u6B65\u9AA4",
+      upstream_rollback: "\u4E0A\u6E38\u56DE\u6EDA",
+      final_rejection: "\u6700\u7EC8\u62D2\u7EDD",
+      task: "\u4EFB\u52A1",
+      capability: "\u80FD\u529B",
+      path: "\u6765\u6E90\u76EE\u5F55",
+      runCount: "\u8FD0\u884C",
+      datasetCount: "\u6570\u636E\u96C6\u7248\u672C",
+      workflow: "\u4E94\u6B65\u5DE5\u4F5C\u6D41",
+      blueprint: "\u8BC4\u6D4B\u8BA1\u5212",
+      collection: "\u573A\u666F\u9884\u89C8",
+      structure: "\u6807\u6CE8\u9884\u89C8",
+      synthesis: "\u8BC4\u6D4B\u914D\u7F6E\u4E0E\u9898\u76EE\u8868",
+      verification: "\u6700\u7EC8\u62A5\u544A",
+      productionProgress: "\u751F\u4EA7\u8FDB\u5EA6",
+      progressUpload: "\u4EA7\u7269\u4E0A\u4F20",
+      progressItems: "\u5DF2\u5B8C\u6210\u6570\u91CF",
+      progressStages: "\u5DF2\u5B8C\u6210\u9636\u6BB5",
+      progressUpdated: "\u66F4\u65B0",
+      progressTasks: "\u573A\u666F\u4EFB\u52A1",
+      progressSteps: "\u6B65\u9AA4",
+      progressProducts: "\u6807\u6CE8\u914D\u5BF9",
+      progressPending: "\u6267\u884C\u4E2D",
+      progressWaiting: "\u7B49\u5F85\u56DE\u6267",
+      progressPaused: "\u5DF2\u505C\u6B62",
+      stageProgress: "\u9636\u6BB5\u8FDB\u5EA6",
+      waitingForReceipt: "\u7B49\u5F85\u6267\u884C\u56DE\u6267",
+      observedSteps: "\u5DF2\u5B8C\u6210\u6B65\u9AA4",
+      stageProcess: "\u6B65\u9AA4\u660E\u7EC6",
+      questionGeneration: "\u9898\u76EE\u751F\u6210",
+      generationWritten: "\u5DF2\u5199\u51FA",
+      generationVerified: "\u516C\u5F00\u6821\u9A8C\u901A\u8FC7",
+      generationEligible: "\u9898\u76EE\u6821\u9A8C\u901A\u8FC7",
+      generationCandidate: "\u5019\u9009\u9898",
+      generationPublished: "\u5DF2\u53D1\u5E03",
+      generationRepairVerified: "\u4FEE\u590D\u5019\u9009\u5DF2\u9A8C\u8BC1",
+      generationNeedsRepair: "\u5F85\u4FEE\u9898\u76EE",
+      generationAwaitingAdmission: "\u751F\u6210\u7ED3\u675F\uFF0C\u5F85\u5165\u5E93",
+      generationInterrupted: "\u751F\u6210\u8FDB\u7A0B\u5DF2\u505C\u6B62\uFF0C\u5F85\u6062\u590D",
+      generationSelecting: "\u7B5B\u9009\u5019\u9009\u9898",
+      generationOracle: "\u8BA1\u7B97\u51E0\u4F55\u4F9D\u636E",
+      generationWriting: "\u5199\u51FA\u9898\u76EE",
+      generationComplete: "\u751F\u6210\u5DF2\u7ED3\u675F",
+      sceneNativeAccepted: "\u539F\u751F\u573A\u666F\u5DF2\u9A8C\u6536",
+      scenePlanPending: "\u8BA1\u5212\u4FEE\u6539\u5F85\u5E94\u7528",
+      sceneSnapshotUnavailable: "\u6B63\u5728\u6838\u5BF9\u5F53\u524D\u8BA1\u5212\u4E0E\u573A\u666F\u767B\u8BB0",
+      priorSceneAttempts: "\u91C7\u96C6\u56DE\u6267\u8BE6\u60C5",
+      scenePassed: "\u5DF2\u901A\u8FC7",
+      sceneRepairing: "\u6B63\u5728\u4FEE\u590D",
+      sceneCapturing: "\u91C7\u96C6\u4E2D",
+      sceneQueued: "\u6392\u961F",
+      sceneNeedsRepair: "\u5F85\u4FEE\u590D",
+      sceneStopped: "\u5DF2\u505C\u6B62",
+      scenePending: "\u7B49\u5F85\u573A\u666F\u56DE\u6267",
+      sceneIdentityPending: "\u573A\u666F\u7ED1\u5B9A\u5F85\u786E\u8BA4",
+      parallelTasks: "\u5E76\u884C\u4EFB\u52A1",
+      parallelTask: "\u5408\u6210\u4EFB\u52A1",
+      parallelCompleted: "\u5DF2\u5B8C\u6210\u5B50\u4EFB\u52A1",
+      parallelRunning: "\u6B63\u5728\u6267\u884C",
+      parallelArtifacts: "\u516C\u5F00\u4EA7\u7269",
+      parallelOpenArtifact: "\u67E5\u770B\u4EA7\u7269",
+      inactive: "\u7B49\u5F85\u540E\u7EED\u4EFB\u52A1",
+      unavailable: "\u72B6\u6001\u6682\u4E0D\u53EF\u7528",
+      keyProduct: "\u5173\u952E\u4EA7\u7269",
+      draftOnly: "\u6D4F\u89C8\u5668\u8349\u7A3F \xB7 \u5C1A\u672A\u63D0\u4EA4\u751F\u4EA7",
+      planPending: "\u5F53\u524D\u5BF9\u8BDD\u5C1A\u672A\u751F\u6210\u8BC4\u6D4B\u8BA1\u5212\u3002\u5728\u5BF9\u8BDD\u4E2D\u63D0\u51FA\u9700\u6C42\uFF0C\u751F\u6210\u540E\u8FD9\u91CC\u4F1A\u81EA\u52A8\u5C55\u793A\u3002",
+      planEditor: "\u7F16\u8F91\u8BC4\u6D4B\u8981\u6C42\u4E0E\u6A21\u677F",
+      productionRecord: "\u751F\u4EA7\u8BB0\u5F55",
+      automaticRecord: "\u81EA\u52A8\u8DDF\u968F\u672C\u4F1A\u8BDD\u751F\u4EA7",
+      artifactPending: "\u5C1A\u65E0\u53EF\u9884\u89C8\u4EA7\u7269\uFF1B\u751F\u4EA7\u4E2D\u751F\u6210\u7684\u5185\u5BB9\u5C06\u5728\u8FD9\u91CC\u66F4\u65B0\u3002",
+      selectionTotal: "\u672C\u7EC4\u603B\u9898\u6570",
+      sceneSelection: "\u9009\u62E9\u573A\u666F",
+      selectedScenes: "\u5DF2\u9009\u573A\u666F",
+      preview: "\u9884\u89C8",
+      previewClose: "\u5173\u95ED\u9884\u89C8",
+      selectArtifact: "\u9009\u62E9",
+      sceneGallery: "\u53EF\u7528\u573A\u666F",
+      annotationGallery: "\u6807\u6CE8\u6570\u636E",
+      annotationNote: "\u70B9\u51FB\u9884\u89C8\u67E5\u770B\u516C\u5F00\u6807\u6CE8\u4E0E\u8BC1\u636E\uFF1B\u6A21\u578B\u5019\u9009\u6807\u6CE8\u4E0E\u4EFF\u771F\u771F\u503C\u4FDD\u7559\u5404\u81EA\u6765\u6E90\u3002",
+      evaluationConfig: "\u8BC4\u6D4B\u914D\u7F6E",
+      questionTable: "\u9898\u76EE\u8868",
+      finalReport: "\u6700\u7EC8\u62A5\u544A",
+      artifactFiles: "\u4EA7\u7269\u6587\u4EF6\u4E0E\u6765\u6E90",
+      insertStage: "\u586B\u5165\u5BF9\u8BDD",
+      stepInstruction: "\u67E5\u770B\u672C\u6B65\u6307\u4EE4",
+      chooseSceneHint: "\u53EF\u591A\u9009\uFF0C\u6240\u9009\u573A\u666F\u4F1A\u968F\u672C\u6B65\u6307\u4EE4\u586B\u5165\u5BF9\u8BDD\u3002",
+      persistedPlan: "\u5DF2\u843D\u76D8\u8BC4\u6D4B\u8BA1\u5212",
+      planSteps: "\u8BA1\u5212\u6B65\u9AA4",
+      reportPending: "\u6700\u7EC8\u62A5\u544A\u5C1A\u672A\u751F\u6210\uFF1B\u6267\u884C\u5B8C\u6210\u4E0D\u7B49\u4E8E\u8BC4\u6D4B\u901A\u8FC7\u3002",
+      completePlan: "\u5B8C\u6574\u8BC4\u6D4B\u8BBE\u8BA1",
+      legacyPlan: "\u5F53\u524D\u4EC5\u6709\u6267\u884C\u6458\u8981\uFF0C\u5C1A\u7F3A\u5B8C\u6574\u8BC4\u6D4B\u8BBE\u8BA1\u3002",
+      completePlanRequest: "\u6309\u6A21\u677F\u8865\u5168\u8BA1\u5212",
+      revisePlan: "\u4FEE\u6539\u8BA1\u5212",
+      continuePlan: "\u6309\u6B64\u8BA1\u5212\u7EE7\u7EED\u751F\u4EA7",
+      exportPlan: "\u5BFC\u51FA\u8BA1\u5212",
+      exportPlanText: "\u5BFC\u51FA Markdown",
+      planMarkdownEditor: "\u5B8C\u6574\u8BA1\u5212 Markdown",
+      planEditNote: "\u7F16\u8F91\u6574\u7BC7\u6587\u6863\uFF0C\u4FDD\u5B58\u540E\u7531\u751F\u4EA7\u4EE3\u7406\u540C\u6B65\u9898\u91CF\u3001\u89C4\u5219\u548C\u6267\u884C\u6B65\u9AA4\u3002",
+      savePlan: "\u4FDD\u5B58\u5E76\u5E94\u7528",
+      cancelPlanEdit: "\u53D6\u6D88",
+      savingPlan: "\u4FDD\u5B58\u4E2D\u2026",
+      planDesignNote: "\u4EE5\u4E0B\u6570\u91CF\u548C\u9608\u503C\u4E3A\u8BA1\u5212\u76EE\u6807\uFF1B\u6267\u884C\u7ED3\u679C\u89C1\u5404\u9636\u6BB5\u4EA7\u7269\u3002",
+      templateReadFailed: "\u8BC4\u6D4B\u8BA1\u5212\u6A21\u677F\u8BFB\u53D6\u5931\u8D25\uFF0C\u5C1A\u672A\u53D1\u9001\u8BF7\u6C42\u3002",
+      planTemplate: "\u5927\u6A21\u578B\u8BC4\u6D4B\u8BA1\u5212\u6A21\u677F",
+      planTemplateNote: "\u63D0\u4EA4\u9700\u6C42\u540E\u7531\u5927\u6A21\u578B\u586B\u5199\u5E76\u4FDD\u5B58\uFF0C\u8BA1\u5212\u9875\u663E\u793A\u771F\u5B9E\u5185\u5BB9\u3002",
+      knownProgress: "\u4EE5\u6267\u884C\u56DE\u6267\u4E3A\u51C6",
+      unmeasuredProgress: "\u5C1A\u65E0\u53EF\u6D4B\u91CF\u7684\u5B8C\u6210\u603B\u91CF",
+      noStageSteps: "\u5F53\u524D\u751F\u4EA7\u8BB0\u5F55\u5C1A\u672A\u63D0\u4F9B\u672C\u9636\u6BB5\u7684\u6267\u884C\u56DE\u6267\u3002",
+      downloadArtifact: "\u6253\u5F00\u4EA7\u7269",
+      artifactReadFailed: "\u4EA7\u7269\u8BFB\u53D6\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      runHistory: "\u672C\u5BF9\u8BDD\u7684\u8BA1\u5212\u4E0E\u8FD0\u884C",
+      runDetails: "\u5F53\u524D\u8FD0\u884C\u660E\u7EC6\u4E0E\u4EA7\u7269\u6765\u6E90",
+      confirmSend: "\u786E\u8BA4\u53D1\u9001",
+      confirmTitle: "\u5411\u5F53\u524D\u5BF9\u8BDD\u63D0\u51FA\u8981\u6C42",
+      cancel: "\u53D6\u6D88",
+      sending: "\u63D0\u4EA4\u4E2D\u2026",
+      sent: "\u672C\u6B65\u4EFB\u52A1\u5DF2\u63D0\u4EA4\u5230\u5F53\u524D\u5BF9\u8BDD\uFF0C\u6267\u884C\u72B6\u6001\u4EE5\u5BF9\u8BDD\u56DE\u6267\u4E3A\u51C6\u3002",
+      confirmSendNote: "\u786E\u8BA4\u540E\u76F4\u63A5\u63D0\u4EA4\u3002\u539F\u8F93\u5165\u4E2D\u7684\u8349\u7A3F\u548C\u9644\u4EF6\u53EA\u6709\u67E5\u770B\u5E76\u52FE\u9009\u540E\u624D\u4F1A\u4E00\u540C\u53D1\u9001\uFF1B\u53D6\u6D88\u4E0D\u4F1A\u66F4\u6539\u5B83\u4EEC\u3002",
+      sendBusy: "\u8F93\u5165\u6846\u6B63\u5728\u5904\u7406\u63D0\u4EA4\u6216\u547D\u4EE4\uFF0C\u8BF7\u5B8C\u6210\u540E\u91CD\u8BD5\u3002",
+      sendFailed: "\u63D0\u4EA4\u5931\u8D25\uFF0C\u5DF2\u4FDD\u7559\u4EFB\u52A1\u5185\u5BB9\uFF0C\u8BF7\u91CD\u8BD5\u3002",
+      noSendInterface: "\u5F53\u524D DSH \u672A\u63D0\u4F9B\u5BF9\u8BDD\u63D0\u4EA4\u63A5\u53E3\u3002",
+      existingDraft: "\u5C06\u4E00\u540C\u53D1\u9001\u7684\u8F93\u5165\u6846\u6587\u5B57",
+      existingAttachments: "\u5C06\u4E00\u540C\u53D1\u9001\u7684\u9644\u4EF6\u6570",
+      blueprintDesc: "\u5B9A\u4E49\u6D4B\u91CF\u76EE\u6807\uFF0C\u9009\u62E9\u80FD\u529B\u4E0E\u6A21\u677F\uFF0C\u660E\u786E\u4EA7\u91CF\u548C\u6765\u6E90\u3002",
+      collectionDesc: "\u4E00\u4E2A\u9879\u76EE\u5BF9\u5E94\u4E00\u4E2A\u573A\u666F\uFF0C\u6253\u5F00\u9879\u76EE\u64AD\u653E\u573A\u666F\u5DE1\u89C8\u89C6\u9891\u3002",
+      structureDesc: "\u6574\u7406\u516C\u5F00\u89C2\u6D4B\u3001\u6807\u5B9A\u548C\u5BF9\u8C61\u5173\u7CFB\uFF0C\u7ED1\u5B9A\u7A0B\u5E8F\u6216\u4EFF\u771F\u8BC1\u636E\u3002",
+      synthesisDesc: "\u6309\u6A21\u677F\u6279\u91CF\u51FA\u9898\uFF0C\u67E5\u770B\u6570\u636E\u96C6\u5168\u96C6\u548C\u6837\u672C\u3002",
+      verificationDesc: "\u5BA1\u67E5\u6709\u6548\u6027\u3001\u5206\u533A\u4E0E\u8986\u76D6\uFF0C\u751F\u6210\u62A5\u544A\u548C\u4EA4\u4ED8\u7248\u672C\u3002",
+      objective: "\u8BC4\u6D4B\u76EE\u6807",
+      objectivePlaceholder: "\u4F8B\u5982\uFF1A\u6D4B\u8BD5\u5BA4\u5185\u906E\u6321\u6761\u4EF6\u4E0B\u7684\u8DDD\u79BB\u4F30\u8BA1\u548C\u76F8\u5BF9\u4F4D\u7F6E\u63A8\u7406\uFF0C\u751F\u6210 300 \u9053\u8BC4\u6D4B\u9898\u3002",
+      targetItems: "\u76EE\u6807\u9898\u91CF",
+      storageBudget: "\u5B58\u50A8\u4E0A\u9650\uFF08GB\uFF09",
+      sourceType: "\u6570\u636E\u6765\u6E90",
+      simulator: "\u4EFF\u771F\u573A\u666F",
+      program: "\u7A0B\u5E8F\u751F\u6210",
+      official: "\u5B98\u65B9\u6570\u636E",
+      templateCatalog: "\u80FD\u529B\u4E0E\u51FA\u9898\u6A21\u677F",
+      catalogDesign: "\u76EE\u5F55\u662F\u51FA\u9898\u8BBE\u8BA1\uFF1B\u6267\u884C\u80FD\u529B\u7531 DSH \u68C0\u67E5\u9002\u914D\u5668\u3002",
+      selectedTemplates: "\u5DF2\u9009\u6A21\u677F",
+      selectTemplate: "\u9009\u62E9",
+      removeTemplate: "\u79FB\u9664",
+      noSelection: "\u8FD8\u672A\u9009\u62E9\u6A21\u677F\uFF1B\u4E5F\u53EF\u8BA9 DSH \u6839\u636E\u76EE\u6807\u62C6\u89E3\u3002",
+      allocate: "\u8BA1\u5212\u5206\u914D",
+      saveBlueprint: "\u4FDD\u5B58\u84DD\u56FE\u8349\u7A3F",
+      blueprintSaved: "\u84DD\u56FE\u5DF2\u4FDD\u5B58\u5230\u5F53\u524D\u4F1A\u8BDD\u6D4F\u89C8\u5668\u8349\u7A3F\u3002",
+      preparePlan: "\u586B\u5165\u5BF9\u8BDD\uFF1A\u5236\u5B9A\u751F\u4EA7\u8BA1\u5212",
+      prepareStage: "\u586B\u5165\u5BF9\u8BDD\uFF1A\u6267\u884C\u5F53\u524D\u6B65\u9AA4",
+      draftReady: "\u6B65\u9AA4\u6307\u4EE4\u5DF2\u63D2\u5165\u5F53\u524D\u5BF9\u8BDD\u8F93\u5165\u6846\uFF0C\u8BF7\u67E5\u770B\u540E\u53D1\u9001\u3002",
+      draftBusy: "\u5F53\u524D\u8F93\u5165\u6846\u5FD9\u788C\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5\u3002",
+      nativeInputMissing: "\u5F53\u524D\u4F1A\u8BDD\u672A\u63D0\u4F9B\u8F93\u5165\u63A5\u53E3\uFF0C\u8BF7\u4F7F\u7528\u4E0B\u65B9\u590D\u5236\u6307\u4EE4\u3002",
+      copyInstruction: "\u590D\u5236\u6B65\u9AA4\u6307\u4EE4",
+      copied: "\u5DF2\u590D\u5236\u6B65\u9AA4\u6307\u4EE4\u3002",
+      stepOutput: "\u672C\u6B65\u4EA7\u7269",
+      noStepArtifacts: "\u6240\u9009\u8FD0\u884C\u5C1A\u65E0\u53EF\u5F52\u5C5E\u672C\u6B65\u9AA4\u7684\u4EA7\u7269\u8BB0\u5F55\u3002",
+      chooseProduction: "\u67E5\u770B\u751F\u4EA7\u8FD0\u884C",
+      stageEvidence: "\u672C\u6B65\u4EA7\u7269\u4E0E\u6765\u6E90",
+      nextStep: "\u4E0B\u4E00\u6B65",
+      previousStep: "\u4E0A\u4E00\u6B65",
+      openData: "\u6253\u5F00\u6570\u636E\u96C6\u5168\u96C6",
+      openQuality: "\u67E5\u770B\u8D28\u91CF\u62A5\u544A",
+      openRun: "\u67E5\u770B\u5B8C\u6574\u8FD0\u884C",
+      workflowNote: "\u4E94\u6B65\u7528\u4E8E\u7EC4\u7EC7\u64CD\u4F5C\u4E0E\u4EA7\u7269\uFF0C\u53EF\u6309\u9700\u7EC4\u5408\u6216\u8FD4\u56DE\u4FEE\u590D\u3002",
+      chatNote: "\u6307\u4EE4\u8FDB\u5165\u73B0\u6709 DSH \u5BF9\u8BDD\uFF0C\u53D1\u9001\u540E\u7531\u5DE5\u5177\u6267\u884C\uFF1B\u9875\u9762\u4ECE\u6301\u4E45\u5316\u4EA7\u7269\u8BFB\u53D6\u7ED3\u679C\u3002",
+      blueprintOutput: "\u9700\u6C42\u3001\u6A21\u677F\u4E0E\u6570\u91CF\u5206\u914D",
+      collectionOutput: "\u53C2\u8003\u3001\u573A\u666F\u3001\u5A92\u4F53\u4E0E\u91C7\u96C6\u8BB0\u5F55",
+      structureOutput: "\u8BC1\u636E\u3001\u6807\u5B9A\u3001\u72B6\u6001\u4E0E\u6765\u6E90\u5173\u7CFB",
+      synthesisOutput: "\u9898\u76EE\u3001\u516C\u5F00\u89C2\u6D4B\u4E0E\u6570\u636E\u96C6\u7248\u672C",
+      verificationOutput: "\u8D28\u91CF\u7ED3\u679C\u3001\u4FEE\u590D\u5EFA\u8BAE\u4E0E\u4EA4\u4ED8\u5305",
+      sceneFirst: "\u573A\u666F\u5148\u884C",
+      sceneFirstNote: "\u590D\u7528\u6216\u751F\u6210\u573A\u666F \u2192 \u91C7\u96C6 RGB / \u6DF1\u5EA6 / \u5206\u5272 / \u8F68\u8FF9 \u2192 \u8FD4\u56DE\u53EF\u8FFD\u6EAF\u8BC1\u636E\u3002",
+      evidencePolicy: "GT \u6765\u81EA\u5B98\u65B9\u3001\u7A0B\u5E8F\u6216\u4EFF\u771F\uFF1B\u6A21\u578B\u63A8\u65AD\u4FDD\u6301\u4E3A\u5019\u9009\u6807\u6CE8\u3002",
+      qualityPolicy: "\u6267\u884C\u5B8C\u6210\u3001\u751F\u6210\u63A5\u7EB3\u548C\u9A8C\u8BC1\u901A\u8FC7\u5206\u522B\u5C55\u793A\uFF1B\u6CA1\u6709\u54CD\u5E94\u77E9\u9635\u65F6\u4E0D\u5C55\u793A IRT\u3002",
+      savedAt: "\u8349\u7A3F\u4FDD\u5B58\u4E8E",
+      navigation: "BenchForge \u4E94\u6B65",
+      liveRecords: "\u5F53\u524D\u4F1A\u8BDD\u7684\u5B9E\u9645\u4EA7\u7269",
+      requiredGoal: "\u5148\u586B\u5199\u8BC4\u6D4B\u76EE\u6807\u3002",
+      perTemplate: "\u9898 / \u6A21\u677F"
+    },
+    en: {
+      reviewWaiting: "Waiting for your instructions",
+      reviewPaused: "Paused for your instructions",
+      reviewInstruction: "Instruction saved for processing",
+      reviewContinue: "Continue now",
+      reviewPause: "Pause automatic continuation",
+      reviewChange: "Add instructions",
+      reviewNote: "Continue after 5 minutes without new instructions",
+      reviewFinished: "Stage review finished",
+      executionProgress: "Execution",
+      productionHint: "Runs all five stages; outputs update below.",
+      blueprintNav: "Plan",
+      collectionNav: "Scenes",
+      structureNav: "Labels",
+      synthesisNav: "Items",
+      verificationNav: "Report",
+      stageDone: "Done",
+      previewable: "Preview available",
+      savedStageProducts: "Saved products",
+      observationReadFailed: "Public observation failed to load. Please retry.",
+      unsupportedObservation: "This public observation type cannot be previewed yet.",
+      sceneProject: "Scene project",
+      sceneTour: "Recorded viewpoint video",
+      sceneViews: "Scene viewpoints",
+      recordedViews: "Recorded views",
+      sceneVideoFailed: "Scene video failed to load. Please retry.",
+      pairedAnnotations: "Scene images and annotations are paired",
+      currentConversation: "Current conversation",
+      sessionIdle: "Waiting for your request",
+      sessionRunning: "Running",
+      sessionSubmitting: "Submitting",
+      sessionFailed: "Conversation error",
+      sessionLoading: "Connecting",
+      toolPreparing: "Preparing tool call",
+      toolRunning: "Calling tool",
+      recentToolFailure: "Most recent tool error",
+      toolFailureHistory: "Historical record; does not establish a current blocker",
+      toolResultError: "Tool returned an error",
+      queuedMessages: "Queued messages",
+      requestChange: "Request a change",
+      requestPlaceholder: "Enter your production or change request for this stage",
+      requestRequired: "Enter your request first.",
+      requestNote: "The current workbench session sends your request to DSH. Progress and real artifacts appear below.",
+      productionRequest: "Dataset production request",
+      startProduction: "Start production",
+      appendRequest: "Add requirements",
+      newProduction: "New production task",
+      sceneLibrary: "Scene library",
+      sceneLibraryHelp: "Past and newly produced scenes share this library. Preview each scene, then select it for this request.",
+      sceneSelected: "Selected scenes",
+      useScene: "Use this scene",
+      sceneSearch: "Search scene name or ID",
+      sceneOrigin: "Scene origin",
+      currentScenes: "This conversation",
+      historyScenes: "Past and other scenes",
+      selectScenePage: "Select this page",
+      clearScenePage: "Clear this page",
+      allowNewScenes: "Allow new scenes",
+      sceneSelectionHelp: "Unchecked existing scenes are excluded from subsequent requests. New scenes also enter this library.",
+      sceneSaving: "Saving selection\u2026",
+      sceneSaved: "Selection saved",
+      sceneLibraryLoading: "Updating scene list\u2026",
+      sceneSaveFailed: "Could not save scene selection. Retry the change.",
+      sceneUnavailable: "Capture files unavailable",
+      sceneStorage: "Shared storage location",
+      chooseSceneRequired: "Select scenes on the scene page or allow new scenes.",
+      sceneChanged: "Another window updated the scene selection. Review it before submitting again.",
+      sceneSelectionReadFailed: "Could not read scene constraints. No production request was sent.",
+      productionPlaceholder: "For example: produce indoor relative-position and occlusion questions across varied layouts, answerable from public observations.",
+      capabilityRequest: "Capabilities or templates (optional)",
+      capabilityPlaceholder: "Describe capabilities or enter template IDs. Leave blank for DSH to decompose.",
+      productionRequirements: "Production requirements",
+      changeRequirements: "Additional or revised requirements",
+      advancedOptions: "Advanced options (optional)",
+      sceneCount: "Target scenes",
+      targetQuantityNote: "This is the requested quantity. Actual output is reported by production receipts.",
+      optionalAuto: "Leave blank for DSH to plan",
+      fullWorkflowNote: "One submission runs all five stages: plan \u2192 scenes \u2192 annotations \u2192 questions \u2192 quality review and delivery.",
+      appendNote: "Requirements go to this session. While running, they join its message queue.",
+      preservedDraft: "Existing session composer draft",
+      preservedAttachments: "Existing session attachments",
+      includeDraft: "Include the draft and attachments shown above in this submission",
+      draftConsentRequired: "The original composer contains a draft or attachments. Review and explicitly include them to continue; they remain untouched otherwise.",
+      positiveCount: "Target quantity must be a positive integer.",
+      positiveSceneCount: "Scenes must be a positive integer or blank.",
+      positiveBudget: "Storage budget must be greater than zero or blank.",
+      previousUnsentRequest: "The last request remains in the composer after an incomplete submission. Retry the same request to avoid inserting it twice.",
+      permissionsPending: "Production permissions are not enabled for this session.",
+      permissionEnable: "Enable production permissions for this session",
+      permissionRequesting: "Requesting permissions\u2026",
+      fullPermissions: "Session permissions are ready",
+      permissionFailed: "Permission request failed",
+      permissionRetry: "Retry permissions",
+      executionMode: "Task mode",
+      productionMode: "Production",
+      explorationMode: "Exploration run",
+      quantityContract: "Quantity contract",
+      exactQuantity: "Meet the exact target",
+      minimumQuantity: "Meet at least the target",
+      bestEffortQuantity: "Best effort",
+      deliveryReceipt: "Delivery and acceptance receipt",
+      targetReached: "Quantity target reached",
+      targetNotReached: "Quantity target not reached",
+      deliverySatisfaction: "Delivery conditions",
+      deliverySatisfied: "Delivery conditions satisfied",
+      deliveryNotSatisfied: "Delivery conditions not satisfied",
+      deliveryComplete: "Complete delivery",
+      deliveryPartial: "Partial delivery",
+      deliveryUnsatisfied: "Delivery conditions not met",
+      deliveryUnknown: "Not evaluated",
+      backgroundProductionRunning: "Background production is running",
+      backgroundProductionIdle: "No running background task observed",
+      backgroundProductionUnknown: "Background task state is unknown",
+      cancelProductionInConversation: "To cancel this production run separately, call this in the conversation",
+      executionFeedback: "Current conversation and execution feedback",
+      currentRequest: "Current requirement",
+      submissionEcho: "Submitting requirement",
+      assistantFeedback: "Execution feedback",
+      liveReply: "Reply streaming",
+      awaitingFeedback: "The model is processing; no visible feedback has arrived yet.",
+      noConversationFeedback: "Submit a requirement to see live execution feedback here.",
+      toolOutput: "Tool output",
+      stoppedReply: "Stopped",
+      stopExecution: "Stop current assistant turn",
+      stopping: "Stopping\u2026",
+      stopNote: "Stops only the current assistant turn. Submitted background jobs are not canceled.",
+      productionMonitor: "Live production",
+      autoRefresh: "Auto update \xB7 about 3 s",
+      staleSnapshot: "Observation issue \xB7 not current",
+      pollingPaused: "Updates paused while hidden",
+      lastObserved: "Last observed",
+      conversationRunning: "DSH conversation running; tool records below",
+      productionScope: "Production records for this conversation only",
+      retainedSnapshot: "Connection failed. Keeping the last successful observation and retrying automatically",
+      partialObservation: "Some sources could not be read. Available records do not establish that all jobs are healthy.",
+      persistedSteps: "Persisted completed steps",
+      currentStep: "Current unfinished step",
+      unrecordedStep: "No execution receipt yet",
+      sceneJobs: "Session scene jobs",
+      completedTasks: "Completed tasks",
+      phase: "Production phase",
+      workerStage: "Last worker report",
+      workerAge: "Since worker report",
+      transfer: "Artifacts received",
+      capturedViews: "Recorded images",
+      actionTraces: "Action traces",
+      publication: "Publication status",
+      canceled: "Canceled",
+      waiting_user: "Waiting for your instructions",
+      needs_plan_application: "Plan edits need application",
+      plan_superseded: "Replaced by a newer plan",
+      taskLimit: "Showing the first 12 tasks. Use spatialforge_status in the conversation for the complete record.",
+      noProduction: "This conversation has no production receipts yet. They will appear when a task starts.",
+      recentOperations: "Recent tool operations",
+      observerNotConfigured: "Scene observer is not configured; only workspace pipelines are observed.",
+      productionDetails: "View production details",
+      runFilter: "Filter runs by name, ID or state",
+      versionFilter: "Filter versions, runs or tasks",
+      noMatchingRuns: "No runs match this filter.",
+      noMatchingVersions: "No dataset versions match this filter.",
+      chooseVersionForReport: "Choose a dataset version to view its quality report.",
+      noMatchingTemplates: "No templates match these filters.",
+      clearFilters: "Clear filters",
+      searchTemplates: "Search templates",
+      readFailed: "Could not read the records. Please retry.",
+      retry: "Retry",
+      sampleRemoved: "This sample is no longer in the current results. Returned to the list.",
+      stageStateSource: "Step status source",
+      workspacePipeline: "Workspace pipeline",
+      sessionProduction: "Session scene job",
+      panel: "Evaluation workbench",
+      openEvaluation: "Evaluations",
+      noWorkspace: "This session has no registered workspace. Attach one to this session first.",
+      overview: "Overview",
+      runs: "Runs & artifacts",
+      datasets: "Datasets",
+      quality: "Quality reports",
+      subtitle: "From evaluation goals to dataset delivery: actions and artifacts at every step.",
+      refresh: "Refresh",
+      loading: "Loading\u2026",
+      scope: "Only records and artifacts explicitly associated with this conversation.",
+      snapshot: "Snapshot",
+      draft: "Draft",
+      candidate: "Candidate",
+      verified: "Verified",
+      rejected: "Rejected",
+      superseded: "Superseded",
+      failed: "Failed",
+      completed: "Execution completed",
+      waiting: "Waiting",
+      needs_input: "Needs input",
+      needs_evidence: "Needs evidence",
+      running: "Running",
+      proposed: "Proposed",
+      unknown: "Not recorded",
+      unassessed: "Unassessed",
+      recent: "Recent runs",
+      workspace: "Workspace",
+      state: "State",
+      steps: "Steps",
+      artifacts: "Artifacts",
+      updated: "Updated",
+      open: "Open",
+      noRuns: "No persisted pipeline runs in the current index.",
+      all: "All",
+      sources: "Sources",
+      indexed: "Operation index read",
+      no_index: "No run index",
+      index_error: "Index read failed",
+      record_error: "Record read failed",
+      limit: "recent operation limit",
+      truncated: "List truncated; older records are excluded from these totals",
+      chooseRun: "Select a run to inspect steps, artifacts and repair proposals.",
+      plan: "Frozen plan summary",
+      next: "Run note",
+      lineage: "Artifacts & provenance",
+      contracts: "Shape contracts",
+      shapeNote: "Shape checks do not establish GT or scene quality.",
+      noArtifacts: "This run has no artifact manifest. Candidate and verified counts are unknown.",
+      producer: "Producer",
+      parents: "Parents",
+      evidence: "Evidence references",
+      version: "Version",
+      repairs: "Repair proposals",
+      noRepairs: "No saved repair proposals.",
+      repairNote: "Saved proposals are not executed repairs. Production continues through the existing DSH tools.",
+      reason: "Reason",
+      operator: "Operator",
+      repairScope: "Scope",
+      newRun: "Requires new run",
+      yes: "Yes",
+      no: "No",
+      directory: "Dataset versions",
+      datasetNote: "Each artifact directory is an isolated version. Only public questions and declared media are exposed.",
+      noDatasets: "No readable public datasets in the operation index.",
+      generationAccepted: "Generation accepted",
+      browse: "Browse samples",
+      chooseDataset: "Choose dataset version",
+      template: "Template",
+      split: "Split",
+      search: "Question, ID or task",
+      apply: "Search",
+      previous: "Previous",
+      nextPage: "Next",
+      page: "Page",
+      matches: "Matches",
+      total: "All records",
+      pageSize: "Per page",
+      grid: "Grid",
+      table: "Table",
+      question: "Public question",
+      noItems: "No matching records.",
+      item: "Sample",
+      details: "Public conditions & output format",
+      media: "Public observations",
+      publicAssets: "Public measurement attachments",
+      noMedia: "No declared public media",
+      close: "Back to list",
+      publicNote: "Public questions and supporting media.",
+      report: "Generation quality report",
+      noReport: "No quality_report.json. Collection acceptance cannot be inferred.",
+      requested: "Requested",
+      accepted: "Generation accepted",
+      shortfall: "Shortfall",
+      scene_groups: "Scene groups",
+      approval: "Benchmark validation passed",
+      reportNote: "Generation acceptance is not verified-item count. IRT is hidden without model responses.",
+      coverage: "Accepted items per template",
+      rejections: "Shortfalls & rejections",
+      noRejections: "No shortfall or rejection recorded in this report.",
+      local_field_repair: "Local field repair",
+      template_rebinding: "Template rebinding",
+      candidate_resynthesis: "Candidate resynthesis",
+      skill_reexecution: "Step re-execution",
+      upstream_rollback: "Upstream rollback",
+      final_rejection: "Final rejection",
+      task: "Task",
+      capability: "Capability",
+      path: "Source directory",
+      runCount: "Runs",
+      datasetCount: "Dataset versions",
+      workflow: "Five-step workflow",
+      blueprint: "Evaluation plan",
+      collection: "Scene preview",
+      structure: "Annotation preview",
+      synthesis: "Evaluation config & questions",
+      verification: "Final report",
+      productionProgress: "Production progress",
+      progressUpload: "Artifact upload",
+      progressItems: "Completed items",
+      progressStages: "Completed stages",
+      progressUpdated: "Updated",
+      progressTasks: "Scene tasks",
+      progressSteps: "Steps",
+      progressProducts: "Annotation pairs",
+      progressPending: "In progress",
+      progressWaiting: "Awaiting receipt",
+      progressPaused: "Stopped",
+      stageProgress: "Stage progress",
+      waitingForReceipt: "Waiting for execution receipt",
+      observedSteps: "Completed steps",
+      stageProcess: "Stage execution details",
+      questionGeneration: "Question generation",
+      generationWritten: "Written",
+      generationVerified: "Public checks passed",
+      generationEligible: "Question checks passed",
+      generationCandidate: "Candidates",
+      generationPublished: "Published",
+      generationRepairVerified: "Repair candidates verified",
+      generationNeedsRepair: "Items to repair",
+      generationAwaitingAdmission: "Generation ended; awaiting admission",
+      generationInterrupted: "Generator stopped; awaiting recovery",
+      generationSelecting: "Selecting candidates",
+      generationOracle: "Computing geometry evidence",
+      generationWriting: "Writing questions",
+      generationComplete: "Generation ended",
+      sceneNativeAccepted: "Native scene accepted",
+      scenePlanPending: "Plan edits await application",
+      sceneSnapshotUnavailable: "Checking the current plan and scene registrations",
+      priorSceneAttempts: "Capture receipt details",
+      scenePassed: "Accepted",
+      sceneRepairing: "Repairing",
+      sceneCapturing: "Capturing",
+      sceneQueued: "Queued",
+      sceneNeedsRepair: "Needs repair",
+      sceneStopped: "Stopped",
+      scenePending: "Awaiting scene receipt",
+      sceneIdentityPending: "Scene binding pending",
+      parallelTasks: "Parallel tasks",
+      parallelTask: "Synthesis task",
+      parallelCompleted: "Completed subtasks",
+      parallelRunning: "Running tasks",
+      parallelArtifacts: "Public artifacts",
+      parallelOpenArtifact: "View artifact",
+      inactive: "Awaiting next task",
+      unavailable: "Status unavailable",
+      keyProduct: "Key product",
+      draftOnly: "Browser draft \xB7 not submitted",
+      planPending: "This conversation has no evaluation plan yet. Describe your requirements in chat; its plan will appear here.",
+      planEditor: "Edit requirements & templates",
+      productionRecord: "Production record",
+      automaticRecord: "Follow this session\u2019s production",
+      artifactPending: "No previewable artifacts yet. New production outputs will appear here.",
+      selectionTotal: "Total items in this selection",
+      sceneSelection: "Select scenes",
+      selectedScenes: "Selected scenes",
+      preview: "Preview",
+      previewClose: "Close preview",
+      selectArtifact: "Select",
+      sceneGallery: "Available scenes",
+      annotationGallery: "Annotations",
+      annotationNote: "Open public annotations and evidence. Candidate model annotations retain their source separately from simulation truth.",
+      evaluationConfig: "Evaluation configuration",
+      questionTable: "Questions",
+      finalReport: "Final report",
+      artifactFiles: "Artifact files & provenance",
+      insertStage: "Draft in chat",
+      stepInstruction: "View stage instruction",
+      chooseSceneHint: "Select multiple scenes to include in the stage instruction.",
+      persistedPlan: "Persisted evaluation plan",
+      planSteps: "Planned steps",
+      reportPending: "No final report yet. Execution completion is not benchmark approval.",
+      completePlan: "Assessment design",
+      legacyPlan: "This execution summary needs a complete assessment design.",
+      completePlanRequest: "Complete from template",
+      revisePlan: "Revise plan",
+      continuePlan: "Continue production from plan",
+      exportPlan: "Export plan",
+      exportPlanText: "Export Markdown",
+      planMarkdownEditor: "Full plan Markdown",
+      planEditNote: "Edit the complete document. After saving, the production agent updates item counts, rules and execution steps.",
+      savePlan: "Save and apply",
+      cancelPlanEdit: "Cancel",
+      savingPlan: "Saving\u2026",
+      planDesignNote: "Counts and thresholds are design targets. Execution results appear in stage artifacts.",
+      templateReadFailed: "Could not read the assessment template. Nothing was submitted.",
+      planTemplate: "Model assessment template",
+      planTemplateNote: "The model fills and saves the template after submission. This page shows its saved content.",
+      knownProgress: "From execution receipts",
+      unmeasuredProgress: "No measurable total reported",
+      noStageSteps: "No execution receipt for this stage in this production record.",
+      downloadArtifact: "Open artifact",
+      artifactReadFailed: "Could not read this artifact. Retry.",
+      runHistory: "Past plans and runs",
+      runDetails: "Current run details and artifact provenance",
+      confirmSend: "Confirm and send",
+      confirmTitle: "Confirm stage task",
+      cancel: "Cancel",
+      sending: "Submitting\u2026",
+      sent: "Stage task submitted to this conversation; follow its execution receipt in chat.",
+      confirmSendNote: "Confirm submits directly. Existing composer drafts and attachments are only included after explicit review and selection. Cancel keeps them unchanged.",
+      sendBusy: "The composer is processing a submission or command. Try again after it finishes.",
+      sendFailed: "Submission failed. Task retained; please retry.",
+      noSendInterface: "This DSH session has no submission interface.",
+      existingDraft: "Composer text included in this submission",
+      existingAttachments: "Attachments included in this submission",
+      blueprintDesc: "Define the goal, capabilities, templates, quantity and sources.",
+      collectionDesc: "Each project represents one scene. Open it to play the recorded scene video.",
+      structureDesc: "Organize public observations, calibration and source evidence.",
+      synthesisDesc: "Produce questions and inspect dataset versions and samples.",
+      verificationDesc: "Inspect validity, splits and coverage; prepare reports and releases.",
+      objective: "Evaluation goal",
+      objectivePlaceholder: "For example: 300 indoor distance and relative-position questions with varied occlusion.",
+      targetItems: "Target items",
+      storageBudget: "Storage limit (GB)",
+      sourceType: "Source",
+      simulator: "Simulation scenes",
+      program: "Program generation",
+      official: "Official data",
+      templateCatalog: "Capabilities & templates",
+      catalogDesign: "Design catalog. DSH checks execution adapters before production.",
+      selectedTemplates: "Selected templates",
+      selectTemplate: "Select",
+      removeTemplate: "Remove",
+      noSelection: "No templates selected. DSH can decompose the goal.",
+      allocate: "Allocation",
+      saveBlueprint: "Save blueprint draft",
+      blueprintSaved: "Blueprint saved in this session\u2019s browser draft.",
+      preparePlan: "Draft in chat: production plan",
+      prepareStage: "Draft in chat: current step",
+      draftReady: "Instruction inserted into this session\u2019s composer. Review and send.",
+      draftBusy: "The composer is busy. Try again shortly.",
+      nativeInputMissing: "No input interface in this session. Copy the instruction below.",
+      copyInstruction: "Copy step instruction",
+      copied: "Instruction copied.",
+      stepOutput: "Step outputs",
+      noStepArtifacts: "No recorded artifacts map to this step in the selected run.",
+      chooseProduction: "Production run",
+      stageEvidence: "Step artifacts & sources",
+      nextStep: "Next step",
+      previousStep: "Previous step",
+      openData: "Browse all dataset items",
+      openQuality: "Open quality report",
+      openRun: "Open full run",
+      workflowNote: "Five steps organize actions and artifacts. Compose or revisit them as needed.",
+      chatNote: "Instructions use the existing DSH conversation and tools. Results come from persisted artifacts.",
+      blueprintOutput: "Goal, templates and allocation",
+      collectionOutput: "References, scenes, media and captures",
+      structureOutput: "Evidence, calibration, state and provenance",
+      synthesisOutput: "Questions, public observations and dataset versions",
+      verificationOutput: "Quality results, repair proposals and packages",
+      sceneFirst: "Scenes first",
+      sceneFirstNote: "Reuse or generate scenes \u2192 capture RGB / depth / masks / trajectories \u2192 retain traceable evidence.",
+      evidencePolicy: "GT comes from official sources, programs or simulation. Model inference remains candidate annotation.",
+      qualityPolicy: "Completion, generation acceptance and verification are distinct. No IRT without response data.",
+      savedAt: "Draft saved at",
+      navigation: "BenchForge five steps",
+      liveRecords: "Actual artifacts in this session",
+      requiredGoal: "Enter an evaluation goal first.",
+      perTemplate: "items / template"
+    }
+  };
+
+  // integrations/spatialforge/ui/client/styles.js
+  var styles = `
 .bfw-review{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem;margin-block:.5rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.6rem;font-size:.875rem}.bfw-review-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-inline-start:auto}.bfw-review p{flex-basis:100%;margin:.2rem 0;white-space:pre-wrap}.bfw-review [data-review-countdown]{font-variant-numeric:tabular-nums}.bfw-review .bfw-button{padding:.3rem .5rem;font-size:.8125rem}
 .bfw-root{height:100%;overflow:auto;box-sizing:border-box;container-type:inline-size;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:.875rem/1.55 system-ui,sans-serif}
 .bfw-root *{box-sizing:border-box}.bfw-shell{min-width:0;max-inline-size:100rem;margin-inline:auto;padding:clamp(.85rem,2cqi,1.5rem)}
@@ -295,6 +921,7 @@ window.__ModuleLoader__.load({
 .bfw-progress-rail{position:relative;border:1px solid var(--dsw-alias-border-l3);border-radius:1rem;background:color-mix(in srgb,var(--dsw-alias-label-primary,#20252c) 12%,var(--dsw-alias-bg-base,#fff));overflow:hidden}.bfw-stage-progress progress,.bfw-progress-track{display:block;width:100%;height:.75rem;border:0;border-radius:1rem;overflow:hidden;background:transparent;accent-color:var(--bfw-progress-fill)}.bfw-stage-progress progress::-webkit-progress-bar{background:transparent}.bfw-stage-progress progress::-webkit-progress-value{background:var(--bfw-progress-fill);border-radius:1rem;transition:width .3s ease}.bfw-stage-progress progress::-moz-progress-bar{background:var(--bfw-progress-fill);border-radius:1rem}
 .bfw-progress-activity{position:absolute;inset-block:0;inset-inline-start:0;inline-size:30%;border-radius:1rem;background:var(--bfw-progress-fill);opacity:.22;animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate;pointer-events:none}.bfw-progress-sweep{display:block;width:30%;height:100%;border-radius:1rem;background:var(--bfw-progress-fill);animation:bfw-progress-sweep 1.6s ease-in-out infinite alternate}@keyframes bfw-progress-sweep{from{transform:translateX(0)}to{transform:translateX(233%)}}@media(prefers-reduced-motion:reduce){.bfw-progress-sweep,.bfw-progress-activity{animation:none}}
 .bfw-progress-footer{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem .75rem;margin-top:.4rem;font-size:.72rem;font-variant-numeric:tabular-nums}.bfw-progress-current{max-inline-size:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}.bfw-progress-details{margin-inline-start:auto}.bfw-progress-details summary{color:var(--dsw-alias-label-secondary)}.bfw-progress-details[open]{flex-basis:100%;margin:0}.bfw-progress-detail-body{padding-top:.5rem}.bfw-hint{display:block;color:var(--dsw-alias-label-secondary);font-size:.72rem;line-height:1.4;margin:.2rem 0;overflow-wrap:anywhere}
+.bfw-scene-summary{display:flex;flex-wrap:wrap;gap:.3rem .8rem;margin-top:.45rem;font-size:.72rem}.bfw-scene-summary-row{display:inline-flex;align-items:center;gap:.35rem;min-inline-size:0;max-inline-size:100%}.bfw-scene-summary-row strong{font-weight:500;max-inline-size:24ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bfw-scene-summary-row .bfw-pill{font-size:.65rem}
 .bfw-parallel{margin-top:.6rem;border-block-start:1px solid var(--dsw-alias-border-l3);padding-top:.55rem;font-size:.75rem}.bfw-parallel-heading,.bfw-parallel-task-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem}.bfw-parallel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24ch),1fr));gap:.45rem;margin-top:.4rem}.bfw-parallel-task{min-inline-size:0;padding:.45rem .6rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.5rem}.bfw-parallel-task-heading strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.bfw-parallel-task .bfw-pill{flex-shrink:0;font-size:.65rem}.bfw-parallel-task progress{height:.35rem;margin-top:.35rem}.bfw-parallel-task-count{display:block;font-size:.7rem;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}.bfw-parallel-links{display:flex;flex-wrap:wrap;gap:.25rem .6rem;margin-top:.25rem}.bfw-parallel-links a{color:var(--dsw-alias-brand-primary);overflow-wrap:anywhere}.bfw-parallel-completed{margin-top:.35rem}.bfw-parallel-completed summary{color:var(--dsw-alias-label-secondary)}
 
 .bfw-stage-heading{display:flex;align-items:flex-start;gap:.7rem;margin-block:.85rem}.bfw-stage-heading h2{font-size:clamp(1.05rem,2cqi,1.3rem);margin:0}.bfw-stage-heading p{margin:.25em 0}.bfw-stage-number{display:grid;place-items:center;inline-size:2rem;block-size:2rem;flex:0 0 auto;border-radius:.55rem;background:var(--dsw-alias-bg-layer-2);font:.8rem ui-monospace,monospace;color:var(--dsw-alias-label-secondary)}
@@ -322,182 +949,561 @@ window.__ModuleLoader__.load({
 .bfw-question-section{margin-block:.75rem;font-size:.875rem;line-height:1.6}.bfw-question-section h3{margin:0 0 .25rem;font-size:.75rem;color:var(--dsw-alias-label-secondary);font-weight:500}.bfw-question-section ul{margin:0;padding-inline-start:1.2rem}.bfw-question-section[data-question-section=options] ul{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;padding:0}.bfw-question-section[data-question-section=options] li{padding:.2rem .65rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.4rem}.bfw-original-image{margin-inline-start:.75rem;font-size:.75rem;color:inherit}.bfw-question-response{font-size:.75rem;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 `;
 
-    function status(value, t) { return h('span', {className: 'bfw-pill ' + (value || 'unknown')}, t(value || 'unknown')); }
-    function button(label, onClick, props = {}) { return h('button', {type: 'button', className: 'bfw-button', onClick, ...props}, label); }
-    function card(title, children) { return h('section', {className: 'bfw-card'}, h('h2', null, title), h('div', {className: 'bfw-body'}, children)); }
-    function empty(text) { return h('div', {className: 'bfw-empty'}, text); }
-    function json(value) { return h('pre', {className: 'bfw-json'}, JSON.stringify(value, null, 2)); }
-    const PLAN_TECHNICAL=new Set(['id','objective_id','task_id','run_id','scene_id','scene_design_id','object_ids','object_id','source','target','evidence_directory','previous_attempt','selection_path','source_directory','program_path','path','artifact','revision','evidence']);
-    function sceneName(name,index=0) {
-      const label=String(name || '');
-      if(/[\u4e00-\u9fff]/.test(label))return label;
-      const rooms={living_room:'客厅',living:'客厅',dining:'餐厅',storage:'储物间',corridor:'走廊',study:'书房',kitchen:'餐厨',office:'办公室',garden:'花园',yard:'庭院',plaza:'广场',warehouse:'仓库'};
-      const matched=Object.keys(rooms).find(key=>new RegExp('(?:^|_)'+key+'(?:_|$)').test(label));
-      if(!matched)return /^(?:sf_|[a-f0-9]{12,})/.test(label) ? '场景 '+(index+1) : label.replace(/_/g,' ');
-      const version=label.match(/(?:^|_)v(\d+)(?:_|$)/);
-      return rooms[matched]+(/probe/.test(label) ? ' · 校准版' : /archive/.test(label) ? ' · 归档版' : '')+(version ? ' · 版本 '+version[1] : '');
+  // integrations/spatialforge/ui/client/primitives.js
+  function createPrimitives({ React, PLAN_FIELDS: PLAN_FIELDS2, PLAN_SECTIONS: PLAN_SECTIONS2 }) {
+    const h = React.createElement;
+    function status(value, t) {
+      return h("span", { className: "bfw-pill " + (value || "unknown") }, t(value || "unknown"));
+    }
+    function button(label, onClick, props = {}) {
+      return h("button", { type: "button", className: "bfw-button", onClick, ...props }, label);
+    }
+    function card(title, children) {
+      return h("section", { className: "bfw-card" }, h("h2", null, title), h("div", { className: "bfw-body" }, children));
+    }
+    function empty(text) {
+      return h("div", { className: "bfw-empty" }, text);
+    }
+    function json(value) {
+      return h("pre", { className: "bfw-json" }, JSON.stringify(value, null, 2));
+    }
+    const PLAN_TECHNICAL = /* @__PURE__ */ new Set(["id", "objective_id", "task_id", "run_id", "scene_id", "scene_design_id", "object_ids", "object_id", "source", "target", "evidence_directory", "previous_attempt", "selection_path", "source_directory", "program_path", "path", "artifact", "revision", "evidence"]);
+    function sceneName(name, index = 0) {
+      const label = String(name || "");
+      if (/[\u4e00-\u9fff]/.test(label)) return label;
+      const rooms = { living_room: "\u5BA2\u5385", living: "\u5BA2\u5385", dining: "\u9910\u5385", storage: "\u50A8\u7269\u95F4", corridor: "\u8D70\u5ECA", study: "\u4E66\u623F", kitchen: "\u9910\u53A8", office: "\u529E\u516C\u5BA4", garden: "\u82B1\u56ED", yard: "\u5EAD\u9662", plaza: "\u5E7F\u573A", warehouse: "\u4ED3\u5E93" };
+      const matched = Object.keys(rooms).find((key) => new RegExp("(?:^|_)" + key + "(?:_|$)").test(label));
+      if (!matched) return /^(?:sf_|[a-f0-9]{12,})/.test(label) ? "\u573A\u666F " + (index + 1) : label.replace(/_/g, " ");
+      const version = label.match(/(?:^|_)v(\d+)(?:_|$)/);
+      return rooms[matched] + (/probe/.test(label) ? " \xB7 \u6821\u51C6\u7248" : /archive/.test(label) ? " \xB7 \u5F52\u6863\u7248" : "") + (version ? " \xB7 \u7248\u672C " + version[1] : "");
     }
     function questionText(text) {
-      return String(text || '').replace(/场景「([^」]+)」/g,(match,name)=>{
-        const label=sceneName(name);return label.startsWith('场景 ') ? match : '场景「'+label+'」';});
+      return String(text || "").replace(/场景「([^」]+)」/g, (match, name) => {
+        const label = sceneName(name);
+        return label.startsWith("\u573A\u666F ") ? match : "\u573A\u666F\u300C" + label + "\u300D";
+      });
     }
     function planValue(value, edit, path = [], labels = {}) {
       const key = path[path.length - 1];
-      if(key==='template_id') return labels[value] || '题型';
-      if(key==='stage') return {S1:'计划',S2:'场景',S3:'标注',S4:'题目',S5:'报告'}[value] || value;
-      const fixed = ['schema','id','objective_id','template_id','stage','selection_path','selected_scenes','allow_new_scenes'].includes(key);
+      if (key === "template_id") return labels[value] || "\u9898\u578B";
+      if (key === "stage") return { S1: "\u8BA1\u5212", S2: "\u573A\u666F", S3: "\u6807\u6CE8", S4: "\u9898\u76EE", S5: "\u62A5\u544A" }[value] || value;
+      const fixed = ["schema", "id", "objective_id", "template_id", "stage", "selection_path", "selected_scenes", "allow_new_scenes"].includes(key);
       const next = fixed ? null : edit;
-      if (next && (typeof value === 'number' || (value === null && ['count','seed','target_items','target_scene_count'].includes(key)))) {
-        return h('input', {className:'bfw-input bfw-plan-number', type:'number', step:1, min:key === 'seed' ? undefined : 1,
-          'aria-label':path.join('.'), 'data-plan-field':path.join('.'), value:value ?? '',
-          onChange:(event)=>next(path,event.target.value === '' ? null : Number(event.target.value))});
+      if (next && (typeof value === "number" || value === null && ["count", "seed", "target_items", "target_scene_count"].includes(key))) {
+        return h("input", {
+          className: "bfw-input bfw-plan-number",
+          type: "number",
+          step: 1,
+          min: key === "seed" ? void 0 : 1,
+          "aria-label": path.join("."),
+          "data-plan-field": path.join("."),
+          value: value ?? "",
+          onChange: (event) => next(path, event.target.value === "" ? null : Number(event.target.value))
+        });
       }
-      if (next && typeof value === 'string') return h('span', {className:'bfw-plan-editable', contentEditable:true,
-        suppressContentEditableWarning:true, role:'textbox', 'aria-multiline':true, 'aria-label':path.join('.'),
-        'data-plan-field':path.join('.'), onInput:(event)=>next(path,event.currentTarget.textContent)}, value);
-      if (value === null || value === undefined || value === '') return h('span', {className: 'bfw-muted'}, '—');
-      if (typeof value === 'boolean') return value ? '是' : '否';
+      if (next && typeof value === "string") return h("span", {
+        className: "bfw-plan-editable",
+        contentEditable: true,
+        suppressContentEditableWarning: true,
+        role: "textbox",
+        "aria-multiline": true,
+        "aria-label": path.join("."),
+        "data-plan-field": path.join("."),
+        onInput: (event) => next(path, event.currentTarget.textContent)
+      }, value);
+      if (value === null || value === void 0 || value === "") return h("span", { className: "bfw-muted" }, "\u2014");
+      if (typeof value === "boolean") return value ? "\u662F" : "\u5426";
       if (Array.isArray(value)) {
-        if (!value.length) return h('span', {className: 'bfw-muted'}, '无');
-        if (value.every((row) => row && typeof row === 'object' && !Array.isArray(row))) {
-          const keys = [...new Set(value.flatMap((row) => Object.keys(row)))].filter((key)=>!PLAN_TECHNICAL.has(key));
-          if (keys.length <= 7 && key!=='designs') return table(keys.map((key) => PLAN_FIELDS[key] || key), value.map((row,index) => keys.map((key) => planValue(row[key],next,[...path,index,key],labels))));
-          return h('div', {className: 'bfw-plan-records'}, value.map((row, index) => h('div', {key: index}, planValue(row,next,[...path,index],labels))));
+        if (!value.length) return h("span", { className: "bfw-muted" }, "\u65E0");
+        if (value.every((row) => row && typeof row === "object" && !Array.isArray(row))) {
+          const keys = [...new Set(value.flatMap((row) => Object.keys(row)))].filter((key2) => !PLAN_TECHNICAL.has(key2));
+          if (keys.length <= 7 && key !== "designs") return table(keys.map((key2) => PLAN_FIELDS2[key2] || key2), value.map((row, index) => keys.map((key2) => planValue(row[key2], next, [...path, index, key2], labels))));
+          return h("div", { className: "bfw-plan-records" }, value.map((row, index) => h("div", { key: index }, planValue(row, next, [...path, index], labels))));
         }
-        return h('ul', null, value.map((row, index) => h('li', {key: index}, planValue(row,next,[...path,index],labels))));
+        return h("ul", null, value.map((row, index) => h("li", { key: index }, planValue(row, next, [...path, index], labels))));
       }
-      if (typeof value === 'object') return h('dl', {className: 'bfw-plan-fields'}, Object.entries(value).filter(([key])=>!PLAN_TECHNICAL.has(key)).map(([key, child]) =>
-        h('div', {key}, h('dt', null, PLAN_FIELDS[key] || key), h('dd', null, planValue(child,next,[...path,key],labels)))));
-      if(key==='name')return sceneName(value);
-      return String(value).replace(/\b(?:C\d{2}|P\d{3})-T\d{2}\b/g,(id)=>labels[id] || id);
+      if (typeof value === "object") return h("dl", { className: "bfw-plan-fields" }, Object.entries(value).filter(([key2]) => !PLAN_TECHNICAL.has(key2)).map(([key2, child]) => h("div", { key: key2 }, h("dt", null, PLAN_FIELDS2[key2] || key2), h("dd", null, planValue(child, next, [...path, key2], labels)))));
+      if (key === "name") return sceneName(value);
+      return String(value).replace(/\b(?:C\d{2}|P\d{3})-T\d{2}\b/g, (id) => labels[id] || id);
     }
     function planMarkdown(plan) {
-      const format = (value, depth = 0) => Array.isArray(value) ? value.map((row, index) => '- ' + (typeof row === 'object' ? '\n' : '') + format(row, depth + 1)).join('\n')
-        : value && typeof value === 'object' ? Object.entries(value).map(([key, child]) => '  '.repeat(depth) + (PLAN_FIELDS[key] || key) + ': ' +
-          (typeof child === 'object' && child !== null ? '\n' + format(child, depth + 1) : child === true ? '是' : child === false ? '否' : child ?? '—')).join('\n') : String(value ?? '—');
-      const document = plan.assessment;
-      if (typeof plan.user_markdown === 'string') return plan.user_markdown;
-      if (!document) return '# ' + (plan.objective || '评测计划') + '\n\n执行摘要\n\n```json\n' + JSON.stringify(plan, null, 2) + '\n```\n';
-      return '# ' + document.title + '\n\n' + document.summary + '\n\n' + PLAN_SECTIONS.filter(([key]) => document[key]).map(([key, title]) =>
-        '## ' + title + '\n\n' + format(document[key])).join('\n\n') + '\n';
+      const format = (value, depth = 0) => Array.isArray(value) ? value.map((row, index) => "- " + (typeof row === "object" ? "\n" : "") + format(row, depth + 1)).join("\n") : value && typeof value === "object" ? Object.entries(value).map(([key, child]) => "  ".repeat(depth) + (PLAN_FIELDS2[key] || key) + ": " + (typeof child === "object" && child !== null ? "\n" + format(child, depth + 1) : child === true ? "\u662F" : child === false ? "\u5426" : child ?? "\u2014")).join("\n") : String(value ?? "\u2014");
+      const document2 = plan.assessment;
+      if (typeof plan.user_markdown === "string") return plan.user_markdown;
+      if (!document2) return "# " + (plan.objective || "\u8BC4\u6D4B\u8BA1\u5212") + "\n\n\u6267\u884C\u6458\u8981\n\n```json\n" + JSON.stringify(plan, null, 2) + "\n```\n";
+      return "# " + document2.title + "\n\n" + document2.summary + "\n\n" + PLAN_SECTIONS2.filter(([key]) => document2[key]).map(([key, title]) => "## " + title + "\n\n" + format(document2[key])).join("\n\n") + "\n";
     }
     function planMarkdownView(markdown) {
-      const inline = (value) => value.split(/(!?\[[^\]]*\]\([^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g).map((part,index) => {
+      const inline = (value) => value.split(/(!?\[[^\]]*\]\([^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*)/g).map((part, index2) => {
         const link = part.match(/^(!?)\[([^\]]*)\]\(([^\s)]+)\)$/);
-        if (link && /^(?:https?:\/\/|\/[^/]|\.\.?\/)/i.test(link[3])) return link[1]
-          ? h('img',{key:index,src:link[3],alt:link[2],loading:'lazy',style:{maxWidth:'100%'}})
-          : h('a',{key:index,href:link[3],target:'_blank',rel:'noreferrer'},link[2]);
-        if (part.startsWith('`') && part.endsWith('`')) return h('code',{key:index},part.slice(1,-1));
-        if (part.startsWith('**') && part.endsWith('**')) return h('strong',{key:index},part.slice(2,-2));
+        if (link && /^(?:https?:\/\/|\/[^/]|\.\.?\/)/i.test(link[3])) return link[1] ? h("img", { key: index2, src: link[3], alt: link[2], loading: "lazy", style: { maxWidth: "100%" } }) : h("a", { key: index2, href: link[3], target: "_blank", rel: "noreferrer" }, link[2]);
+        if (part.startsWith("`") && part.endsWith("`")) return h("code", { key: index2 }, part.slice(1, -1));
+        if (part.startsWith("**") && part.endsWith("**")) return h("strong", { key: index2 }, part.slice(2, -2));
         return part;
       });
-      const rows = String(markdown).replace(/\r\n?/g,'\n').split('\n'), blocks=[];
-      let index=0;
+      const rows = String(markdown).replace(/\r\n?/g, "\n").split("\n"), blocks = [];
+      let index = 0;
       const isBlock = (line) => /^(?:#{1,6}\s|```|\s*[-*+]\s|\s*\d+[.)]\s|>\s|\s*$)/.test(line);
-      while (index<rows.length) {
-        const line=rows[index++];
+      while (index < rows.length) {
+        const line = rows[index++];
         if (!line.trim()) continue;
-        const heading=line.match(/^(#{1,6})\s+(.+)$/), fence=line.match(/^```([^\s]*)\s*$/);
-        if (heading) {blocks.push(h('h'+heading[1].length,{key:blocks.length},inline(heading[2])));continue;}
+        const heading = line.match(/^(#{1,6})\s+(.+)$/), fence = line.match(/^```([^\s]*)\s*$/);
+        if (heading) {
+          blocks.push(h("h" + heading[1].length, { key: blocks.length }, inline(heading[2])));
+          continue;
+        }
         if (fence) {
-          const code=[];while(index<rows.length && !/^```\s*$/.test(rows[index]))code.push(rows[index++]);index++;
-          const content=h('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},h('code',null,code.join('\n')));
-          blocks.push(fence[1]==='assessment-yaml' ? h('details',{key:blocks.length},h('summary',null,'可执行计划数据'),content)
-            : h('div',{key:blocks.length},content));continue;
+          const code = [];
+          while (index < rows.length && !/^```\s*$/.test(rows[index])) code.push(rows[index++]);
+          index++;
+          const content = h("pre", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, h("code", null, code.join("\n")));
+          blocks.push(fence[1] === "assessment-yaml" ? h("details", { key: blocks.length }, h("summary", null, "\u53EF\u6267\u884C\u8BA1\u5212\u6570\u636E"), content) : h("div", { key: blocks.length }, content));
+          continue;
         }
-        const list=line.match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+        const list = line.match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
         if (list) {
-          const ordered=/^\d/.test(list[1]),items=[list[2]];
-          while(index<rows.length) {const next=rows[index].match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
-            if(!next || /^\d/.test(next[1])!==ordered)break;items.push(next[2]);index++;}
-          blocks.push(h(ordered?'ol':'ul',{key:blocks.length},items.map((value,item)=>h('li',{key:item},inline(value)))));continue;
+          const ordered = /^\d/.test(list[1]), items = [list[2]];
+          while (index < rows.length) {
+            const next = rows[index].match(/^\s*([-*+]|\d+[.)])\s+(.+)$/);
+            if (!next || /^\d/.test(next[1]) !== ordered) break;
+            items.push(next[2]);
+            index++;
+          }
+          blocks.push(h(ordered ? "ol" : "ul", { key: blocks.length }, items.map((value, item) => h("li", { key: item }, inline(value)))));
+          continue;
         }
-        if (/^>\s/.test(line)) {blocks.push(h('blockquote',{key:blocks.length},inline(line.replace(/^>\s/,''))));continue;}
-        if (/^\s*(?:---+|\*\*\*+)\s*$/.test(line)) {blocks.push(h('hr',{key:blocks.length}));continue;}
-        if (line.includes('|') && index<rows.length && /^\s*\|?\s*:?-{3,}/.test(rows[index])) {
-          const cells=(value)=>value.trim().replace(/^\||\|$/g,'').split('|').map(cell=>inline(cell.trim()));
-          const headers=cells(line),body=[];index++;
-          while(index<rows.length && rows[index].includes('|') && rows[index].trim())body.push(cells(rows[index++]));
-          blocks.push(h('div',{key:blocks.length},table(headers,body)));continue;
+        if (/^>\s/.test(line)) {
+          blocks.push(h("blockquote", { key: blocks.length }, inline(line.replace(/^>\s/, ""))));
+          continue;
         }
-        const paragraph=[line];while(index<rows.length && !isBlock(rows[index]))paragraph.push(rows[index++]);
-        blocks.push(h('p',{key:blocks.length,style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},inline(paragraph.join('\n'))));
+        if (/^\s*(?:---+|\*\*\*+)\s*$/.test(line)) {
+          blocks.push(h("hr", { key: blocks.length }));
+          continue;
+        }
+        if (line.includes("|") && index < rows.length && /^\s*\|?\s*:?-{3,}/.test(rows[index])) {
+          const cells = (value) => value.trim().replace(/^\||\|$/g, "").split("|").map((cell) => inline(cell.trim()));
+          const headers = cells(line), body = [];
+          index++;
+          while (index < rows.length && rows[index].includes("|") && rows[index].trim()) body.push(cells(rows[index++]));
+          blocks.push(h("div", { key: blocks.length }, table(headers, body)));
+          continue;
+        }
+        const paragraph = [line];
+        while (index < rows.length && !isBlock(rows[index])) paragraph.push(rows[index++]);
+        blocks.push(h("p", { key: blocks.length, style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, inline(paragraph.join("\n"))));
       }
-      return h('div',{className:'bfw-plan-markdown-view','data-plan-markdown-view':true},blocks);
+      return h("div", { className: "bfw-plan-markdown-view", "data-plan-markdown-view": true }, blocks);
     }
     function planEditInstruction(path) {
-      return '用户已编辑计划 Markdown，已保存的新版本：'+path+
-        '\n必须读取该 Markdown 正文与其 _plan_edit.base_plan 指向的原计划，逐项落实所有改动并以新计划继续生产。调用 pipeline_plan(applies_edit="'+path+
-        '") 时提供 markdown_resolution 数组；每个规范化字段变更一项，格式为 {path, before, after, instruction}：path 是 assessment 相对点路径（数组用十进制索引），before 必须等于原 assessment 值，after 是规范化后的新值，instruction 必须逐字引用正文中提出该变更的原句。不得从旧正文或代码块取引文。题量、题型、场景数等要同步更新 assessment、selections、inputs 和相关执行步骤，并通过已有校验。split 与场景选择保持锁定。Markdown 中其他制作规则要落实到场景方案、任务代码、校验及执行步骤；不得只复述文档。保存新执行计划后使用新的 run 继续生产，复用仍符合新合同的已有产物和已提交采集。';
+      return "\u7528\u6237\u5DF2\u7F16\u8F91\u8BA1\u5212 Markdown\uFF0C\u5DF2\u4FDD\u5B58\u7684\u65B0\u7248\u672C\uFF1A" + path + '\n\u5FC5\u987B\u8BFB\u53D6\u8BE5 Markdown \u6B63\u6587\u4E0E edit_revision.base_plan \u6307\u5411\u7684\u539F\u8BA1\u5212\uFF0C\u9010\u9879\u843D\u5B9E\u6539\u52A8\u3002edit_revision.markdown_normalization=false \u65F6\uFF0C\u7ED3\u6784\u6570\u636E\u5DF2\u7ECF\u968F\u663E\u5F0F YAML \u4FEE\u6539\u4FDD\u5B58\uFF1A\u4FDD\u7559\u8BE5\u7248\u672C\u7684 assessment\u3001selections\u3001inputs \u548C\u5B8C\u6574 user_markdown\uFF0C\u4E0D\u8981\u6C42\u91CD\u65B0\u751F\u6210 markdown_resolution\u3002\u53EA\u6709 markdown_normalization=true \u65F6\uFF0C\u624D\u5C06\u6B63\u6587\u6539\u52A8\u540C\u6B65\u5230\u7ED3\u6784\u6570\u636E\u5E76\u63D0\u4F9B markdown_resolution\uFF0C\u683C\u5F0F\u4E3A {path, before, after, instruction}\uFF1Bpath \u4E3A assessment \u76F8\u5BF9\u70B9\u8DEF\u5F84\uFF0Cbefore/after \u4E3A\u51C6\u786E\u65E7\u65B0\u503C\uFF0Cinstruction \u9010\u5B57\u5F15\u7528\u6B63\u6587\u4E2D\u65B0\u6539\u7684\u539F\u53E5\u6216\u5DF2\u5220\u9664\u7684\u65E7\u53E5\u3002split \u4E0E\u573A\u666F\u9009\u62E9\u4FDD\u6301\u9501\u5B9A\u3002\n\u628A\u53EF\u6267\u884C\u5E94\u7528\u8BF7\u6C42\u4FDD\u5B58\u4E3A JSON \u6587\u4EF6\uFF0Capplies_edit="' + path + '"\uFF0C\u4F7F\u7528 pipeline_plan(request_path=\u6587\u4EF6\u8DEF\u5F84)\u3002\u65E7\u4F1A\u8BDD\u5DE5\u5177\u5B9A\u4E49\u82E5\u6CA1\u6709 request_path\uFF0C\u7528\u5F53\u524D\u751F\u4EA7 Python \u6267\u884C SDK integrations/spatialforge/ui/plan_request_cli.py --workspace \u5F53\u524D\u5DE5\u4F5C\u533A --session \u5F53\u524D\u4F1A\u8BDD --request \u6587\u4EF6\u8DEF\u5F84\uFF1B\u8BE5\u5165\u53E3\u4FDD\u7559\u76F8\u540C\u6821\u9A8C\u4E0E\u4F1A\u8BDD\u6765\u6E90\uFF0C\u91CD\u590D\u5E94\u7528\u4E0D\u91CD\u5F00\u9636\u6BB5\u7A97\u53E3\u3002\u4E0D\u8981\u91CD\u65B0\u8F93\u51FA\u6574\u4EFD\u5927\u6587\u6863\u3002\u5236\u4F5C\u89C4\u5219\u7684\u5B9E\u8D28\u4FEE\u6539\u5FC5\u987B\u843D\u5B9E\u5230\u4EFB\u52A1\u4EE3\u7801\u3001\u6267\u884C\u6B65\u9AA4\u6216\u8BC1\u636E\u8F93\u5165\uFF1B\u5E94\u7528\u540E\u4F7F\u7528\u65B0\u7684 run\uFF0C\u5E76\u590D\u7528\u4ECD\u7B26\u5408\u5408\u540C\u7684\u4EA7\u7269\u548C\u5DF2\u63D0\u4EA4\u91C7\u96C6\u3002';
     }
     function table(headers, rows) {
-      return h('div', {className: 'bfw-scroll'}, h('table', {className: 'bfw-table'},
-        h('thead', null, h('tr', null, headers.map((text, i) => h('th', {key: i}, text)))),
-        h('tbody', null, rows.map((cells, i) => h('tr', {key: i}, cells.map((cell, j) => h('td', {key: j}, cell)))))));
+      return h("div", { className: "bfw-scroll" }, h(
+        "table",
+        { className: "bfw-table" },
+        h("thead", null, h("tr", null, headers.map((text, i) => h("th", { key: i }, text)))),
+        h("tbody", null, rows.map((cells, i) => h("tr", { key: i }, cells.map((cell, j) => h("td", { key: j }, cell)))))
+      ));
     }
     function select(label, value, onChange, options) {
-      return h('label', {className: 'bfw-label'}, label, h('select', {className: 'bfw-select', 'aria-label': label, value, onChange: (e) => onChange(e.target.value)},
-        options.map(([id, text]) => h('option', {key: id, value: id}, text))));
+      return h("label", { className: "bfw-label" }, label, h(
+        "select",
+        { className: "bfw-select", "aria-label": label, value, onChange: (e) => onChange(e.target.value) },
+        options.map(([id, text]) => h("option", { key: id, value: id }, text))
+      ));
     }
+    return {
+      status,
+      button,
+      card,
+      empty,
+      json,
+      sceneName,
+      questionText,
+      planValue,
+      planMarkdown,
+      planMarkdownView,
+      planEditInstruction,
+      table,
+      select
+    };
+  }
+
+  // integrations/spatialforge/ui/client/state.js
+  function createWorkbenchState({ STAGES: STAGES2, sceneName }) {
     function initialState(sessionId) {
-      const fallback = {version: 3, stage: 'S1', run: '', production: '', dataset: '', template: '', split: '', q: '', page: 1, size: 24, layout: 'grid',
-        runFilter: '', runListPage: 1, runListSize: 12, versionFilter: '', versionListPage: 1, versionListSize: 12};
-      const saved = JSON.parse(localStorage.getItem('bfw:spatialforge:' + sessionId) || 'null');
+      const fallback = {
+        version: 3,
+        stage: "S1",
+        run: "",
+        production: "",
+        dataset: "",
+        template: "",
+        split: "",
+        q: "",
+        page: 1,
+        size: 24,
+        layout: "grid",
+        runFilter: "",
+        runListPage: 1,
+        runListSize: 12,
+        versionFilter: "",
+        versionListPage: 1,
+        versionListSize: 12
+      };
+      const saved = JSON.parse(localStorage.getItem("bfw:spatialforge:" + sessionId) || "null");
       if (saved?.version === 3) {
-        const {tab, ...route} = saved;
-        const stage = ({overview: 'S1', runs: 'S1', datasets: 'S4', quality: 'S5'})[tab] || saved.stage;
-        return {...fallback, ...route, stage: STAGES.some((row) => row.id === stage) ? stage : 'S1', size: [24, 48, 96].includes(saved.size) ? saved.size : 24,
+        const { tab, ...route } = saved;
+        const stage = { overview: "S1", runs: "S1", datasets: "S4", quality: "S5" }[tab] || saved.stage;
+        return {
+          ...fallback,
+          ...route,
+          stage: STAGES2.some((row) => row.id === stage) ? stage : "S1",
+          size: [24, 48, 96].includes(saved.size) ? saved.size : 24,
           page: Number.isSafeInteger(saved.page) && saved.page > 0 ? saved.page : 1,
           runListPage: Number.isSafeInteger(saved.runListPage) && saved.runListPage > 0 ? saved.runListPage : 1,
           versionListPage: Number.isSafeInteger(saved.versionListPage) && saved.versionListPage > 0 ? saved.versionListPage : 1,
           runListSize: [12, 24, 48].includes(saved.runListSize) ? saved.runListSize : 12,
           versionListSize: [12, 24, 48].includes(saved.versionListSize) ? saved.versionListSize : 12,
-          layout: saved.layout === 'grid' ? 'grid' : 'table'};
+          layout: saved.layout === "grid" ? "grid" : "table"
+        };
       }
       return fallback;
     }
     function initialDemand(sessionId) {
-      const fallback = {version: 1, objective: '', count: '100', capability: '', sceneCount: '', storageBudget: '', mode: 'new'};
-      const saved = JSON.parse(localStorage.getItem('bfw:production-request:' + sessionId) || 'null');
-      return saved?.version === 1 ? {...fallback, ...saved} : fallback;
+      const fallback = {
+        version: 1,
+        objective: "",
+        count: "100",
+        capability: "",
+        sceneCount: "",
+        storageBudget: "",
+        mode: "new",
+        executionMode: "production",
+        quantityContract: "minimum"
+      };
+      const saved = JSON.parse(localStorage.getItem("bfw:production-request:" + sessionId) || "null");
+      if (saved?.version !== 1) return fallback;
+      return {
+        ...fallback,
+        ...saved,
+        executionMode: ["production", "exploration"].includes(saved.executionMode) ? saved.executionMode : fallback.executionMode,
+        quantityContract: ["exact", "minimum", "best_effort"].includes(saved.quantityContract) ? saved.quantityContract : fallback.quantityContract
+      };
     }
     function sceneConstraint(selection) {
-      if (!selection) return '';
-      return '\n场景使用约束（以保存的场景选择为准）：\n' + JSON.stringify({schema: selection.schema,
-        selection_path: selection.selection_path, version: selection.version, selected_scenes: selection.sources || selection.selected,
-        allow_new_scenes: selection.allow_new_scenes}, null, 2) +
-        '\n只允许复用 selected_scenes 中勾选的场景，使用所列 task_id 与 revision 的采集、标注和场景程序。未勾选的已有场景不得用于本次任务。' +
-        (selection.allow_new_scenes ? '允许按需求生成新场景，生成后统一登记到场景库。' : '不允许通过新建、复制或重新生成场景绕过选择。') +
-        '若所选场景不足以满足要求，如实记录缺口，等待用户调整场景选择。\n';
+      if (!selection) return "";
+      return "\n\u573A\u666F\u4F7F\u7528\u7EA6\u675F\uFF08\u4EE5\u4FDD\u5B58\u7684\u573A\u666F\u9009\u62E9\u4E3A\u51C6\uFF09\uFF1A\n" + JSON.stringify({
+        schema: selection.schema,
+        selection_path: selection.selection_path,
+        version: selection.version,
+        selected_scenes: selection.sources || selection.selected,
+        allow_new_scenes: selection.allow_new_scenes
+      }, null, 2) + "\n\u53EA\u5141\u8BB8\u590D\u7528 selected_scenes \u4E2D\u52FE\u9009\u7684\u573A\u666F\uFF0C\u4F7F\u7528\u6240\u5217 task_id \u4E0E revision \u7684\u91C7\u96C6\u3001\u6807\u6CE8\u548C\u573A\u666F\u7A0B\u5E8F\u3002\u672A\u52FE\u9009\u7684\u5DF2\u6709\u573A\u666F\u4E0D\u5F97\u7528\u4E8E\u672C\u6B21\u4EFB\u52A1\u3002" + (selection.allow_new_scenes ? "\u5141\u8BB8\u6309\u9700\u6C42\u751F\u6210\u65B0\u573A\u666F\uFF0C\u751F\u6210\u540E\u7EDF\u4E00\u767B\u8BB0\u5230\u573A\u666F\u5E93\u3002" : "\u4E0D\u5141\u8BB8\u901A\u8FC7\u65B0\u5EFA\u3001\u590D\u5236\u6216\u91CD\u65B0\u751F\u6210\u573A\u666F\u7ED5\u8FC7\u9009\u62E9\u3002") + "\u82E5\u6240\u9009\u573A\u666F\u4E0D\u8DB3\u4EE5\u6EE1\u8DB3\u8981\u6C42\uFF0C\u5982\u5B9E\u8BB0\u5F55\u7F3A\u53E3\uFF0C\u7B49\u5F85\u7528\u6237\u8C03\u6574\u573A\u666F\u9009\u62E9\u3002\n";
     }
     function productionRequest(demand, selection) {
-      if (demand.mode === 'append') return '请将以下要求应用于当前会话的生产任务，保留已有产物和失败证据，并继续实际执行至完成：\n' + demand.objective.trim() + sceneConstraint(selection);
+      if (demand.mode === "append") return "\u8BF7\u5C06\u4EE5\u4E0B\u8981\u6C42\u5E94\u7528\u4E8E\u5F53\u524D\u4F1A\u8BDD\u7684\u751F\u4EA7\u4EFB\u52A1\uFF0C\u4FDD\u7559\u5DF2\u6709\u4EA7\u7269\u548C\u5931\u8D25\u8BC1\u636E\uFF0C\u5E76\u7EE7\u7EED\u5B9E\u9645\u6267\u884C\u81F3\u5B8C\u6210\uFF1A\n" + demand.objective.trim() + sceneConstraint(selection);
       return [
-        '请实际执行一次 SpatialForge 评测数据集生产任务，完整完成五阶段：评测计划、场景生成或复用与采集、标注、按能力模板出题、质量检查与打包交付；不要只写计划。',
-        '生产需求：' + demand.objective.trim(),
-        '目标题量：' + Number(demand.count) + ' 条。这是请求目标，不代表已有产物；如有缺口如实记录数量和原因。',
-        demand.capability.trim() ? '能力与模板要求：' + demand.capability.trim() : '请根据上述需求从现有能力图谱和出题模板中拆解并选择适用模板。',
-        demand.sceneCount ? '目标场景数：' + Number(demand.sceneCount) + ' 个。' : '',
-        demand.storageBudget ? '存储预算上限：' + Number(demand.storageBudget) + ' GB。' : '',
-        '使用当前已接入工具。场景是出题前提，GT 仅来自官方、程序或仿真，公开题目不泄露答案。请将计划、场景、标注、题目表和最终报告关联到当前会话，使工作台实时展示实际回执和产物。',
-      ].filter(Boolean).join('\n') + sceneConstraint(selection);
+        "\u8BF7\u5B9E\u9645\u6267\u884C\u4E00\u6B21 BenchForgeV2 \u8BC4\u6D4B\u6570\u636E\u96C6\u751F\u4EA7\u4EFB\u52A1\uFF0C\u5B8C\u6574\u5B8C\u6210\u4E94\u9636\u6BB5\uFF1A\u8BC4\u6D4B\u8BA1\u5212\u3001\u573A\u666F\u751F\u6210\u6216\u590D\u7528\u4E0E\u91C7\u96C6\u3001\u6807\u6CE8\u3001\u6309\u80FD\u529B\u6A21\u677F\u51FA\u9898\u3001\u8D28\u91CF\u68C0\u67E5\u4E0E\u6253\u5305\u4EA4\u4ED8\uFF1B\u4E0D\u8981\u53EA\u5199\u8BA1\u5212\u3002",
+        "execution_mode=" + (demand.executionMode || "production") + "\uFF1Bquantity_contract=" + (demand.quantityContract || "minimum") + "\u3002",
+        "\u751F\u4EA7\u9700\u6C42\uFF1A" + demand.objective.trim(),
+        "target_items=" + Number(demand.count) + "\u3002\u8FD9\u662F\u8BF7\u6C42\u76EE\u6807\uFF1B\u6309\u6570\u91CF\u5408\u540C\u5904\u7406\u77ED\u7F3A\uFF0C\u4E0D\u5F97\u628A\u6267\u884C\u5B8C\u6210\u8868\u8FF0\u4E3A\u6570\u91CF\u8FBE\u6807\u6216\u8D28\u91CF\u9A8C\u6536\u901A\u8FC7\u3002",
+        demand.capability.trim() ? "\u80FD\u529B\u4E0E\u6A21\u677F\u8981\u6C42\uFF1A" + demand.capability.trim() : "\u8BF7\u6839\u636E\u4E0A\u8FF0\u9700\u6C42\u4ECE\u73B0\u6709\u80FD\u529B\u56FE\u8C31\u548C\u51FA\u9898\u6A21\u677F\u4E2D\u62C6\u89E3\u5E76\u9009\u62E9\u9002\u7528\u6A21\u677F\u3002",
+        demand.sceneCount ? "\u76EE\u6807\u573A\u666F\u6570\uFF1A" + Number(demand.sceneCount) + " \u4E2A\u3002" : "",
+        demand.storageBudget ? "\u5B58\u50A8\u9884\u7B97\u4E0A\u9650\uFF1A" + Number(demand.storageBudget) + " GB\u3002" : "",
+        "\u4F7F\u7528\u5F53\u524D\u5DF2\u63A5\u5165\u5DE5\u5177\u3002\u573A\u666F\u662F\u51FA\u9898\u524D\u63D0\uFF0CGT \u4EC5\u6765\u81EA\u5B98\u65B9\u3001\u7A0B\u5E8F\u6216\u4EFF\u771F\uFF0C\u516C\u5F00\u9898\u76EE\u4E0D\u6CC4\u9732\u7B54\u6848\u3002\u8BF7\u5C06\u8BA1\u5212\u3001\u573A\u666F\u3001\u6807\u6CE8\u3001\u9898\u76EE\u8868\u548C\u6700\u7EC8\u62A5\u544A\u5173\u8054\u5230\u5F53\u524D\u4F1A\u8BDD\uFF0C\u4F7F\u5DE5\u4F5C\u53F0\u5B9E\u65F6\u5C55\u793A\u5B9E\u9645\u56DE\u6267\u548C\u4EA7\u7269\u3002"
+      ].filter(Boolean).join("\n") + sceneConstraint(selection);
     }
     function displayRef(value) {
-      const parts = String(value || '').split(/[\\/]/).filter(Boolean);
-      if (parts[0] === 'operations' && parts[1]) return '运行 ' + parts[1].slice(0, 8);
-      const visible = parts.filter((part) => !['steps', 'questions', 'dataset', 'pipeline_run'].includes(part));
-      return visible[visible.length - 1] || String(value || '—');
+      const parts = String(value || "").split(/[\\/]/).filter(Boolean);
+      if (parts[0] === "operations" && parts[1]) return "\u8FD0\u884C " + parts[1].slice(0, 8);
+      const visible = parts.filter((part) => !["steps", "questions", "dataset", "pipeline_run"].includes(part));
+      return visible[visible.length - 1] || String(value || "\u2014");
     }
     function filteredPage(items, query, page, size, searchable) {
-      const needle = String(query || '').trim().toLocaleLowerCase();
+      const needle = String(query || "").trim().toLocaleLowerCase();
       const matches = needle ? items.filter((item) => searchable(item).toLocaleLowerCase().includes(needle)) : items;
       const pages = Math.max(1, Math.ceil(matches.length / size));
       const current = Math.min(Math.max(1, page), pages);
-      return {items: matches.slice((current - 1) * size, current * size), total: matches.length, pages, page: current};
+      return { items: matches.slice((current - 1) * size, current * size), total: matches.length, pages, page: current };
     }
+    const lifecycle = (value) => ({
+      SUCCEEDED: "completed",
+      FAILED_FINAL: "failed",
+      CANCELED: "canceled",
+      READY: "waiting",
+      PENDING: "waiting",
+      RUNNING: "running"
+    })[value] || value || "unknown";
+    function backgroundProductionState(value) {
+      if (!value) return "unknown";
+      const states = [
+        ...(value.pipelines || []).map((row) => lifecycle(row.state)),
+        ...(value.parallel_tasks || []).map((row) => lifecycle(row.state)),
+        ...(value.scenes?.runs || []).map((row) => lifecycle(row.state)),
+        ...(value.operations || []).map((row) => lifecycle(row.state)),
+        value.generation ? lifecycle(value.generation.state) : null
+      ].filter(Boolean);
+      if (states.includes("running")) return "running";
+      return states.length ? "idle" : "unknown";
+    }
+    function productionProductsRevision(value) {
+      const terminal = (state) => ["completed", "failed", "canceled"].includes(lifecycle(state)) ? lifecycle(state) : null;
+      const sorted = (rows) => rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+      const artifacts = (row) => [
+        row.artifact_revision ?? null,
+        row.artifact_count ?? null,
+        sorted((row.public_artifacts || []).map((file) => [file.url, file.revision ?? file.version ?? null]))
+      ];
+      return JSON.stringify([
+        sorted((value?.operations || []).filter((row) => terminal(row.state)).map((row) => [row.id, terminal(row.state)])),
+        sorted((value?.pipelines || []).map((row) => [
+          row.id,
+          terminal(row.state),
+          row.revision ?? null,
+          artifacts(row),
+          sorted((row.steps || []).filter((step) => terminal(step.state)).map((step) => [step.id, terminal(step.state), step.artifact_revision ?? null]))
+        ])),
+        sorted((value?.scenes?.runs || []).map((row) => [
+          row.run_id,
+          terminal(row.state),
+          sorted((row.tasks || []).map((task) => [task.id, task.revision ?? null, terminal(task.state), artifacts(task)]))
+        ])),
+        sorted((value?.parallel_tasks || []).filter((row) => terminal(row.state) || row.artifact_revision != null || row.artifact_count > 0 || row.public_artifacts?.length).map((row) => [row.id, row.revision ?? null, terminal(row.state), artifacts(row)])),
+        value?.current_collection && [
+          value.current_collection.plan_path,
+          value.current_collection.ledger_version,
+          value.current_collection.status,
+          sorted((value.current_collection.rows || []).map((row) => [row.design_id, row.task_id, row.revision]))
+        ],
+        value?.generation && value.generation.state !== "running" ? [
+          value.generation.run_id || value.generation.plan_path,
+          value.generation.state,
+          value.generation.written_count,
+          value.generation.verified_count,
+          value.generation.published_count
+        ] : null
+      ]);
+    }
+    const sceneStage = (row) => row.workflow === "scene" ? "S2" : row.workflow === "dataset" ? "S4" : { review: "S5", publish: "S5", export: "S5", dataset: "S4", annotate: "S3" }[row.phase] || "S2";
+    function pipelineForStage(id, pipelines) {
+      const latest = (stage) => pipelines.filter((row) => row.steps?.some((step) => step.stage === stage)).sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""))[0];
+      return latest(id) || (id === "S3" ? latest("S2") : null);
+    }
+    function sceneForStage(id, scenes) {
+      const candidates = scenes.filter((scene) => scene.tasks?.some((task) => sceneStage(task) === id || id === "S3" && sceneStage(task) === "S2"));
+      const usable = candidates.filter((scene) => scene.state !== "CANCELED");
+      return usable.find((scene) => !scene.terminal && scene.state !== "FAILED_FINAL") || usable.find((scene) => scene.state === "SUCCEEDED") || usable[0] || candidates[0];
+    }
+    function progressSceneForStage(id, selected, scenes = []) {
+      const active = scenes.filter((row) => !row.terminal && !["SUCCEEDED", "FAILED_FINAL", "CANCELED"].includes(row.state) && row.tasks?.some((task) => sceneStage(task) === id));
+      if (!active.length) return selected;
+      const seen = /* @__PURE__ */ new Set();
+      const tasks = active.flatMap((row) => row.tasks || []).filter((task) => {
+        const key = task.id + ":" + task.revision;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { state: active.some((row) => row.state === "RUNNING") ? "RUNNING" : active[0].state, tasks };
+    }
+    function registeredCollectionProgress(plan, current) {
+      const design = plan?.assessment?.scenes;
+      const targets = design?.designs || [];
+      const total = Number(design?.target_scene_count ?? plan?.inputs?.target_scene_count) || targets.length;
+      const saved = new Map((current.rows || []).map((row) => [row.design_id, row]));
+      const accepted = (current.rows || []).filter((row) => row.state === "completed").length;
+      const trusted = current.status === "current" && current.target === total && targets.length === total && saved.size === total && targets.every((row) => saved.has(row.id)) && current.accepted === accepted && (current.rows || []).every((row) => ["completed", "waiting"].includes(row.state));
+      const rows = targets.map((target) => {
+        const row = trusted ? saved.get(target.id) : null;
+        const passed = row?.state === "completed";
+        return {
+          id: target.id,
+          scene_id: row?.scene_id || target.scene_id,
+          run_id: row?.run_id,
+          name: row?.name || sceneName(target.name) || "\u573A\u666F",
+          state: passed ? "completed" : "waiting",
+          statusLabel: passed ? "scenePassed" : "scenePending",
+          phase: passed ? "sceneNativeAccepted" : "scenePending"
+        };
+      });
+      return {
+        rows,
+        total,
+        passed: trusted ? accepted : 0,
+        state: trusted && accepted === total && total > 0 ? "completed" : "waiting",
+        identityPending: !trusted,
+        current: true,
+        registrationStatus: current.status,
+        notice: current.status === "pending" ? "scenePlanPending" : !trusted ? "sceneSnapshotUnavailable" : null
+      };
+    }
+    function currentGeneration(value) {
+      if (!value || !["current_applied_plan", "current_plan_path_after_save"].includes(value.association) || !Number.isSafeInteger(value.target_items) || value.target_items < 1 || !Number.isSafeInteger(value.written_count) || !Number.isSafeInteger(value.verified_count) || value.written_count < 0 || value.verified_count < 0 || value.written_count > value.target_items || value.verified_count > value.target_items) return null;
+      const heartbeat = value.heartbeat_at ?? value.updated_at;
+      const age = Date.now() / 1e3 - heartbeat;
+      const fresh = value.fresh === true && Number.isFinite(age) && age >= 0 && age <= 30 && value.process_alive !== false;
+      const eligible = value.contract_eligible_count;
+      if (eligible != null && (!Number.isSafeInteger(eligible) || eligible < 0 || eligible > value.verified_count)) return null;
+      const incomplete = value.state === "complete" && (value.written_count !== value.target_items || value.verified_count !== value.target_items || eligible != null && eligible !== value.target_items);
+      return { ...value, fresh, state: incomplete || value.state === "running" && !fresh ? "incomplete" : value.state };
+    }
+    function sceneCollectionProgress(plan, scenes = [], current = null) {
+      if (current) return registeredCollectionProgress(plan, current);
+      const design = plan?.assessment?.scenes;
+      const declared = Number(design?.target_scene_count ?? plan?.inputs?.target_scene_count);
+      const total = Number.isInteger(declared) && declared > 0 ? declared : design?.designs?.length || design?.selected_scenes?.length || 0;
+      const targets = (design?.designs || []).map((row) => ({
+        // This is a declared program filename, not a guess from a display name.
+        id: row.scene_id || String(row.program_path || row.artifact || "").match(/([^/\\\s]+)\.scene_program\.json\b/)?.[1],
+        name: row.name
+      })).filter((row) => row.id);
+      const targetIds = new Set(targets.map((row) => row.id));
+      const boundPlan = total > 0 && targetIds.size === total;
+      const timestamp = (value) => {
+        if (value !== null && value !== void 0 && value !== "" && Number.isFinite(Number(value))) {
+          const number = Number(value);
+          return number < 1e12 ? number * 1e3 : number;
+        }
+        return Date.parse(value) || 0;
+      };
+      const latest = /* @__PURE__ */ new Map();
+      for (const run of scenes) {
+        const tasks = (run.tasks || []).filter((task) => task.workflow === "scene" || sceneStage(task) === "S2" && task.workflow !== "asset");
+        if (!tasks.length && (run.tasks?.length || !run.scene_id || !run.state)) continue;
+        const groups = /* @__PURE__ */ new Map();
+        for (const task of tasks.length ? tasks : [null]) {
+          const key = task?.scene_id || run.scene_id || run.run_id;
+          if (!key) continue;
+          groups.set(key, [...groups.get(key) || [], task]);
+        }
+        for (const [key, candidates] of groups) {
+          const task = candidates.filter(Boolean).sort((a, b) => (Number(b.revision) || 0) - (Number(a.revision) || 0) || timestamp(b.updated_at || b.created_at) - timestamp(a.updated_at || a.created_at))[0];
+          if (!run.state && !task?.state && !task?.queue) continue;
+          const sceneId = task?.scene_id || run.scene_id;
+          if (boundPlan && sceneId && !targetIds.has(sceneId)) continue;
+          const created = timestamp(task?.created_at || run.created_at || run.updated_at || task?.updated_at);
+          const updated = timestamp(run.updated_at || task?.updated_at || run.created_at);
+          const candidate = { run, task, sceneId, created, updated };
+          const prior = latest.get(key);
+          if (!prior || created > prior.created || created === prior.created && updated > prior.updated) latest.set(key, candidate);
+        }
+      }
+      const observed = [...latest.values()].map(({ run, task, sceneId }) => {
+        const nativeState = lifecycle(task?.state || run.state);
+        const phase = task?.progress?.stage || task?.phase || run.progress?.stage || "";
+        const acceptance = task?.acceptance?.passed ?? task?.acceptance_passed ?? run.acceptance?.passed ?? run.acceptance_passed;
+        let state2 = "waiting", label = "scenePending";
+        if (nativeState === "completed" && acceptance !== false) {
+          state2 = "completed";
+          label = "scenePassed";
+        } else if (nativeState === "failed" || acceptance === false && nativeState === "completed") {
+          state2 = "failed";
+          label = "sceneNeedsRepair";
+        } else if (nativeState === "canceled") {
+          state2 = "canceled";
+          label = "sceneStopped";
+        } else if (task?.queue || run.queue || nativeState === "waiting") {
+          state2 = "waiting";
+          label = "sceneQueued";
+        } else if (nativeState === "running" || lifecycle(run.state) === "running") {
+          state2 = "running";
+          label = /repair|revis|retry/i.test(phase) ? "sceneRepairing" : "sceneCapturing";
+        }
+        return {
+          id: sceneId || run.run_id,
+          scene_id: sceneId,
+          run_id: run.run_id,
+          name: task?.name || run.name || sceneId || run.run_id,
+          state: state2,
+          statusLabel: label,
+          phase,
+          task,
+          error: task?.failure || task?.progress?.error || run.failure
+        };
+      });
+      const rows = boundPlan ? [
+        ...targets.map((target) => observed.find((row) => row.scene_id === target.id) || { id: target.id, scene_id: target.id, name: target.name || target.id, state: "waiting", statusLabel: "scenePending" }),
+        ...observed.filter((row) => !row.scene_id)
+      ] : observed;
+      if (!total && !rows.length) return null;
+      const identityPending = rows.some((row) => !row.scene_id) || total > 0 && rows.length > total;
+      const passed = rows.filter((row) => row.state === "completed" && row.scene_id).length;
+      const state = total > 0 && !identityPending && rows.length === total && passed === total ? "completed" : rows.some((row) => row.state === "running") ? "running" : rows.some((row) => row.state === "failed") ? "failed" : rows.length && rows.every((row) => row.state === "canceled") ? "canceled" : "waiting";
+      return { rows, total, passed, state, identityPending };
+    }
+    function annotationProducts(artifacts) {
+      return artifacts.filter((row) => row.stage === "S3" && row.kind === "json" && artifacts.some((image) => image.kind === "image" && image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, ".png")));
+    }
+    function stageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = [], collection = null, generation = null) {
+      const generated = id === "S4" ? currentGeneration(generation) : null;
+      if (generated?.state === "running" && generated.fresh) return "running";
+      if (generated?.state === "failed") return "failed";
+      if (generated?.state === "incomplete") return "needs_evidence";
+      const recorded = recordedStageState(id, pipeline, scene, operations, planReceipt, artifacts, collection);
+      if (generated?.state === "complete" && pipeline?.steps?.some((row) => row.stage === id) && recorded !== "unknown") return recorded;
+      return generated?.state === "complete" && recorded !== "completed" ? "waiting" : recorded;
+    }
+    function recordedStageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = [], collection = null) {
+      if (id === "S1" && planReceipt) return "completed";
+      if (id === "S2" && collection) return collection.state;
+      const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
+      if (current.length) {
+        if (scene.state === "CANCELED" && current.some((row) => row.state !== "SUCCEEDED")) return "canceled";
+        if (current.some((row) => row.state === "FAILED_FINAL")) return "failed";
+        if (current.some((row) => row.queue) && !current.some((row) => row.state === "RUNNING" && !row.queue)) return "waiting";
+        if (current.every((row) => row.state === "SUCCEEDED")) {
+          const parentSteps = (pipeline?.steps || []).filter((row) => row.stage === id);
+          return parentSteps.some((row) => row.state !== "completed") ? stageState(id, pipeline, null, operations, planReceipt, artifacts) : "completed";
+        }
+        if (current.some((row) => row.state === "RUNNING")) return "running";
+        return lifecycle(scene.state);
+      }
+      const steps = (pipeline?.steps || []).filter((row) => row.stage === id);
+      if (!steps.length) {
+        if (id === "S3" && annotationProducts(artifacts).length) {
+          const capture = (pipeline?.steps || []).filter((row) => row.stage === "S2");
+          const views = artifacts.filter((row) => row.stage === "S2" && row.kind === "image" && /^capture\/view_\d+\.png$/.test(row.file || ""));
+          const labels = annotationProducts(artifacts);
+          const paired = views.length && views.every((view) => labels.some((label) => label.task_id === view.task_id && label.revision === view.revision && label.file === view.file.replace(/\.png$/, ".json")));
+          const settled = scene?.state === "SUCCEEDED" || capture.length && capture.every((row) => row.state === "completed");
+          return paired && settled ? "completed" : "previewable";
+        }
+        if (pipeline || scene) return "unknown";
+        const recorded = operations.filter((row) => row.stage === id);
+        return recorded.find((row) => row.state === "running")?.state || recorded[0]?.state || "unknown";
+      }
+      if (steps.every((row) => row.state === "completed")) return "completed";
+      return steps.find((row) => row.state !== "completed" && row.state !== "unknown")?.state || (pipeline.current?.stage === id && pipeline.state !== "completed" ? pipeline.state : "unknown");
+    }
+    return {
+      initialState,
+      initialDemand,
+      sceneConstraint,
+      productionRequest,
+      displayRef,
+      filteredPage,
+      lifecycle,
+      backgroundProductionState,
+      productionProductsRevision,
+      sceneStage,
+      pipelineForStage,
+      sceneForStage,
+      progressSceneForStage,
+      registeredCollectionProgress,
+      currentGeneration,
+      sceneCollectionProgress,
+      annotationProducts,
+      stageState,
+      recordedStageState
+    };
+  }
+
+  // integrations/spatialforge/ui/client/api.js
+  function createApiHooks({ React }) {
     function useRecord(params, revision, interval = 0, active = true) {
-      const key = params ? new URLSearchParams(params).toString() : '';
-      const [record, setRecord] = React.useState({key: '', value: null, error: null, loading: false});
+      const key = params ? new URLSearchParams(params).toString() : "";
+      const [record, setRecord] = React.useState({ key: "", value: null, error: null, loading: false });
       React.useEffect(() => {
         if (!key) return;
         let stopped = false, timer, controller, inFlight = false;
@@ -505,40 +1511,43 @@ window.__ModuleLoader__.load({
           if (stopped || inFlight) return;
           inFlight = true;
           controller = new AbortController();
-          const deadline = setTimeout(() => controller.abort(), 16000);
-          setRecord((old) => old.key === key ? {...old, loading: !old.value, refreshing: true} :
-            {key, value: null, error: null, loading: true, refreshing: true});
+          const deadline = setTimeout(() => controller.abort(), 16e3);
+          setRecord((old) => old.key === key ? { ...old, loading: !old.value, refreshing: true } : { key, value: null, error: null, loading: true, refreshing: true });
           try {
-            const response = await fetch('api/benchforge/workbench?' + key, {cache: 'no-store', signal: controller.signal});
+            const response = await fetch("api/benchforge/workbench?" + key, { cache: "no-store", signal: controller.signal });
             const value = await response.json();
-            if (!response.ok) throw new Error(value.error || 'HTTP ' + response.status);
+            if (!response.ok) throw new Error(value.error || "HTTP " + response.status);
             if (!stopped) setRecord((old) => {
               if (value.scenes && old.key === key && old.value?.scenes) {
                 const prior = old.value.scenes.runs || [];
-                if (value.scenes.status === 'unavailable') value.scenes.runs = prior;
-                else value.scenes.runs = (value.scenes.runs || []).map((row) => row.error
-                  ? {...(prior.find((previous) => previous.run_id === row.run_id) || row), error: row.error} : row);
+                if (value.scenes.status === "unavailable") value.scenes.runs = prior;
+                else value.scenes.runs = (value.scenes.runs || []).map((row) => row.error ? { ...prior.find((previous) => previous.run_id === row.run_id) || row, error: row.error } : row);
               }
-              return {key, value, error: null, loading: false, refreshing: false, updatedAt: new Date().toISOString()};
+              return { key, value, error: null, loading: false, refreshing: false, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
             });
           } catch (error) {
-            if (!stopped) setRecord((old) => ({...old, key, error: error.message, loading: false, refreshing: false}));
+            if (!stopped) setRecord((old) => ({ ...old, key, error: error.message, loading: false, refreshing: false }));
           } finally {
-            clearTimeout(deadline); inFlight = false;
-            if (!stopped && interval && active && document.visibilityState !== 'hidden') timer = setTimeout(load, interval);
+            clearTimeout(deadline);
+            inFlight = false;
+            if (!stopped && interval && active && document.visibilityState !== "hidden") timer = setTimeout(load, interval);
           }
         };
         const resume = () => {
           clearTimeout(timer);
-          if (active && document.visibilityState !== 'hidden') load();
+          if (active && document.visibilityState !== "hidden") load();
         };
         load();
-        if (interval) document.addEventListener('visibilitychange', resume);
-        return () => {stopped = true; clearTimeout(timer); controller?.abort(); document.removeEventListener('visibilitychange', resume);};
+        if (interval) document.addEventListener("visibilitychange", resume);
+        return () => {
+          stopped = true;
+          clearTimeout(timer);
+          controller?.abort();
+          document.removeEventListener("visibilitychange", resume);
+        };
       }, [key, revision, interval, active]);
-      return record.key === key ? record : {value: null, error: null, loading: Boolean(key)};
+      return record.key === key ? record : { value: null, error: null, loading: Boolean(key) };
     }
-
     function usePanelVisible(ref) {
       const [visible, setVisible] = React.useState(false);
       React.useEffect(() => {
@@ -548,174 +1557,206 @@ window.__ModuleLoader__.load({
       }, []);
       return visible;
     }
-    const lifecycle = (value) => ({SUCCEEDED: 'completed', FAILED_FINAL: 'failed', CANCELED: 'canceled',
-      READY: 'waiting', PENDING: 'waiting', RUNNING: 'running'}[value] || value || 'unknown');
-    function productionProductsRevision(value) {
-      const terminal = (state) => ['completed', 'failed', 'canceled'].includes(lifecycle(state)) ? lifecycle(state) : null;
-      const sorted = (rows) => rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-      const artifacts = (row) => [row.artifact_revision ?? null, row.artifact_count ?? null,
-        sorted((row.public_artifacts || []).map((file) => [file.url, file.revision ?? file.version ?? null]))];
-      // Live counters and observation timestamps do not invalidate saved products.
-      return JSON.stringify([
-        sorted((value?.operations || []).filter((row) => terminal(row.state)).map((row) => [row.id, terminal(row.state)])),
-        sorted((value?.pipelines || []).map((row) => [row.id, terminal(row.state), row.revision ?? null, artifacts(row),
-          sorted((row.steps || []).filter((step) => terminal(step.state)).map((step) => [step.id, terminal(step.state), step.artifact_revision ?? null]))])),
-        sorted((value?.scenes?.runs || []).map((row) => [row.run_id, terminal(row.state),
-          sorted((row.tasks || []).map((task) => [task.id, task.revision ?? null, terminal(task.state), artifacts(task)]))])),
-        sorted((value?.parallel_tasks || []).filter((row) => terminal(row.state) || row.artifact_revision != null ||
-          row.artifact_count > 0 || row.public_artifacts?.length).map((row) => [row.id, row.revision ?? null, terminal(row.state), artifacts(row)])),
-      ]);
+    return { useRecord, usePanelVisible };
+  }
+
+  // integrations/spatialforge/ui/client/components/progress.js
+  function createProgressComponents({ React, helpers }) {
+    const h = React.createElement;
+    const {
+      status,
+      button,
+      card,
+      empty,
+      json,
+      sceneName,
+      questionText,
+      planValue,
+      planMarkdown,
+      planMarkdownView,
+      planEditInstruction,
+      table,
+      select,
+      initialState,
+      initialDemand,
+      sceneConstraint,
+      productionRequest,
+      displayRef,
+      filteredPage,
+      useRecord,
+      usePanelVisible,
+      lifecycle,
+      productionProductsRevision,
+      sceneStage,
+      pipelineForStage,
+      sceneForStage,
+      progressSceneForStage,
+      registeredCollectionProgress,
+      currentGeneration,
+      sceneCollectionProgress,
+      annotationProducts,
+      stageState,
+      recordedStageState,
+      STAGES: STAGES2,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
+      PLAN_FIELDS: PLAN_FIELDS2,
+      styles: styles2,
+      dictionaries: dictionaries2
+    } = helpers;
+    function TemplateCatalog({
+      catalog,
+      catalogQuery,
+      setCatalogQuery,
+      catalogPage,
+      setCatalogPage,
+      capability,
+      setCapability,
+      retry,
+      t
+    }) {
+      return h(
+        "details",
+        { "data-template-reference": true },
+        h("summary", null, t("templateCatalog")),
+        h("small", { className: "bfw-hint" }, t("catalogDesign")),
+        h(
+          "div",
+          { className: "bfw-toolbar" },
+          h("input", {
+            className: "bfw-input",
+            "aria-label": t("searchTemplates"),
+            value: catalogQuery,
+            placeholder: t("searchTemplates"),
+            onChange: (e) => {
+              setCatalogQuery(e.target.value);
+              setCatalogPage(1);
+            }
+          }),
+          select(
+            t("capability"),
+            capability,
+            (id) => {
+              setCapability(id);
+              setCatalogPage(1);
+            },
+            [["", t("all")], ...(catalog.value?.capabilities || []).map((id) => [id, id])]
+          )
+        ),
+        catalog.loading ? empty(t("loading")) : catalog.error ? h(
+          "div",
+          null,
+          h("p", { className: "bfw-error" }, catalog.error),
+          button(t("retry"), retry)
+        ) : !catalog.value?.items.length ? empty(t("noMatchingTemplates")) : h("div", { className: "bfw-catalog" }, catalog.value.items.map((row) => h(
+          "article",
+          { className: "bfw-template", key: row.id },
+          h("strong", null, row.title),
+          h("p", { className: "bfw-code" }, row.id + " \xB7 " + row.capabilities.join(" / ")),
+          h(
+            "details",
+            null,
+            h("summary", null, t("details")),
+            h("p", null, row.effective_measurement_conditions),
+            h("p", null, row.prompt_template)
+          )
+        ))),
+        h(
+          "div",
+          { className: "bfw-pagination" },
+          button(t("previous"), () => setCatalogPage(catalogPage - 1), { disabled: catalogPage <= 1 }),
+          h("span", null, catalogPage + " / " + (catalog.value?.pages || 1)),
+          button(t("nextPage"), () => setCatalogPage(catalogPage + 1), { disabled: catalog.loading || !catalog.value || catalogPage >= catalog.value.pages })
+        )
+      );
     }
-    const sceneStage = (row) => row.workflow === 'dataset' ? 'S4' :
-      ({review: 'S5', publish: 'S5', export: 'S5', dataset: 'S4', annotate: 'S3'}[row.phase] || 'S2');
-    function pipelineForStage(id, pipelines) {
-      const latest = (stage) => pipelines.filter((row) => row.steps?.some((step) => step.stage === stage))
-        .sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))[0];
-      return latest(id) || (id === 'S3' ? latest('S2') : null);
-    }
-    function sceneForStage(id, scenes) {
-      const candidates = scenes.filter((scene) => scene.tasks?.some((task) => sceneStage(task) === id ||
-        id === 'S3' && sceneStage(task) === 'S2'));
-      const usable = candidates.filter((scene) => scene.state !== 'CANCELED');
-      return usable.find((scene) => !scene.terminal && scene.state !== 'FAILED_FINAL') ||
-        usable.find((scene) => scene.state === 'SUCCEEDED') || usable[0] || candidates[0];
-    }
-    function progressSceneForStage(id, selected, scenes = []) {
-      const active = scenes.filter((row) => !row.terminal && !['SUCCEEDED', 'FAILED_FINAL', 'CANCELED'].includes(row.state) &&
-        row.tasks?.some((task) => sceneStage(task) === id));
-      if (!active.length) return selected;
-      const seen = new Set();
-      const tasks = active.flatMap((row) => row.tasks || []).filter((task) => {
-        const key = task.id + ':' + task.revision;
-        if (seen.has(key)) return false;
-        seen.add(key); return true;
-      });
-      return {state: active.some((row) => row.state === 'RUNNING') ? 'RUNNING' : active[0].state, tasks};
-    }
-    function annotationProducts(artifacts) {
-      return artifacts.filter((row) => row.stage === 'S3' && row.kind === 'json' && artifacts.some((image) =>
-        image.kind === 'image' && image.task_id === row.task_id && image.revision === row.revision &&
-        image.file === row.file?.replace(/\.json$/, '.png')));
-    }
-    function stageState(id, pipeline, scene, operations = [], planReceipt = null, artifacts = []) {
-      if (id === 'S1' && planReceipt) return 'completed';
-      const current = (scene?.tasks || []).filter((row) => sceneStage(row) === id);
-      if (current.length) {
-        if (scene.state === 'CANCELED' && current.some((row) => row.state !== 'SUCCEEDED')) return 'canceled';
-        if (current.some((row) => row.state === 'FAILED_FINAL')) return 'failed';
-        if (current.some((row) => row.queue) && !current.some((row) => row.state === 'RUNNING' && !row.queue)) return 'waiting';
-        if (current.every((row) => row.state === 'SUCCEEDED')) {
-          const parentSteps = (pipeline?.steps || []).filter((row) => row.stage === id);
-          return parentSteps.some((row) => row.state !== 'completed')
-            ? stageState(id, pipeline, null, operations, planReceipt, artifacts) : 'completed';
-        }
-        if (current.some((row) => row.state === 'RUNNING')) return 'running';
-        return lifecycle(scene.state);
-      }
-      const steps = (pipeline?.steps || []).filter((row) => row.stage === id);
-      if (!steps.length) {
-        if (id === 'S3' && annotationProducts(artifacts).length) {
-          const capture = (pipeline?.steps || []).filter((row) => row.stage === 'S2');
-          const views = artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' && /^capture\/view_\d+\.png$/.test(row.file || ''));
-          const labels = annotationProducts(artifacts);
-          const paired = views.length && views.every((view) => labels.some((label) => label.task_id === view.task_id &&
-            label.revision === view.revision && label.file === view.file.replace(/\.png$/, '.json')));
-          const settled = scene?.state === 'SUCCEEDED' || capture.length && capture.every((row) => row.state === 'completed');
-          return paired && settled ? 'completed' : 'previewable';
-        }
-        if (pipeline || scene) return 'unknown';
-        const recorded = operations.filter((row) => row.stage === id);
-        return recorded.find((row) => row.state === 'running')?.state || recorded[0]?.state || 'unknown';
-      }
-      if (steps.every((row) => row.state === 'completed')) return 'completed';
-      return steps.find((row) => row.state !== 'completed' && row.state !== 'unknown')?.state ||
-        (pipeline.current?.stage === id && pipeline.state !== 'completed' ? pipeline.state : 'unknown');
-    }
-    function TemplateCatalog({catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-      capability, setCapability, retry, t}) {
-      return h('details', {'data-template-reference': true}, h('summary', null, t('templateCatalog')),
-        h('small', {className: 'bfw-hint'}, t('catalogDesign')),
-        h('div', {className: 'bfw-toolbar'},
-          h('input', {className: 'bfw-input', 'aria-label': t('searchTemplates'), value: catalogQuery,
-            placeholder: t('searchTemplates'), onChange: (e) => {setCatalogQuery(e.target.value); setCatalogPage(1);}}),
-          select(t('capability'), capability, (id) => {setCapability(id); setCatalogPage(1);},
-            [['', t('all')], ...(catalog.value?.capabilities || []).map((id) => [id, id])])),
-        catalog.loading ? empty(t('loading')) : catalog.error ? h('div', null,
-          h('p', {className: 'bfw-error'}, catalog.error), button(t('retry'), retry)) :
-          !catalog.value?.items.length ? empty(t('noMatchingTemplates')) :
-            h('div', {className: 'bfw-catalog'}, catalog.value.items.map((row) =>
-              h('article', {className: 'bfw-template', key: row.id}, h('strong', null, row.title),
-                h('p', {className: 'bfw-code'}, row.id + ' · ' + row.capabilities.join(' / ')),
-                h('details', null, h('summary', null, t('details')),
-                  h('p', null, row.effective_measurement_conditions), h('p', null, row.prompt_template))))),
-        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setCatalogPage(catalogPage - 1), {disabled: catalogPage <= 1}),
-          h('span', null, catalogPage + ' / ' + (catalog.value?.pages || 1)),
-          button(t('nextPage'), () => setCatalogPage(catalogPage + 1), {disabled: catalog.loading || !catalog.value || catalogPage >= catalog.value.pages})));
-    }
-    function RunDetails({record, t}) {
-      if (!record) return empty(t('chooseRun'));
+    function RunDetails({ record, t }) {
+      if (!record) return empty(t("chooseRun"));
       const artifacts = record.artifacts || [];
-      return h(React.Fragment, null,
-        card(record.label, h(React.Fragment, null,
-          h('div', null, status(record.state.state, t)),
-          record.state.next && h('p', null, t('next') + ': ' + record.state.next),
-          record.state.missing_binding && h('p', {className: 'bfw-code'}, record.state.missing_binding),
-          table([t('steps'), t('state'), t('artifacts'), t('reason')], record.steps.map((step) => [step.id, status(step.state, t), h('span', {className: 'bfw-code'}, step.artifact_id || '—'), step.error || '—'])),
-          record.plan && h('details', {className: 'bfw-detail-row'}, h('summary', null, t('plan')), json(record.plan)))),
-        h('div', {className: 'bfw-details'},
-          card(t('lineage'), h(React.Fragment, null,
-            h('small', {className: 'bfw-hint'}, t('shapeNote')),
-            record.artifacts_truncated && h('p', null, t('truncated')),
-            artifacts.length ? artifacts.map((artifact) => h('details', {className: 'bfw-artifact', key: artifact.artifact_id},
-              h('summary', null, status(artifact.status, t), ' ', artifact.artifact_type, ' · v', artifact.version),
-              h('div', {className: 'bfw-code bfw-detail-row'}, artifact.artifact_id),
-              h('div', {className: 'bfw-detail-row'}, t('producer') + ': ' + artifact.producer),
-              h('div', {className: 'bfw-detail-row'}, t('parents')), json(artifact.parents),
-              h('div', {className: 'bfw-detail-row'}, t('evidence')), json(artifact.evidence_refs),
-              h('div', {className: 'bfw-detail-row'}, t('contracts')), json(artifact.contract_results))) : empty(t('noArtifacts')))),
-          card(t('repairs'), h(React.Fragment, null,
-            h('small', {className: 'bfw-hint'}, t('repairNote')),
-            record.repairs.length ? record.repairs.map((repair, i) => h('details', {className: 'bfw-artifact', key: i},
-              h('summary', null, status(repair.status, t), ' ', t(repair.operator)),
-              h('div', {className: 'bfw-code bfw-detail-row'}, repair.artifact_id),
-              h('p', null, t('reason') + ': ' + repair.reason),
-              h('p', null, t('repairScope') + ': ' + repair.scope),
-              h('p', null, t('newRun') + ': ' + t(repair.requires_new_run ? 'yes' : 'no')))) : empty(t('noRepairs'))))));
+      return h(
+        React.Fragment,
+        null,
+        card(record.label, h(
+          React.Fragment,
+          null,
+          h("div", null, status(record.state.state, t)),
+          record.state.next && h("p", null, t("next") + ": " + record.state.next),
+          record.state.missing_binding && h("p", { className: "bfw-code" }, record.state.missing_binding),
+          table([t("steps"), t("state"), t("artifacts"), t("reason")], record.steps.map((step) => [step.id, status(step.state, t), h("span", { className: "bfw-code" }, step.artifact_id || "\u2014"), step.error || "\u2014"])),
+          record.plan && h("details", { className: "bfw-detail-row" }, h("summary", null, t("plan")), json(record.plan))
+        )),
+        h(
+          "div",
+          { className: "bfw-details" },
+          card(t("lineage"), h(
+            React.Fragment,
+            null,
+            h("small", { className: "bfw-hint" }, t("shapeNote")),
+            record.artifacts_truncated && h("p", null, t("truncated")),
+            artifacts.length ? artifacts.map((artifact) => h(
+              "details",
+              { className: "bfw-artifact", key: artifact.artifact_id },
+              h("summary", null, status(artifact.status, t), " ", artifact.artifact_type, " \xB7 v", artifact.version),
+              h("div", { className: "bfw-code bfw-detail-row" }, artifact.artifact_id),
+              h("div", { className: "bfw-detail-row" }, t("producer") + ": " + artifact.producer),
+              h("div", { className: "bfw-detail-row" }, t("parents")),
+              json(artifact.parents),
+              h("div", { className: "bfw-detail-row" }, t("evidence")),
+              json(artifact.evidence_refs),
+              h("div", { className: "bfw-detail-row" }, t("contracts")),
+              json(artifact.contract_results)
+            )) : empty(t("noArtifacts"))
+          )),
+          card(t("repairs"), h(
+            React.Fragment,
+            null,
+            h("small", { className: "bfw-hint" }, t("repairNote")),
+            record.repairs.length ? record.repairs.map((repair, i) => h(
+              "details",
+              { className: "bfw-artifact", key: i },
+              h("summary", null, status(repair.status, t), " ", t(repair.operator)),
+              h("div", { className: "bfw-code bfw-detail-row" }, repair.artifact_id),
+              h("p", null, t("reason") + ": " + repair.reason),
+              h("p", null, t("repairScope") + ": " + repair.scope),
+              h("p", null, t("newRun") + ": " + t(repair.requires_new_run ? "yes" : "no"))
+            )) : empty(t("noRepairs"))
+          ))
+        )
+      );
     }
-    function executionStage(viewed, states, running, parallelTasks = []) {
-      const active = parallelTasks.filter((row) => lifecycle(row.state) === 'running');
+    function executionStage(viewed, states, running, parallelTasks = [], generation = null) {
+      const generated = currentGeneration(generation);
+      if (generated?.state === "running" && generated.fresh) return STAGES2.find((row) => row.id === "S4");
+      const active = parallelTasks.filter((row) => lifecycle(row.state) === "running");
       if (!running && !active.length) return viewed;
-      return STAGES.find((row) => states[row.id] === 'running') ||
-        STAGES.find((row) => active.some((task) => task.stage === row.id)) ||
-        STAGES.find((row) => states[row.id] === 'waiting') || {id: 'execution', key: 'productionProgress'};
+      return STAGES2.find((row) => ["running", "failed", "canceled"].includes(states[row.id])) || STAGES2.find((row) => active.some((task) => task.stage === row.id)) || STAGES2.find((row) => states[row.id] === "waiting") || { id: "execution", key: "productionProgress" };
     }
     function reportedProgress(value) {
       if (!value || value.interrupted) return null;
-      const pairs = [['bytes_received', 'total_bytes', 'progressUpload'], ['completed', 'total', 'progressItems']];
+      const pairs = [["bytes_received", "total_bytes", "progressUpload"], ["completed", "total", "progressItems"]];
       for (const [doneKey, totalKey, label] of pairs) {
         const done = value[doneKey], total = value[totalKey];
         if (Number.isFinite(done) && Number.isFinite(total) && total > 0 && done >= 0) {
-          return {done: Math.min(done, total), total, label, bytes: totalKey === 'total_bytes'};
+          return { done: Math.min(done, total), total, label, bytes: totalKey === "total_bytes" };
         }
       }
       return null;
     }
     function progressAmount(detail) {
-      return detail.bytes ? (detail.done / 1048576).toFixed(1) + ' / ' + (detail.total / 1048576).toFixed(1) + ' MB' :
-        detail.done + ' / ' + detail.total;
+      return detail.bytes ? (detail.done / 1048576).toFixed(1) + " / " + (detail.total / 1048576).toFixed(1) + " MB" : detail.done + " / " + detail.total;
     }
-    function ParallelProgress({tasks = [], stage, titleKey = 'parallelTasks', t}) {
-      const rows = tasks.filter((row) => !row.stage || stage.id === 'execution' || row.stage === stage.id).map((row, index) => ({...row,
-        display_name: row.display_name || row.label || row.name || t('parallelTask') + ' ' + (index + 1)}));
+    function ParallelProgress({ tasks = [], stage, titleKey = "parallelTasks", t }) {
+      const rows = tasks.filter((row) => !row.stage || stage.id === "execution" || row.stage === stage.id).map((row, index) => ({
+        ...row,
+        display_name: row.display_name || row.label || row.name || t("parallelTask") + " " + (index + 1)
+      }));
       if (!rows.length) return null;
-      const completed = rows.filter((row) => lifecycle(row.state) === 'completed');
-      const active = rows.filter((row) => lifecycle(row.state) !== 'completed');
-      const caption = completed.length ? t('parallelCompleted') + ' ' + completed.length :
-        t('parallelRunning') + ' ' + rows.filter((row) => lifecycle(row.state) === 'running').length;
+      const completed = rows.filter((row) => lifecycle(row.state) === "completed");
+      const active = rows.filter((row) => lifecycle(row.state) !== "completed");
+      const caption = completed.length ? t("parallelCompleted") + " " + completed.length : t("parallelRunning") + " " + rows.filter((row) => lifecycle(row.state) === "running").length;
       const publicFiles = (row) => (row.public_artifacts || []).filter((file) => {
-        if (typeof file.url !== 'string' || file.url.includes('\\')) return false;
+        if (typeof file.url !== "string" || file.url.includes("\\")) return false;
         const match = /^\/?api\/benchforge\/workbench\?(.+)$/.exec(file.url);
-        return match && ['run_product', 'stage_media', 'media'].includes(new URLSearchParams(match[1]).get('view'));
+        return match && ["run_product", "stage_media", "media"].includes(new URLSearchParams(match[1]).get("view"));
       });
       const renderTask = (row) => {
         const state = lifecycle(row.state);
@@ -723,670 +1764,1532 @@ window.__ModuleLoader__.load({
         const files = publicFiles(row);
         const count = Number.isSafeInteger(row.artifact_count) && row.artifact_count >= 0 ? row.artifact_count : files.length;
         const name = row.display_name;
-        return h('article', {className: 'bfw-parallel-task', key: row.id, 'data-parallel-task': row.id, 'data-task-state': state},
-          h('div', {className: 'bfw-parallel-task-heading'}, h('strong', {title: name}, name), status(state, t)),
-          detail && h('progress', {max: detail.total, value: detail.done, 'aria-label': name + ' · ' + t(detail.label)}),
-          detail && h('small', {className: 'bfw-parallel-task-count'}, t(detail.label) + ' ' + progressAmount(detail)),
-          count > 0 && h('small', {className: 'bfw-parallel-task-count'}, t('parallelArtifacts') + ' ' + count),
-          files.length > 0 && h('div', {className: 'bfw-parallel-links'}, files.slice(0, 3).map((file, i) =>
-            h('a', {key: file.url, href: file.url, target: '_blank', rel: 'noopener noreferrer'}, file.title || t('parallelOpenArtifact') + ' ' + (i + 1)))));
+        return h(
+          "article",
+          { className: "bfw-parallel-task", key: row.id, "data-parallel-task": row.id, "data-task-state": state },
+          h("div", { className: "bfw-parallel-task-heading" }, h("strong", { title: name }, name), status(state, t)),
+          detail && h("progress", { max: detail.total, value: detail.done, "aria-label": name + " \xB7 " + t(detail.label) }),
+          detail && h("small", { className: "bfw-parallel-task-count" }, t(detail.label) + " " + progressAmount(detail)),
+          count > 0 && h("small", { className: "bfw-parallel-task-count" }, t("parallelArtifacts") + " " + count),
+          files.length > 0 && h("div", { className: "bfw-parallel-links" }, files.slice(0, 3).map((file, i) => h("a", { key: file.url, href: file.url, target: "_blank", rel: "noopener noreferrer" }, file.title || t("parallelOpenArtifact") + " " + (i + 1))))
+        );
       };
-      return h('div', {className: 'bfw-parallel', 'data-parallel-tasks': true, 'aria-label': t(titleKey)},
-        h('div', {className: 'bfw-parallel-heading'}, h('strong', null, t(titleKey)),
-          h('span', {className: 'bfw-muted'}, caption + ' / ' + rows.length)),
-        active.length > 0 && h('div', {className: 'bfw-parallel-grid'}, active.map(renderTask)),
-        completed.length > 0 && h('details', {className: 'bfw-parallel-completed', open: !active.length},
-          h('summary', null, t('parallelCompleted') + ' ' + completed.length), h('div', {className: 'bfw-parallel-grid'}, completed.map(renderTask))));
+      return h(
+        "div",
+        { className: "bfw-parallel", "data-parallel-tasks": true, "aria-label": t(titleKey) },
+        h(
+          "div",
+          { className: "bfw-parallel-heading" },
+          h("strong", null, t(titleKey)),
+          h("span", { className: "bfw-muted" }, caption + " / " + rows.length)
+        ),
+        active.length > 0 && h("div", { className: "bfw-parallel-grid" }, active.map(renderTask)),
+        completed.length > 0 && h(
+          "details",
+          { className: "bfw-parallel-completed", open: false },
+          h("summary", null, t("parallelCompleted") + " " + completed.length),
+          h("div", { className: "bfw-parallel-grid" }, completed.map(renderTask))
+        )
+      );
     }
-    function StageProgress({stage, pipeline, scene, record, planReceipt, artifacts = [], conversationRunning = false, completedStages = 0, t}) {
+    function StageProgress({ stage, pipeline, scene, record, planReceipt, collectionPlan, artifacts = [], conversationRunning = false, completedStages = 0, t }) {
+      const collection = stage.id === "S2" && (collectionPlan?.assessment?.scenes || collectionPlan?.inputs?.target_scene_count || record.value?.current_collection) ? sceneCollectionProgress(collectionPlan, record.value?.scenes?.runs || [], record.value?.current_collection) : null;
+      const generation = stage.id === "S4" ? currentGeneration(record.value?.generation) : null;
       scene = progressSceneForStage(stage.id, scene, record.value?.scenes?.runs || []);
       const tasks = (scene?.tasks || []).filter((row) => sceneStage(row) === stage.id);
       const operations = !pipeline && !scene ? (record.value?.operations || []).filter((row) => row.stage === stage.id) : [];
-      const steps = stage.id === 'S1' && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({id: row.id,
-        state: scene.state === 'CANCELED' && row.state !== 'SUCCEEDED' ? 'canceled' : lifecycle(row.state),
-        label: row.progress?.stage || row.phase, error: row.failure || row.progress?.error,
-        queue: row.queue, age: row.progress?.age_seconds, progress: row.progress})) : (pipeline?.steps || []).filter((row) => row.stage === stage.id)
-        .map((row) => ({...row, label: row.uses})).concat(operations.map((row) => ({...row, label: row.tool})));
-      const completed = steps.filter((row) => row.state === 'completed').length;
-      const current = steps.find((row) => ['running', 'waiting', 'needs_evidence', 'failed'].includes(row.state)) ||
-        steps.find((row) => row.state !== 'completed');
-      const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts);
-      const currentChildren = (record.value?.parallel_tasks || []).filter((row) => lifecycle(row.state) === 'running' &&
-        (stage.id === 'execution' || row.stage === stage.id));
-      const state = recordedState === 'unknown' && (conversationRunning || currentChildren.length) ||
-        recordedState === 'completed' && currentChildren.length ? 'running' : recordedState;
-      const parallelUnknown = currentChildren.length > 0 && !current;
-      const products = stage.id === 'S3' && !steps.length ? annotationProducts(artifacts) : [];
-      const productTotal = products.length ? artifacts.filter((row) => row.stage === 'S2' && row.kind === 'image' &&
-        /^capture\/view_\d+\.png$/.test(row.file || '')).length : 0;
-      const stale = record.error || ['partial', 'unavailable'].includes(record.value?.scenes?.status);
-      // A list of recent operations is history, not a declared workload total.
+      const savedSteps = collection ? collection.rows.map((row) => ({
+        id: row.name,
+        state: row.state,
+        label: collection.current ? t(row.phase) : row.phase,
+        error: row.error,
+        queue: row.task?.queue
+      })) : stage.id === "S1" && planReceipt ? [planReceipt] : scene ? tasks.map((row) => ({
+        id: row.id,
+        state: scene.state === "CANCELED" && row.state !== "SUCCEEDED" ? "canceled" : lifecycle(row.state),
+        label: row.progress?.stage || row.phase,
+        error: row.failure || row.progress?.error,
+        queue: row.queue,
+        age: row.progress?.age_seconds,
+        progress: row.progress
+      })) : (pipeline?.steps || []).filter((row) => row.stage === stage.id).map((row) => ({ ...row, label: row.uses })).concat(operations.map((row) => ({ ...row, label: row.tool })));
+      const generationPhase = generation && t({
+        selecting: "generationSelecting",
+        surface_oracle: "generationOracle",
+        writing: "generationWriting",
+        complete: "generationComplete"
+      }[generation.phase] || "questionGeneration");
+      const steps = generation ? [{ id: t("questionGeneration"), state: generation.state === "complete" ? "waiting" : generation.state === "incomplete" ? "needs_evidence" : generation.state, label: generationPhase }] : savedSteps;
+      const history = collection?.current ? (record.value?.scenes?.runs || []).flatMap((run) => (run.tasks || []).filter((task) => sceneStage(task) === "S2").map((task) => ({
+        id: sceneName(task.name || task.summary?.name) || t("progressTasks"),
+        state: run.state === "CANCELED" && task.state !== "SUCCEEDED" ? "canceled" : lifecycle(task.state),
+        label: task.progress?.stage || task.phase
+      }))) : [];
+      const completed = steps.filter((row) => row.state === "completed").length;
+      const current = steps.find((row) => ["running", "waiting", "needs_evidence", "failed"].includes(row.state)) || steps.find((row) => row.state !== "completed");
+      const recordedState = stageState(stage.id, pipeline, scene, operations, planReceipt, artifacts, collection, generation);
+      const currentChildren = (record.value?.parallel_tasks || []).filter((row) => lifecycle(row.state) === "running" && (stage.id === "execution" || row.stage === stage.id));
+      const state = recordedState === "unknown" && (conversationRunning || currentChildren.length) || recordedState === "completed" && currentChildren.length ? "running" : recordedState;
+      const parallelUnknown = !generation && currentChildren.length > 0 && !current;
+      const products = stage.id === "S3" && !steps.length ? annotationProducts(artifacts) : [];
+      const productTotal = products.length ? artifacts.filter((row) => row.stage === "S2" && row.kind === "image" && /^capture\/view_\d+\.png$/.test(row.file || "")).length : 0;
+      const stale = record.error || (collection?.current ? collection.registrationStatus === "unavailable" : generation ? false : ["partial", "unavailable"].includes(record.value?.scenes?.status));
       const readings = tasks.map((row) => reportedProgress(row.progress));
-      const sharedMeasure = tasks.length > 1 && readings.every(Boolean) && readings.every((row) =>
-        row.label === readings[0].label && row.bytes === readings[0].bytes) &&
-        new Set(tasks.map((row) => row.progress?.stage || row.phase)).size === 1;
-      const detail = current && !parallelUnknown && !['failed', 'canceled'].includes(state) ? sharedMeasure
-        ? {...readings[0], done: readings.reduce((sum, row) => sum + row.done, 0), total: readings.reduce((sum, row) => sum + row.total, 0)}
-        : tasks.length > 1 ? null : reportedProgress(current.progress) : null;
-      // A whole-task count cannot describe work still occurring within that task.
-      const activeUnknown = state === 'running' && (parallelUnknown || current && !detail);
-      const total = detail?.total || (activeUnknown || operations.length && !(stage.id === 'S1' && planReceipt) ? 0 : steps.length || productTotal);
-      const done = detail?.done ?? (steps.length ? completed : products.length);
+      const sharedMeasure = tasks.length > 1 && readings.every(Boolean) && readings.every((row) => row.label === readings[0].label && row.bytes === readings[0].bytes) && new Set(tasks.map((row) => row.progress?.stage || row.phase)).size === 1;
+      const checked = generation?.contract_eligible_count ?? generation?.verified_count;
+      const checkLabel = Number.isSafeInteger(generation?.contract_eligible_count) ? "generationEligible" : "generationVerified";
+      const repairTarget = generation?.repair_target_count ?? generation?.repair_candidate_target ?? (generation ? generation.written_count - checked : 0);
+      const detail = generation ? {
+        done: generation.written_count === generation.target_items || generation.state === "incomplete" ? checked : generation.written_count,
+        total: generation.target_items,
+        label: generation.written_count === generation.target_items || generation.state === "incomplete" ? checkLabel : "generationWritten"
+      } : !collection && current && !parallelUnknown && !["failed", "canceled"].includes(state) ? sharedMeasure ? { ...readings[0], done: readings.reduce((sum, row) => sum + row.done, 0), total: readings.reduce((sum, row) => sum + row.total, 0) } : tasks.length > 1 ? null : reportedProgress(current.progress) : null;
+      const activeUnknown = state === "running" && (parallelUnknown || current && !detail);
+      const total = collection ? collection.identityPending ? 0 : collection.total : detail?.total || (activeUnknown || operations.length && !(stage.id === "S1" && planReceipt) ? 0 : steps.length || productTotal);
+      const done = collection ? collection.passed : detail?.done ?? (steps.length ? completed : products.length);
       const measured = total > 0;
       const percent = measured ? Math.min(100, Math.round(done / total * 100)) : null;
-      const moving = ['running', 'previewable'].includes(state);
-      const metric = measured ? percent + '%' : t(state === 'completed' ? 'stageDone' : moving ? 'progressPending' :
-        ['failed', 'canceled'].includes(state) ? 'progressPaused' : 'progressWaiting');
-      const unit = t(detail?.label || (products.length ? 'progressProducts' : scene ? 'progressTasks' : 'progressSteps'));
-      const amount = detail?.bytes ? (done / 1048576).toFixed(1) + ' / ' + (total / 1048576).toFixed(1) + ' MB' : done + ' / ' + total;
-      return h('section', {className: 'bfw-stage-progress', 'data-stage-progress': stage.id,
-        'data-progress-state': stale ? 'stale' : state, 'aria-label': t('stageProgress')},
-        h('div', {className: 'bfw-progress-caption'},
-          h('div', {className: 'bfw-progress-heading'}, h('h2', null, t(stage.key)), status(state, t)),
-          h('strong', {className: 'bfw-progress-metric'}, metric)),
-        h('div', {className: 'bfw-progress-rail', 'data-indeterminate': String(!measured && moving)},
-          measured ? h('progress', {max: total, value: done,
-            'aria-label': t(products.length ? 'savedStageProducts' : 'stageProgress')}) :
-            h('div', {className: 'bfw-progress-track', role: 'progressbar', 'aria-label': t('stageProgress'),
-              'aria-valuetext': metric}, moving && h('span', {className: 'bfw-progress-sweep'})),
-          measured && state === 'running' && h('span', {className: 'bfw-progress-activity', 'aria-hidden': true})),
-        h('div', {className: 'bfw-progress-footer'},
-          h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'},
-            measured ? unit + ' ' + amount : parallelUnknown ? t('parallelRunning') + ' ' + currentChildren.length :
-              stage.id === 'execution' ? t('progressStages') + ' ' + completedStages + ' / 5' :
-              steps.length ? unit + ' ' + completed + ' / ' + steps.length : t('waitingForReceipt')),
-          current && h('span', {className: 'bfw-progress-current', title: current.id}, current.label || current.id),
-          conversationRunning && record.updatedAt && h('small', {className: 'bfw-muted', 'data-progress-updated': record.updatedAt},
-            t('progressUpdated') + ' ' + new Date(record.updatedAt).toLocaleTimeString()),
-          steps.length > 0 && h('details', {className: 'bfw-progress-details'}, h('summary', null, t('stageProcess')),
-            h('div', {className: 'bfw-progress-detail-body'},
-              h('small', {className: 'bfw-muted'}, t('lastObserved') + ': ' +
-                (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : '—')),
-              table([t('steps'), t('state'), t('phase')], steps.map((row) => [row.id, status(row.state, t), row.label || '—']))))),
-        stale && h('p', {className: 'bfw-error'}, t('staleSnapshot')),
-        current?.error && h('p', {className: 'bfw-error', role: 'alert'}, typeof current.error === 'string' ? current.error : JSON.stringify(current.error)),
-        current?.queue && h('small', {className: 'bfw-hint'}, t('waiting') + ': ' + current.queue.reason),
-        h(ParallelProgress, {tasks: record.value?.parallel_tasks || [], stage, t}),
-        tasks.length > 1 && h(ParallelProgress, {stage, titleKey: 'progressTasks', t, tasks: tasks.map((row, index) => ({
-          id: row.id, stage: stage.id, display_name: row.display_name || row.name || row.summary?.name || row.summary?.title ||
-            t('progressTasks') + ' ' + (index + 1), state: row.queue && row.state !== 'FAILED_FINAL' ? 'waiting' : lifecycle(row.state),
-          progress: row.progress, public_artifacts: artifacts.filter((file) => file.task_id === row.id && file.url),
-        }))}));
+      const moving = ["running", "previewable"].includes(state);
+      const metric = measured ? (generation ? t(detail.label) + " " : "") + percent + "%" : t(state === "completed" ? "stageDone" : moving ? "progressPending" : ["failed", "canceled"].includes(state) ? "progressPaused" : "progressWaiting");
+      const unit = t(collection ? "scenePassed" : detail?.label || (products.length ? "progressProducts" : scene ? "progressTasks" : "progressSteps"));
+      const amount = detail?.bytes ? (done / 1048576).toFixed(1) + " / " + (total / 1048576).toFixed(1) + " MB" : done + " / " + total;
+      return h(
+        "section",
+        {
+          className: "bfw-stage-progress",
+          "data-stage-progress": stage.id,
+          "data-progress-state": stale ? "stale" : state,
+          "aria-label": t("stageProgress")
+        },
+        h(
+          "div",
+          { className: "bfw-progress-caption" },
+          h("div", { className: "bfw-progress-heading" }, h("h2", null, t(stage.key)), status(state, t)),
+          h("strong", { className: "bfw-progress-metric" }, metric)
+        ),
+        h(
+          "div",
+          { className: "bfw-progress-rail", "data-indeterminate": String(!measured && moving) },
+          measured ? h("progress", {
+            max: total,
+            value: done,
+            "aria-label": t(products.length ? "savedStageProducts" : "stageProgress")
+          }) : h("div", {
+            className: "bfw-progress-track",
+            role: "progressbar",
+            "aria-label": t("stageProgress"),
+            "aria-valuetext": metric
+          }, moving && h("span", { className: "bfw-progress-sweep" })),
+          measured && state === "running" && h("span", { className: "bfw-progress-activity", "aria-hidden": true })
+        ),
+        h(
+          "div",
+          { className: "bfw-progress-footer" },
+          h(
+            "span",
+            { className: "bfw-muted", role: "status", "aria-live": "polite" },
+            measured ? unit + " " + amount : parallelUnknown ? t("parallelRunning") + " " + currentChildren.length : stage.id === "execution" ? t("progressStages") + " " + completedStages + " / 5" : steps.length ? unit + " " + completed + " / " + steps.length : t("waitingForReceipt")
+          ),
+          current && h("span", { className: "bfw-progress-current", title: current.id }, current.label || current.id),
+          (conversationRunning || generation) && record.updatedAt && h(
+            "small",
+            { className: "bfw-muted", "data-progress-updated": record.updatedAt },
+            t("progressUpdated") + " " + new Date(record.updatedAt).toLocaleTimeString()
+          ),
+          steps.length > 0 && h(
+            "details",
+            { className: "bfw-progress-details" },
+            h("summary", null, t("stageProcess")),
+            h(
+              "div",
+              { className: "bfw-progress-detail-body" },
+              h("small", { className: "bfw-muted" }, t("lastObserved") + ": " + (record.updatedAt ? new Date(record.updatedAt).toLocaleTimeString() : "\u2014")),
+              table([t("steps"), t("state"), t("phase")], steps.map((row) => [row.id, status(row.state, t), row.label || "\u2014"])),
+              history.length > 0 && h("small", { className: "bfw-muted" }, t("priorSceneAttempts")),
+              history.length > 0 && table([t("steps"), t("state"), t("phase")], history.map((row) => [row.id, status(row.state, t), row.label || "\u2014"]))
+            )
+          )
+        ),
+        generation && h(
+          "div",
+          { className: "bfw-parallel-task-count", "data-generation-counts": true },
+          h("span", { "data-generation-written": generation.written_count }, t("generationWritten") + " " + generation.written_count + " / " + generation.target_items),
+          " \xB7 ",
+          h("span", { "data-generation-verified": generation.verified_count }, t("generationVerified") + " " + generation.verified_count + " / " + generation.target_items),
+          Number.isSafeInteger(generation.contract_eligible_count) && h(
+            "span",
+            { "data-generation-eligible": generation.contract_eligible_count },
+            " \xB7 " + t("generationEligible") + " " + generation.contract_eligible_count + " / " + generation.target_items
+          ),
+          Number.isSafeInteger(generation.candidate_count) && h("span", { "data-generation-candidate": generation.candidate_count }, " \xB7 " + t("generationCandidate") + " " + generation.candidate_count),
+          Number.isSafeInteger(generation.published_count) && h("span", { "data-generation-published": generation.published_count }, " \xB7 " + t("generationPublished") + " " + generation.published_count),
+          generation.written_count > checked && h("span", { "data-generation-draft": true }, " \xB7 " + t("generationNeedsRepair") + " " + (generation.written_count - checked))
+        ),
+        Number.isSafeInteger(generation?.repair_candidate_verified_count) && repairTarget > 0 && generation.repair_candidate_verified_count <= repairTarget && generation.written_count > checked && h(
+          "div",
+          { className: "bfw-parallel-task-count", "data-repair-progress": true },
+          h("span", null, t("generationRepairVerified") + " " + generation.repair_candidate_verified_count + " / " + repairTarget),
+          h("progress", {
+            max: repairTarget,
+            value: generation.repair_candidate_verified_count,
+            "aria-label": t("generationRepairVerified")
+          })
+        ),
+        generation?.state === "complete" && state !== "completed" && h("small", { className: "bfw-hint" }, t("generationAwaitingAdmission")),
+        generation?.reported_state === "running" && generation.state !== "running" && h("small", { className: "bfw-hint" }, t("generationInterrupted")),
+        collection && h("div", { className: "bfw-scene-summary", "data-collection-scenes": true }, collection.rows.map((row) => h(
+          "span",
+          { className: "bfw-scene-summary-row", key: row.id, "data-scene-id": row.scene_id },
+          h("strong", { title: row.scene_id || row.run_id }, row.name),
+          h("span", { className: "bfw-pill " + row.state }, t(row.statusLabel))
+        ))),
+        collection?.identityPending && h("small", { className: "bfw-hint" }, t(collection.notice || "sceneIdentityPending")),
+        stale && h("p", { className: "bfw-error" }, t("staleSnapshot")),
+        !collection && current?.error && h("p", { className: "bfw-error", role: "alert" }, typeof current.error === "string" ? current.error : JSON.stringify(current.error)),
+        current?.queue && h("small", { className: "bfw-hint" }, t("waiting") + ": " + current.queue.reason),
+        h(ParallelProgress, { tasks: record.value?.parallel_tasks || [], stage, t }),
+        !collection && tasks.length > 1 && h(ParallelProgress, { stage, titleKey: "progressTasks", t, tasks: tasks.map((row, index) => ({
+          id: row.id,
+          stage: stage.id,
+          display_name: row.display_name || row.name || row.summary?.name || row.summary?.title || t("progressTasks") + " " + (index + 1),
+          state: row.queue && row.state !== "FAILED_FINAL" ? "waiting" : lifecycle(row.state),
+          progress: row.progress,
+          public_artifacts: artifacts.filter((file) => file.task_id === row.id && file.url)
+        })) })
+      );
     }
-    function PublicObservation({src, type = 'image/*', label, compact = false, t}) {
-      const [record, setRecord] = React.useState({loading: type === 'application/json', data: null, error: ''});
+    return { TemplateCatalog, RunDetails, executionStage, reportedProgress, progressAmount, ParallelProgress, StageProgress };
+  }
+
+  // integrations/spatialforge/ui/client/components/gallery.js
+  function createGalleryComponents({ React, helpers }) {
+    const h = React.createElement;
+    const {
+      status,
+      button,
+      card,
+      empty,
+      json,
+      sceneName,
+      questionText,
+      planValue,
+      planMarkdown,
+      planMarkdownView,
+      planEditInstruction,
+      table,
+      select,
+      initialState,
+      initialDemand,
+      sceneConstraint,
+      productionRequest,
+      displayRef,
+      filteredPage,
+      useRecord,
+      usePanelVisible,
+      lifecycle,
+      productionProductsRevision,
+      sceneStage,
+      pipelineForStage,
+      sceneForStage,
+      progressSceneForStage,
+      registeredCollectionProgress,
+      currentGeneration,
+      sceneCollectionProgress,
+      annotationProducts,
+      stageState,
+      recordedStageState,
+      STAGES: STAGES2,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
+      PLAN_FIELDS: PLAN_FIELDS2,
+      styles: styles2,
+      dictionaries: dictionaries2
+    } = helpers;
+    function PublicObservation({ src, type = "image/*", label, compact = false, t }) {
+      const [record, setRecord] = React.useState({ loading: type === "application/json", data: null, error: "" });
       const [attempt, setAttempt] = React.useState(0);
       React.useEffect(() => {
-        setRecord({loading: type === 'application/json', data: null, error: ''});
-        if (type !== 'application/json') return;
+        setRecord({ loading: type === "application/json", data: null, error: "" });
+        if (type !== "application/json") return;
         const controller = new AbortController();
-        fetch(src, {signal: controller.signal}).then(async (response) => {
-          if (!response.ok) throw new Error('HTTP ' + response.status);
+        fetch(src, { signal: controller.signal }).then(async (response) => {
+          if (!response.ok) throw new Error("HTTP " + response.status);
           return response.json();
-        }).then((data) => {if (!controller.signal.aborted) setRecord({loading: false, data, error: ''});})
-          .catch((error) => {if (!controller.signal.aborted) setRecord({loading: false, data: null, error: error.message});});
+        }).then((data) => {
+          if (!controller.signal.aborted) setRecord({ loading: false, data, error: "" });
+        }).catch((error) => {
+          if (!controller.signal.aborted) setRecord({ loading: false, data: null, error: error.message });
+        });
         return () => controller.abort();
       }, [src, type, attempt]);
-      return h('figure', {className: 'bfw-public-observation', 'data-observation-type': type, 'data-compact': compact},
-        !compact && h('figcaption', null, label, type.startsWith('image/') && h('a',{href:src,target:'_blank',rel:'noopener noreferrer',className:'bfw-original-image'},'打开原图')),
-        record.error ? h('div', {className: 'bfw-error', role: 'alert'}, t('observationReadFailed'), ' ' + record.error,
-          button(t('retry'), () => setAttempt((value) => value + 1))) : type === 'application/json' ?
-          record.loading ? empty(t('loading')) : json(record.data) : type.startsWith('image/') ?
-            h('img', {className: 'bfw-observation', key: attempt, src, alt: label, loading: compact ? 'lazy' : undefined,
-              onError: () => setRecord({loading: false, data: null, error: t('readFailed')})}) :
-            h('p', {className: 'bfw-muted'}, t('unsupportedObservation')));
+      return h(
+        "figure",
+        { className: "bfw-public-observation", "data-observation-type": type, "data-compact": compact },
+        !compact && h("figcaption", null, label, type.startsWith("image/") && h("a", { href: src, target: "_blank", rel: "noopener noreferrer", className: "bfw-original-image" }, "\u6253\u5F00\u539F\u56FE")),
+        record.error ? h(
+          "div",
+          { className: "bfw-error", role: "alert" },
+          t("observationReadFailed"),
+          " " + record.error,
+          button(t("retry"), () => setAttempt((value) => value + 1))
+        ) : type === "application/json" ? record.loading ? empty(t("loading")) : json(record.data) : type.startsWith("image/") ? h("img", {
+          className: "bfw-observation",
+          key: attempt,
+          src,
+          alt: label,
+          loading: compact ? "lazy" : void 0,
+          onError: () => setRecord({ loading: false, data: null, error: t("readFailed") })
+        }) : h("p", { className: "bfw-muted" }, t("unsupportedObservation"))
+      );
     }
     function firstImage(item) {
-      const index = item.media_types ? item.media_types.findIndex((type) => type.startsWith('image/')) : 0;
+      const index = item.media_types ? item.media_types.findIndex((type) => type.startsWith("image/")) : 0;
       return item.media?.[index];
     }
-    function QuestionDialog({item,close,t}) {
-      const ref=React.useRef(null);
-      const presentation=item.question_presentation;
-      React.useEffect(()=>{
-        const trigger=document.activeElement,dialog=ref.current;
+    function QuestionDialog({ item, close, t }) {
+      const ref = React.useRef(null);
+      const presentation = item.question_presentation;
+      React.useEffect(() => {
+        const trigger = document.activeElement, dialog = ref.current;
         dialog.showModal();
-        return ()=>{dialog.close();trigger?.focus();};
-      },[]);
-      const title='题目 '+(item.row_index+1);
-      return h('dialog',{ref,className:'bfw-preview-dialog bfw-question-dialog','data-question-dialog':true,'aria-label':title,
-        onCancel:event=>{event.preventDefault();close();},onClick:event=>{if(event.target===ref.current)close();}},
-        h('div',{className:'bfw-preview-header'},h('h2',null,title),button(t('previewClose'),close)),
-        h('p',{className:'bfw-question','data-question-stem':true},presentation?.stem || questionText(item.question)),
-        presentation && [['context','已知条件'],['conditions','作答规则'],['options','选项']].map(([key,label])=>
-          presentation[key]?.length > 0 && h('section',{key,className:'bfw-question-section','data-question-section':key},
-            h('h3',null,label),h('ul',null,presentation[key].map((value,index)=>h('li',{key:index},value))))),
-        presentation && h('p',{className:'bfw-question-response'},'作答方式：'+presentation.response),
-        item.media?.length ? item.media.map((src,index)=>{
-          const label=presentation?.media_labels?.[index] || t('media')+' '+(index+1);
-          const observation=h(PublicObservation,{key:src,src,type:item.media_types?.[index],label,t});
-          return item.media_types?.[index]==='application/json' ? h('details',{key:src},h('summary',null,label),observation) : observation;
-        }) : empty(t('noMedia')),
-        h('details',null,h('summary',null,t('details')),json({...item,media:undefined,media_types:undefined})));
+        return () => {
+          dialog.close();
+          trigger?.focus();
+        };
+      }, []);
+      const title = "\u9898\u76EE " + (item.row_index + 1);
+      return h(
+        "dialog",
+        {
+          ref,
+          className: "bfw-preview-dialog bfw-question-dialog",
+          "data-question-dialog": true,
+          "aria-label": title,
+          onCancel: (event) => {
+            event.preventDefault();
+            close();
+          },
+          onClick: (event) => {
+            if (event.target === ref.current) close();
+          }
+        },
+        h("div", { className: "bfw-preview-header" }, h("h2", null, title), button(t("previewClose"), close)),
+        h("p", { className: "bfw-question", "data-question-stem": true }, presentation?.stem || questionText(item.question)),
+        presentation && [["context", "\u5DF2\u77E5\u6761\u4EF6"], ["conditions", "\u4F5C\u7B54\u89C4\u5219"], ["options", "\u9009\u9879"]].map(([key, label]) => presentation[key]?.length > 0 && h(
+          "section",
+          { key, className: "bfw-question-section", "data-question-section": key },
+          h("h3", null, label),
+          h("ul", null, presentation[key].map((value, index) => h("li", { key: index }, value)))
+        )),
+        presentation && h("p", { className: "bfw-question-response" }, "\u4F5C\u7B54\u65B9\u5F0F\uFF1A" + presentation.response),
+        item.media?.length ? item.media.map((src, index) => {
+          const label = presentation?.media_labels?.[index] || t("media") + " " + (index + 1);
+          const observation = h(PublicObservation, { key: src, src, type: item.media_types?.[index], label, t });
+          return item.media_types?.[index] === "application/json" ? h("details", { key: src }, h("summary", null, label), observation) : observation;
+        }) : empty(t("noMedia")),
+        item.assets?.length > 0 && h(
+          "details",
+          { "data-public-assets": true },
+          h("summary", null, t("publicAssets") + " (" + item.assets.length + ")"),
+          h("ul", null, item.assets.map((src, index) => h(
+            "li",
+            { key: src },
+            h("a", { href: src, target: "_blank", rel: "noreferrer" }, item.asset_names?.[index] || t("publicAssets") + " " + (index + 1))
+          )))
+        ),
+        h("details", null, h("summary", null, t("details")), json({ ...item, media: void 0, media_types: void 0 }))
+      );
     }
     function sceneProjects(items) {
-      const groups = new Map();
-      for (const item of items.filter((row) => ['image', 'video'].includes(row.kind))) {
-        const id = item.task_id || item.scene_id || 'scene';
-        if (!groups.has(id)) groups.set(id, {id, title: item.scene_name || id, frames: [], video: null, kind: 'scene'});
+      const groups = /* @__PURE__ */ new Map();
+      for (const item of items.filter((row) => ["image", "video"].includes(row.kind))) {
+        const id = item.task_id || item.scene_id || "scene";
+        if (!groups.has(id)) groups.set(id, { id, title: item.scene_name || id, frames: [], video: null, kind: "scene" });
         const project = groups.get(id);
-        project.title=sceneName(project.title,groups.size-1);
-        if (item.kind === 'video' && (!project.video || item.purpose === 'scene_tour')) project.video = item;
+        project.title = sceneName(project.title, groups.size - 1);
+        if (item.kind === "video" && (!project.video || item.purpose === "scene_tour")) project.video = item;
         else project.frames.push(item);
       }
-      for (const project of groups.values()) project.frames.sort((a, b) => (a.file || a.title || '').localeCompare(b.file || b.title || '', undefined, {numeric: true}));
+      for (const project of groups.values()) project.frames.sort((a, b) => (a.file || a.title || "").localeCompare(b.file || b.title || "", void 0, { numeric: true }));
       return [...groups.values()];
     }
-    function SceneGallery({items, preview, t}) {
+    function SceneGallery({ items, preview, t }) {
       const projects = sceneProjects(items);
-      if (!projects.length) return empty(t('artifactPending'));
-      return h('div', {className: 'bfw-scene-projects'}, projects.map((project, index) => h('article', {
-        className: 'bfw-preview-card bfw-scene-project', key: project.id, 'data-scene-project': project.id},
-        h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(project),
-          'aria-label': t('preview') + ' ' + t('sceneProject') + ' ' + (index + 1)},
-          h('span', {className: 'bfw-scene-poster'}, project.video ? h('video', {src: project.video.url,
-            poster: project.frames[0]?.url, preload: 'auto', muted: true, playsInline: true, 'aria-label': project.title}) :
-            h('img', {src: project.frames[0].url, alt: project.title}),
-            h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, project.video ? '▶' : '↔')),
-          h('strong', null, t('sceneProject') + ' ' + (index + 1)),
-          h('span', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length)),
-        h('p', {className: 'bfw-code'}, displayRef(project.title)))));
+      if (!projects.length) return empty(t("artifactPending"));
+      return h("div", { className: "bfw-scene-projects" }, projects.map((project, index) => h(
+        "article",
+        {
+          className: "bfw-preview-card bfw-scene-project",
+          key: project.id,
+          "data-scene-project": project.id
+        },
+        h(
+          "button",
+          {
+            type: "button",
+            className: "bfw-preview-open",
+            onClick: () => preview(project),
+            "aria-label": t("preview") + " " + t("sceneProject") + " " + (index + 1)
+          },
+          h(
+            "span",
+            { className: "bfw-scene-poster" },
+            project.video ? h("video", {
+              src: project.video.url,
+              poster: project.frames[0]?.url,
+              preload: "auto",
+              muted: true,
+              playsInline: true,
+              "aria-label": project.title
+            }) : h("img", { src: project.frames[0].url, alt: project.title }),
+            h("span", { className: "bfw-scene-play", "aria-hidden": true }, project.video ? "\u25B6" : "\u2194")
+          ),
+          h("strong", null, t("sceneProject") + " " + (index + 1)),
+          h("span", { className: "bfw-muted" }, t(project.video ? "sceneTour" : "sceneViews") + " \xB7 " + t("recordedViews") + ": " + project.frames.length)
+        ),
+        h("p", { className: "bfw-code" }, displayRef(project.title))
+      )));
     }
-    function SceneVideo({project, t}) {
+    function SceneVideo({ project, t }) {
       const [view, setView] = React.useState(0);
-      const [error, setError] = React.useState('');
+      const [error, setError] = React.useState("");
       const [attempt, setAttempt] = React.useState(0);
-      const videoUrl=project.video?.url || '';
-      React.useEffect(() => {setError('');setView(0);}, [project.id, videoUrl]);
-      const hasVideo=!!project.video && !error;
-      const frameViews=project.frames.length ? h(React.Fragment, null,
-        h('img', {src: project.frames[view]?.url, alt: project.title}),
-        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => setView((index) => index - 1), {disabled: view === 0}),
-          h('span', null, t('sceneViews') + ' ' + (view + 1) + ' / ' + project.frames.length),
-          button(t('nextPage'), () => setView((index) => index + 1), {disabled: view >= project.frames.length - 1}))) : null;
-      return h('div', {className: 'bfw-scene-video'},
-        error && h('div', {className: 'bfw-error', role: 'alert'},
-          t('sceneVideoFailed'), ' ' + error, button(t('retry'), () => {setError(''); setAttempt((value) => value + 1);}),
-          project.frames.length > 0 && h('span', {className: 'bfw-muted'}, ' · 已切换到实拍视角')),
-        hasVideo ? h('video', {key: videoUrl + ':' + attempt, src: videoUrl, poster: project.frames[0]?.url, preload: 'auto',
-          controls: true, autoPlay: true, loop: true, muted: true, playsInline: true,
-          'aria-label': t('sceneTour'), onLoadedData: () => setError(''), onError: () => setError(t('artifactReadFailed'))}) : frameViews,
-        h('p', {className: 'bfw-muted'}, t(project.video ? 'sceneTour' : 'sceneViews') + ' · ' + t('recordedViews') + ': ' + project.frames.length));
+      const videoUrl = project.video?.url || "";
+      React.useEffect(() => {
+        setError("");
+        setView(0);
+      }, [project.id, videoUrl]);
+      const hasVideo = !!project.video && !error;
+      const frameViews = project.frames.length ? h(
+        React.Fragment,
+        null,
+        h("img", { src: project.frames[view]?.url, alt: project.title }),
+        h(
+          "div",
+          { className: "bfw-pagination" },
+          button(t("previous"), () => setView((index) => index - 1), { disabled: view === 0 }),
+          h("span", null, t("sceneViews") + " " + (view + 1) + " / " + project.frames.length),
+          button(t("nextPage"), () => setView((index) => index + 1), { disabled: view >= project.frames.length - 1 })
+        )
+      ) : null;
+      return h(
+        "div",
+        { className: "bfw-scene-video" },
+        error && h(
+          "div",
+          { className: "bfw-error", role: "alert" },
+          t("sceneVideoFailed"),
+          " " + error,
+          button(t("retry"), () => {
+            setError("");
+            setAttempt((value) => value + 1);
+          }),
+          project.frames.length > 0 && h("span", { className: "bfw-muted" }, " \xB7 \u5DF2\u5207\u6362\u5230\u5B9E\u62CD\u89C6\u89D2")
+        ),
+        hasVideo ? h("video", {
+          key: videoUrl + ":" + attempt,
+          src: videoUrl,
+          poster: project.frames[0]?.url,
+          preload: "auto",
+          controls: true,
+          autoPlay: true,
+          loop: true,
+          muted: true,
+          playsInline: true,
+          "aria-label": t("sceneTour"),
+          onLoadedData: () => setError(""),
+          onError: () => setError(t("artifactReadFailed"))
+        }) : frameViews,
+        h("p", { className: "bfw-muted" }, t(project.video ? "sceneTour" : "sceneViews") + " \xB7 " + t("recordedViews") + ": " + project.frames.length)
+      );
     }
-    function SceneLibrary({record, selection, saving, error, choose, query, search, origin, filter, page, refresh, preview, t}) {
+    function SceneLibrary({ record, selection, saving, error, choose, query, search, origin, filter, page, refresh, preview, t }) {
       const data = record.value;
-      if (!data) return h('div', null, record.error ? h('p', {className: 'bfw-error', role: 'alert'}, record.error) : empty(t('loading')),
-        button(t('retry'), refresh));
+      if (!data) return h(
+        "div",
+        null,
+        record.error ? h("p", { className: "bfw-error", role: "alert" }, record.error) : empty(t("loading")),
+        button(t("retry"), refresh)
+      );
       const selected = selection?.selected || [];
       const busy = saving || record.loading;
       const changePage = (checked) => {
         const ids = new Set(data.items.map((row) => row.id));
         const kept = selected.filter((row) => !ids.has(row.id));
-        choose(checked ? [...kept, ...data.items.filter((row) => row.available && row.production_eligible!==false).map((row) => ({id: row.id, revision: row.revision}))] : kept,
-          selection.allow_new_scenes);
+        choose(
+          checked ? [...kept, ...data.items.filter((row) => row.available && row.production_eligible !== false).map((row) => ({ id: row.id, revision: row.revision }))] : kept,
+          selection.allow_new_scenes
+        );
       };
-      return h('section', {'data-scene-library': true},
-        h('div', {className: 'bfw-toolbar'}, h('h3', null, t('sceneLibrary')),
-          h('span', {className: 'bfw-pill'}, t('sceneSelected') + ': ' + selected.length + ' / ' + data.all),
-          h('span', {className: 'bfw-muted', role: 'status', 'aria-live': 'polite'}, t(saving ? 'sceneSaving' : record.loading ? 'sceneLibraryLoading' : 'sceneSaved'))),
-
-        h('div', {className: 'bfw-toolbar bfw-library-controls'},
-          h('input', {className: 'bfw-input', type: 'search', 'aria-label': t('sceneSearch'), placeholder: t('sceneSearch'), value: query,
-            onChange: (event) => search(event.target.value)}),
-          select(t('sceneOrigin'), origin, filter, [['all', t('all')], ['current', t('currentScenes')], ['history', t('historyScenes')]]),
-          button(t('selectScenePage'), () => changePage(true), {disabled: busy || !data.items.some((row) => row.available)}),
-          button(t('clearScenePage'), () => changePage(false), {disabled: busy || !selected.length})),
-        h('label', {className: 'bfw-consent bfw-library-policy'}, h('input', {type: 'checkbox', checked: !!selection?.allow_new_scenes,
-          disabled: busy, onChange: (event) => choose(selected, event.target.checked)}), t('allowNewScenes')),
-        h('small', {className: 'bfw-hint'}, t('sceneSelectionHelp')),
-        selection?.notice && h('small', {className: 'bfw-hint', role: 'status'}, selection.notice),
-        error && h('p', {className: 'bfw-error', role: 'alert'}, error),
-        h('div', {className: 'bfw-scene-projects'}, data.items.map((row) => {
+      return h(
+        "section",
+        { "data-scene-library": true },
+        h(
+          "div",
+          { className: "bfw-toolbar" },
+          h("h3", null, t("sceneLibrary")),
+          h("span", { className: "bfw-pill" }, t("sceneSelected") + ": " + selected.length + " / " + data.all),
+          h("span", { className: "bfw-muted", role: "status", "aria-live": "polite" }, t(saving ? "sceneSaving" : record.loading ? "sceneLibraryLoading" : "sceneSaved"))
+        ),
+        h(
+          "div",
+          { className: "bfw-toolbar bfw-library-controls" },
+          h("input", {
+            className: "bfw-input",
+            type: "search",
+            "aria-label": t("sceneSearch"),
+            placeholder: t("sceneSearch"),
+            value: query,
+            onChange: (event) => search(event.target.value)
+          }),
+          select(t("sceneOrigin"), origin, filter, [["all", t("all")], ["current", t("currentScenes")], ["history", t("historyScenes")]]),
+          button(t("selectScenePage"), () => changePage(true), { disabled: busy || !data.items.some((row) => row.available) }),
+          button(t("clearScenePage"), () => changePage(false), { disabled: busy || !selected.length })
+        ),
+        h("label", { className: "bfw-consent bfw-library-policy" }, h("input", {
+          type: "checkbox",
+          checked: !!selection?.allow_new_scenes,
+          disabled: busy,
+          onChange: (event) => choose(selected, event.target.checked)
+        }), t("allowNewScenes")),
+        h("small", { className: "bfw-hint" }, t("sceneSelectionHelp")),
+        selection?.notice && h("small", { className: "bfw-hint", role: "status" }, selection.notice),
+        error && h("p", { className: "bfw-error", role: "alert" }, error),
+        h("div", { className: "bfw-scene-projects" }, data.items.map((row) => {
           const checked = selected.some((reference) => reference.id === row.id && reference.revision === row.revision);
-          const name=sceneName(row.name,data.items.indexOf(row));
-          const project = {...row, title: name, kind: 'scene', library: true};
-          return h('article', {className: 'bfw-preview-card bfw-scene-project' + (checked ? ' bfw-scene-selected' : ''), key: row.id,
-            'data-scene-project': row.id, 'data-scene-selected': String(checked)},
-            h('label', {className: 'bfw-scene-select'}, h('input', {type: 'checkbox', checked, disabled: busy || !row.available || row.production_eligible===false,
-              'aria-label': t('useScene') + ' ' + name, onChange: (event) => choose(event.target.checked
-                ? [...selected.filter((reference) => reference.id !== row.id), {id: row.id, revision: row.revision}]
-                : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)}), row.production_eligible===false ? '待物理与生活合理性验收' : t('useScene')),
-            row.scene_style==='simplified_geometry' ? h('p', {className: 'bfw-muted'}, '简化几何实验 · ' + (row.geometry_purpose || '按计划测量')) : null,
-            h('button', {type: 'button', className: 'bfw-preview-open', disabled: !row.available, onClick: () => preview(project),
-              'aria-label': t('preview') + ' ' + name},
-              h('span', {className: 'bfw-scene-poster'}, row.video ? h('video', {src: row.video.url, poster: row.frames[0]?.url,
-                preload: 'metadata', muted: true, playsInline: true}) : row.frames.length ? h('img', {src: row.frames[0].url, alt: row.name, loading: 'lazy'}) :
-                  h('span', {className: 'bfw-muted'}, t('sceneUnavailable')),
-                row.available && h('span', {className: 'bfw-scene-play', 'aria-hidden': true}, row.video ? '▶' : '↔')),
-              h('strong', null, name), h('span', {className: 'bfw-muted'}, t(row.origin_session === selection?.session_id ? 'currentScenes' : 'historyScenes') +
-                ' · ' + t('recordedViews') + ': ' + row.frame_count)),
-            row.description ? h('details',null,h('summary',null,'场景摘要'),h('p',null,row.description)) : null,
-            h('details',null,h('summary',null,'技术详情'),h('p', {className: 'bfw-code'}, row.id+' · 采集版本 '+row.revision)));
+          const name = sceneName(row.name, data.items.indexOf(row));
+          const project = { ...row, title: name, kind: "scene", library: true };
+          return h(
+            "article",
+            {
+              className: "bfw-preview-card bfw-scene-project" + (checked ? " bfw-scene-selected" : ""),
+              key: row.id,
+              "data-scene-project": row.id,
+              "data-scene-selected": String(checked)
+            },
+            h("label", { className: "bfw-scene-select" }, h("input", {
+              type: "checkbox",
+              checked,
+              disabled: busy || !row.available || row.production_eligible === false,
+              "aria-label": t("useScene") + " " + name,
+              onChange: (event) => choose(event.target.checked ? [...selected.filter((reference) => reference.id !== row.id), { id: row.id, revision: row.revision }] : selected.filter((reference) => reference.id !== row.id), selection.allow_new_scenes)
+            }), row.production_eligible === false ? "\u5F85\u7269\u7406\u4E0E\u751F\u6D3B\u5408\u7406\u6027\u9A8C\u6536" : t("useScene")),
+            row.scene_style === "simplified_geometry" ? h("p", { className: "bfw-muted" }, "\u7B80\u5316\u51E0\u4F55\u5B9E\u9A8C \xB7 " + (row.geometry_purpose || "\u6309\u8BA1\u5212\u6D4B\u91CF")) : null,
+            h(
+              "button",
+              {
+                type: "button",
+                className: "bfw-preview-open",
+                disabled: !row.available,
+                onClick: () => preview(project),
+                "aria-label": t("preview") + " " + name
+              },
+              h(
+                "span",
+                { className: "bfw-scene-poster" },
+                row.video ? h("video", {
+                  src: row.video.url,
+                  poster: row.frames[0]?.url,
+                  preload: "metadata",
+                  muted: true,
+                  playsInline: true
+                }) : row.frames.length ? h("img", { src: row.frames[0].url, alt: row.name, loading: "lazy" }) : h("span", { className: "bfw-muted" }, t("sceneUnavailable")),
+                row.available && h("span", { className: "bfw-scene-play", "aria-hidden": true }, row.video ? "\u25B6" : "\u2194")
+              ),
+              h("strong", null, name),
+              h("span", { className: "bfw-muted" }, t(row.origin_session === selection?.session_id ? "currentScenes" : "historyScenes") + " \xB7 " + t("recordedViews") + ": " + row.frame_count)
+            ),
+            row.description ? h("details", null, h("summary", null, "\u573A\u666F\u6458\u8981"), h("p", null, row.description)) : null,
+            h("details", null, h("summary", null, "\u6280\u672F\u8BE6\u60C5"), h("p", { className: "bfw-code" }, row.id + " \xB7 \u91C7\u96C6\u7248\u672C " + row.revision))
+          );
         })),
-        !data.items.length && empty(t('noMatchingRuns')),
-        h('div', {className: 'bfw-pagination'}, button(t('previous'), () => page(data.page - 1), {disabled: data.page <= 1}),
-          h('span', null, t('page') + ' ' + data.page + ' / ' + data.pages + ' · ' + t('matches') + ': ' + data.total),
-          button(t('nextPage'), () => page(data.page + 1), {disabled: data.page >= data.pages})),
-        h('details', {className: 'bfw-library-location'}, h('summary', null, t('sceneStorage')),
-          h('p', {className: 'bfw-code'}, data.catalog_path), h('p', {className: 'bfw-code'}, selection?.selection_path)));
+        !data.items.length && empty(t("noMatchingRuns")),
+        h(
+          "div",
+          { className: "bfw-pagination" },
+          button(t("previous"), () => page(data.page - 1), { disabled: data.page <= 1 }),
+          h("span", null, t("page") + " " + data.page + " / " + data.pages + " \xB7 " + t("matches") + ": " + data.total),
+          button(t("nextPage"), () => page(data.page + 1), { disabled: data.page >= data.pages })
+        ),
+        h(
+          "details",
+          { className: "bfw-library-location" },
+          h("summary", null, t("sceneStorage")),
+          h("p", { className: "bfw-code" }, data.catalog_path),
+          h("p", { className: "bfw-code" }, selection?.selection_path)
+        )
+      );
     }
-    function PreviewDialog({item, close, t}) {
+    function PreviewDialog({ item, close, t }) {
       const ref = React.useRef(null);
       const [content, setContent] = React.useState(null);
-      const [error, setError] = React.useState('');
+      const [error, setError] = React.useState("");
       React.useEffect(() => {
         const dialog = ref.current;
         const trigger = document.activeElement;
         dialog.showModal();
-        return () => {dialog.close(); trigger?.focus();};
+        return () => {
+          dialog.close();
+          trigger?.focus();
+        };
       }, []);
       React.useEffect(() => {
-        if (item.data || !item.url || ['image', 'video'].includes(item.kind)) return;
+        if (item.data || !item.url || ["image", "video"].includes(item.kind)) return;
         const controller = new AbortController();
-        fetch(item.url, {signal: controller.signal}).then(async (response) => {
-          if (!response.ok) throw new Error('HTTP ' + response.status);
-          return item.kind === 'json' ? response.json() : response.text();
-        }).then(setContent).catch((reason) => {if (reason.name !== 'AbortError') setError(reason.message);});
+        fetch(item.url, { signal: controller.signal }).then(async (response) => {
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          return item.kind === "json" ? response.json() : response.text();
+        }).then(setContent).catch((reason) => {
+          if (reason.name !== "AbortError") setError(reason.message);
+        });
         return () => controller.abort();
       }, [item]);
       const data = item.data || content;
-      return h('dialog', {ref, className: 'bfw-preview-dialog', 'aria-label': t('preview') + ' · ' + item.title,
-        onCancel: (event) => {event.preventDefault(); close();}, onClick: (event) => {if (event.target === ref.current) close();}},
-        h('div', {className: 'bfw-preview-header'}, h('h2', null, item.title), button(t('previewClose'), close)),
-        item.kind === 'scene' ? h(SceneVideo, {project: item, t}) : item.kind === 'image' ? h('img', {src: item.url, alt: item.title}) : item.kind === 'video' ?
-          h('video', {src: item.url, controls: true, preload: 'metadata'}) : error ? h('p', {role: 'alert'}, t('artifactReadFailed') + ' ' + error) :
-          data ? h(React.Fragment, null,
-            item.image_url && h('div', {className: 'bfw-annotation-image'}, h('img', {src: item.image_url, alt: item.title}),
-              data.image_size?.width > 0 && h('svg', {viewBox: '0 0 ' + data.image_size.width + ' ' + data.image_size.height,
-                role: 'img', 'aria-label': t('annotationGallery')}, (data.visible_objects || []).filter((row) => row.bbox_2d?.xyxy?.length === 4).map((row, index) => {
-                  const [x1, y1, x2, y2] = row.bbox_2d.xyxy;
-                  return h('g', {key: row.object_id || index}, h('rect', {x: x1, y: y1, width: x2 - x1, height: y2 - y1, fill: 'none', stroke: '#4ade80', strokeWidth: 2}),
-                    h('text', {x: x1 + 4, y: Math.max(18, y1 - 5), fill: '#4ade80', stroke: '#102020', strokeWidth: .5,
-                      fontSize: Math.max(14, data.image_size.width / 65)}, row.label || row.object_id));
-                }))),
-            typeof data === 'string' ? h('pre', {className: 'bfw-json'}, data) : h(React.Fragment,null,
-              data.visible_objects?.length>0 && h('div',null,h('p',null,'可见物体：'+data.visible_objects.length+' · 图像标注与当前场景配对'),
-                table(['物体','图像位置（像素）'],data.visible_objects.map((row,index)=>[row.label || '物体 '+(index+1),row.bbox_2d?.xyxy?.join(', ') || '—']))),
-              h('details',null,h('summary',null,t('details')),json(data)))) : empty(t('loading')));
+      return h(
+        "dialog",
+        {
+          ref,
+          className: "bfw-preview-dialog",
+          "aria-label": t("preview") + " \xB7 " + item.title,
+          onCancel: (event) => {
+            event.preventDefault();
+            close();
+          },
+          onClick: (event) => {
+            if (event.target === ref.current) close();
+          }
+        },
+        h("div", { className: "bfw-preview-header" }, h("h2", null, item.title), button(t("previewClose"), close)),
+        item.kind === "scene" ? h(SceneVideo, { project: item, t }) : item.kind === "image" ? h("img", { src: item.url, alt: item.title }) : item.kind === "video" ? h("video", { src: item.url, controls: true, preload: "metadata" }) : error ? h("p", { role: "alert" }, t("artifactReadFailed") + " " + error) : data ? h(
+          React.Fragment,
+          null,
+          item.image_url && h(
+            "div",
+            { className: "bfw-annotation-image" },
+            h("img", { src: item.image_url, alt: item.title }),
+            data.image_size?.width > 0 && h("svg", {
+              viewBox: "0 0 " + data.image_size.width + " " + data.image_size.height,
+              role: "img",
+              "aria-label": t("annotationGallery")
+            }, (data.visible_objects || []).filter((row) => row.bbox_2d?.xyxy?.length === 4).map((row, index) => {
+              const [x1, y1, x2, y2] = row.bbox_2d.xyxy;
+              return h(
+                "g",
+                { key: row.object_id || index },
+                h("rect", { x: x1, y: y1, width: x2 - x1, height: y2 - y1, fill: "none", stroke: "#4ade80", strokeWidth: 2 }),
+                h("text", {
+                  x: x1 + 4,
+                  y: Math.max(18, y1 - 5),
+                  fill: "#4ade80",
+                  stroke: "#102020",
+                  strokeWidth: 0.5,
+                  fontSize: Math.max(14, data.image_size.width / 65)
+                }, row.label || row.object_id)
+              );
+            }))
+          ),
+          typeof data === "string" ? h("pre", { className: "bfw-json" }, data) : h(
+            React.Fragment,
+            null,
+            data.visible_objects?.length > 0 && h(
+              "div",
+              null,
+              h("p", null, "\u53EF\u89C1\u7269\u4F53\uFF1A" + data.visible_objects.length + " \xB7 \u56FE\u50CF\u6807\u6CE8\u4E0E\u5F53\u524D\u573A\u666F\u914D\u5BF9"),
+              table(["\u7269\u4F53", "\u56FE\u50CF\u4F4D\u7F6E\uFF08\u50CF\u7D20\uFF09"], data.visible_objects.map((row, index) => [row.label || "\u7269\u4F53 " + (index + 1), row.bbox_2d?.xyxy?.join(", ") || "\u2014"]))
+            ),
+            h("details", null, h("summary", null, t("details")), json(data))
+          )
+        ) : empty(t("loading"))
+      );
     }
-    function ArtifactGallery({items, preview, t}) {
-      if (!items.length) return empty(t('artifactPending'));
-      return h('div', {className: 'bfw-gallery'}, items.map((saved,index) => {
-        const view=(saved.file || saved.title || '').match(/view[_-](\d+)/);
-        const kind=saved.image_url ? '标注' : saved.kind==='image' ? '场景图' : saved.kind==='video' ? '场景巡览' : '产物';
-        const item={...saved,title:(view ? '视角 '+(Number(view[1])+1)+' · '+kind : saved.title || kind+' '+(index+1))};
-        return h('article', {className: 'bfw-preview-card', key: item.url || item.title,
-        'data-preview-kind': item.kind},
-        h('button', {type: 'button', className: 'bfw-preview-open', onClick: () => preview(item), 'aria-label': t('preview') + ' ' + item.title},
-          item.kind === 'image' || item.image_url ? h('img', {src: item.image_url || item.url, loading: 'lazy', alt: item.title}) : item.kind === 'video' ?
-            h('video', {src: item.url, preload: 'metadata', muted: true, 'aria-label': item.title}) :
-            h('div', {className: 'bfw-document-thumb'}, h('span', null, item.kind === 'json' ? '{ }' : '≡'), h('span', null, item.title)),
-          h('strong', null, item.title), h('span', {className: 'bfw-muted'}, t('preview'))),
-        item.task_id && h('details',null,h('summary',null,'技术详情'),h('div', {className: 'bfw-code bfw-muted'}, item.task_id + (item.revision === undefined ? '' : ' · r' + item.revision))));}));
+    function ArtifactGallery({ items, preview, t }) {
+      if (!items.length) return empty(t("artifactPending"));
+      return h("div", { className: "bfw-gallery" }, items.map((saved, index) => {
+        const view = (saved.file || saved.title || "").match(/view[_-](\d+)/);
+        const kind = saved.image_url ? "\u6807\u6CE8" : saved.kind === "image" ? "\u573A\u666F\u56FE" : saved.kind === "video" ? "\u573A\u666F\u5DE1\u89C8" : "\u4EA7\u7269";
+        const item = { ...saved, title: view ? "\u89C6\u89D2 " + (Number(view[1]) + 1) + " \xB7 " + kind : saved.title || kind + " " + (index + 1) };
+        return h(
+          "article",
+          {
+            className: "bfw-preview-card",
+            key: item.url || item.title,
+            "data-preview-kind": item.kind
+          },
+          h(
+            "button",
+            { type: "button", className: "bfw-preview-open", onClick: () => preview(item), "aria-label": t("preview") + " " + item.title },
+            item.kind === "image" || item.image_url ? h("img", { src: item.image_url || item.url, loading: "lazy", alt: item.title }) : item.kind === "video" ? h("video", { src: item.url, preload: "metadata", muted: true, "aria-label": item.title }) : h("div", { className: "bfw-document-thumb" }, h("span", null, item.kind === "json" ? "{ }" : "\u2261"), h("span", null, item.title)),
+            h("strong", null, item.title),
+            h("span", { className: "bfw-muted" }, t("preview"))
+          ),
+          item.task_id && h("details", null, h("summary", null, "\u6280\u672F\u8BE6\u60C5"), h("div", { className: "bfw-code bfw-muted" }, item.task_id + (item.revision === void 0 ? "" : " \xB7 r" + item.revision)))
+        );
+      }));
     }
-    function StageReviewPanel({value, act, change, t}) {
-      const [tick,setTick] = React.useState(Date.now());
-      React.useEffect(() => {const timer=setInterval(() => setTick(Date.now()),1000); return () => clearInterval(timer);},[]);
-      const received = React.useRef({value:null,at:0});
-      if (received.current.value !== value) received.current={value,at:Date.now()};
+    return { PublicObservation, QuestionDialog, firstImage, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery };
+  }
+
+  // integrations/spatialforge/ui/client/components/products.js
+  function createProductComponents({ React, helpers, components }) {
+    const h = React.createElement;
+    const {
+      status,
+      button,
+      card,
+      empty,
+      json,
+      sceneName,
+      questionText,
+      planValue,
+      planMarkdown,
+      planMarkdownView,
+      planEditInstruction,
+      table,
+      select,
+      initialState,
+      initialDemand,
+      sceneConstraint,
+      productionRequest,
+      displayRef,
+      filteredPage,
+      useRecord,
+      usePanelVisible,
+      lifecycle,
+      productionProductsRevision,
+      sceneStage,
+      pipelineForStage,
+      sceneForStage,
+      progressSceneForStage,
+      registeredCollectionProgress,
+      currentGeneration,
+      sceneCollectionProgress,
+      annotationProducts,
+      stageState,
+      recordedStageState,
+      STAGES: STAGES2,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
+      PLAN_FIELDS: PLAN_FIELDS2,
+      styles: styles2,
+      dictionaries: dictionaries2
+    } = helpers;
+    const {
+      TemplateCatalog,
+      RunDetails,
+      executionStage,
+      reportedProgress,
+      progressAmount,
+      ParallelProgress,
+      StageProgress,
+      PublicObservation,
+      QuestionDialog,
+      sceneProjects,
+      SceneGallery,
+      SceneVideo,
+      SceneLibrary,
+      PreviewDialog,
+      ArtifactGallery
+    } = components;
+    function StageReviewPanel({ value, act, change, t }) {
+      const [tick, setTick] = React.useState(Date.now());
+      React.useEffect(() => {
+        const timer = setInterval(() => setTick(Date.now()), 1e3);
+        return () => clearInterval(timer);
+      }, []);
+      const received = React.useRef({ value: null, at: 0 });
+      if (received.current.value !== value) received.current = { value, at: Date.now() };
       if (!value?.review_id) return null;
-      const waiting = value.state === 'waiting_user';
-      const remaining = Math.max(0,Math.ceil(value.deadline-value.server_time-(tick-received.current.at)/1000));
-      const label = {waiting_user:'reviewWaiting',paused:'reviewPaused',needs_input:'reviewInstruction'}[value.state] || 'reviewFinished';
-      return h('section',{className:'bfw-review','data-stage-review':value.stage,'data-review-state':value.state,'aria-live':'polite'},
-        h('strong',null,t(STAGES.find(stage => stage.id === value.stage)?.key+'Nav')+' · '+t(label)), ' ', waiting && h('strong',{'data-review-countdown':true},
-          Math.floor(remaining/60)+':'+String(remaining%60).padStart(2,'0')),
-        waiting && h('span',{className:'bfw-muted'},' · '+t('reviewNote')),
-        ['waiting_user','paused','needs_input'].includes(value.state) && h('div',{className:'bfw-review-actions'},
-          value.state !== 'needs_input' && button(t('reviewContinue'),() => act('continue'),{'data-review-continue':true}),
-          waiting && button(t('reviewPause'),() => act('pause'),{'data-review-pause':true}),
-          button(t('reviewChange'),change,{'data-review-instruction':true})),
-        value.instruction && h('p',null,value.instruction));
+      const waiting = value.state === "waiting_user";
+      const remaining = Math.max(0, Math.ceil(value.deadline - value.server_time - (tick - received.current.at) / 1e3));
+      const label = { waiting_user: "reviewWaiting", paused: "reviewPaused", needs_input: "reviewInstruction" }[value.state] || "reviewFinished";
+      return h(
+        "section",
+        { className: "bfw-review", "data-stage-review": value.stage, "data-review-state": value.state, "aria-live": "polite" },
+        h("strong", null, t(STAGES2.find((stage) => stage.id === value.stage)?.key + "Nav") + " \xB7 " + t(label)),
+        " ",
+        waiting && h(
+          "strong",
+          { "data-review-countdown": true },
+          Math.floor(remaining / 60) + ":" + String(remaining % 60).padStart(2, "0")
+        ),
+        waiting && h("span", { className: "bfw-muted" }, " \xB7 " + t("reviewNote")),
+        ["waiting_user", "paused", "needs_input"].includes(value.state) && h(
+          "div",
+          { className: "bfw-review-actions" },
+          value.state !== "needs_input" && button(t("reviewContinue"), () => act("continue"), { "data-review-continue": true }),
+          waiting && button(t("reviewPause"), () => act("pause"), { "data-review-pause": true }),
+          button(t("reviewChange"), change, { "data-review-instruction": true })
+        ),
+        value.instruction && h("p", null, value.instruction)
+      );
     }
-    function DraftReview({draft, attachments, included, onInclude, t}) {
+    function DraftReview({ draft, attachments, included, onInclude, t }) {
       if (!draft && !attachments.length) return null;
-      return h('section', {className: 'bfw-draft-review', 'data-preserved-draft': true},
-        draft && h(React.Fragment, null, h('strong', null, t('preservedDraft')), h('pre', {className: 'bfw-json'}, draft)),
-        attachments.length > 0 && h('details', null, h('summary', null, t('preservedAttachments') + ': ' + attachments.length),
-          h('ul', null, attachments.map((id) => h('li', {key: id, className: 'bfw-code'}, String(id))))),
-        h('label', {className: 'bfw-consent'}, h('input', {type: 'checkbox', checked: included,
-          onChange: (event) => onInclude(event.target.checked)}), t('includeDraft')));
+      return h(
+        "section",
+        { className: "bfw-draft-review", "data-preserved-draft": true },
+        draft && h(React.Fragment, null, h("strong", null, t("preservedDraft")), h("pre", { className: "bfw-json" }, draft)),
+        attachments.length > 0 && h(
+          "details",
+          null,
+          h("summary", null, t("preservedAttachments") + ": " + attachments.length),
+          h("ul", null, attachments.map((id) => h("li", { key: id, className: "bfw-code" }, String(id))))
+        ),
+        h("label", { className: "bfw-consent" }, h("input", {
+          type: "checkbox",
+          checked: included,
+          onChange: (event) => onInclude(event.target.checked)
+        }), t("includeDraft"))
+      );
     }
-    function DemandForm({demand, change, busy, error, send, draft, attachments, included, onInclude, sceneSelection, openScenes, t}) {
-      const append = demand.mode === 'append';
-      return h('section', {className: 'bfw-demand', 'data-production-request': true},
-        h('div', {className: 'bfw-demand-heading'}, h('h2', null, t('productionRequest')),
-          select(t('task'), demand.mode, (mode) => change({mode}), [['new', t('newProduction')], ['append', t('appendRequest')]])),
-        h('form', {onSubmit: (event) => {event.preventDefault(); send();}},
-          h('label', {className: 'bfw-label'}, t(append ? 'changeRequirements' : 'productionRequirements'),
-            h('textarea', {className: 'bfw-input bfw-textarea', rows: 3, 'data-production-objective': true,
-              value: demand.objective, placeholder: t(append ? 'requestPlaceholder' : 'productionPlaceholder'),
-              onChange: (event) => change({objective: event.target.value}), required: true})),
-          !append && h('div', {className: 'bfw-demand-fields'},
-            h('label', {className: 'bfw-label'}, t('targetItems'), h('input', {className: 'bfw-input', type: 'number', min: 1, step: 1,
-              value: demand.count, 'data-production-count': true, onChange: (event) => change({count: event.target.value}), required: true})),
-            h('label', {className: 'bfw-label'}, t('capabilityRequest'), h('input', {className: 'bfw-input', value: demand.capability,
-              placeholder: t('capabilityPlaceholder'), onChange: (event) => change({capability: event.target.value})}))),
-          h(DraftReview, {draft, attachments, included, onInclude, t}),
-          sceneSelection && h('div', {className: 'bfw-demand-scene-summary'},
-            h('span', {className: 'bfw-muted'}, t('sceneSelected') + ': ' + sceneSelection.selected.length +
-              ' · ' + t('allowNewScenes') + ': ' + (sceneSelection.allow_new_scenes ? '✓' : '—')),
-            button(t('sceneLibrary'), openScenes)),
-          error && h('p', {className: 'bfw-error', role: 'alert'}, error),
-          h('div', {className: 'bfw-demand-footer'},
-            h('div', {className: 'bfw-demand-options'},
-              !append && h('details', null, h('summary', null, t('advancedOptions')), h('div', {className: 'bfw-form'},
-                h('label', {className: 'bfw-label'}, t('sceneCount'), h('input', {className: 'bfw-input', type: 'number', min: 1, step: 1,
-                  value: demand.sceneCount, placeholder: t('optionalAuto'), onChange: (event) => change({sceneCount: event.target.value})})),
-                h('label', {className: 'bfw-label'}, t('storageBudget'), h('input', {className: 'bfw-input', type: 'number', min: 0, step: 'any',
-                  value: demand.storageBudget, placeholder: t('optionalAuto'), onChange: (event) => change({storageBudget: event.target.value})}))),
-                h('p', null, t('targetQuantityNote')), h('p', null, t('fullWorkflowNote')), h('p', null, t('requestNote'))),
-              h('p', null, t(append ? 'appendNote' : 'productionHint'))),
-            h('button', {type: 'submit', className: 'bfw-button bfw-action', disabled: busy || !demand.objective.trim(),
-              'data-start-production': true}, t(busy ? 'sending' : append ? 'appendRequest' : 'startProduction')))));
+    function DemandForm({ demand, change, busy, error, send, draft, attachments, included, onInclude, sceneSelection, openScenes, t }) {
+      const append = demand.mode === "append";
+      return h(
+        "section",
+        { className: "bfw-demand", "data-production-request": true },
+        h(
+          "div",
+          { className: "bfw-demand-heading" },
+          h("h2", null, t("productionRequest")),
+          select(t("task"), demand.mode, (mode) => change({ mode }), [["new", t("newProduction")], ["append", t("appendRequest")]])
+        ),
+        h(
+          "form",
+          { onSubmit: (event) => {
+            event.preventDefault();
+            send();
+          } },
+          h(
+            "label",
+            { className: "bfw-label" },
+            t(append ? "changeRequirements" : "productionRequirements"),
+            h("textarea", {
+              className: "bfw-input bfw-textarea",
+              rows: 3,
+              "data-production-objective": true,
+              value: demand.objective,
+              placeholder: t(append ? "requestPlaceholder" : "productionPlaceholder"),
+              onChange: (event) => change({ objective: event.target.value }),
+              required: true
+            })
+          ),
+          !append && h(
+            "div",
+            { className: "bfw-demand-fields" },
+            h("label", { className: "bfw-label" }, t("targetItems"), h("input", {
+              className: "bfw-input",
+              type: "number",
+              min: 1,
+              step: 1,
+              value: demand.count,
+              "data-production-count": true,
+              onChange: (event) => change({ count: event.target.value }),
+              required: true
+            })),
+            select(
+              t("executionMode"),
+              demand.executionMode || "production",
+              (executionMode) => change({ executionMode }),
+              [["production", t("productionMode")], ["exploration", t("explorationMode")]]
+            ),
+            select(
+              t("quantityContract"),
+              demand.quantityContract || "minimum",
+              (quantityContract) => change({ quantityContract }),
+              [["exact", t("exactQuantity")], ["minimum", t("minimumQuantity")], ["best_effort", t("bestEffortQuantity")]]
+            ),
+            h("label", { className: "bfw-label" }, t("capabilityRequest"), h("input", {
+              className: "bfw-input",
+              value: demand.capability,
+              placeholder: t("capabilityPlaceholder"),
+              onChange: (event) => change({ capability: event.target.value })
+            }))
+          ),
+          h(DraftReview, { draft, attachments, included, onInclude, t }),
+          sceneSelection && h(
+            "div",
+            { className: "bfw-demand-scene-summary" },
+            h("span", { className: "bfw-muted" }, t("sceneSelected") + ": " + sceneSelection.selected.length + " \xB7 " + t("allowNewScenes") + ": " + (sceneSelection.allow_new_scenes ? "\u2713" : "\u2014")),
+            button(t("sceneLibrary"), openScenes)
+          ),
+          error && h("p", { className: "bfw-error", role: "alert" }, error),
+          h(
+            "div",
+            { className: "bfw-demand-footer" },
+            h(
+              "div",
+              { className: "bfw-demand-options" },
+              !append && h(
+                "details",
+                null,
+                h("summary", null, t("advancedOptions")),
+                h(
+                  "div",
+                  { className: "bfw-form" },
+                  h("label", { className: "bfw-label" }, t("sceneCount"), h("input", {
+                    className: "bfw-input",
+                    type: "number",
+                    min: 1,
+                    step: 1,
+                    value: demand.sceneCount,
+                    placeholder: t("optionalAuto"),
+                    onChange: (event) => change({ sceneCount: event.target.value })
+                  })),
+                  h("label", { className: "bfw-label" }, t("storageBudget"), h("input", {
+                    className: "bfw-input",
+                    type: "number",
+                    min: 0,
+                    step: "any",
+                    value: demand.storageBudget,
+                    placeholder: t("optionalAuto"),
+                    onChange: (event) => change({ storageBudget: event.target.value })
+                  }))
+                ),
+                h("p", null, t("targetQuantityNote")),
+                h("p", null, t("fullWorkflowNote")),
+                h("p", null, t("requestNote"))
+              ),
+              h("p", null, t(append ? "appendNote" : "productionHint"))
+            ),
+            h("button", {
+              type: "submit",
+              className: "bfw-button bfw-action",
+              disabled: busy || !demand.objective.trim(),
+              "data-start-production": true
+            }, t(busy ? "sending" : append ? "appendRequest" : "startProduction"))
+          )
+        )
+      );
     }
-    function SendDialog({payload, change, draft, attachments, included, onInclude, sending, error, confirm, close, t}) {
+    function SendDialog({ payload, change, draft, attachments, included, onInclude, sending, error, confirm, close, t }) {
       const ref = React.useRef(null);
       React.useEffect(() => {
         const trigger = document.activeElement;
         const dialog = ref.current;
         dialog.showModal();
-        return () => {dialog.close(); trigger?.focus();};
+        return () => {
+          dialog.close();
+          trigger?.focus();
+        };
       }, []);
-      return h('dialog', {ref, className: 'bfw-preview-dialog', 'data-stage-confirm': true, 'aria-label': t('confirmTitle'),
-        onCancel: (event) => {event.preventDefault(); if (!sending) close();}},
-        h('h2', null, t('confirmTitle')), h('p', null, t('requestNote')), h('p', null, t('confirmSendNote')),
-        h(DraftReview, {draft, attachments, included, onInclude, t}),
-        h('textarea', {className: 'bfw-input bfw-textarea', 'data-request-text': true, 'aria-label': t('requestChange'), autoFocus: true,
-          placeholder: t('requestPlaceholder'), value: payload.text, disabled: sending || payload.inserted, onChange: (event) => change(event.target.value)}),
-        error && h('p', {className: 'bfw-error', role: 'alert'}, error),
-        h('div', {className: 'bfw-stage-actions'}, button(t('cancel'), close, {disabled: sending}),
-          button(t(sending ? 'sending' : 'confirmSend'), confirm, {className: 'bfw-button bfw-action', disabled: sending || !payload.text.trim()})));
+      return h(
+        "dialog",
+        {
+          ref,
+          className: "bfw-preview-dialog",
+          "data-stage-confirm": true,
+          "aria-label": t("confirmTitle"),
+          onCancel: (event) => {
+            event.preventDefault();
+            if (!sending) close();
+          }
+        },
+        h("h2", null, t("confirmTitle")),
+        h("p", null, t("requestNote")),
+        h("p", null, t("confirmSendNote")),
+        h(DraftReview, { draft, attachments, included, onInclude, t }),
+        h("textarea", {
+          className: "bfw-input bfw-textarea",
+          "data-request-text": true,
+          "aria-label": t("requestChange"),
+          autoFocus: true,
+          placeholder: t("requestPlaceholder"),
+          value: payload.text,
+          disabled: sending || payload.inserted,
+          onChange: (event) => change(event.target.value)
+        }),
+        error && h("p", { className: "bfw-error", role: "alert" }, error),
+        h(
+          "div",
+          { className: "bfw-stage-actions" },
+          button(t("cancel"), close, { disabled: sending }),
+          button(t(sending ? "sending" : "confirmSend"), confirm, { className: "bfw-button bfw-action", disabled: sending || !payload.text.trim() })
+        )
+      );
     }
-    function PlanProduct({plan, source, artifacts, preview, request, save, applyEdit, scenes = [],template, t}) {
-      const [draft,setDraft]=React.useState(null);
-      const [busy,setBusy]=React.useState(false);
-      const [error,setError]=React.useState('');
-      const [pending,setPending]=React.useState(null);
-      const draftRef=React.useRef(null);
-      const lock=React.useRef(false);
-      const begin=()=>{const markdown=planMarkdown(plan),value={markdown,base_markdown:markdown,split:plan.inputs?.split || 'train',base:source?.plan_path};
-        draftRef.current=value;setDraft(value);setError('');};
-      const apply=async(path)=>{let message='',ok=false;
-        try{ok=await applyEdit(path,(value)=>{message=value;});}catch(error){message=error.message;}
-        if(!ok) setError('计划已保存，制作变更尚未提交。'+(message || '请点击“应用已保存修改”重试。'));
-        else {setPending(null);setError('');}return ok;};
-      const commit=async()=>{
-        if(lock.current)return;lock.current=true;setBusy(true);setError('');
-        try {const value=draftRef.current;const result=await save({plan_path:value.base,markdown:value.markdown,base_markdown:value.base_markdown,split:value.split});
-          setDraft(null);draftRef.current=null;
-          if(result.state!=='unchanged'){setPending(result.plan);if(applyEdit)await apply(result.plan);}
-        }catch(error){setError(error.message);}finally{lock.current=false;setBusy(false);}
+    function PlanProduct({ plan, source, artifacts, preview, request, save, applyEdit, scenes = [], template, t }) {
+      const [draft, setDraft] = React.useState(null);
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState("");
+      const [pending, setPending] = React.useState(null);
+      const draftRef = React.useRef(null);
+      const lock = React.useRef(false);
+      const begin = () => {
+        const markdown = planMarkdown(plan), value = { markdown, base_markdown: markdown, split: plan.inputs?.split || "train", base: source?.plan_path };
+        draftRef.current = value;
+        setDraft(value);
+        setError("");
       };
-      if (!plan) return h('div', null, empty(t('planPending')), h('details', null, h('summary', null, t('planTemplate')),
-        h('small', {className: 'bfw-hint'}, t('planTemplateNote')),
-        h('ol', null, (template?.sections || PLAN_SECTIONS.map(([key, title]) => ({key, title}))).map((row) => h('li', {key: row.key}, row.title)))));
-      const document = plan.assessment;
-      const labels=Object.fromEntries((plan.template_contracts || []).map((row)=>[row.id,row.title || row.task_name]));
-      const sections = PLAN_SECTIONS.filter(([key]) => document?.[key]);
-      const operate = (text) => request('本次操作对象是当前页面展示的已保存计划：' +
-        (source?.plan_path || source?.operation_id || source?.run_id || plan.objective) + '\n请先读取该计划及其准确合同，再应用以下要求：\n' + text);
-      return h('article', {key:draft ? 'editing' : 'saved',className: 'bfw-plan-document', 'data-assessment-document': document?.schema || 'legacy_summary'},
-        h('div', {className: 'bfw-toolbar'}, h('span', {className: 'bfw-pill'}, t('persistedPlan')),
-          document && h('span', {className: 'bfw-pill'}, t('completePlan') + ' · ' + sections.length + '/' + PLAN_SECTIONS.length),
-          !draft && (document ? save && button(t('revisePlan'),begin,{'data-plan-revise':true}) : request && button(t('completePlanRequest'),()=>operate('请按照完整评测计划模板补全并保存 assessment，复用当前场景约束。'),{'data-plan-revise':true})),
-          draft && button(t(busy ? 'savingPlan' : 'savePlan'),commit,{'data-plan-save':true,disabled:busy}),
-          draft && button(t('cancelPlanEdit'),()=>{setDraft(null);draftRef.current=null;setError('');},{'data-plan-cancel':true,disabled:busy}),
-          !draft && (pending || (plan.edit_revision && !plan.applies_edit)) && applyEdit && button('应用已保存修改',()=>apply(pending || source.plan_path),{'data-plan-apply':true}),
-          !draft && !pending && !plan.edit_revision && document && request && button(t('continuePlan'), () => operate('请以当前已保存的完整评测计划继续实际生产。核对最新场景选择，复用已完成产物，补齐尚未完成的阶段并交付。不要重复提交正在运行的场景任务。'), {'data-plan-continue': true}),
-          h('a', {className: 'bfw-button', href: 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(plan, null, 2)), download: 'assessment-plan.json'}, t('exportPlan')),
-          h('a', {className: 'bfw-button', href: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(planMarkdown(plan)), download: 'assessment-plan.md'}, t('exportPlanText'))),
-        error && h('p',{className:'bfw-error',role:'alert'},error),
-        draft && h('small',{className:'bfw-hint'},t('planEditNote')),
-        draft && select('制作分区',draft.split,(value)=>{draftRef.current={...draftRef.current,split:value};setDraft({...draftRef.current});},['train','dev','test','sealed'].map(value=>[value,value])),
-        typeof plan.user_markdown !== 'string' && h('h3', null, document ? planValue(document.title,null,['title'],labels) : (typeof plan.objective === 'string' ? plan.objective : plan.title || t('blueprint'))),
-        scenes.length>0 && h('div',{className:'bfw-plan-scenes','data-plan-scene-previews':true},scenes.slice(0,3).map((row)=>h('button',{
-          type:'button',className:'bfw-plan-scene',key:row.id,onClick:()=>preview({...row,title:row.name,kind:'scene'})},
-          row.frames?.[0]?.url && h('img',{src:row.frames[0].url,alt:sceneName(row.name),loading:'lazy'}),h('span',null,sceneName(row.name)),h('small',null,row.planCurrent ? '本会话已采集场景' : '已采集参考场景')))),
-        draft ? h('textarea', {className:'bfw-input bfw-plan-markdown-editor', 'data-plan-markdown-editor':true,
-          'aria-label':t('planMarkdownEditor'), rows:32, spellCheck:false,
-          style:{minHeight:'min(70vh, 50rem)',fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:'.8rem',lineHeight:1.55,whiteSpace:'pre',overflow:'auto'},
-          value:draft.markdown,
-          onChange:(event)=>{const value={...draftRef.current,markdown:event.target.value};draftRef.current=value;setDraft(value);}}) : typeof plan.user_markdown === 'string' ? planMarkdownView(plan.user_markdown) : document ? h(React.Fragment, null, h('p', {className: 'bfw-plan-summary'}, planValue(document.summary,null,['summary'],labels)),
-          h('small', {className: 'bfw-hint'}, t('planDesignNote')),
-          h('nav', {className: 'bfw-plan-toc', 'aria-label': t('completePlan')}, sections.map(([key, title], index) =>
-            h('a', {key, href: '#bfw-plan-' + key}, String(index + 1).padStart(2, '0') + ' ' + title))),
-          sections.map(([key, title], index) => h('section', {key, id: 'bfw-plan-' + key, className: 'bfw-plan-section', 'data-plan-section': key},
-            h('h4', null, h('span', {className: 'bfw-muted'}, String(index + 1).padStart(2, '0') + ' '), title), planValue(document[key],null,[key],labels))))
-          : h('p', {className: 'bfw-hint'}, t('legacyPlan')),
-        !draft && h(document ? 'details' : React.Fragment, document ? {} : null, document && h('summary', null, t('planSteps')),
-        plan.inputs && h('dl', {className: 'bfw-definition'}, Object.entries(plan.inputs).map(([key, value]) => h('div', {key},
-          h('dt', null, key), h('dd', null, typeof value === 'object' ? JSON.stringify(value) : String(value))))),
-        plan.selections?.length > 0 && table([t('selectedTemplates'), t('selectionTotal'), t('reason')],
-          plan.selections.map((row) => [row.template_ids.join(', '), row.count, row.reason])),
-        plan.steps?.length ? table([t('steps'), t('operator'), t('details')], plan.steps.map((row) =>
-          [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(' → ') || '—'])) : null),
-        !draft && artifacts.length > 0 && h(ArtifactGallery, {items: artifacts, selected: [], preview, t}),
-        !draft && h('details', null, h('summary', null, t('plan')), json(plan)));
+      const apply = async (path) => {
+        let message = "", ok = false;
+        try {
+          ok = await applyEdit(path, (value) => {
+            message = value;
+          });
+        } catch (error2) {
+          message = error2.message;
+        }
+        if (!ok) setError("\u8BA1\u5212\u5DF2\u4FDD\u5B58\uFF0C\u5236\u4F5C\u53D8\u66F4\u5C1A\u672A\u63D0\u4EA4\u3002" + (message || "\u8BF7\u70B9\u51FB\u201C\u5E94\u7528\u5DF2\u4FDD\u5B58\u4FEE\u6539\u201D\u91CD\u8BD5\u3002"));
+        else {
+          setPending(null);
+          setError("");
+        }
+        return ok;
+      };
+      const commit = async () => {
+        if (lock.current) return;
+        lock.current = true;
+        setBusy(true);
+        setError("");
+        try {
+          const value = draftRef.current;
+          const result = await save({ plan_path: value.base, markdown: value.markdown, base_markdown: value.base_markdown, split: value.split });
+          setDraft(null);
+          draftRef.current = null;
+          if (result.state !== "unchanged") {
+            setPending(result.plan);
+            if (applyEdit) await apply(result.plan);
+          }
+        } catch (error2) {
+          setError(error2.message);
+        } finally {
+          lock.current = false;
+          setBusy(false);
+        }
+      };
+      if (!plan) return h("div", null, empty(t("planPending")), h(
+        "details",
+        null,
+        h("summary", null, t("planTemplate")),
+        h("small", { className: "bfw-hint" }, t("planTemplateNote")),
+        h("ol", null, (template?.sections || PLAN_SECTIONS2.map(([key, title]) => ({ key, title }))).map((row) => h("li", { key: row.key }, row.title)))
+      ));
+      const document2 = plan.assessment;
+      const labels = Object.fromEntries((plan.template_contracts || []).map((row) => [row.id, row.title || row.task_name]));
+      const sections = PLAN_SECTIONS2.filter(([key]) => document2?.[key]);
+      const operate = (text) => request("\u672C\u6B21\u64CD\u4F5C\u5BF9\u8C61\u662F\u5F53\u524D\u9875\u9762\u5C55\u793A\u7684\u5DF2\u4FDD\u5B58\u8BA1\u5212\uFF1A" + (source?.plan_path || source?.operation_id || source?.run_id || plan.objective) + "\n\u8BF7\u5148\u8BFB\u53D6\u8BE5\u8BA1\u5212\u53CA\u5176\u51C6\u786E\u5408\u540C\uFF0C\u518D\u5E94\u7528\u4EE5\u4E0B\u8981\u6C42\uFF1A\n" + text);
+      return h(
+        "article",
+        { key: draft ? "editing" : "saved", className: "bfw-plan-document", "data-assessment-document": document2?.schema || "legacy_summary" },
+        h(
+          "div",
+          { className: "bfw-toolbar" },
+          h("span", { className: "bfw-pill" }, t("persistedPlan")),
+          document2 && h("span", { className: "bfw-pill" }, t("completePlan") + " \xB7 " + sections.length + "/" + PLAN_SECTIONS2.length),
+          !draft && (document2 ? save && button(t("revisePlan"), begin, { "data-plan-revise": true }) : request && button(t("completePlanRequest"), () => operate("\u8BF7\u6309\u7167\u5B8C\u6574\u8BC4\u6D4B\u8BA1\u5212\u6A21\u677F\u8865\u5168\u5E76\u4FDD\u5B58 assessment\uFF0C\u590D\u7528\u5F53\u524D\u573A\u666F\u7EA6\u675F\u3002"), { "data-plan-revise": true })),
+          draft && button(t(busy ? "savingPlan" : "savePlan"), commit, { "data-plan-save": true, disabled: busy }),
+          draft && button(t("cancelPlanEdit"), () => {
+            setDraft(null);
+            draftRef.current = null;
+            setError("");
+          }, { "data-plan-cancel": true, disabled: busy }),
+          !draft && (pending || plan.edit_revision && !plan.applies_edit) && applyEdit && button("\u5E94\u7528\u5DF2\u4FDD\u5B58\u4FEE\u6539", () => apply(pending || source.plan_path), { "data-plan-apply": true }),
+          !draft && !pending && !plan.edit_revision && document2 && request && button(t("continuePlan"), () => operate("\u8BF7\u4EE5\u5F53\u524D\u5DF2\u4FDD\u5B58\u7684\u5B8C\u6574\u8BC4\u6D4B\u8BA1\u5212\u7EE7\u7EED\u5B9E\u9645\u751F\u4EA7\u3002\u6838\u5BF9\u6700\u65B0\u573A\u666F\u9009\u62E9\uFF0C\u590D\u7528\u5DF2\u5B8C\u6210\u4EA7\u7269\uFF0C\u8865\u9F50\u5C1A\u672A\u5B8C\u6210\u7684\u9636\u6BB5\u5E76\u4EA4\u4ED8\u3002\u4E0D\u8981\u91CD\u590D\u63D0\u4EA4\u6B63\u5728\u8FD0\u884C\u7684\u573A\u666F\u4EFB\u52A1\u3002"), { "data-plan-continue": true }),
+          h("a", { className: "bfw-button", href: "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(plan, null, 2)), download: "assessment-plan.json" }, t("exportPlan")),
+          h("a", { className: "bfw-button", href: "data:text/markdown;charset=utf-8," + encodeURIComponent(planMarkdown(plan)), download: "assessment-plan.md" }, t("exportPlanText"))
+        ),
+        error && h("p", { className: "bfw-error", role: "alert" }, error),
+        draft && h("small", { className: "bfw-hint" }, t("planEditNote")),
+        draft && select("\u5236\u4F5C\u5206\u533A", draft.split, (value) => {
+          draftRef.current = { ...draftRef.current, split: value };
+          setDraft({ ...draftRef.current });
+        }, ["train", "dev", "test", "sealed"].map((value) => [value, value])),
+        typeof plan.user_markdown !== "string" && h("h3", null, document2 ? planValue(document2.title, null, ["title"], labels) : typeof plan.objective === "string" ? plan.objective : plan.title || t("blueprint")),
+        scenes.length > 0 && h("div", { className: "bfw-plan-scenes", "data-plan-scene-previews": true }, scenes.slice(0, 3).map((row) => h(
+          "button",
+          {
+            type: "button",
+            className: "bfw-plan-scene",
+            key: row.id,
+            onClick: () => preview({ ...row, title: row.name, kind: "scene" })
+          },
+          row.frames?.[0]?.url && h("img", { src: row.frames[0].url, alt: sceneName(row.name), loading: "lazy" }),
+          h("span", null, sceneName(row.name)),
+          h("small", null, row.planCurrent ? "\u672C\u4F1A\u8BDD\u5DF2\u91C7\u96C6\u573A\u666F" : "\u5DF2\u91C7\u96C6\u53C2\u8003\u573A\u666F")
+        ))),
+        draft ? h("textarea", {
+          className: "bfw-input bfw-plan-markdown-editor",
+          "data-plan-markdown-editor": true,
+          "aria-label": t("planMarkdownEditor"),
+          rows: 32,
+          spellCheck: false,
+          style: { minHeight: "min(70vh, 50rem)", fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: ".8rem", lineHeight: 1.55, whiteSpace: "pre", overflow: "auto" },
+          value: draft.markdown,
+          onChange: (event) => {
+            const value = { ...draftRef.current, markdown: event.target.value };
+            draftRef.current = value;
+            setDraft(value);
+          }
+        }) : typeof plan.user_markdown === "string" ? planMarkdownView(plan.user_markdown) : document2 ? h(
+          React.Fragment,
+          null,
+          h("p", { className: "bfw-plan-summary" }, planValue(document2.summary, null, ["summary"], labels)),
+          h("small", { className: "bfw-hint" }, t("planDesignNote")),
+          h("nav", { className: "bfw-plan-toc", "aria-label": t("completePlan") }, sections.map(([key, title], index) => h("a", { key, href: "#bfw-plan-" + key }, String(index + 1).padStart(2, "0") + " " + title))),
+          sections.map(([key, title], index) => h(
+            "section",
+            { key, id: "bfw-plan-" + key, className: "bfw-plan-section", "data-plan-section": key },
+            h("h4", null, h("span", { className: "bfw-muted" }, String(index + 1).padStart(2, "0") + " "), title),
+            planValue(document2[key], null, [key], labels)
+          ))
+        ) : h("p", { className: "bfw-hint" }, t("legacyPlan")),
+        !draft && h(
+          document2 ? "details" : React.Fragment,
+          document2 ? {} : null,
+          document2 && h("summary", null, t("planSteps")),
+          plan.inputs && h("dl", { className: "bfw-definition" }, Object.entries(plan.inputs).map(([key, value]) => h(
+            "div",
+            { key },
+            h("dt", null, key),
+            h("dd", null, typeof value === "object" ? JSON.stringify(value) : String(value))
+          ))),
+          plan.selections?.length > 0 && table(
+            [t("selectedTemplates"), t("selectionTotal"), t("reason")],
+            plan.selections.map((row) => [row.template_ids.join(", "), row.count, row.reason])
+          ),
+          plan.steps?.length ? table([t("steps"), t("operator"), t("details")], plan.steps.map((row) => [row.id, row.uses, row.title || row.description || (row.depends_on || []).join(" \u2192 ") || "\u2014"])) : null
+        ),
+        !draft && artifacts.length > 0 && h(ArtifactGallery, { items: artifacts, selected: [], preview, t }),
+        !draft && h("details", null, h("summary", null, t("plan")), json(plan))
+      );
     }
-    function ReportProduct({item, observedAt, t}) {
+    function ReportProduct({ item, observedAt, t }) {
       const [data, setData] = React.useState(item?.data || null);
-      const [error, setError] = React.useState('');
+      const [error, setError] = React.useState("");
       React.useEffect(() => {
-        setError('');
-        if (!item) {setData(null); return;}
-        if (item.data) {setData(item.data); return;}
+        setError("");
+        if (!item) {
+          setData(null);
+          return;
+        }
+        if (item.data) {
+          setData(item.data);
+          return;
+        }
         const controller = new AbortController();
         setData(null);
-        fetch(item.url, {signal: controller.signal}).then(async (response) => {
-          if (!response.ok) throw new Error('HTTP ' + response.status);
+        fetch(item.url, { signal: controller.signal }).then(async (response) => {
+          if (!response.ok) throw new Error("HTTP " + response.status);
           return response.json();
-        }).then(setData).catch((reason) => {if (reason.name !== 'AbortError') setError(reason.message);});
+        }).then(setData).catch((reason) => {
+          if (reason.name !== "AbortError") setError(reason.message);
+        });
         return () => controller.abort();
       }, [item?.url, observedAt]);
-      if (!item) return empty(t('reportPending'));
-      if (error) return h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + error);
-      if (!data) return empty(t('loading'));
-      return h('article', {className: 'bfw-plan-document'}, h('h3', null, item.title),
-        h('dl', {className: 'bfw-definition'}, Object.entries(data).filter(([key, value]) =>
-          ['requested','accepted','shortfall','split','scene_groups','total','count','success_rate','model_api_calls','benchmark_approved','state','status'].includes(key) &&
-          (value === null || typeof value !== 'object')).map(([key, value]) =>
-          h('div', {key}, h('dt', null, key==='benchmark_approved' ? t('approval') :
-            ({total:'总数',count:'数量',success_rate:'成功率',model_api_calls:'模型调用次数',status:'状态'})[key] || t(key)),
-            h('dd', null, typeof value === 'boolean' ? t(value ? 'yes' : 'no') : ['state','status'].includes(key) ? t(value) : String(value ?? '—'))))),
-        h('details', null, h('summary', null,'数据详情'), json(data)));
+      if (!item) return empty(t("reportPending"));
+      if (error) return h("p", { className: "bfw-error", role: "alert" }, t("artifactReadFailed") + " " + error);
+      if (!data) return empty(t("loading"));
+      return h(
+        "article",
+        { className: "bfw-plan-document" },
+        h("h3", null, item.title),
+        h(DeliveryReceipt, { receipt: data, t }),
+        data.scene_previews?.length > 0 && h(
+          "div",
+          {
+            "data-report-scene-previews": true,
+            style: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: ".75rem" }
+          },
+          data.scene_previews.map((row) => h(
+            "figure",
+            { key: row.url, style: { margin: 0 } },
+            h("img", { src: row.url, alt: row.title, loading: "lazy", style: { width: "100%", aspectRatio: "16 / 9", objectFit: "cover" } }),
+            h("figcaption", { className: "bfw-muted" }, row.title)
+          ))
+        ),
+        data.body_markdown && h(
+          React.Fragment,
+          null,
+          planMarkdownView(data.body_markdown),
+          h("a", {
+            className: "bfw-button",
+            href: item.step_id && item.url ? item.url + (item.url.includes("?") ? "&" : "?") + "format=markdown" : "data:text/markdown;charset=utf-8," + encodeURIComponent(data.body_markdown),
+            download: "delivery_report.md"
+          }, t("exportPlanText"))
+        ),
+        !data.body_markdown && h("dl", { className: "bfw-definition" }, Object.entries(data).filter(([key, value]) => ["requested", "accepted", "shortfall", "split", "scene_groups", "total", "count", "success_rate", "model_api_calls", "benchmark_approved", "state", "status"].includes(key) && (value === null || typeof value !== "object")).map(([key, value]) => h(
+          "div",
+          { key },
+          h("dt", null, key === "benchmark_approved" ? t("approval") : { total: "\u603B\u6570", count: "\u6570\u91CF", success_rate: "\u6210\u529F\u7387", model_api_calls: "\u6A21\u578B\u8C03\u7528\u6B21\u6570", status: "\u72B6\u6001" }[key] || t(key)),
+          h("dd", null, typeof value === "boolean" ? t(value ? "yes" : "no") : ["state", "status"].includes(key) ? t(value) : String(value ?? "\u2014"))
+        ))),
+        !data.body_markdown && data.per_partition && table(["\u6570\u636E\u7528\u9014", "\u9898\u91CF"], Object.entries(data.per_partition).map(([split, count]) => [{ train: "\u8BAD\u7EC3", dev: "\u5F00\u53D1\u9A8C\u8BC1", test: "\u6D4B\u8BD5", sealed: "\u5C01\u5B58" }[split] || split, count])),
+        h("details", null, h("summary", null, "\u6570\u636E\u8BE6\u60C5"), json(data))
+      );
     }
-    function Quality({report, t, templateName=(id)=>id}) {
-      if (!report) return empty(t('noReport'));
-      return h(React.Fragment, null,
-        h('small', {className: 'bfw-hint'}, t('reportNote')),
-        h('div', {className: 'bfw-stats'}, ['requested', 'accepted', 'shortfall', 'scene_groups'].map((key) =>
-          h('div', {className: 'bfw-stat', key}, t(key), h('strong', null, report[key] ?? '—')))),
-        h('p', null, t('approval') + ': ', report.benchmark_approved === undefined ? '—' : t(report.benchmark_approved ? 'yes' : 'no')),
-        card(t('coverage'), table([t('template'), t('accepted')], Object.entries(report.per_template || {}).map(([id,count])=>[templateName(id),count]))),
-        card(t('rejections'), report.rejections?.length ? json(report.rejections) : empty(t('noRejections'))));
+    function Quality({ report, t, templateName = (id) => id }) {
+      if (!report) return empty(t("noReport"));
+      return h(
+        React.Fragment,
+        null,
+        h(DeliveryReceipt, { receipt: report, t }),
+        h("small", { className: "bfw-hint" }, t("reportNote")),
+        h("div", { className: "bfw-stats" }, ["requested", "accepted", "shortfall", "scene_groups"].map((key) => h("div", { className: "bfw-stat", key }, t(key), h("strong", null, report[key] ?? "\u2014")))),
+        report.per_partition && table(["\u6570\u636E\u7528\u9014", "\u9898\u91CF"], Object.entries(report.per_partition).map(([split, count]) => [{ train: "\u8BAD\u7EC3", dev: "\u5F00\u53D1\u9A8C\u8BC1", test: "\u6D4B\u8BD5", sealed: "\u5C01\u5B58" }[split] || split, count])),
+        h("p", null, t("approval") + ": ", report.benchmark_approved === void 0 ? "\u2014" : t(report.benchmark_approved ? "yes" : "no")),
+        card(t("coverage"), table([t("template"), t("accepted")], Object.entries(report.per_template || {}).map(([id, count]) => [templateName(id), count]))),
+        card(t("rejections"), report.rejections?.length ? json(report.rejections) : empty(t("noRejections")))
+      );
     }
+    function DeliveryReceipt({ receipt, t }) {
+      if (!receipt || !["exact", "minimum", "best_effort"].includes(receipt.quantity_contract) && receipt.target_items == null && receipt.target_reached == null && receipt.delivery_satisfied == null && !receipt.delivery_status) return null;
+      const contract = ["exact", "minimum", "best_effort"].includes(receipt.quantity_contract) ? t({ exact: "exactQuantity", minimum: "minimumQuantity", best_effort: "bestEffortQuantity" }[receipt.quantity_contract]) : t("unknown");
+      const targetReached = typeof receipt.target_reached === "boolean" ? t(receipt.target_reached ? "targetReached" : "targetNotReached") : t("unknown");
+      const delivery = typeof receipt.delivery_satisfied === "boolean" ? t(receipt.delivery_satisfied ? "deliverySatisfied" : "deliveryNotSatisfied") : t({ complete: "deliveryComplete", partial: "deliveryPartial", unsatisfied: "deliveryUnsatisfied", not_evaluated: "deliveryUnknown" }[receipt.delivery_status] || "deliveryUnknown");
+      return h(
+        "section",
+        { className: "bfw-delivery-receipt", "data-delivery-satisfied": String(receipt.delivery_satisfied ?? "unknown") },
+        h("h4", null, t("deliveryReceipt")),
+        h(
+          "dl",
+          { className: "bfw-definition" },
+          h("div", null, h("dt", null, t("quantityContract")), h("dd", null, contract)),
+          h("div", null, h("dt", null, t("targetItems")), h("dd", null, receipt.target_items ?? receipt.requested ?? "\u2014")),
+          h("div", null, h("dt", null, t("accepted")), h("dd", null, receipt.accepted ?? "\u2014")),
+          h("div", null, h("dt", null, t("shortfall")), h("dd", null, receipt.shortfall ?? "\u2014")),
+          h("div", null, h("dt", null, t("targetReached")), h("dd", null, targetReached)),
+          h("div", null, h("dt", null, t("deliverySatisfaction")), h("dd", null, delivery))
+        )
+      );
+    }
+    function ExecutionFeedback({ renderFactorySlot, t }) {
+      return h(
+        "div",
+        {
+          className: "bfw-native-chat",
+          "data-execution-feedback": true,
+          "data-native-chat-view": true,
+          "aria-label": t("executionFeedback")
+        },
+        renderFactorySlot("conversation.content", { variant: "embedded", phase: "active", hero: false })
+      );
+    }
+    return { StageReviewPanel, DraftReview, DemandForm, SendDialog, PlanProduct, ReportProduct, Quality, DeliveryReceipt, ExecutionFeedback };
+  }
 
-    function ExecutionFeedback({renderFactorySlot, t}) {
-      return h('div', {className: 'bfw-native-chat', 'data-execution-feedback': true,
-        'data-native-chat-view': true, 'aria-label': t('executionFeedback')},
-        renderFactorySlot('conversation.content', {variant: 'embedded', phase: 'active', hero: false}));
-    }
-
-    function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions, renderFactorySlot, canSubmit = false,
-      permissionError = '', retryPermission, stopExecution}) {
+  // integrations/spatialforge/ui/client/components/workbench.js
+  function createWorkbenchComponent({ React, helpers, components }) {
+    const h = React.createElement;
+    const {
+      status,
+      button,
+      card,
+      empty,
+      json,
+      sceneName,
+      questionText,
+      planValue,
+      planMarkdown,
+      planMarkdownView,
+      planEditInstruction,
+      table,
+      select,
+      initialState,
+      initialDemand,
+      sceneConstraint,
+      productionRequest,
+      displayRef,
+      filteredPage,
+      useRecord,
+      usePanelVisible,
+      lifecycle,
+      backgroundProductionState,
+      productionProductsRevision,
+      sceneStage,
+      pipelineForStage,
+      sceneForStage,
+      progressSceneForStage,
+      registeredCollectionProgress,
+      currentGeneration,
+      sceneCollectionProgress,
+      annotationProducts,
+      stageState,
+      recordedStageState,
+      STAGES: STAGES2,
+      PLAN_SECTIONS: PLAN_SECTIONS2,
+      PLAN_FIELDS: PLAN_FIELDS2,
+      styles: styles2,
+      dictionaries: dictionaries2
+    } = helpers;
+    const {
+      TemplateCatalog,
+      RunDetails,
+      executionStage,
+      reportedProgress,
+      progressAmount,
+      ParallelProgress,
+      StageProgress,
+      PublicObservation,
+      QuestionDialog,
+      firstImage,
+      sceneProjects,
+      SceneGallery,
+      SceneVideo,
+      SceneLibrary,
+      PreviewDialog,
+      ArtifactGallery,
+      StageReviewPanel,
+      DraftReview,
+      DemandForm,
+      SendDialog,
+      PlanProduct,
+      ReportProduct,
+      Quality,
+      ExecutionFeedback
+    } = components;
+    function Workbench({
+      t,
+      sessionId,
+      useSessions,
+      useSession,
+      useInput,
+      inputActions,
+      renderFactorySlot,
+      canSubmit = false,
+      permissionError = "",
+      requestPermission,
+      requestingPermission = false,
+      stopExecution
+    }) {
       const panelRef = React.useRef(null);
       const visible = usePanelVisible(panelRef);
       const [route, setRoute] = React.useState(() => initialState(sessionId));
       const [revision, setRevision] = React.useState(0);
       const [sample, setSample] = React.useState(null);
       const [search, setSearch] = React.useState(route.q);
-      const [notice, setNotice] = React.useState('');
-      const [catalogQuery, setCatalogQuery] = React.useState('');
+      const [notice, setNotice] = React.useState("");
+      const [catalogQuery, setCatalogQuery] = React.useState("");
       const [catalogPage, setCatalogPage] = React.useState(1);
-      const [capability, setCapability] = React.useState('');
+      const [capability, setCapability] = React.useState("");
       const [preview, setPreview] = React.useState(null);
       const [sendPayload, setSendPayload] = React.useState(null);
       const [sending, setSending] = React.useState(false);
-      const [sendError, setSendError] = React.useState('');
+      const [sendError, setSendError] = React.useState("");
       const [demand, setDemand] = React.useState(() => initialDemand(sessionId));
-      const [demandError, setDemandError] = React.useState('');
-      const [sceneQuery, setSceneQuery] = React.useState('');
-      const [sceneOrigin, setSceneOrigin] = React.useState('all');
+      const [demandError, setDemandError] = React.useState("");
+      const [sceneQuery, setSceneQuery] = React.useState("");
+      const [sceneOrigin, setSceneOrigin] = React.useState("all");
       const [scenePage, setScenePage] = React.useState(1);
       const [sceneChoice, setSceneChoice] = React.useState(null);
       const [sceneSaving, setSceneSaving] = React.useState(false);
-      const [sceneError, setSceneError] = React.useState('');
+      const [sceneError, setSceneError] = React.useState("");
       const sceneSaveLock = React.useRef(false);
       const selectionSubmitLock = React.useRef(false);
       const lastSceneLibrary = React.useRef(null);
-      const [draftConsent, setDraftConsent] = React.useState('');
+      const [draftConsent, setDraftConsent] = React.useState("");
       const [stopping, setStopping] = React.useState(false);
-      const [stopError, setStopError] = React.useState('');
+      const [stopError, setStopError] = React.useState("");
       const submitLock = React.useRef(false);
       const pendingSubmission = React.useRef(null);
-      const lastSubmitted = React.useRef('');
+      const lastSubmitted = React.useRef("");
       const inputState = useInput((state) => state);
       const sessionState = useSession((state) => state);
       const stop = async () => {
-        setStopping(true); setStopError('');
-        try {await stopExecution();} catch (error) {setStopError(error.message);} finally {setStopping(false);}
+        setStopping(true);
+        setStopError("");
+        try {
+          await stopExecution();
+        } catch (error) {
+          setStopError(error.message);
+        } finally {
+          setStopping(false);
+        }
       };
-      const update = (patch) => setRoute((old) => ({...old, ...patch}));
-      const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || '');
+      const update = (patch) => setRoute((old) => ({ ...old, ...patch }));
+      const workspacePath = useSessions((state) => state.byId[sessionId]?.cwd || "");
       const conversationRunning = sessionState.running;
       const attachments = inputState.attachmentIds || [];
-      const draftKey = JSON.stringify([inputState.draft || '', attachments]);
+      const draftKey = JSON.stringify([inputState.draft || "", attachments]);
       const includeDraft = draftConsent === draftKey;
       const hasComposerContent = Boolean(inputState.draft || attachments.length);
-      const allowDraft = (included) => setDraftConsent(included ? draftKey : '');
-      const changeDemand = (patch) => {setDemand((old) => ({...old, ...patch})); setDemandError(''); lastSubmitted.current = '';};
+      const allowDraft = (included) => setDraftConsent(included ? draftKey : "");
+      const changeDemand = (patch) => {
+        setDemand((old) => ({ ...old, ...patch }));
+        setDemandError("");
+        lastSubmitted.current = "";
+      };
       const queueCount = inputState.queue.length;
       const sessionError = sessionState.openError || sessionState.promptError?.error || sessionState.lastAgentError;
-      const sessionStatus = sessionState.openState === 'error' ? 'failed' : conversationRunning ? 'running' :
-        ['adjudicating', 'submitting'].includes(inputState.phase) || sessionState.pendingSubmissions.length || sessionState.awaitingFirstTurn ? 'submitting' :
-        sessionError ? 'failed' : sessionState.openState === 'loading' ? 'loading' : 'idle';
-      const sessionStatusKey = {idle: 'sessionIdle', running: 'sessionRunning', submitting: 'sessionSubmitting', failed: 'sessionFailed', loading: 'sessionLoading'}[sessionStatus];
-      const progress = useRecord(workspacePath ? {view: 'progress', workspace_path: workspacePath, session_id: sessionId} : null, revision, 3000, visible);
-      const receiptsRevision = revision + ':' + productionProductsRevision(progress.value);
-      const summary = useRecord(workspacePath ? {view: 'summary', workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
+      const sessionStatus = sessionState.openState === "error" ? "failed" : conversationRunning ? "running" : ["adjudicating", "submitting"].includes(inputState.phase) || sessionState.pendingSubmissions.length || sessionState.awaitingFirstTurn ? "submitting" : sessionError ? "failed" : sessionState.openState === "loading" ? "loading" : "idle";
+      const sessionStatusKey = { idle: "sessionIdle", running: "sessionRunning", submitting: "sessionSubmitting", failed: "sessionFailed", loading: "sessionLoading" }[sessionStatus];
+      const progress = useRecord(workspacePath ? { view: "progress", workspace_path: workspacePath, session_id: sessionId } : null, revision, 3e3, visible);
+      const receiptsRevision = revision + ":" + productionProductsRevision(progress.value);
+      const summary = useRecord(workspacePath ? { view: "summary", workspace_path: workspacePath, session_id: sessionId } : null, receiptsRevision, 3e4, visible);
       const rows = summary.value?.runs || [];
       const pipelines = progress.value?.pipelines || [];
       const explicitRunId = rows.find((row) => row.id === route.run)?.id || pipelines.find((row) => row.id === route.run)?.id;
-      const selectedRunId = route.production && !route.run ? '' : explicitRunId ||
-        pipelineForStage(route.stage, pipelines)?.id || (['S2', 'S3'].includes(route.stage) ? '' : rows[0]?.id || pipelines[0]?.id || '');
-      const datasetRunId = route.production && !route.run ? '' : explicitRunId || pipelineForStage('S4', pipelines)?.id || selectedRunId;
+      const selectedRunId = route.production && !route.run ? "" : explicitRunId || pipelineForStage(route.stage, pipelines)?.id || (["S2", "S3"].includes(route.stage) ? "" : rows[0]?.id || pipelines[0]?.id || "");
+      const datasetRunId = route.production && !route.run ? "" : explicitRunId || pipelineForStage("S4", pipelines)?.id || selectedRunId;
       const datasets = (summary.value?.datasets || []).filter((row) => datasetRunId ? row.run_id === datasetRunId : !row.run_id);
       const selectedDataset = datasets.find((row) => row.id === route.dataset);
       const sceneJobs = progress.value?.scenes?.runs || [];
-      const scene = route.production ? sceneJobs.find((row) => row.run_id === route.production) :
-        sceneForStage(route.stage, sceneJobs) || sceneForStage('S2', sceneJobs);
+      const scene = route.production ? sceneJobs.find((row) => row.run_id === route.production) : sceneForStage(route.stage, sceneJobs) || sceneForStage("S2", sceneJobs);
       const sourceScene = selectedRunId ? null : scene;
-      const run = useRecord(workspacePath && selectedRunId ? {view: 'run', run: selectedRunId, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 10000, visible);
-      const automaticScene = !route.run && !route.production ? sceneForStage('S2', sceneJobs) : null;
+      const run = useRecord(workspacePath && selectedRunId ? { view: "run", run: selectedRunId, workspace_path: workspacePath, session_id: sessionId } : null, receiptsRevision, 1e4, visible);
+      const automaticScene = !route.run && !route.production ? sceneForStage("S2", sceneJobs) : null;
       const artifactScene = sourceScene?.run_id || automaticScene?.run_id || run.value?.scene_ids?.[0];
-      const artifactRunId = sourceScene || automaticScene ? '' : selectedRunId;
-      const sceneArtifacts = useRecord(workspacePath && artifactScene ?
-        {view: 'stage_artifacts', scene: artifactScene, run: artifactRunId, session_id: sessionId, workspace_path: workspacePath} : null, receiptsRevision, 10000, visible);
-      const catalog = useRecord(route.stage === 'S1'
-        ? {view: 'catalog', q: catalogQuery, capability, page: catalogPage, page_size: 12} : null, revision);
-      const dataset = useRecord(workspacePath && ['S4', 'S5'].includes(route.stage) && selectedDataset ?
-        {view: 'dataset', dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId} : null, receiptsRevision, 30000, visible);
-      const sceneLibrary = useRecord(workspacePath ? {view: 'scene_library', workspace_path: workspacePath, session_id: sessionId,
-        q: sceneQuery, origin: sceneOrigin, page: scenePage} : null, receiptsRevision, 30000, visible);
-      const planSceneLibrary=useRecord(workspacePath && route.stage==='S1' ? {view:'scene_library',workspace_path:workspacePath,session_id:sessionId,
-        origin:'selected',page_size:24} : null,receiptsRevision,30000,visible);
-      const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
-      const reviewAction = async (action,instruction='') => {
-        const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
-          {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,review_id:reviewRecord.value?.review_id,instruction})});
+      const artifactRunId = sourceScene || automaticScene ? "" : selectedRunId;
+      const sceneArtifacts = useRecord(workspacePath && artifactScene ? { view: "stage_artifacts", scene: artifactScene, run: artifactRunId, session_id: sessionId, workspace_path: workspacePath } : null, receiptsRevision, 1e4, visible);
+      const catalog = useRecord(route.stage === "S1" ? { view: "catalog", q: catalogQuery, capability, page: catalogPage, page_size: 12 } : null, revision);
+      const dataset = useRecord(workspacePath && ["S4", "S5"].includes(route.stage) && selectedDataset ? { view: "dataset", dataset: route.dataset, template: route.template, split: route.split, q: route.q, page: route.page, page_size: route.size, workspace_path: workspacePath, session_id: sessionId } : null, receiptsRevision, 3e4, visible);
+      const sceneLibrary = useRecord(workspacePath ? {
+        view: "scene_library",
+        workspace_path: workspacePath,
+        session_id: sessionId,
+        q: sceneQuery,
+        origin: sceneOrigin,
+        page: scenePage
+      } : null, receiptsRevision, 3e4, visible);
+      const planSceneLibrary = useRecord(workspacePath && route.stage === "S1" ? {
+        view: "scene_library",
+        workspace_path: workspacePath,
+        session_id: sessionId,
+        origin: "selected",
+        page_size: 24
+      } : null, receiptsRevision, 3e4, visible);
+      const reviewRecord = useRecord(workspacePath ? { view: "stage_review", workspace_path: workspacePath, session_id: sessionId } : null, revision, 3e3, visible);
+      const reviewAction = async (action, instruction = "") => {
+        const response = await fetch(
+          "api/benchforge/workbench?" + new URLSearchParams({ view: "stage_review", workspace_path: workspacePath, session_id: sessionId }),
+          { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, review_id: reviewRecord.value?.review_id, instruction }) }
+        );
         const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || 'Stage review update failed');
-        setRevision(old => old+1);
+        if (!response.ok || value.error) throw new Error(value.error || "Stage review update failed");
+        setRevision((old) => old + 1);
         return value;
       };
       if (sceneLibrary.value) lastSceneLibrary.current = sceneLibrary.value;
-      const sceneLibraryView = sceneLibrary.value ? sceneLibrary : {...sceneLibrary, value: lastSceneLibrary.current};
+      const sceneLibraryView = sceneLibrary.value ? sceneLibrary : { ...sceneLibrary, value: lastSceneLibrary.current };
       const savedSceneSelection = sceneLibraryView.value?.selection;
-      const currentSceneSelection = sceneChoice && (!savedSceneSelection || sceneChoice.version >= savedSceneSelection.version)
-        ? sceneChoice : savedSceneSelection;
+      const currentSceneSelection = sceneChoice && (!savedSceneSelection || sceneChoice.version >= savedSceneSelection.version) ? sceneChoice : savedSceneSelection;
       const chooseScenes = async (selected, allow_new_scenes) => {
         if (sceneSaveLock.current || selectionSubmitLock.current || !currentSceneSelection) return;
-        sceneSaveLock.current = true; setSceneSaving(true); setSceneError('');
-        setSceneChoice({...currentSceneSelection, selected, allow_new_scenes});
+        sceneSaveLock.current = true;
+        setSceneSaving(true);
+        setSceneError("");
+        setSceneChoice({ ...currentSceneSelection, selected, allow_new_scenes });
         try {
-          const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
-            workspace_path: workspacePath, session_id: sessionId}), {method: 'POST', credentials: 'same-origin',
-            headers: {'Content-Type': 'application/json'}, body: JSON.stringify({version: currentSceneSelection.version, selected, allow_new_scenes})});
+          const response = await fetch("api/benchforge/workbench?" + new URLSearchParams({
+            view: "scene_selection",
+            workspace_path: workspacePath,
+            session_id: sessionId
+          }), {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ version: currentSceneSelection.version, selected, allow_new_scenes })
+          });
           const value = await response.json();
-          if (!response.ok || value.error) throw new Error(value.error || t('sceneSaveFailed'));
+          if (!response.ok || value.error) throw new Error(value.error || t("sceneSaveFailed"));
           setSceneChoice(value);
-        } catch (error) {setSceneChoice(currentSceneSelection); setSceneError(t('sceneSaveFailed') + ' ' + error.message);}
-        finally {sceneSaveLock.current = false; setSceneSaving(false);}
+        } catch (error) {
+          setSceneChoice(currentSceneSelection);
+          setSceneError(t("sceneSaveFailed") + " " + error.message);
+        } finally {
+          sceneSaveLock.current = false;
+          setSceneSaving(false);
+        }
       };
       const sampleId = sample?.row_index;
-      const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId &&
-        (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
-      React.useEffect(() => { localStorage.setItem('bfw:spatialforge:' + sessionId, JSON.stringify(route)); }, [route, sessionId]);
-      React.useEffect(() => {localStorage.setItem('bfw:production-request:' + sessionId, JSON.stringify(demand));}, [demand, sessionId]);
-      React.useEffect(() => { setSample(null); }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
-      React.useEffect(() => {setPreview((current) => current?.library ? current : null);}, [selectedRunId, sourceScene?.run_id]);
+      const currentSample = sample ? dataset.value?.items.find((row) => row.row_index === sampleId && (row.item_id || row.id) === (sample.item_id || sample.id)) : null;
       React.useEffect(() => {
-        if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({page: Math.max(1, dataset.value.pages)});
+        localStorage.setItem("bfw:spatialforge:" + sessionId, JSON.stringify(route));
+      }, [route, sessionId]);
+      React.useEffect(() => {
+        localStorage.setItem("bfw:production-request:" + sessionId, JSON.stringify(demand));
+      }, [demand, sessionId]);
+      React.useEffect(() => {
+        setSample(null);
+      }, [route.dataset, route.page, route.size, route.template, route.split, route.q]);
+      React.useEffect(() => {
+        setPreview((current) => current?.library ? current : null);
+      }, [selectedRunId, sourceScene?.run_id]);
+      React.useEffect(() => {
+        if (dataset.value && route.page > Math.max(1, dataset.value.pages)) update({ page: Math.max(1, dataset.value.pages) });
       }, [dataset.value, route.page]);
       React.useEffect(() => {
-        if (sample && dataset.value && !currentSample) {setSample(null); setNotice(t('sampleRemoved'));}
+        if (sample && dataset.value && !currentSample) {
+          setSample(null);
+          setNotice(t("sampleRemoved"));
+        }
       }, [dataset.value, sample, currentSample]);
       React.useEffect(() => {
-        if (route.stage !== 'S4') setSample(null);
+        if (route.stage !== "S4") setSample(null);
       }, [sampleId, route.stage]);
       React.useEffect(() => {
         if (!summary.value) return;
         const patch = {};
-        if (route.run && !rows.some((row) => row.id === route.run)) patch.run = '';
-        if (!selectedDataset && (route.dataset || datasets.length)) Object.assign(patch, {dataset: datasets[0]?.id || '', template: '', split: '', q: '', page: 1});
+        if (route.run && !rows.some((row) => row.id === route.run)) patch.run = "";
+        if (!selectedDataset && (route.dataset || datasets.length)) Object.assign(patch, { dataset: datasets[0]?.id || "", template: "", split: "", q: "", page: 1 });
         if (Object.keys(patch).length) update(patch);
       }, [summary.value, selectedRunId, route.run, route.dataset]);
-      const runListing = filteredPage(rows, route.runFilter, route.runListPage, route.runListSize,
-        (row) => [row.label, row.id, row.state].join(' '));
-      const versionListing = filteredPage(datasets, route.versionFilter, route.versionListPage, route.versionListSize,
-        (row) => [row.workspace, row.version, row.run_id, row.state].join(' '));
-      const stage = STAGES.find((step) => step.id === route.stage) || STAGES[0];
+      const runListing = filteredPage(
+        rows,
+        route.runFilter,
+        route.runListPage,
+        route.runListSize,
+        (row) => [row.label, row.id, row.state].join(" ")
+      );
+      const versionListing = filteredPage(
+        datasets,
+        route.versionFilter,
+        route.versionListPage,
+        route.versionListSize,
+        (row) => [row.workspace, row.version, row.run_id, row.state].join(" ")
+      );
+      const stage = STAGES2.find((step) => step.id === route.stage) || STAGES2[0];
       const pipeline = pipelines.find((row) => row.id === selectedRunId);
-      const allStageFiles = [...(sourceScene ? [] : run.value?.stage_artifacts || []), ...(sceneArtifacts.value?.items || [])];
-      const stageFiles = allStageFiles.filter((row) => row.stage === stage.id).map((row) => ({...row,
-        image_url: row.stage === 'S3' && row.kind === 'json' ? allStageFiles.find((image) => image.kind === 'image' &&
-          image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, '.png'))?.url : undefined}));
+      const allStageFiles = [...sourceScene ? [] : run.value?.stage_artifacts || [], ...sceneArtifacts.value?.items || []];
+      const stageFiles = allStageFiles.filter((row) => row.stage === stage.id).map((row) => ({
+        ...row,
+        image_url: row.stage === "S3" && row.kind === "json" ? allStageFiles.find((image) => image.kind === "image" && image.task_id === row.task_id && image.revision === row.revision && image.file === row.file?.replace(/\.json$/, ".png"))?.url : void 0
+      }));
       const activePipeline = sourceScene ? null : pipeline;
-      const navigationPipeline = (id) => !route.run && !route.production
-        ? pipelineForStage(id, pipelines) || (['S2', 'S3'].includes(id) ? null : activePipeline) : activePipeline;
-      const navigationScene = (id) => route.run || route.production ? sourceScene :
-        navigationPipeline(id) ? null : sceneForStage(id, sceneJobs);
-      const prepare = (text = '') => {
-        if (typeof inputActions?.submit !== 'function') {setNotice(t('noSendInterface')); return;}
-        setSendError('');
-        setDraftConsent('');
-        setSendPayload({text: typeof text === 'string' ? text : '', inserted: false});
+      const navigationPipeline = (id) => !route.run && !route.production ? pipelineForStage(id, pipelines) || (["S2", "S3"].includes(id) ? null : activePipeline) : activePipeline;
+      const navigationScene = (id) => route.run || route.production ? sourceScene : navigationPipeline(id) ? null : sceneForStage(id, sceneJobs);
+      const prepare = (text = "") => {
+        if (typeof inputActions?.submit !== "function") {
+          setNotice(t("noSendInterface"));
+          return;
+        }
+        setSendError("");
+        setDraftConsent("");
+        setSendPayload({ text: typeof text === "string" ? text : "", inserted: false });
       };
       const submitRequest = (payload, setError) => {
         if (submitLock.current || payload.submitted || lastSubmitted.current === payload.text) return false;
-        if (!canSubmit) {setError(t('permissionsPending')); return false;}
-        if (typeof inputActions?.submit !== 'function') {setError(t('noSendInterface')); return false;}
-        if (!payload.text.trim()) {setError(t('requestRequired')); return false;}
-        if (inputState.phase !== 'plain' || inputState.claim) {setError(t('sendBusy')); return false;}
+        if (!canSubmit) {
+          setError(t("permissionsPending"));
+          return false;
+        }
+        if (typeof inputActions?.submit !== "function") {
+          setError(t("noSendInterface"));
+          return false;
+        }
+        if (!payload.text.trim()) {
+          setError(t("requestRequired"));
+          return false;
+        }
+        if (inputState.phase !== "plain" || inputState.claim) {
+          setError(t("sendBusy"));
+          return false;
+        }
         if (pendingSubmission.current?.inserted && pendingSubmission.current.text !== payload.text) {
-          setError(t('previousUnsentRequest')); return false;
+          setError(t("previousUnsentRequest"));
+          return false;
         }
         if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {
-          setError(t('draftConsentRequired')); return false;
+          setError(t("draftConsentRequired"));
+          return false;
         }
         payload = pendingSubmission.current?.inserted ? pendingSubmission.current : payload;
-        submitLock.current = true; setSending(true); setError('');
+        submitLock.current = true;
+        setSending(true);
+        setError("");
         try {
           if (!payload.inserted) {
             const span = inputActions.captureInsertion();
-            if (!inputActions.insertText('\n' + payload.text + '\n', {...span, end: span.start})) {
-              setError(t('draftBusy')); return false;
+            if (!inputActions.insertText("\n" + payload.text + "\n", { ...span, end: span.start })) {
+              setError(t("draftBusy"));
+              return false;
             }
             payload.inserted = true;
             pendingSubmission.current = payload;
@@ -1395,321 +3298,777 @@ window.__ModuleLoader__.load({
           payload.submitted = true;
           lastSubmitted.current = payload.text;
           pendingSubmission.current = null;
-          setDraftConsent(''); setNotice(t('sent'));
+          setDraftConsent("");
+          setNotice(t("sent"));
           return true;
         } catch (error) {
-          setError(t('sendFailed') + ' ' + error.message);
+          setError(t("sendFailed") + " " + error.message);
           return false;
-        } finally {submitLock.current = false; setSending(false);}
+        } finally {
+          submitLock.current = false;
+          setSending(false);
+        }
       };
       const submitWithScenes = async (payload, setError) => {
         if (selectionSubmitLock.current || submitLock.current || sceneSaveLock.current) return false;
-        if (!canSubmit) {setError(t('permissionsPending')); return false;}
-        if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {setError(t('draftConsentRequired')); return false;}
-        selectionSubmitLock.current = true; setSending(true); setError('');
-        let readError = 'sceneSelectionReadFailed';
+        if (!canSubmit) {
+          setError(t("permissionsPending"));
+          return false;
+        }
+        if (hasComposerContent && !includeDraft && !pendingSubmission.current?.inserted) {
+          setError(t("draftConsentRequired"));
+          return false;
+        }
+        selectionSubmitLock.current = true;
+        setSending(true);
+        setError("");
+        let readError = "sceneSelectionReadFailed";
         try {
-          if (!payload.reviewContinued && ['waiting_user','paused','needs_input'].includes(reviewRecord.value?.state)) {
-            await reviewAction('instruction',payload.text);
+          if (!payload.reviewContinued && ["waiting_user", "paused", "needs_input"].includes(reviewRecord.value?.state)) {
+            await reviewAction("instruction", payload.text);
             if (conversationRunning) await stopExecution();
-            payload={...payload,text:'阶段等待中的用户指令已保存。先读取 stage_review(action=status)，应用以下要求后再处理后续阶段；不要绕过等待关口。\n'+payload.text};
+            payload = { ...payload, text: "\u9636\u6BB5\u7B49\u5F85\u4E2D\u7684\u7528\u6237\u6307\u4EE4\u5DF2\u4FDD\u5B58\u3002\u5148\u8BFB\u53D6 stage_review(action=status)\uFF0C\u5E94\u7528\u4EE5\u4E0B\u8981\u6C42\u540E\u518D\u5904\u7406\u540E\u7EED\u9636\u6BB5\uFF1B\u4E0D\u8981\u7ED5\u8FC7\u7B49\u5F85\u5173\u53E3\u3002\n" + payload.text };
           }
-          const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
-            workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
+          const response = await fetch("api/benchforge/workbench?" + new URLSearchParams({
+            view: "scene_selection",
+            workspace_path: workspacePath,
+            session_id: sessionId
+          }), { credentials: "same-origin" });
           const value = await response.json();
-          if (!response.ok || value.error) throw new Error(value.error || t('sceneSelectionReadFailed'));
+          if (!response.ok || value.error) throw new Error(value.error || t("sceneSelectionReadFailed"));
           if (currentSceneSelection && value.version !== currentSceneSelection.version) {
-            setSceneChoice(value); setError(t('sceneChanged')); return false;
+            setSceneChoice(value);
+            setError(t("sceneChanged"));
+            return false;
           }
-          if (!value.sources?.length && !value.allow_new_scenes) {setError(t('chooseSceneRequired')); return false;}
-          readError = 'templateReadFailed';
-          const templateResponse = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'plan_template',
-            workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
+          if (!value.sources?.length && !value.allow_new_scenes) {
+            setError(t("chooseSceneRequired"));
+            return false;
+          }
+          readError = "templateReadFailed";
+          const templateResponse = await fetch("api/benchforge/workbench?" + new URLSearchParams({
+            view: "plan_template",
+            workspace_path: workspacePath,
+            session_id: sessionId
+          }), { credentials: "same-origin" });
           const template = await templateResponse.json();
-          if (!templateResponse.ok || template.schema !== 'spatialforge.assessment-template/v1' || !template.assessment) {
-            setError(t('templateReadFailed')); return false;
+          if (!templateResponse.ok || template.schema !== "spatialforge.assessment-template/v1" || !template.assessment) {
+            setError(t("templateReadFailed"));
+            return false;
           }
-          return submitRequest({...payload, text: payload.text + sceneConstraint(value) +
-            '\n每个阶段 S1 计划、S2 场景、S3 标注、S4 题目、S5 报告完成后，展示真实产物并等待用户 5 分钟。使用 stage_review 打开及等待持久关口；无新指令到期继续，有指令先处理，暂停后不得自动继续。\n' +
-            '\n制定或修改评测计划时必须遵守以下完整模板；已有完整计划且本次只要求继续执行时，复用已有计划。\n' +
-            template.instructions + '\n' + template.scene_binding + '\n各章节要求：\n' + JSON.stringify(template.sections, null, 2) +
-            (template.scene_authoring ? '\n场景标题、摘要、空间关系与双向修订合同：\n' + JSON.stringify(template.scene_authoring, null, 2) : '') +
-            '\n传入 pipeline_plan.assessment 的填写结构：\n' + JSON.stringify(template.assessment, null, 2)}, setError);
-        } catch (error) {setError(t(readError) + ' ' + error.message); return false;}
-        finally {selectionSubmitLock.current = false; setSending(false);}
+          return submitRequest({ ...payload, text: payload.text + sceneConstraint(value) + "\n\u6BCF\u4E2A\u9636\u6BB5 S1 \u8BA1\u5212\u3001S2 \u573A\u666F\u3001S3 \u6807\u6CE8\u3001S4 \u9898\u76EE\u3001S5 \u62A5\u544A\u5B8C\u6210\u540E\uFF0C\u5C55\u793A\u771F\u5B9E\u4EA7\u7269\u5E76\u7B49\u5F85\u7528\u6237 5 \u5206\u949F\u3002\u4F7F\u7528 stage_review \u6253\u5F00\u53CA\u7B49\u5F85\u6301\u4E45\u5173\u53E3\uFF1B\u65E0\u65B0\u6307\u4EE4\u5230\u671F\u7EE7\u7EED\uFF0C\u6709\u6307\u4EE4\u5148\u5904\u7406\uFF0C\u6682\u505C\u540E\u4E0D\u5F97\u81EA\u52A8\u7EE7\u7EED\u3002\n\n\u5236\u5B9A\u6216\u4FEE\u6539\u8BC4\u6D4B\u8BA1\u5212\u65F6\u5FC5\u987B\u9075\u5B88\u4EE5\u4E0B\u5B8C\u6574\u6A21\u677F\uFF1B\u5DF2\u6709\u5B8C\u6574\u8BA1\u5212\u4E14\u672C\u6B21\u53EA\u8981\u6C42\u7EE7\u7EED\u6267\u884C\u65F6\uFF0C\u590D\u7528\u5DF2\u6709\u8BA1\u5212\u3002\n" + template.instructions + "\n" + template.scene_binding + "\n\u5404\u7AE0\u8282\u8981\u6C42\uFF1A\n" + JSON.stringify(template.sections, null, 2) + (template.scene_authoring ? "\n\u573A\u666F\u6807\u9898\u3001\u6458\u8981\u3001\u7A7A\u95F4\u5173\u7CFB\u4E0E\u53CC\u5411\u4FEE\u8BA2\u5408\u540C\uFF1A\n" + JSON.stringify(template.scene_authoring, null, 2) : "") + "\n\u4F20\u5165 pipeline_plan.assessment \u7684\u586B\u5199\u7ED3\u6784\uFF1A\n" + JSON.stringify(template.assessment, null, 2) }, setError);
+        } catch (error) {
+          setError(t(readError) + " " + error.message);
+          return false;
+        } finally {
+          selectionSubmitLock.current = false;
+          setSending(false);
+        }
       };
-      const savePlan=async(edit)=>{
-        const response=await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'plan_edit',workspace_path:workspacePath,session_id:sessionId}),
-          {method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(edit)});
-        const value=await response.json();if(!response.ok || value.error) throw new Error(value.error || '计划保存失败');
-        if(value.state!=='unchanged'){update({run:'',production:''});setRevision((value)=>value+1);}
+      const savePlan = async (edit) => {
+        const response = await fetch(
+          "api/benchforge/workbench?" + new URLSearchParams({ view: "plan_edit", workspace_path: workspacePath, session_id: sessionId }),
+          { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(edit) }
+        );
+        const value = await response.json();
+        if (!response.ok || value.error) throw new Error(value.error || "\u8BA1\u5212\u4FDD\u5B58\u5931\u8D25");
+        if (value.state !== "unchanged") {
+          update({ run: "", production: "" });
+          setRevision((value2) => value2 + 1);
+        }
         return value;
       };
-      const applyPlanEdit=async(path,setError)=>{
-        if(conversationRunning)await stopExecution();
-        return submitWithScenes({text:planEditInstruction(path),
-          inserted:false,reviewContinued:true},setError);
+      const applyPlanEdit = async (path, setError) => {
+        if (conversationRunning) await stopExecution();
+        return submitWithScenes({
+          text: planEditInstruction(path),
+          inserted: false,
+          reviewContinued: true
+        }, setError);
       };
       const confirmSend = async () => {
         if (sendPayload && await submitWithScenes(sendPayload, setSendError)) setSendPayload(null);
       };
       const submitDemand = async () => {
-        if (!demand.objective.trim()) {setDemandError(t('requestRequired')); return;}
-        if (demand.mode !== 'append') {
-          if (!Number.isSafeInteger(Number(demand.count)) || Number(demand.count) <= 0) {setDemandError(t('positiveCount')); return;}
-          if (demand.sceneCount && (!Number.isSafeInteger(Number(demand.sceneCount)) || Number(demand.sceneCount) <= 0)) {setDemandError(t('positiveSceneCount')); return;}
-          if (demand.storageBudget && (!Number.isFinite(Number(demand.storageBudget)) || Number(demand.storageBudget) <= 0)) {setDemandError(t('positiveBudget')); return;}
+        if (!demand.objective.trim()) {
+          setDemandError(t("requestRequired"));
+          return;
         }
-        if (await submitWithScenes({text: productionRequest(demand), inserted: false}, setDemandError)) {
-          setDemand((old) => ({...old, objective: '', mode: 'append'}));
+        if (demand.mode !== "append") {
+          if (!Number.isSafeInteger(Number(demand.count)) || Number(demand.count) <= 0) {
+            setDemandError(t("positiveCount"));
+            return;
+          }
+          if (demand.sceneCount && (!Number.isSafeInteger(Number(demand.sceneCount)) || Number(demand.sceneCount) <= 0)) {
+            setDemandError(t("positiveSceneCount"));
+            return;
+          }
+          if (demand.storageBudget && (!Number.isFinite(Number(demand.storageBudget)) || Number(demand.storageBudget) <= 0)) {
+            setDemandError(t("positiveBudget"));
+            return;
+          }
+        }
+        if (await submitWithScenes({ text: productionRequest(demand), inserted: false }, setDemandError)) {
+          setDemand((old) => ({ ...old, objective: "", mode: "append" }));
         }
       };
-      const openRun = (id) => update({run: id});
-      const changeDataset = (id) => { update({dataset: id, template: '', split: '', q: '', page: 1}); setSearch(''); };
-      const openDataset = (id) => {changeDataset(id); update({stage: 'S4'});};
+      const openRun = (id) => update({ run: id });
+      const changeDataset = (id) => {
+        update({ dataset: id, template: "", split: "", q: "", page: 1 });
+        setSearch("");
+      };
+      const openDataset = (id) => {
+        changeDataset(id);
+        update({ stage: "S4" });
+      };
       const openSample = (item) => setSample(item);
-      const readFailure = () => h('div', {className: 'bfw-empty'}, t('readFailed'), ' ', button(t('retry'), () => setRevision((value) => value + 1)));
-      const runTable = (items) => items.length ? table([t('workspace'), t('runs'), t('state'), t('steps'), t('artifacts'), t('updated')],
-        items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), {title: item.label}), status(item.state, t), item.steps, item.artifact_total ?? '—', item.updated_at])) : empty(t('noRuns'));
-      const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length)
-        ? summary.value.plan : null;
+      const readFailure = () => h("div", { className: "bfw-empty" }, t("readFailed"), " ", button(t("retry"), () => setRevision((value) => value + 1)));
+      const runTable = (items) => items.length ? table(
+        [t("workspace"), t("runs"), t("state"), t("steps"), t("artifacts"), t("updated")],
+        items.map((item) => [item.workspace, button(displayRef(item.label), () => openRun(item.id), { title: item.label }), status(item.state, t), item.steps, item.artifact_total ?? "\u2014", item.updated_at])
+      ) : empty(t("noRuns"));
+      const conversationPlan = !route.run && summary.value?.plan?.selections?.some((row) => row.template_ids?.length) ? summary.value.plan : null;
       const plan = conversationPlan || run.value?.plan || (!selectedRunId ? summary.value?.plan : null);
-      const templateName=(id)=>plan?.template_contracts?.find(row=>row.id===id)?.title || '题型';
-      const versionOptions = [['', t('chooseDataset')], ...datasets.map((row,index) =>
-        [row.id,'数据集 '+(index+1)+' · '+(row.report?.accepted ?? '—')+' 题 · '+(row.updated_at || '').slice(0,10)])];
-      const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h('div', {className: 'bfw-list-controls'},
-        h('div', {className: 'bfw-toolbar'},
-          h('input', {className: 'bfw-input', type: 'search', 'aria-label': label, placeholder: label, value: query, onChange: (e) => onQuery(e.target.value)}),
-          select(t('pageSize'), String(pageSize), (value) => onPageSize(Number(value)), [12, 24, 48].map((value) => [String(value), String(value)])),
-          h('span', {className: 'bfw-muted'}, t('matches') + ': ' + listing.total)),
-        h('div', {className: 'bfw-pagination'},
-          button(t('previous'), () => onPage(listing.page - 1), {disabled: listing.page <= 1}),
-          h('span', null, t('page') + ' ' + listing.page + ' / ' + listing.pages),
-          button(t('nextPage'), () => onPage(listing.page + 1), {disabled: listing.page >= listing.pages})));
+      const collectionPlan = summary.value?.plan?.assessment?.scenes ? summary.value.plan : plan;
+      const templateName = (id) => plan?.template_contracts?.find((row) => row.id === id)?.title || "\u9898\u578B";
+      const versionOptions = [["", t("chooseDataset")], ...datasets.map((row, index) => [row.id, "\u6570\u636E\u96C6 " + (index + 1) + " \xB7 " + (row.report?.accepted ?? "\u2014") + " \u9898 \xB7 " + (row.updated_at || "").slice(0, 10)])];
+      const listControls = (listing, query, label, onQuery, onPage, pageSize, onPageSize) => h(
+        "div",
+        { className: "bfw-list-controls" },
+        h(
+          "div",
+          { className: "bfw-toolbar" },
+          h("input", { className: "bfw-input", type: "search", "aria-label": label, placeholder: label, value: query, onChange: (e) => onQuery(e.target.value) }),
+          select(t("pageSize"), String(pageSize), (value) => onPageSize(Number(value)), [12, 24, 48].map((value) => [String(value), String(value)])),
+          h("span", { className: "bfw-muted" }, t("matches") + ": " + listing.total)
+        ),
+        h(
+          "div",
+          { className: "bfw-pagination" },
+          button(t("previous"), () => onPage(listing.page - 1), { disabled: listing.page <= 1 }),
+          h("span", null, t("page") + " " + listing.page + " / " + listing.pages),
+          button(t("nextPage"), () => onPage(listing.page + 1), { disabled: listing.page >= listing.pages })
+        )
+      );
       const data = dataset.value;
-      const runHistory = h('details', {'data-run-history': true}, h('summary', null, t('runHistory')),
-        h('small', {className: 'bfw-hint'}, t('scope')),
-        h('div', {className: 'bfw-counts'}, h('span', null, t('runCount') + ': ' + (summary.value ? rows.length : '—')),
-          h('span', null, t('datasetCount') + ': ' + (summary.value ? datasets.length : '—'))),
-        listControls(runListing, route.runFilter, t('runFilter'),
-          (value) => update({runFilter: value, runListPage: 1}), (page) => update({runListPage: page}),
-          route.runListSize, (size) => update({runListSize: size, runListPage: 1})),
-        summary.loading ? empty(t('loading')) : summary.error && !summary.value ? readFailure() :
-          runListing.total ? runTable(runListing.items) : empty(rows.length ? t('noMatchingRuns') : t('noRuns')));
-      const datasetDirectory = h('details', {'data-dataset-directory': true, open: !route.dataset},
-        h('summary', null, t('directory')), h('small', {className: 'bfw-hint'}, t('datasetNote')),
-        summary.loading ? empty(t('loading')) : summary.error && !summary.value ? readFailure() : datasets.length ? h(React.Fragment, null,
-          listControls(versionListing, route.versionFilter, t('versionFilter'),
-            (value) => update({versionFilter: value, versionListPage: 1}), (page) => update({versionListPage: page}),
-            route.versionListSize, (size) => update({versionListSize: size, versionListPage: 1})),
-          versionListing.total ? table([t('workspace'), t('version'), t('generationAccepted'), t('state'), t('open')], versionListing.items.map((row) =>
-            [row.workspace, h('span', {className: 'bfw-code bfw-version', title: row.version}, displayRef(row.version)), row.report?.accepted ?? '—',
-              status(row.state, t), button(t('browse'), () => openDataset(row.id))])) : empty(t('noMatchingVersions'))) : empty(t('noDatasets')));
-      const datasetBrowser = h('div', {'data-dataset-browser': true},
-        h('small', {className: 'bfw-hint'}, t('publicNote')),
-        h('form', {className: 'bfw-toolbar', onSubmit: (e) => {e.preventDefault(); update({q: search, page: 1});}},
-          select(t('template'), route.template, (id) => update({template: id, page: 1}), [['', t('all')], ...(data?.facets.templates || []).map((id) => [id,templateName(id)])]),
-          select(t('split'), route.split, (id) => update({split: id, page: 1}), [['', t('all')], ...(data?.facets.splits || []).map((id) => [id, id])]),
-          h('input', {className: 'bfw-input', 'aria-label': t('search'), placeholder: t('search'), value: search, onChange: (e) => setSearch(e.target.value)}),
-          h('button', {className: 'bfw-button', type: 'submit'}, t('apply'))),
-        h('div', {className: 'bfw-toolbar'},
-          select(t('pageSize'), String(route.size), (size) => update({size: Number(size), page: 1}), [24, 48, 96].map((size) => [String(size), String(size)])),
-          h('span', {className: 'bfw-muted'}, t('matches') + ': ' + (data?.total ?? '—') + ' / ' + t('total') + ': ' + (data?.all ?? '—'))),
-        dataset.loading ? empty(t('loading')) : dataset.error && !dataset.value ? readFailure() :
-          !data?.items.length ? h('div', {className: 'bfw-empty'}, t('noItems'),
-            (route.template || route.split || route.q) && button(t('clearFilters'), () => changeDataset(route.dataset))) :
-            h('div', {className: 'bfw-items bfw-question-grid','data-question-grid':true}, data.items.map((item) => h('button', {type: 'button', className: 'bfw-item', key: item.row_index,
-              'data-sample-row': String(item.row_index),'aria-label':'查看题目 '+(item.row_index+1),onClick: () => openSample(item)},
-              firstImage(item) ? h(PublicObservation, {src: firstImage(item), compact: true, label:'题目 '+(item.row_index+1),t}) :
-                h('div',{className:'bfw-question-placeholder'},'文字题'),
-              h('span', {className: 'bfw-muted'},'题目 '+(item.row_index+1)), h('p', {className: 'bfw-question-preview'}, item.question_presentation?.stem || questionText(item.question)),
-              h('span', {className: 'bfw-muted'}, templateName(item.template_id) + ' · ' + (item.split || ''))))),
-        h('div', {className: 'bfw-pagination'},
-          button(t('previous'), () => update({page: route.page - 1}), {disabled: route.page <= 1 || dataset.loading}),
-          h('span', null, t('page') + ' ' + route.page + ' / ' + Math.max(1, data?.pages || 1)),
-          button(t('nextPage'), () => update({page: route.page + 1}), {disabled: !data || route.page >= data.pages || dataset.loading})),
-        route.stage==='S4' && currentSample && h(QuestionDialog,{key:currentSample.row_index,item:currentSample,close:()=>setSample(null),t}));
-        const planReceipt = plan ? {id: conversationPlan || !selectedRunId
-          ? summary.value?.plan_source?.operation_id || 'saved-plan' : selectedRunId,
-          state: 'completed', label: t('persistedPlan')} : null;
-        const separatePlan = conversationPlan && JSON.stringify(conversationPlan) !== JSON.stringify(run.value?.plan);
-        const plannedItems = plan?.selections?.length ? plan.selections.reduce((total, row) => total + row.count, 0) : plan?.inputs?.target_items;
-        const filesError = sceneArtifacts.error || run.error;
-        const productFiles = stageFiles.filter((row) => (row.url || row.data) && !(separatePlan &&
-          (row.title === '评测计划' && row.stage === 'S1' || row.title === '评测配置' && row.stage === 'S4')));
-        const navigationState = (id) => stageState(id, navigationPipeline(id), progressSceneForStage(id, navigationScene(id), sceneJobs), progress.value?.operations,
-          planReceipt, navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] :
-            navigationPipeline(id)?.id === selectedRunId ? allStageFiles : []);
-        const progressStates = Object.fromEntries(STAGES.map((row) => [row.id, navigationState(row.id)]));
-        const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === 'running');
-        const liveProgressStage = executionStage(stage, progressStates, conversationRunning, progress.value?.parallel_tasks || []);
-        const liveProgressPipeline = liveProgressStage.id === 'execution' ? null : navigationPipeline(liveProgressStage.id);
-        const liveProgressScene = liveProgressStage.id === 'execution' ? null : navigationScene(liveProgressStage.id);
-        const finalReport = productFiles.find((row) => row.file === 'release/collection_report.json') ||
-          productFiles.find((row) => !row.file && row.stage === 'S5' && row.step_id);
-        const designMatch=row=>plan?.assessment?.scenes?.designs?.some(design=>sceneName(row.name).startsWith(design.name));
-        const planScenes=[...(plan?.assessment?.scenes?.allow_new_scenes ? (sceneLibrary.value?.items || [])
-          .filter(row=>row.origin_session===sessionId && row.available && designMatch(row)).map(row=>({...row,planCurrent:true})) : []),
-          ...(planSceneLibrary.value?.items || []).filter(row=>plan?.assessment?.scenes?.selected_scenes?.some(selected=>(selected.task_id || selected.id)===row.id && selected.revision===row.revision))]
-          .sort((a,b)=>Number(b.planCurrent || false)-Number(a.planCurrent || false) || Number(designMatch(b))-Number(designMatch(a)));
-        const uniqueScenes=planScenes.filter((row,index)=>planScenes.findIndex(other=>sceneName(other.name).split(' · ')[0]===sceneName(row.name).split(' · ')[0])===index);
-        let product;
-        if (stage.id === 'S1') product = h(React.Fragment, null,
-          h(PlanProduct, {plan, source: conversationPlan || !selectedRunId ? summary.value?.plan_source : run.value?.plan_source,
-            artifacts: productFiles, preview: setPreview, request: prepare, save:savePlan,applyEdit:applyPlanEdit,
-            scenes:uniqueScenes,t}),
-          h(TemplateCatalog, {catalog, catalogQuery, setCatalogQuery, catalogPage, setCatalogPage,
-            capability, setCapability, retry: () => setRevision((value) => value + 1), t}),
-          runHistory);
-        else if (stage.id === 'S2' && (sceneLibraryView.value || sceneLibraryView.error || sceneLibraryView.loading)) product = h(SceneLibrary, {record: sceneLibraryView,
-          selection: currentSceneSelection, saving: sceneSaving || sending, error: sceneError, choose: chooseScenes,
-          query: sceneQuery, search: (query) => {setSceneQuery(query); setScenePage(1);}, origin: sceneOrigin,
-          filter: (origin) => {setSceneOrigin(origin); setScenePage(1);}, page: setScenePage,
-          refresh: () => setRevision((value) => value + 1), preview: setPreview, t});
-        else if (['S2', 'S3'].includes(stage.id)) product = h(React.Fragment, null,
-          stage.id === 'S3' && h('small', {className: 'bfw-hint'}, t('annotationNote')),
-          filesError && h('p', {className: 'bfw-error', role: 'alert'}, t('artifactReadFailed') + ' ' + filesError),
-          (sceneArtifacts.loading || run.loading) && empty(t('loading')),
-          (productFiles.length > 0 || !(sceneArtifacts.loading || run.loading || filesError)) &&
-            h(stage.id === 'S2' ? SceneGallery : ArtifactGallery, {items: productFiles, preview: setPreview, t}));
-        else if (stage.id === 'S4') product = h('div', {className: 'bfw-evaluation-grid'},
-          h('section', {className: 'bfw-evaluation-config'}, h('h3', null, t('evaluationConfig')),
-            select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
-            h('dl', {className: 'bfw-definition'},
-              h('div', null, h('dt', null, t('version')), h('dd', null, selectedDataset ? '数据集 '+(datasets.indexOf(selectedDataset)+1) : '—')),
-              h('div', null, h('dt', null, t('targetItems')), h('dd', null, dataset.value?.report?.requested ?? plannedItems ?? '—')),
-              h('div', null, h('dt', null, t('sourceType')), h('dd', null,dataset.value?.report?.source ? '能力图谱模板' : '—'))),
-            plan?.selections?.length > 0 && h('details',null,h('summary',null,'题型与题量分配 · '+plan.selections.length+' 项'),
-              table([t('selectedTemplates'), t('selectionTotal')],plan.selections.map((row) => [row.template_ids.map(templateName).join('、'), row.count]))),
-            productFiles.length > 0 && h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t}),
-            datasetDirectory),
-          h('section', {className: 'bfw-evaluation-questions'}, h('h3', null, t('questionTable')),
-            route.dataset ? datasetBrowser : empty(t('chooseDataset'))));
-        else product = h(React.Fragment, null,
-          select(t('chooseDataset'), route.dataset, changeDataset, versionOptions),
-          dataset.error && h('p', {className: 'bfw-error'}, dataset.error),
-          (dataset.value?.report || selectedDataset?.report) && h(Quality, {report: dataset.value?.report || selectedDataset?.report,templateName,t}),
-          !finalReport && (sceneArtifacts.loading || run.loading) ? empty(t('loading')) :
-            !finalReport && filesError ? h('p', {className: 'bfw-error'}, t('artifactReadFailed') + ' ' + filesError) :
-              h(ReportProduct, {item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t}),
-          productFiles.length > 0 && h('details', null, h('summary', null, t('artifactFiles')),
-            h(ArtifactGallery, {items: productFiles, selected: [], preview: setPreview, t})));
-      const body = h(React.Fragment, null,
-
-          h('section', {className: 'bfw-product', 'data-stage-product': stage.id, 'aria-label': t('keyProduct') + ' · ' + t(stage.key)}, product),
-          !sourceScene && run.value && h('details', {'data-run-details': true}, h('summary', null, t('runDetails')),
-            h(RunDetails, {record: run.value, t})),
-          h('div', {className: 'bfw-stage-footer'},
-            button(t('requestChange'), prepare, {className: 'bfw-button bfw-action', 'data-request-stage': stage.id}), button(t('previousStep'), () => update({stage: STAGES[STAGES.indexOf(stage) - 1].id}), {disabled: stage.id === 'S1'}),
-            button(t('nextStep'), () => update({stage: STAGES[STAGES.indexOf(stage) + 1].id}), {disabled: stage.id === 'S5'})));
-      return h('div', {ref: panelRef, className: 'bfw-root', 'data-benchforge-workbench': 'true', 'data-spatialforge-panel': 'true'}, h('style', null, styles), h('div', {className: 'bfw-shell'},
-        h('header', {className: 'bfw-header'}, h('div', null,
-          h('div', {className: 'bfw-kicker'}, 'SpatialForge'), h('h1', {className: 'bfw-title'}, t('panel'))), button(t('refresh'), () => setRevision((value) => value + 1), {disabled: summary.loading})),
-        h('nav', {className: 'bfw-flow', 'aria-label': t('navigation')}, STAGES.map((step) => h('button', {
-          className: 'bfw-stage', type: 'button', key: step.id, 'data-stage': step.id,
-          'aria-current': stage.id === step.id ? 'step' : undefined,
-          onClick: () => {update({stage: step.id}); setNotice('');}},
-          h('span', {className: 'bfw-stage-index', 'aria-hidden': true}, step.id.slice(1).padStart(2, '0')),
-          h('span', {className: 'bfw-stage-copy'}, h('strong', {title: t(step.key)}, t(step.key + 'Nav')),
-          h('span', {className: 'bfw-stage-state', 'data-stage-state': navigationState(step.id)},
-            t(navigationState(step.id) === 'completed' ? 'stageDone' : navigationState(step.id))))))),
-        h(StageProgress, {stage: liveProgressStage, pipeline: liveProgressPipeline, scene: liveProgressScene, record: progress,
-          planReceipt, artifacts: allStageFiles, conversationRunning: progressRunning,
-          completedStages: Object.values(progressStates).filter((state) => state === 'completed').length, t}),
-        h(StageReviewPanel,{value:reviewRecord.value,t,change:() => prepare(''),act:async (action) => {
-          try {await reviewAction(action); if (action === 'pause' && conversationRunning) await stopExecution(); if (action === 'continue' && !conversationRunning) {
-            await submitWithScenes({text:'用户已点击立即继续。读取阶段等待状态并复用当前计划和产物继续生产。',inserted:false,reviewContinued:true},setDemandError);
-          }} catch(error) {setNotice(error.message);}
-        }}),
-        h('div', {className: 'bfw-command-deck'},
-          h('section', {className: 'bfw-context', 'data-current-session': sessionId, 'data-session-state': sessionStatus},
-            h('div', {className: 'bfw-context-heading'}, h('strong', null, t('executionProgress')),
-              h('span', {className: 'bfw-pill ' + sessionStatus}, t(sessionStatusKey)),
-              conversationRunning && button(t(stopping ? 'stopping' : 'stopExecution'), stop,
-                {disabled: stopping, title: t('stopNote'), 'data-stop-execution': true})),
-            h(ExecutionFeedback, {renderFactorySlot, t}),
-            h('div', {className: 'bfw-context-footer'},
-              h('span', {'data-full-permissions': String(canSubmit)}, t(canSubmit ? 'fullPermissions' : 'permissionsPending')),
-              queueCount > 0 && h('span', {'data-queued-count': queueCount}, t('queuedMessages') + ': ' + queueCount)),
-            sessionStatus === 'failed' && sessionError && h('p', {className: 'bfw-error'},
-              typeof sessionError === 'string' ? sessionError : sessionError.message || JSON.stringify(sessionError))),
-          h(DemandForm, {demand, change: changeDemand, busy: sending || sceneSaving || inputState.phase !== 'plain' || !canSubmit, error: demandError, send: submitDemand,
-            draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
-            sceneSelection: currentSceneSelection, openScenes: () => update({stage: 'S2'}), t})),
-        permissionError && h('div', {className: 'bfw-error', role: 'alert'}, t('permissionFailed') + ': ' + permissionError,
-          button(t('permissionRetry'), retryPermission)),
-        stopError && h('p', {className: 'bfw-error', role: 'alert'}, stopError),
-        notice && h('div', {className: 'bfw-notice', role: 'status'}, notice),
-        [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h('div', {className: 'bfw-error', role: 'alert', key: i}, error)),
-        h('section', {id: 'bfw-content-' + sessionId, 'aria-label': t(stage.key)}, body),
-        preview && h(PreviewDialog, {key: preview.url || preview.title, item: preview, close: () => setPreview(null), t}),
-        sendPayload && h(SendDialog, {payload: sendPayload, change: (text) => setSendPayload((old) => ({...old, text})), draft: inputState.draft, attachments, included: includeDraft, onInclude: allowDraft,
-          sending, error: sendError, confirm: confirmSend, close: () => setSendPayload(null), t})));
-    }
-    function ProductionEnvironment({t, sessions, uiConversation, ...props}) {
-      React.useEffect(() => {uiConversation.binding(props.sessionId).activate('chat');}, [props.sessionId]);
-      const permissions = props.useProjection('permissions');
-      const openState = props.useSession((state) => state.openState);
-      const confirmedPermission = React.useRef();
-      if (permissions?.currentValue !== undefined) confirmedPermission.current = permissions.currentValue;
-      const ready = confirmedPermission.current === 'danger-full-access';
-      const attempted = React.useRef(false);
-      const [retry, setRetry] = React.useState(0);
-      const [permissionError, setPermissionError] = React.useState('');
-      React.useEffect(() => {
-        if (ready || attempted.current || openState !== 'open' || !permissions) return;
-        attempted.current = true;
-        let disposed = false;
-        const grant = async () => {
+      const runHistory = h(
+        "details",
+        { "data-run-history": true },
+        h("summary", null, t("runHistory")),
+        h("small", { className: "bfw-hint" }, t("scope")),
+        h(
+          "div",
+          { className: "bfw-counts" },
+          h("span", null, t("runCount") + ": " + (summary.value ? rows.length : "\u2014")),
+          h("span", null, t("datasetCount") + ": " + (summary.value ? datasets.length : "\u2014"))
+        ),
+        listControls(
+          runListing,
+          route.runFilter,
+          t("runFilter"),
+          (value) => update({ runFilter: value, runListPage: 1 }),
+          (page) => update({ runListPage: page }),
+          route.runListSize,
+          (size) => update({ runListSize: size, runListPage: 1 })
+        ),
+        summary.loading ? empty(t("loading")) : summary.error && !summary.value ? readFailure() : runListing.total ? runTable(runListing.items) : empty(rows.length ? t("noMatchingRuns") : t("noRuns"))
+      );
+      const datasetDirectory = h(
+        "details",
+        { "data-dataset-directory": true, open: !route.dataset },
+        h("summary", null, t("directory")),
+        h("small", { className: "bfw-hint" }, t("datasetNote")),
+        summary.loading ? empty(t("loading")) : summary.error && !summary.value ? readFailure() : datasets.length ? h(
+          React.Fragment,
+          null,
+          listControls(
+            versionListing,
+            route.versionFilter,
+            t("versionFilter"),
+            (value) => update({ versionFilter: value, versionListPage: 1 }),
+            (page) => update({ versionListPage: page }),
+            route.versionListSize,
+            (size) => update({ versionListSize: size, versionListPage: 1 })
+          ),
+          versionListing.total ? table([t("workspace"), t("version"), t("generationAccepted"), t("state"), t("open")], versionListing.items.map((row) => [
+            row.workspace,
+            h("span", { className: "bfw-code bfw-version", title: row.version }, displayRef(row.version)),
+            row.report?.accepted ?? "\u2014",
+            status(row.state, t),
+            button(t("browse"), () => openDataset(row.id))
+          ])) : empty(t("noMatchingVersions"))
+        ) : empty(t("noDatasets"))
+      );
+      const datasetBrowser = h(
+        "div",
+        { "data-dataset-browser": true },
+        h("small", { className: "bfw-hint" }, t("publicNote")),
+        h(
+          "form",
+          { className: "bfw-toolbar", onSubmit: (e) => {
+            e.preventDefault();
+            update({ q: search, page: 1 });
+          } },
+          select(t("template"), route.template, (id) => update({ template: id, page: 1 }), [["", t("all")], ...(data?.facets.templates || []).map((id) => [id, templateName(id)])]),
+          select(t("split"), route.split, (id) => update({ split: id, page: 1 }), [["", t("all")], ...(data?.facets.splits || []).map((id) => [id, id])]),
+          h("input", { className: "bfw-input", "aria-label": t("search"), placeholder: t("search"), value: search, onChange: (e) => setSearch(e.target.value) }),
+          h("button", { className: "bfw-button", type: "submit" }, t("apply"))
+        ),
+        h(
+          "div",
+          { className: "bfw-toolbar" },
+          select(t("pageSize"), String(route.size), (size) => update({ size: Number(size), page: 1 }), [24, 48, 96].map((size) => [String(size), String(size)])),
+          h("span", { className: "bfw-muted" }, t("matches") + ": " + (data?.total ?? "\u2014") + " / " + t("total") + ": " + (data?.all ?? "\u2014"))
+        ),
+        dataset.loading ? empty(t("loading")) : dataset.error && !dataset.value ? readFailure() : !data?.items.length ? h(
+          "div",
+          { className: "bfw-empty" },
+          t("noItems"),
+          (route.template || route.split || route.q) && button(t("clearFilters"), () => changeDataset(route.dataset))
+        ) : h("div", { className: "bfw-items bfw-question-grid", "data-question-grid": true }, data.items.map((item) => h(
+          "button",
+          {
+            type: "button",
+            className: "bfw-item",
+            key: item.row_index,
+            "data-sample-row": String(item.row_index),
+            "aria-label": "\u67E5\u770B\u9898\u76EE " + (item.row_index + 1),
+            onClick: () => openSample(item)
+          },
+          firstImage(item) ? h(PublicObservation, { src: firstImage(item), compact: true, label: "\u9898\u76EE " + (item.row_index + 1), t }) : h("div", { className: "bfw-question-placeholder" }, "\u6587\u5B57\u9898"),
+          h("span", { className: "bfw-muted" }, "\u9898\u76EE " + (item.row_index + 1)),
+          h("p", { className: "bfw-question-preview" }, item.question_presentation?.stem || questionText(item.question)),
+          h("span", { className: "bfw-muted" }, templateName(item.template_id) + " \xB7 " + (item.split || ""))
+        ))),
+        h(
+          "div",
+          { className: "bfw-pagination" },
+          button(t("previous"), () => update({ page: route.page - 1 }), { disabled: route.page <= 1 || dataset.loading }),
+          h("span", null, t("page") + " " + route.page + " / " + Math.max(1, data?.pages || 1)),
+          button(t("nextPage"), () => update({ page: route.page + 1 }), { disabled: !data || route.page >= data.pages || dataset.loading })
+        ),
+        route.stage === "S4" && currentSample && h(QuestionDialog, { key: currentSample.row_index, item: currentSample, close: () => setSample(null), t })
+      );
+      const planReceipt = plan ? {
+        id: conversationPlan || !selectedRunId ? summary.value?.plan_source?.operation_id || "saved-plan" : selectedRunId,
+        state: "completed",
+        label: t("persistedPlan")
+      } : null;
+      const separatePlan = conversationPlan && JSON.stringify(conversationPlan) !== JSON.stringify(run.value?.plan);
+      const plannedItems = plan?.selections?.length ? plan.selections.reduce((total, row) => total + row.count, 0) : plan?.inputs?.target_items;
+      const filesError = sceneArtifacts.error || run.error;
+      const productFiles = stageFiles.filter((row) => (row.url || row.data) && !(separatePlan && (row.title === "\u8BC4\u6D4B\u8BA1\u5212" && row.stage === "S1" || row.title === "\u8BC4\u6D4B\u914D\u7F6E" && row.stage === "S4")));
+      const navigationState = (id) => stageState(
+        id,
+        navigationPipeline(id),
+        progressSceneForStage(id, navigationScene(id), sceneJobs),
+        progress.value?.operations,
+        planReceipt,
+        navigationScene(id)?.run_id === artifactScene ? sceneArtifacts.value?.items || [] : navigationPipeline(id)?.id === selectedRunId ? allStageFiles : [],
+        id === "S2" && (collectionPlan?.assessment?.scenes || collectionPlan?.inputs?.target_scene_count || progress.value?.current_collection) ? sceneCollectionProgress(collectionPlan, sceneJobs, progress.value?.current_collection) : null,
+        progress.value?.generation
+      );
+      const progressStates = Object.fromEntries(STAGES2.map((row) => [row.id, navigationState(row.id)]));
+      const progressRunning = conversationRunning || (progress.value?.parallel_tasks || []).some((row) => lifecycle(row.state) === "running") || currentGeneration(progress.value?.generation)?.state === "running";
+      const liveProgressStage = executionStage(stage, progressStates, conversationRunning, progress.value?.parallel_tasks || [], progress.value?.generation);
+      const liveProgressPipeline = liveProgressStage.id === "execution" ? null : navigationPipeline(liveProgressStage.id);
+      const liveProgressScene = liveProgressStage.id === "execution" ? null : navigationScene(liveProgressStage.id);
+      const finalReport = productFiles.find((row) => row.file === "release/collection_report.json") || productFiles.find((row) => !row.file && row.stage === "S5" && row.step_id);
+      const designMatch = (row) => plan?.assessment?.scenes?.designs?.some((design) => sceneName(row.name).startsWith(design.name));
+      const planScenes = [
+        ...plan?.assessment?.scenes?.allow_new_scenes ? (sceneLibrary.value?.items || []).filter((row) => row.origin_session === sessionId && row.available && designMatch(row)).map((row) => ({ ...row, planCurrent: true })) : [],
+        ...(planSceneLibrary.value?.items || []).filter((row) => plan?.assessment?.scenes?.selected_scenes?.some((selected) => (selected.task_id || selected.id) === row.id && selected.revision === row.revision))
+      ].sort((a, b) => Number(b.planCurrent || false) - Number(a.planCurrent || false) || Number(designMatch(b)) - Number(designMatch(a)));
+      const uniqueScenes = planScenes.filter((row, index) => planScenes.findIndex((other) => sceneName(other.name).split(" \xB7 ")[0] === sceneName(row.name).split(" \xB7 ")[0]) === index);
+      let product;
+      if (stage.id === "S1") product = h(
+        React.Fragment,
+        null,
+        h(PlanProduct, {
+          plan,
+          source: conversationPlan || !selectedRunId ? summary.value?.plan_source : run.value?.plan_source,
+          artifacts: productFiles,
+          preview: setPreview,
+          request: prepare,
+          save: savePlan,
+          applyEdit: applyPlanEdit,
+          scenes: uniqueScenes,
+          t
+        }),
+        h(TemplateCatalog, {
+          catalog,
+          catalogQuery,
+          setCatalogQuery,
+          catalogPage,
+          setCatalogPage,
+          capability,
+          setCapability,
+          retry: () => setRevision((value) => value + 1),
+          t
+        }),
+        runHistory
+      );
+      else if (stage.id === "S2" && (sceneLibraryView.value || sceneLibraryView.error || sceneLibraryView.loading)) product = h(SceneLibrary, {
+        record: sceneLibraryView,
+        selection: currentSceneSelection,
+        saving: sceneSaving || sending,
+        error: sceneError,
+        choose: chooseScenes,
+        query: sceneQuery,
+        search: (query) => {
+          setSceneQuery(query);
+          setScenePage(1);
+        },
+        origin: sceneOrigin,
+        filter: (origin) => {
+          setSceneOrigin(origin);
+          setScenePage(1);
+        },
+        page: setScenePage,
+        refresh: () => setRevision((value) => value + 1),
+        preview: setPreview,
+        t
+      });
+      else if (["S2", "S3"].includes(stage.id)) product = h(
+        React.Fragment,
+        null,
+        stage.id === "S3" && h("small", { className: "bfw-hint" }, t("annotationNote")),
+        filesError && h("p", { className: "bfw-error", role: "alert" }, t("artifactReadFailed") + " " + filesError),
+        (sceneArtifacts.loading || run.loading) && empty(t("loading")),
+        (productFiles.length > 0 || !(sceneArtifacts.loading || run.loading || filesError)) && h(stage.id === "S2" ? SceneGallery : ArtifactGallery, { items: productFiles, preview: setPreview, t })
+      );
+      else if (stage.id === "S4") product = h(
+        "div",
+        { className: "bfw-evaluation-grid" },
+        h(
+          "section",
+          { className: "bfw-evaluation-config" },
+          h("h3", null, t("evaluationConfig")),
+          select(t("chooseDataset"), route.dataset, changeDataset, versionOptions),
+          h(
+            "dl",
+            { className: "bfw-definition" },
+            h("div", null, h("dt", null, t("version")), h("dd", null, selectedDataset ? "\u6570\u636E\u96C6 " + (datasets.indexOf(selectedDataset) + 1) : "\u2014")),
+            h("div", null, h("dt", null, t("targetItems")), h("dd", null, dataset.value?.report?.requested ?? plannedItems ?? "\u2014")),
+            h("div", null, h("dt", null, t("sourceType")), h("dd", null, dataset.value?.report?.source ? "\u80FD\u529B\u56FE\u8C31\u6A21\u677F" : "\u2014"))
+          ),
+          plan?.selections?.length > 0 && h(
+            "details",
+            null,
+            h("summary", null, "\u9898\u578B\u4E0E\u9898\u91CF\u5206\u914D \xB7 " + plan.selections.length + " \u9879"),
+            table([t("selectedTemplates"), t("selectionTotal")], plan.selections.map((row) => [row.template_ids.map(templateName).join("\u3001"), row.count]))
+          ),
+          productFiles.length > 0 && h(ArtifactGallery, { items: productFiles, selected: [], preview: setPreview, t }),
+          datasetDirectory
+        ),
+        h(
+          "section",
+          { className: "bfw-evaluation-questions" },
+          h("h3", null, t("questionTable")),
+          route.dataset ? datasetBrowser : empty(t("chooseDataset"))
+        )
+      );
+      else product = h(
+        React.Fragment,
+        null,
+        select(t("chooseDataset"), route.dataset, changeDataset, versionOptions),
+        dataset.error && h("p", { className: "bfw-error" }, dataset.error),
+        !finalReport && (dataset.value?.report || selectedDataset?.report) && h(Quality, { report: dataset.value?.report || selectedDataset?.report, templateName, t }),
+        !finalReport && (sceneArtifacts.loading || run.loading) ? empty(t("loading")) : !finalReport && filesError ? h("p", { className: "bfw-error" }, t("artifactReadFailed") + " " + filesError) : h(ReportProduct, { item: finalReport, observedAt: sourceScene ? sceneArtifacts.updatedAt : run.updatedAt, t }),
+        productFiles.length > 0 && h(
+          "details",
+          null,
+          h("summary", null, t("artifactFiles")),
+          h(ArtifactGallery, { items: productFiles, selected: [], preview: setPreview, t })
+        )
+      );
+      const body = h(
+        React.Fragment,
+        null,
+        h("section", { className: "bfw-product", "data-stage-product": stage.id, "aria-label": t("keyProduct") + " \xB7 " + t(stage.key) }, product),
+        !sourceScene && run.value && h(
+          "details",
+          { "data-run-details": true },
+          h("summary", null, t("runDetails")),
+          h(RunDetails, { record: run.value, t })
+        ),
+        h(
+          "div",
+          { className: "bfw-stage-footer" },
+          button(t("requestChange"), prepare, { className: "bfw-button bfw-action", "data-request-stage": stage.id }),
+          button(t("previousStep"), () => update({ stage: STAGES2[STAGES2.indexOf(stage) - 1].id }), { disabled: stage.id === "S1" }),
+          button(t("nextStep"), () => update({ stage: STAGES2[STAGES2.indexOf(stage) + 1].id }), { disabled: stage.id === "S5" })
+        )
+      );
+      return h("div", { ref: panelRef, className: "bfw-root", "data-benchforge-workbench": "true", "data-spatialforge-panel": "true" }, h("style", null, styles2), h(
+        "div",
+        { className: "bfw-shell" },
+        h("header", { className: "bfw-header" }, h(
+          "div",
+          null,
+          h("div", { className: "bfw-kicker" }, "BenchForgeV2_UI"),
+          h("h1", { className: "bfw-title" }, t("panel"))
+        ), button(t("refresh"), () => setRevision((value) => value + 1), { disabled: summary.loading })),
+        h("nav", { className: "bfw-flow", "aria-label": t("navigation") }, STAGES2.map((step) => h(
+          "button",
+          {
+            className: "bfw-stage",
+            type: "button",
+            key: step.id,
+            "data-stage": step.id,
+            "aria-current": stage.id === step.id ? "step" : void 0,
+            onClick: () => {
+              update({ stage: step.id });
+              setNotice("");
+            }
+          },
+          h("span", { className: "bfw-stage-index", "aria-hidden": true }, step.id.slice(1).padStart(2, "0")),
+          h(
+            "span",
+            { className: "bfw-stage-copy" },
+            h("strong", { title: t(step.key) }, t(step.key + "Nav")),
+            h(
+              "span",
+              { className: "bfw-stage-state", "data-stage-state": navigationState(step.id) },
+              t(navigationState(step.id) === "completed" ? "stageDone" : navigationState(step.id))
+            )
+          )
+        ))),
+        h(StageProgress, {
+          stage: liveProgressStage,
+          pipeline: liveProgressPipeline,
+          scene: liveProgressScene,
+          record: progress,
+          planReceipt,
+          collectionPlan,
+          artifacts: allStageFiles,
+          conversationRunning,
+          completedStages: Object.values(progressStates).filter((state) => state === "completed").length,
+          t
+        }),
+        h(StageReviewPanel, { value: reviewRecord.value, t, change: () => prepare(""), act: async (action) => {
           try {
-            const result = await sessions.binding(props.sessionId).session.command('/permission danger-full-access');
-            if (!result.ok || !result.value.matched) throw new Error(result.error?.message || 'Permission command was not applied');
-          } catch (error) {if (!disposed) setPermissionError(error.message);}
-        };
-        grant();
-        return () => {disposed = true;};
-      }, [props.sessionId, openState, permissions?.currentValue, retry]);
-      return h(Workbench, {...props, t, canSubmit: ready, permissionError,
-        retryPermission: () => {attempted.current = false; setPermissionError(''); setRetry((value) => value + 1);},
+            await reviewAction(action);
+            if (action === "pause" && conversationRunning) await stopExecution();
+            if (action === "continue" && !conversationRunning) {
+              await submitWithScenes({ text: "\u7528\u6237\u5DF2\u70B9\u51FB\u7ACB\u5373\u7EE7\u7EED\u3002\u8BFB\u53D6\u9636\u6BB5\u7B49\u5F85\u72B6\u6001\u5E76\u590D\u7528\u5F53\u524D\u8BA1\u5212\u548C\u4EA7\u7269\u7EE7\u7EED\u751F\u4EA7\u3002", inserted: false, reviewContinued: true }, setDemandError);
+            }
+          } catch (error) {
+            setNotice(error.message);
+          }
+        } }),
+        h(
+          "div",
+          { className: "bfw-command-deck" },
+          h(
+            "section",
+            { className: "bfw-context", "data-current-session": sessionId, "data-session-state": sessionStatus },
+            h(
+              "div",
+              { className: "bfw-context-heading" },
+              h("strong", null, t("executionProgress")),
+              h("span", { className: "bfw-pill " + sessionStatus }, t(sessionStatusKey)),
+              conversationRunning && button(
+                t(stopping ? "stopping" : "stopExecution"),
+                stop,
+                { disabled: stopping, title: t("stopNote"), "data-stop-execution": true }
+              )
+            ),
+            h(ExecutionFeedback, { renderFactorySlot, t }),
+            h(
+              "div",
+              { className: "bfw-context-footer" },
+              h("span", { "data-full-permissions": String(canSubmit) }, t(canSubmit ? "fullPermissions" : "permissionsPending")),
+              !canSubmit && button(
+                t(requestingPermission ? "permissionRequesting" : "permissionEnable"),
+                requestPermission,
+                { disabled: requestingPermission, "data-request-permission": true }
+              ),
+              h("span", { "data-assistant-turn": sessionStatus }, t(sessionStatusKey)),
+              h(
+                "span",
+                { "data-background-production": backgroundProductionState(progress.value) },
+                t({ running: "backgroundProductionRunning", idle: "backgroundProductionIdle", unknown: "backgroundProductionUnknown" }[backgroundProductionState(progress.value)])
+              ),
+              ...(progress.value?.scenes?.runs || []).filter((run2) => !run2.terminal && !["SUCCEEDED", "FAILED_FINAL", "CANCELED"].includes(run2.state)).map((run2) => h(
+                "code",
+                { key: run2.run_id, "data-production-cancel-reference": run2.run_id },
+                t("cancelProductionInConversation") + ': spatialforge_cancel(run_id="' + run2.run_id + '")'
+              )),
+              queueCount > 0 && h("span", { "data-queued-count": queueCount }, t("queuedMessages") + ": " + queueCount)
+            ),
+            sessionStatus === "failed" && sessionError && h(
+              "p",
+              { className: "bfw-error" },
+              typeof sessionError === "string" ? sessionError : sessionError.message || JSON.stringify(sessionError)
+            )
+          ),
+          h(DemandForm, {
+            demand,
+            change: changeDemand,
+            busy: sending || sceneSaving || inputState.phase !== "plain" || !canSubmit,
+            error: demandError,
+            send: submitDemand,
+            draft: inputState.draft,
+            attachments,
+            included: includeDraft,
+            onInclude: allowDraft,
+            sceneSelection: currentSceneSelection,
+            openScenes: () => update({ stage: "S2" }),
+            t
+          })
+        ),
+        permissionError && h("div", { className: "bfw-error", role: "alert" }, t("permissionFailed") + ": " + permissionError),
+        stopError && h("p", { className: "bfw-error", role: "alert" }, stopError),
+        notice && h("div", { className: "bfw-notice", role: "status" }, notice),
+        [summary.error, run.error, dataset.error].filter(Boolean).map((error, i) => h("div", { className: "bfw-error", role: "alert", key: i }, error)),
+        h("section", { id: "bfw-content-" + sessionId, "aria-label": t(stage.key) }, body),
+        preview && h(PreviewDialog, { key: preview.url || preview.title, item: preview, close: () => setPreview(null), t }),
+        sendPayload && h(SendDialog, {
+          payload: sendPayload,
+          change: (text) => setSendPayload((old) => ({ ...old, text })),
+          draft: inputState.draft,
+          attachments,
+          included: includeDraft,
+          onInclude: allowDraft,
+          sending,
+          error: sendError,
+          confirm: confirmSend,
+          close: () => setSendPayload(null),
+          t
+        })
+      ));
+    }
+    return { Workbench };
+  }
+
+  // integrations/spatialforge/ui/client/entry.js
+  var WORKBENCH_PRESET = "spatialforge-standard-ptc";
+  var NS = "benchforgeWorkbench";
+  var STAGES = [
+    { id: "S1", key: "blueprint" },
+    { id: "S2", key: "collection" },
+    { id: "S3", key: "structure" },
+    { id: "S4", key: "synthesis" },
+    { id: "S5", key: "verification" }
+  ];
+  var PLAN_SECTIONS = [
+    ["objectives", "\u8BC4\u6D4B\u76EE\u6807\u4E0E\u8FB9\u754C"],
+    ["coverage", "\u80FD\u529B\u3001\u6A21\u677F\u4E0E\u9898\u91CF\u5206\u914D"],
+    ["scenes", "\u573A\u666F\u4E0E\u91C7\u96C6\u8BBE\u8BA1"],
+    ["annotations", "\u6807\u6CE8\u4E0E\u771F\u503C\u6765\u6E90"],
+    ["questions", "\u51FA\u9898\u89C4\u5219\u4E0E\u516C\u5F00\u6837\u4F8B"],
+    ["dataset", "\u6570\u636E\u96C6\u89C4\u6A21\u4E0E\u5206\u533A"],
+    ["scoring", "\u8BC4\u5206\u65B9\u6CD5\u4E0E\u5BF9\u7167"],
+    ["quality_gates", "\u8D28\u91CF\u68C0\u67E5\u4E0E\u9A8C\u6536"],
+    ["execution", "\u4E94\u9636\u6BB5\u6267\u884C\u5B89\u6392"],
+    ["delivery", "\u4EA4\u4ED8\u7269\u4E0E\u9A8C\u6536\u5165\u53E3"],
+    ["risks", "\u98CE\u9669\u4E0E\u5F85\u89E3\u51B3\u4E8B\u9879"]
+  ];
+  var PLAN_FIELDS = {
+    id: "\u7F16\u53F7",
+    capability: "\u6D4B\u91CF\u80FD\u529B",
+    research_question: "\u5177\u4F53\u8BC4\u6D4B\u95EE\u9898",
+    success_criterion: "\u6210\u529F\u6761\u4EF6",
+    exclusions: "\u8303\u56F4\u8FB9\u754C",
+    objective_id: "\u76EE\u6807\u7F16\u53F7",
+    template_id: "\u6A21\u677F",
+    count: "\u9898\u6570",
+    difficulty: "\u96BE\u5EA6",
+    conditions: "\u6D4B\u91CF\u6761\u4EF6",
+    selection_reason: "\u9009\u62E9\u7406\u7531",
+    source_policy: "\u6765\u6E90\u7B56\u7565",
+    selection_path: "\u573A\u666F\u9009\u62E9\u8BB0\u5F55",
+    selected_scenes: "\u9009\u7528\u573A\u666F",
+    allow_new_scenes: "\u5141\u8BB8\u65B0\u589E\u573A\u666F",
+    target_scene_count: "\u76EE\u6807\u573A\u666F\u6570",
+    designs: "\u573A\u666F\u8BBE\u8BA1",
+    name: "\u573A\u666F\u540D\u79F0",
+    purpose: "\u6D4B\u91CF\u7528\u9014",
+    layout: "\u5E03\u5C40",
+    objects: "\u7269\u4F53\u914D\u7F6E",
+    cameras: "\u89C6\u89D2\u4E0E\u91C7\u96C6",
+    variation: "\u53D8\u5316\u7EF4\u5EA6",
+    artifact: "\u9884\u89C8\u4EA7\u7269",
+    reuse_constraints: "\u590D\u7528\u7EA6\u675F",
+    preview_policy: "\u89C6\u9891\u6216\u5168\u666F\u5C55\u793A",
+    authority_source: "\u771F\u503C\u6765\u6E90",
+    fields: "\u5B57\u6BB5\u4E0E\u5355\u4F4D",
+    derivation: "\u63A8\u5BFC\u65B9\u6CD5",
+    alignment: "\u5A92\u4F53\u4E0E\u6807\u6CE8\u5BF9\u9F50",
+    validation: "\u6821\u9A8C\u89C4\u5219",
+    public_observations: "\u516C\u5F00\u89C2\u6D4B",
+    answerability: "\u53EF\u56DE\u7B54\u6027",
+    output_contract: "\u8F93\u51FA\u683C\u5F0F",
+    difficulty_design: "\u96BE\u5EA6\u8BBE\u8BA1",
+    anti_shortcut_checks: "\u6377\u5F84\u4E0E\u6B67\u4E49\u68C0\u67E5",
+    example: "\u516C\u5F00\u9898\u76EE\u6837\u4F8B",
+    target_items: "\u76EE\u6807\u9898\u91CF",
+    split_policy: "\u5206\u533A\u7B56\u7565",
+    seed: "\u968F\u673A\u79CD\u5B50",
+    grouping: "\u5206\u7EC4\u5355\u4F4D",
+    deduplication: "\u53BB\u91CD\u89C4\u5219",
+    balance: "\u5206\u5E03\u5E73\u8861",
+    metrics: "\u9010\u6A21\u677F\u8BC4\u5206",
+    metric: "\u6307\u6807",
+    unit: "\u5355\u4F4D",
+    tolerance: "\u5BB9\u5DEE",
+    aggregation: "\u805A\u5408\u65B9\u5F0F",
+    missing_response: "\u7F3A\u5931\u4E0E\u65E0\u6548\u54CD\u5E94",
+    baselines: "\u5BF9\u7167\u57FA\u7EBF",
+    model_evaluation: "\u6A21\u578B\u8BC4\u6D4B\u5B89\u6392",
+    check: "\u68C0\u67E5\u5185\u5BB9",
+    threshold: "\u901A\u8FC7\u9608\u503C",
+    evidence: "\u8BC1\u636E\u4F4D\u7F6E",
+    on_failure: "\u5931\u8D25\u5904\u7406",
+    stage: "\u9636\u6BB5",
+    action: "\u6267\u884C\u52A8\u4F5C",
+    inputs: "\u8F93\u5165",
+    outputs: "\u8F93\u51FA",
+    completion_condition: "\u5B8C\u6210\u6761\u4EF6",
+    artifacts: "\u4EA4\u4ED8\u6587\u4EF6",
+    path: "\u4FDD\u5B58\u4F4D\u7F6E",
+    format: "\u683C\u5F0F",
+    contents: "\u5185\u5BB9",
+    acceptance: "\u4EA4\u4ED8\u9A8C\u6536",
+    issue: "\u98CE\u9669\u6216\u9650\u5236",
+    impact: "\u5F71\u54CD",
+    mitigation: "\u5E94\u5BF9\u65B9\u5F0F",
+    status: "\u72B6\u6001",
+    task_id: "\u573A\u666F\u4EFB\u52A1",
+    revision: "\u7248\u672C",
+    run_id: "\u8FD0\u884C",
+    program_path: "\u573A\u666F\u7A0B\u5E8F",
+    source_directory: "\u6765\u6E90\u76EE\u5F55",
+    geometry_exceptions: "\u7B80\u5316\u51E0\u4F55\u5B9E\u9A8C\u58F0\u660E",
+    reason: "\u7B80\u5316\u539F\u56E0",
+    simplifications: "\u7B80\u5316\u5185\u5BB9\u4E0E\u8303\u56F4",
+    retained_constraints: "\u4FDD\u7559\u7684\u7269\u7406\u4E0E\u5B9E\u9A8C\u7EA6\u675F",
+    excluded_claims: "\u80FD\u529B\u8FB9\u754C",
+    summary: "\u573A\u666F\u6458\u8981",
+    hard_requirements: "\u5FC5\u987B\u6EE1\u8DB3\u7684\u8981\u6C42",
+    object_roles: "\u7269\u4F53\u7528\u9014",
+    role: "\u7528\u9014\u4E0E\u4F4D\u7F6E",
+    relations: "\u7A7A\u95F4\u4E0E\u4F7F\u7528\u5173\u7CFB",
+    description: "\u5177\u4F53\u8BF4\u660E",
+    physical_assumptions: "\u7269\u7406\u5047\u8BBE\u4E0E\u9A8C\u8BC1\u8303\u56F4",
+    revision_history: "\u8BBE\u8BA1\u4FEE\u8BA2\u4F9D\u636E",
+    changes: "\u4FEE\u6539\u5185\u5BB9",
+    type: "\u5173\u7CFB"
+  };
+  function createClient(React) {
+    const h = React.createElement;
+    const primitives = createPrimitives({ React, PLAN_FIELDS, PLAN_SECTIONS });
+    const state = createWorkbenchState({ STAGES, sceneName: primitives.sceneName });
+    const hooks = createApiHooks({ React });
+    const helpers = { ...primitives, ...state, ...hooks, STAGES, PLAN_SECTIONS, PLAN_FIELDS, styles, dictionaries };
+    const progress = createProgressComponents({ React, helpers });
+    const gallery = createGalleryComponents({ React, helpers });
+    const components = { ...progress, ...gallery, ...createProductComponents({ React, helpers, components: { ...progress, ...gallery } }) };
+    const { Workbench } = createWorkbenchComponent({ React, helpers, components });
+    function ProductionEnvironment({ t, sessions, uiConversation, ...props }) {
+      React.useEffect(() => {
+        uiConversation.binding(props.sessionId).activate("chat");
+      }, [props.sessionId]);
+      const permissions = props.useProjection("permissions");
+      const openState = props.useSession((session) => session.openState);
+      const ready = permissions?.currentValue === "danger-full-access";
+      const [permissionError, setPermissionError] = React.useState("");
+      const [requestingPermission, setRequestingPermission] = React.useState(false);
+      const requestPermission = async () => {
+        setRequestingPermission(true);
+        setPermissionError("");
+        try {
+          if (openState !== "open") throw new Error("\u4F1A\u8BDD\u5F53\u524D\u4E0D\u53EF\u66F4\u6539\u6743\u9650");
+          const result = await sessions.binding(props.sessionId).session.command("/permission danger-full-access");
+          if (!result.ok || !result.value.matched) throw new Error(result.error?.message || "Permission command was not applied");
+        } catch (error) {
+          setPermissionError(error.message);
+        } finally {
+          setRequestingPermission(false);
+        }
+      };
+      return h(Workbench, {
+        ...props,
+        t,
+        canSubmit: ready,
+        permissionError,
+        requestPermission,
+        requestingPermission,
         stopExecution: async () => {
           const result = await sessions.binding(props.sessionId).session.cancel();
-          if (!result.ok) throw new Error(result.error?.message || 'Unable to stop the current turn');
-        }});
+          if (!result.ok) throw new Error(result.error?.message || "Unable to stop the current turn");
+        }
+      });
     }
-    return {
-      inject: ['slots', 'locale', 'uiSession', 'sessions', 'uiConversation'],
-      apply(ctx) {
-        ctx.effect(() => ctx.locale.register(NS, dictionaries));
-        const t = ctx.locale.bind(NS);
-        ctx.slots.inject('main.conversation', () => {
-          let remove = () => {}, mounted = false, face, offFace = () => {}, confirmedSpatialforgeSession;
-          const current = ctx.uiSession.adapter.current;
-          const reconcile = () => {
-            const key = current.getSnapshot().key;
-            const preset = face?.getSnapshot();
-            if (preset === undefined && mounted && key === confirmedSpatialforgeSession) return;
-            const enabled = preset === SPATIALFORGE_PRESET;
-            if (enabled) confirmedSpatialforgeSession = key;
-            if (enabled === mounted) return;
-            mounted = enabled;
-            if (enabled) remove = ctx.slots.register({name: 'main.conversation', priority: -20, locale: NS},
-              (props) => h(ProductionEnvironment, {...props, key: props.sessionId, t, sessions: ctx.sessions, uiConversation: ctx.uiConversation}));
-            else {remove(); remove = () => {};}
-          };
-          const bind = () => {
-            const nextFace = current.getSnapshot().keyedHooks.projection?.('agentPreset');
-            if (nextFace === face) {reconcile(); return;}
-            offFace();
-            face = nextFace;
-            offFace = face?.subscribe(reconcile) || (() => {});
+    function apply(ctx) {
+      ctx.effect(() => ctx.locale.register(NS, dictionaries));
+      const t = ctx.locale.bind(NS);
+      ctx.slots.inject("main.conversation", () => {
+        let remove = () => {
+        }, mounted = false, face, offFace = () => {
+        }, confirmedSpatialforgeSession;
+        const current = ctx.uiSession.adapter.current;
+        const reconcile = () => {
+          const key = current.getSnapshot().key;
+          const preset = face?.getSnapshot();
+          if (preset === void 0 && mounted && key === confirmedSpatialforgeSession) return;
+          const enabled = preset === WORKBENCH_PRESET;
+          if (enabled) confirmedSpatialforgeSession = key;
+          if (enabled === mounted) return;
+          mounted = enabled;
+          if (enabled) remove = ctx.slots.register(
+            { name: "main.conversation", priority: -20, locale: NS },
+            (props) => h(ProductionEnvironment, { ...props, key: props.sessionId, t, sessions: ctx.sessions, uiConversation: ctx.uiConversation })
+          );
+          else {
+            remove();
+            remove = () => {
+            };
+          }
+        };
+        const bind = () => {
+          const nextFace = current.getSnapshot().keyedHooks.projection?.("agentPreset");
+          if (nextFace === face) {
             reconcile();
-          };
-          const offCurrent = current.subscribe(bind);
-          bind();
-          return () => {offCurrent(); offFace(); remove();};
-        });
-      },
-    };
-  },
-});
-
+            return;
+          }
+          offFace();
+          face = nextFace;
+          offFace = face?.subscribe(reconcile) || (() => {
+          });
+          reconcile();
+        };
+        const offCurrent = current.subscribe(bind);
+        bind();
+        return () => {
+          offCurrent();
+          offFace();
+          remove();
+        };
+      });
+    }
+    return { ProductionEnvironment, Workbench, dictionaries, apply, ...helpers, ...components };
+  }
+  window.__ModuleLoader__.load({
+    id: "@eurecamoment/benchforge-spatialforge-ui",
+    factory(require2) {
+      const React = require2("react");
+      const client = createClient(React);
+      const { Workbench, dictionaries: dictionaries2, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects } = client;
+      return {
+        inject: ["slots", "locale", "uiSession", "sessions", "uiConversation"],
+        apply: client.apply,
+        Workbench,
+        dictionaries: dictionaries2,
+        sceneCollectionProgress,
+        stageState,
+        StageProgress,
+        executionStage,
+        sceneStage,
+        sceneProjects,
+        ...client
+      };
+    }
+  });
+})();

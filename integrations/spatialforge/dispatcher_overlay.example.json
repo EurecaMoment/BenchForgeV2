@@ -1,0 +1,6 @@
+{
+  "dispatcher": "/path/to/isaac-client/dsh_a800_worker.py",
+  "backend_python": "/path/to/canonical-backend/bin/python",
+  "adapter_path": null,
+  "timeout_seconds": 20
+}

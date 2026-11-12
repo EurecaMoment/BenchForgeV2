@@ -12,6 +12,7 @@ from pydantic import Field,model_validator
 
 from .domain import Contract, HarnessError, HealthResult, Nonempty, Resources
 from .plugins import EntitySource, EntitySourceParameters
+from .resources import benchclaw_root
 from .store import safe_path
 
 
@@ -79,11 +80,11 @@ class DefaultAnnotationSource(EntitySource):
 
     def execute(self,ctx,unit):
         p=AnnotationParameters.model_validate(unit.parameters)
-        root=Path(__file__).resolve().parents[2]
-        script=root/'BenchClaw/annotation-tool/default-annotation/run_image_to_semantic_depth.py'
+        root=benchclaw_root()
+        script=root/'annotation-tool/default-annotation/run_image_to_semantic_depth.py'
         output=ctx.output_dir/'annotation'
         image=safe_path(Path(p.path),p.image,True)
-        env={**os.environ,'BENCHCLAW_NO_AUTOSTART':'1','BENCHCLAW_ROOT':str(root/'BenchClaw'),
+        env={**os.environ,'BENCHCLAW_NO_AUTOSTART':'1','BENCHCLAW_ROOT':str(root),
              'LLM_MODEL_ID':p.vlm_model,'LLM_BASE_URL':p.vlm_base_url,'BENCHCLAW_DISABLE_THINKING':'1',
              'SAM3_HOST':'127.0.0.1','SAM3_PORT':'8765','YOLOE_SERVICE_HOST':'127.0.0.1','YOLOE_SERVICE_PORT':'8766',
              'DEPTHANYTHING3_HOST':'127.0.0.1','DEPTHANYTHING3_PORT':'8008'}
@@ -94,7 +95,7 @@ class DefaultAnnotationSource(EntitySource):
             env['BENCHCLAW_VLM_TIMEOUT']=str(p.vlm_generation.get('timeout_seconds',600))
         for key,relative in [('SAM3_CLIENT','sam3/sam3_client.py'),('YOLOE_CLIENT','yoloe/yoloe_client.py'),
                              ('DA3_CLIENT','depthanything3/depthanything3_client.py'),('LLM_CLIENT','llm-local/llm_local_client.py')]:
-            env[key]=str(root/'BenchClaw/annotation-tool'/relative)
+            env[key]=str(root/'annotation-tool'/relative)
         with (ctx.output_dir/'annotation.log').open('w') as log:
             result=subprocess.run([p.interpreter,str(script),'--image',str(image),'--out-dir',str(output),
                                    '--max-vlm-terms',str(p.max_vlm_terms),'--da3-process-res',str(p.da3_process_res),

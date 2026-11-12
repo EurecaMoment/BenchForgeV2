@@ -1,7 +1,7 @@
-# 独立模型服务客户端与 SpatialForge 热更新
+# 独立模型服务客户端与 BenchForgeV2 热更新
 
 新模式的集成代码统一维护于 FIT 的 `/home/maqiang/GitHub/BenchForgeV2`，
-公开仓库为 EurecaMoment/BenchForgeV2，开发分支为 SpatialForge。
+公开仓库为 EurecaMoment/BenchForgeV2，开发分支为 `spatialforge-cleanup`。
 
 本文件描述轻量客户端和外部服务边界，不是模型部署手册。权重、模型启动器、GPU
 分配、远程隧道和生产服务均由部署方维护；客户端不会复制权重或启动重模型。
@@ -160,7 +160,7 @@ cd /home/maqiang/GitHub/BenchForgeV2
 .deployment/python-development integrations/spatialforge/hot_update.py --pull
 ```
 
-`--pull` 只在当前 SpatialForge 分支做 git pull --ff-only；
+`--pull` 只在当前 `spatialforge-cleanup` 分支做 git pull --ff-only；
 省略它则热加载当前已部署的代码，不拉取。
 脚本仅修改用户 web profile 中的 spatialforge-standard-ptc 预设，
 使用统一仓库内的插件、Python wrapper、模型客户端配置与服务客户端配置。
@@ -173,11 +173,11 @@ cd /home/maqiang/GitHub/BenchForgeV2
 - `config/generated/spatialforge.local.json`：既有 SpatialForge 服务的客户端配置。
 
 脚本通过 DSH 官方 profile 热加载更新定义，并使用带 revision 的插件 URL
-重新导入 SpatialForge 本地辅助模块。不会修改
+重新导入 BenchForgeV2 本地辅助模块。不会修改
 `/home/maqiang/GitHub/deepseek-harness` 的源码，不执行 systemctl restart，
 不启动 GPU、模型或仿真器。40 秒内未确认新预设则还原 profile。
 
-原会话保留已绑定版本；新建 SpatialForge 会话使用新代码和新工具。
+原会话保留已绑定版本；新建 BenchForgeV2_UI 会话使用新代码和新工具。
 热更新不能把运行中的 Agent 偷换成新版本，也不能热替换场景后端进程。
 
 回执位于 `.deployment/spatialforge-hot-update.json`，
