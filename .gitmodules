@@ -1,0 +1,20 @@
+[submodule "third_party/FastTrellis2"]
+	path = third_party/FastTrellis2
+	url = https://github.com/EurecaMoment/FastTrellis2.git
+	shallow = true
+[submodule "third_party/DSpark4A100"]
+	path = third_party/DSpark4A100
+	url = https://github.com/EurecaMoment/DSpark4A100.git
+	shallow = true
+[submodule "third_party/IssacSim4A100"]
+	path = third_party/IssacSim4A100
+	url = https://github.com/EurecaMoment/IssacSim4A100.git
+	shallow = true
+[submodule "third_party/FastSAM3"]
+	path = third_party/FastSAM3
+	url = https://github.com/EurecaMoment/FastSAM3.git
+	shallow = true
+[submodule "third_party/FastFLUX2Klein"]
+	path = third_party/FastFLUX2Klein
+	url = https://github.com/EurecaMoment/FastFLUX2Klein.git
+	shallow = true
