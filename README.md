@@ -90,6 +90,20 @@ python examples/production_demo.py --workspace runs/production
 
 To attach BenchForgeV2 tools to an existing DSH profile, follow [integration setup](integrations/README.md). To run the bundled service and a self-hosted desktop worker, use the [installation guide](docs/SPATIALFORGE_INSTALL.md). Neither path migrates or restarts an existing production deployment.
 
+## Third-party provider libraries
+
+[`third_party/`](third_party/README.md) includes pinned Git submodules for
+FastTrellis2, DSpark4A100, IssacSim4A100, FastSAM3, and FastFLUX2Klein.
+After pulling this repository, download their sources with:
+
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive --depth 1
+```
+
+These providers are optional for the base installation. Follow each provider's
+own README to install its environment, weights, and service.
+
 ## Configuration
 
 Start from the checked-in examples under `config/`. Copy an example to a matching ignored `*.local.json` file for machine-specific values. Keep credentials, local model paths, runtime databases, generated datasets, logs, and backups outside version control.

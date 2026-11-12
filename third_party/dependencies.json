@@ -10,5 +10,27 @@
     "repository": "https://github.com/EurecaMoment/BenchClaw.git",
     "license": "Apache-2.0",
     "usage": "Attributed collector and template sources; no legacy stage scheduler"
+  },
+  "provider_submodules": {
+    "FastTrellis2": {
+      "path": "third_party/FastTrellis2",
+      "usage": "TRELLIS.2 mesh and PBR generation"
+    },
+    "DSpark4A100": {
+      "path": "third_party/DSpark4A100",
+      "usage": "Large-model inference and serving"
+    },
+    "IssacSim4A100": {
+      "path": "third_party/IssacSim4A100",
+      "usage": "Isaac Sim deployment and simulation support on A100"
+    },
+    "FastSAM3": {
+      "path": "third_party/FastSAM3",
+      "usage": "SAM 3 segmentation and inference serving"
+    },
+    "FastFLUX2Klein": {
+      "path": "third_party/FastFLUX2Klein",
+      "usage": "FLUX.2 Klein image generation and editing"
+    }
   }
 }
