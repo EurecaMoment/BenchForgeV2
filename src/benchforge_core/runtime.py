@@ -193,7 +193,11 @@ class Runtime:
                 raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config/benchforge.example.json.')
             output = directory / "capture"
             output.mkdir()
-            script = Path(__file__).with_name("collectors") / (tool + ".py")
+            # 生产默认用仓库内置的 collectors/<tool>.py；测试或自定义场景可在配置里覆盖 script
+            if cfg.get("script"):
+                script = Path(cfg["script"])
+            else:
+                script = Path(__file__).with_name("collectors") / (tool + ".py")
             command = list(cfg["command"]) + [str(script), *args.get("argv", []), "--output-dir", str(output)]
             cfg_env = cfg.get("env", {})
         env = {**os.environ, **cfg_env}

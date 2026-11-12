@@ -94,7 +94,7 @@ class HotUpdate(unittest.TestCase):
         self.assertNotIn("spatialforge-evaluation-ui", [row["id"] for row in ordinary_plugins])
         self.assertEqual(hot.update_profile(result, ROOT, ROOT / '.deployment/python-development',
                                            ROOT / 'config/benchforge.local.json',
-                                           ROOT / 'config/spatialforge.local.json', '123'), result)
+                                           ROOT / 'config/generated/spatialforge.local.json', '123'), result)
         new_setup = deepcopy(profile)
         new_setup[0]["insert"] = [row for row in new_setup[0]["insert"] if row["id"] != "benchforge-workbench-ui"]
         migrated = hot.update_profile(new_setup, ROOT, Path("/runtime/python"), Path("/runtime/models.json"),
