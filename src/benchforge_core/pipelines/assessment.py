@@ -2,6 +2,7 @@
 import json
 from collections import Counter
 from copy import deepcopy
+from . import canonical_identifier
 from pathlib import Path
 
 
@@ -32,7 +33,7 @@ def assessment_template():
         'location': 'assessment.scenes.designs[]', 'name': '清晰的场景标题',
         'summary': '先写200到400字的详细段落，说明用途、空间、物体、朝向、支撑、光照、动线和取用关系。',
         'spatial_reference': '使用前后左右先明确世界/使用者参照和对象原点。桌面前沿是靠使用者侧，使用者前方是其面朝方向，二者不得混用；不按相机画面上下左右判定。可填写具体说明文本，或按 spatial_reference_example 给出可解析的参照。方向关系用 reference_frame 与 expected_direction 显式绑定；支撑与朝向仍需实图和原生回执共同检查。',
-        'spatial_reference_example': {'schema': 'spatialforge.review-reference/v1', 'world_up': [0, 0, 1], 'frames': [{'id': 'left_work_surface_user', 'kind': 'user', 'origin_object_id': 'desk_c1', 'observer_object_id': 'chair_c1', 'facing_target_object_id': 'desk_c1', 'front': 'toward_observer'}]},
+        'spatial_reference_example': {'schema': 'benchforge.review-reference/v1', 'world_up': [0, 0, 1], 'frames': [{'id': 'left_work_surface_user', 'kind': 'user', 'origin_object_id': 'desk_c1', 'observer_object_id': 'chair_c1', 'facing_target_object_id': 'desk_c1', 'front': 'toward_observer'}]},
         'hard_requirements': ['用户原始硬要求，自动修复不得降低或删去'],
         'object_roles': [{'object_id': '实际物体 id', 'role': '物体在场景中的作用与位置'}],
         'relations': [{'source': '实际物体 id', 'type': 'supported_by|mounted_to|clearance|near|facing|inside',
@@ -58,6 +59,12 @@ def assessment_template():
     value['instructions'] += (' 场景质量约束：默认使用真实可辨识资产。模型在保存的场景生产计划中明确声明测量目的、简化原因、物体范围、保留约束和不声称的能力时，允许简化几何实验；按 scene_authoring 合同填写可选声明并绑定程序。'
                               '先审查完整SceneProgram再采集，实际看图并检查物理、支撑及符合实验设定的生活合理性后出题。已删除场景及派生产物不得复用；资产不足不能成为未经计划声明的自动降级理由。')
     return value
+
+
+def assessment_with_current_schema(assessment):
+    if not isinstance(assessment, dict) or 'schema' not in assessment:
+        return assessment
+    return {**assessment, 'schema': canonical_identifier(assessment['schema'])}
 
 
 def validate_assessment(value, selections, inputs):
@@ -105,8 +112,8 @@ def validate_assessment(value, selections, inputs):
     # An empty selection_path is valid when no scene catalog is attached.
     outline['scenes'].pop('selection_path')
     check(value, outline, 'assessment')
-    if value.get('schema') != 'spatialforge.assessment/v1':
-        issue('assessment.schema', 'must be spatialforge.assessment/v1')
+    if canonical_identifier(value.get('schema')) != 'benchforge.assessment/v1':
+        issue('assessment.schema', 'must be benchforge.assessment/v1')
 
     # These fields become required only when an author supplies a scene brief.
     # Collect its whole structure before invoking the shared admission validator.

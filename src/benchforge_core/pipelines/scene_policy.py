@@ -1,8 +1,8 @@
 """Operator scene exclusions and a lightweight box-proxy admission rule."""
 import json
-import os
 from pathlib import Path
 import re
+from ..service_config import environment_value
 
 STRUCTURE = re.compile(r'^(?:floor|ceiling|wall(?:_|$)|ground|terrain|pavement|asphalt|roof|road(?:_|$)|bay_line|rug|carpet|window|door(?:_|$))', re.I)
 CLASSIFIER_VERSION = 4
@@ -11,10 +11,10 @@ CLASSIFIER_VERSION = 4
 def scene_design_parser():
     # The monorepo tool runner and separately deployed service share this parser.
     try:
-        from spatialforge import scene_design as module
+        from benchforge_backend import scene_design as module
     except ImportError:
         # Normal installs use the validator bundled from the same source at
-        # wheel build time. BenchForgeV2 itself requires Python >=3.11 and is
+        # wheel build time. BenchForge itself requires Python >=3.11 and is
         # intentionally optional for the core's Python 3.10 support.
         try:
             from . import _scene_design as module
@@ -22,7 +22,7 @@ def scene_design_parser():
         except ImportError:
             pass
         import importlib.util
-        file=Path(__file__).resolve().parents[3]/'components/spatialforge/src/spatialforge/scene_design.py'
+        file=Path(__file__).resolve().parents[3]/'components/benchforge/src/benchforge_backend/scene_design.py'
         spec=importlib.util.spec_from_file_location('scene_design_policy',file)
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     return module
@@ -73,7 +73,7 @@ def _read_policy(file):
 
 
 def load_policy(workspace, service_config=None):
-    """Load the same policy selected by the BenchForgeV2 service config."""
+    """Load the same policy selected by the BenchForge service config."""
     if service_config:
         from ..service_config import load_service_client_config
 
@@ -81,8 +81,8 @@ def load_policy(workspace, service_config=None):
         mode = config['execution_mode']
         file = config.get('scene_policy_path')
     else:
-        mode = os.environ.get('SPATIALFORGE_EXECUTION_MODE')
-        file = os.environ.get('SPATIALFORGE_SCENE_POLICY')
+        mode = environment_value('BENCHFORGE_EXECUTION_MODE')
+        file = environment_value('BENCHFORGE_SCENE_POLICY')
         if not file:
             legacy = Path(workspace) / 'scene-library' / 'policy.json'
             file = legacy if legacy.is_file() else None

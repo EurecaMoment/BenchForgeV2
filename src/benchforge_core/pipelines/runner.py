@@ -1,6 +1,7 @@
 """Persisted recipe execution; durable remote submissions and local artifacts resume."""
 from pathlib import Path
 from ..runtime import read, write
+from . import canonical_identifier
 from .artifact_graph import ArtifactGraph, binding_roots, make_record
 from .repair import create_plan
 from .production import produce, package
@@ -12,21 +13,21 @@ from .bindings import MissingBinding, bind
 from .review_steps import stage_of, review_scope, completed_stage
 from .service_client import service_call
 
-SERVICE_ROUTES = {'spatialforge.start': '/start', 'spatialforge.capture': '/capture',
-                  'spatialforge.asset': '/asset', 'spatialforge.refine': '/refine', 'spatialforge.extend': '/extend',
-                  'spatialforge.observe': '/inspect', 'spatialforge.evidence': '/evidence',
-                  'spatialforge.task_code': '/task-code'}
+SERVICE_ROUTES = {'benchforge.start': '/start', 'benchforge.capture': '/capture',
+                  'benchforge.asset': '/asset', 'benchforge.refine': '/refine', 'benchforge.extend': '/extend',
+                  'benchforge.observe': '/inspect', 'benchforge.evidence': '/evidence',
+                  'benchforge.task_code': '/task-code'}
 
 
 def execute_step(step, arguments, directory, environment, client):
-    operation = step['uses']
+    operation = canonical_identifier(step['uses'])
     if operation == 'pipeline':
         from .catalog import pipeline_files
         recipes = {p['id']: p for p in pipeline_files()}
         recipe = recipes[step['pipeline_id']]
         inputs = arguments
         steps = recipe['steps']
-        nested = {'schema': 'spatialforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe['id'], 'inputs': inputs, 'steps': steps}
+        nested = {'schema': 'benchforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe['id'], 'inputs': inputs, 'steps': steps}
         nested_path = Path(directory)/'nested-plan.json'
         write(nested_path, nested)
         nested_root = Path(directory)/'nested-run'
@@ -52,12 +53,12 @@ def execute_step(step, arguments, directory, environment, client):
             if request_context.get('session_id') not in (None, session_id):
                 raise ValueError('context.session_id conflicts with the active DSH session')
             request_context['session_id'] = session_id
-        if operation in ('spatialforge.start', 'spatialforge.capture', 'spatialforge.asset', 'spatialforge.refine', 'spatialforge.extend'):
+        if operation in ('benchforge.start', 'benchforge.capture', 'benchforge.asset', 'benchforge.refine', 'benchforge.extend'):
             arguments.setdefault('request_key', environment['_run_key']+'.'+step['id'])
         if not environment['inputs'].get('service_config'):
             raise MissingBinding('$inputs.service_config')
         result = client(SERVICE_ROUTES[operation], arguments, environment['inputs']['service_config'])
-        if operation == 'spatialforge.task_code' and (result['returncode'] != 0 or result.get('timed_out')):
+        if operation == 'benchforge.task_code' and (result['returncode'] != 0 or result.get('timed_out')):
             raise RuntimeError('Task-code adapter failed: '+str(result))
         return result
     raise ValueError(f'Unknown pipeline operation: {operation}')
@@ -84,7 +85,9 @@ def _run_locked(args, directory, config, client):
         raise ValueError('Plan changed; create a new pipeline run to retain prior evidence')
     write(frozen, plan)
     state_path = run_root/'state.json'
-    state = read(state_path) if state_path.exists() else {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
+    state = read(state_path) if state_path.exists() else {'schema': 'benchforge.pipeline-state/v1', 'steps': {}, 'state': 'running'}
+    if 'schema' in state:
+        state['schema'] = canonical_identifier(state['schema'])
     state.setdefault('run_id', f'run-{run_root.name}')
     execution_mode = policy['execution_mode']
     prior_mode = state.get('execution_mode')
@@ -145,7 +148,7 @@ def _run_locked(args, directory, config, client):
             if outputs is None:
                 return None
             artifact_path = Path(scope['run'])/'reviews'/(stage+'.json')
-            artifact = {'schema': 'spatialforge.stage-review/v1', 'stage': stage,
+            artifact = {'schema': 'benchforge.stage-review/v1', 'stage': stage,
                         'plan': scope['plan'], 'outputs': outputs}
             if not artifact_path.exists() or read(artifact_path) != artifact:
                 write(artifact_path, artifact)
@@ -178,7 +181,7 @@ def _run_locked(args, directory, config, client):
             parent_ids = [artifact_ids[root] for root in binding_roots(step.get('arguments', {})) if root in artifact_ids]
             result = execute_step(step, arguments, step_root, environment, client)
             result_path = step_root/'result.json'
-            operation = step.get('uses', 'pipeline')
+            operation = canonical_identifier(step.get('uses', 'pipeline'))
             # Persist non-terminal receipts too; artifact manifests must point
             # to a readable result when a run pauses for evidence or input.
             write(result_path, result)
@@ -214,7 +217,7 @@ def _run_locked(args, directory, config, client):
                 return pending
         except MissingBinding as error:
             artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
-                                  operation=step.get('uses', 'pipeline'), arguments=step.get('arguments', {}),
+                                  operation=canonical_identifier(step.get('uses', 'pipeline')), arguments=step.get('arguments', {}),
                                   result={}, parent_ids=[], declared_type=step.get('artifact_type'),
                                   result_path=None, error=str(error))
             repair = create_plan(run=run_root, artifact=artifact, failure_code='missing_binding', reason=str(error))
@@ -224,7 +227,7 @@ def _run_locked(args, directory, config, client):
             return {'run': str(run_root.resolve()), **state}
         except Exception as error:
             artifact = make_record(graph=graph, run_id=state['run_id'], step_id=step['id'],
-                                  operation=step.get('uses', 'pipeline'), arguments=step.get('arguments', {}),
+                                  operation=canonical_identifier(step.get('uses', 'pipeline')), arguments=step.get('arguments', {}),
                                   result={}, parent_ids=[], declared_type=step.get('artifact_type'),
                                   result_path=None, error=str(error))
             repair = create_plan(run=run_root, artifact=artifact, failure_code='execution_error', reason=str(error))

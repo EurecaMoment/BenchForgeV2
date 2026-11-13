@@ -363,7 +363,7 @@ export async function apply(ctx, config) {
     schemas[tool] = {
       action:{type:'string',enum:['submit','status','result','wait','cancel','health'],description:'submit is asynchronous and is the default; wait is bounded by timeout_seconds.'},
       request:{type:'object',additionalProperties:true,description:client === 'diffusion'
-        ? 'FLUX request: prompt, width=1024, height=1024, steps, seed and output. output is a full PNG filename at an absolute path shared by FIT and the provider; work does not supply it. spatialforge_diffusion manages this output path when used instead.'
+        ? 'FLUX request: prompt, width=1024, height=1024, steps, seed and output. output is a full PNG filename at an absolute path shared by FIT and the provider; work does not supply it. benchforge_diffusion manages this output path when used instead.'
         : 'Native request for the externally deployed model; configure operator defaults in model_services.tools.'},
       work:{type:'string',description:'Absolute artifact directory shared with the inference service; defaults to this operation directory.'},
       job_id:{type:'string',description:'Existing durable job ID, required for status/result/wait/cancel.'},

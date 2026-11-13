@@ -1,4 +1,4 @@
-"""Install the two BenchForgeV2 presets into a profile."""
+"""Install the two BenchForge presets into a profile."""
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path

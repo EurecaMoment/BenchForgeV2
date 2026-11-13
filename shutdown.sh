@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键关停：DSH Web -> BenchForgeV2 服务 -> PostgreSQL（--keep-db 可保留数据库）
+# 一键关停：DSH Web -> BenchForge 服务 -> PostgreSQL（--keep-db 可保留数据库）
 # Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 set -euo pipefail
 
@@ -7,10 +7,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SERVER_CONFIG="$ROOT/config/generated/spatialforge-server.local.json"
+SERVER_CONFIG="$ROOT/config/generated/benchforge-server.local.json"
+LEGACY_CONFIG="$ROOT/config/generated/spatialforge-server.local.json"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
-SF_PID_FILE="$RUN_DIR/spatialforge.pid"
+SERVICE_PID_FILE="$RUN_DIR/benchforge.pid"
+LEGACY_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
 DB_PROJECT_FILE="$RUN_DIR/database-project"
 DB_ENV="$ROOT/config/generated/database.env"
@@ -30,7 +32,8 @@ for arg in "$@"; do
 done
 
 stop_process() {
-  local name="$1" pidfile="$2" expected="$3" previous="${4:-}" pid command group target
+  local name="$1" pidfile="$2" expected pid command group target matched=0
+  shift 2
   if [ ! -f "$pidfile" ]; then
     echo "  $name 未由本脚本启动"
     return 0
@@ -46,7 +49,13 @@ stop_process() {
     return 0
   fi
   command="$(ps -p "$pid" -o args= 2>/dev/null || true)"
-  if [[ "$command" != *"$expected"* && ( -z "$previous" || "$command" != *"$previous"* ) ]]; then
+  for expected in "$@"; do
+    if [[ "$command" == *"$expected"* ]]; then
+      matched=1
+      break
+    fi
+  done
+  if [ "$matched" -eq 0 ]; then
     echo "  $name 的 PID 与预期命令不符，保留进程和记录" >&2
     return 1
   fi
@@ -72,16 +81,13 @@ stop_process() {
 DB_PROJECT=""
 if [ -f "$DB_PROJECT_FILE" ]; then
   DB_PROJECT="$(<"$DB_PROJECT_FILE")"
-elif [ -f "$DB_ENV" ] && ! grep -qx 'BENCHFORGE_DATABASE_MANAGED=false' "$DB_ENV" \
-  && grep -q '^POSTGRES_PASSWORD=' "$DB_ENV"; then
-  # Installations that predate the runtime record can still stop their database.
-  DB_PROJECT="$(grep -m 1 '^COMPOSE_PROJECT_NAME=' "$DB_ENV" | cut -d= -f2- || true)"
-  DB_PROJECT="${DB_PROJECT:-benchforgev2-spatialforge}"
+elif [ -f "$DB_ENV" ]; then
+  DB_PROJECT="$("$PY" benchforge_app.py setting database.previous_project)"
 fi
 if [ "$RESTART" -eq 1 ] && [ -n "$DB_PROJECT" ]; then
-  DB_MANAGED="$("$PY" spatialforge_app.py setting database.managed)"
+  DB_MANAGED="$("$PY" benchforge_app.py setting database.managed)"
   if [ "$DB_MANAGED" = true ]; then
-    NEXT_PROJECT="$("$PY" spatialforge_app.py setting database.project)"
+    NEXT_PROJECT="$("$PY" benchforge_app.py setting database.project)"
     if [ "$DB_PROJECT" = "$NEXT_PROJECT" ]; then KEEP_DB=1; fi
   fi
 fi
@@ -89,9 +95,15 @@ fi
 echo "[1/3] 停止 BenchForge DSH Web"
 stop_process "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start"
 
-echo "[2/3] 停止 SpatialForge 服务"
-stop_process "SpatialForge" "$SF_PID_FILE" "$ROOT/spatialforge_app.py serve" \
-  "spatialforge.service --config $SERVER_CONFIG"
+echo "[2/3] 停止 BenchForge 服务"
+if [ -f "$SERVICE_PID_FILE" ] || [ ! -f "$LEGACY_PID_FILE" ]; then
+  stop_process "BenchForge" "$SERVICE_PID_FILE" "$ROOT/benchforge_app.py serve" \
+    "benchforge_backend.service --config $SERVER_CONFIG"
+fi
+if [ -f "$LEGACY_PID_FILE" ]; then
+  stop_process "BenchForge" "$LEGACY_PID_FILE" "$ROOT/spatialforge_app.py serve" \
+    "spatialforge.service --config $LEGACY_CONFIG"
+fi
 
 # Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 
@@ -105,7 +117,7 @@ elif [ -z "$DB_PROJECT" ]; then
   echo "[3/3] 本实例没有记录的 PostgreSQL 项目"
 else
   echo "[3/3] 停止 PostgreSQL ($DB_PROJECT)"
-  "$PY" spatialforge_app.py db --stop --project "$DB_PROJECT"
+  "$PY" benchforge_app.py db --stop --project "$DB_PROJECT"
   mkdir -p "$RUN_DIR"
   : > "$DB_PROJECT_FILE"
 fi

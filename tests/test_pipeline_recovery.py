@@ -70,6 +70,33 @@ class PipelineRecoveryTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_legacy_run_resumes_with_frozen_plan_and_canonical_new_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = root / 'service.json'
+            write_json(config, {'execution_mode': 'exploration', 'operator_token': 'fixture'})
+            plan = root / 'plan.json'
+            legacy = {'schema': 'spatialforge.pipeline/v1',
+                      'inputs': {'service_config': str(config)},
+                      'steps': [{'id': 'start', 'uses': 'spatialforge.start', 'arguments': {}}]}
+            write_json(plan, legacy)
+            execution = root / 'execution'
+            write_json(execution / 'plan.json', legacy)
+            write_json(execution / 'state.json',
+                       {'schema': 'spatialforge.pipeline-state/v1', 'steps': {}, 'state': 'waiting'})
+            requests = []
+
+            def client(route, arguments, config_path):
+                requests.append((route, config_path))
+                return {'state': 'SUCCEEDED'}
+
+            result = run({'plan': str(plan), 'run': str(execution), '_workspace': str(root)}, root, client=client)
+            self.assertEqual(requests, [('/start', str(config))])
+            self.assertEqual(result['state'], 'completed')
+            self.assertEqual(result['schema'], 'benchforge.pipeline-state/v1')
+            self.assertEqual(result['steps']['start']['artifact']['producer'], 'benchforge.start')
+            self.assertEqual(read_json(execution / 'plan.json'), legacy)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,16 +1,16 @@
-BenchForgeV2
+BenchForge
 
-The CARLA, Habitat and LIBERO collectors and portions of SpatialForge's
+The CARLA, Habitat and LIBERO collectors and portions of BenchForge's
 database schema, artifact writing, collection diagnostics, and spatial-question
 code are adapted from EurecaMoment/BenchClaw
 (https://github.com/EurecaMoment/BenchClaw) under the Apache License, Version 2.0.
-Adaptations include portable configuration and integration with SpatialForge
+Adaptations include portable configuration and integration with BenchForge
 scene capture and delivery.
 
 DSH integration references the user's installed deepseek-harness runtime and
 composes its installed preset definitions. DSH code, model weights, simulator
 assets and datasets are not redistributed in this repository.
 
-SpatialForge DSH tool definitions and delivery-review modules are imported from
+BenchForge DSH tool definitions and delivery-review modules are imported from
 the user-authorized SpatialForge working source (2026-09-29). Service execution,
 acceptance rules and GT have not been changed by this client packaging.

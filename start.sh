@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 一键启动：PostgreSQL -> SpatialForge 服务 -> BenchForge DSH Web
+# 一键启动：PostgreSQL -> BenchForge 服务 -> BenchForge DSH Web
 # 配置来自 config/benchforge.local.json；日志和运行记录写入 .benchforge/。
 # Isaac Sim gRPC 服务不在此管理：本地 mock 或远程仿真器请单独手动启动。
 set -euo pipefail
@@ -8,23 +8,24 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 PY="$ROOT/.venv/bin/python"
-SF_PY="$ROOT/.spatialforge/venv/bin/python"
 PRESET="$ROOT/config/generated/benchforge.local.yml"
 STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 LOG_DIR="$STATE/logs"
-SF_PID_FILE="$RUN_DIR/spatialforge.pid"
+SERVICE_PID_FILE="$RUN_DIR/benchforge.pid"
+LEGACY_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
 DB_PROJECT_FILE="$RUN_DIR/database-project"
-DB_ENV="$ROOT/config/generated/database.env"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR"
 
 die() { echo "错误: $*" >&2; exit 1; }
 
-for path in "$PY" "$SF_PY" "$PRESET" "$STATE/runtime.json"; do
+for path in "$PY" "$PRESET" "$STATE/runtime.json"; do
   [ -e "$path" ] || die "缺少 $path，请先按 README 的安装步骤准备环境"
 done
+SERVICE_PY="$("$PY" benchforge_app.py setting backend.python)"
+[ -x "$SERVICE_PY" ] || die "缺少 $SERVICE_PY，请先运行 python benchforge_app.py setup"
 
 port_open() { ss -ltn 2>/dev/null | grep ":$1 " > /dev/null; }
 
@@ -41,30 +42,34 @@ check_previous_process() {
   fi
 }
 
-WEB_PORT="$("$PY" spatialforge_app.py setting web.port)"
-SERVICE_PORT="$("$PY" spatialforge_app.py setting server.port)"
+WEB_PORT="$("$PY" benchforge_app.py setting web.port)"
+SERVICE_PORT="$("$PY" benchforge_app.py setting server.port)"
 if [[ ! "$WEB_PORT" =~ ^[1-9][0-9]*$ || ! "$SERVICE_PORT" =~ ^[1-9][0-9]*$ ]]; then
-  die "无法读取有效的 Web 和 SpatialForge 端口"
+  die "无法读取有效的 Web 和 BenchForge 端口"
 fi
 check_previous_process "DSH Web" "$DSH_PID_FILE" "$WEB_PORT"
-check_previous_process "SpatialForge" "$SF_PID_FILE" "$SERVICE_PORT"
+check_previous_process "BenchForge" "$SERVICE_PID_FILE" "$SERVICE_PORT"
+if [ -f "$LEGACY_PID_FILE" ]; then
+  LEGACY_PID="$(<"$LEGACY_PID_FILE")"
+  if [[ "$LEGACY_PID" =~ ^[1-9][0-9]*$ ]] && kill -0 "$LEGACY_PID" 2>/dev/null; then
+    die "旧版服务仍在运行，请执行 ./restart.sh 完成升级"
+  fi
+fi
 
 PREVIOUS_PROJECT=""
 if [ -f "$DB_PROJECT_FILE" ]; then
   PREVIOUS_PROJECT="$(<"$DB_PROJECT_FILE")"
-elif [ -f "$DB_ENV" ] && ! grep -qx 'BENCHFORGE_DATABASE_MANAGED=false' "$DB_ENV" \
-  && grep -q '^POSTGRES_PASSWORD=' "$DB_ENV"; then
-  PREVIOUS_PROJECT="$(grep -m 1 '^COMPOSE_PROJECT_NAME=' "$DB_ENV" | cut -d= -f2- || true)"
-  PREVIOUS_PROJECT="${PREVIOUS_PROJECT:-benchforgev2-spatialforge}"
+else
+  PREVIOUS_PROJECT="$("$PY" benchforge_app.py setting database.previous_project)"
 fi
 if [ -n "$PREVIOUS_PROJECT" ]; then
-  DB_MANAGED="$("$PY" spatialforge_app.py setting database.managed)"
-  DB_PROJECT="$("$PY" spatialforge_app.py setting database.project)"
+  DB_MANAGED="$("$PY" benchforge_app.py setting database.managed)"
+  DB_PROJECT="$("$PY" benchforge_app.py setting database.project)"
   if [ "$DB_MANAGED" != true ] || [ "$DB_PROJECT" != "$PREVIOUS_PROJECT" ]; then
     die "数据库项目或部署方式已修改，请执行 ./restart.sh 切换"
   fi
 fi
-"$PY" spatialforge_app.py sync
+"$PY" benchforge_app.py sync
 
 "$PY" benchforge.py start --port "$WEB_PORT" --config-synced --check-config
 
@@ -107,12 +112,12 @@ fail_start() {
   rm -f "$pidfile"
 }
 
-DB_MANAGED="$("$PY" spatialforge_app.py setting database.managed)"
+DB_MANAGED="$("$PY" benchforge_app.py setting database.managed)"
 if [ "$DB_MANAGED" = true ]; then
-  DB_PROJECT="$("$PY" spatialforge_app.py setting database.project)"
+  DB_PROJECT="$("$PY" benchforge_app.py setting database.project)"
   echo "[1/3] 启动 PostgreSQL ($DB_PROJECT)"
   printf '%s\n' "$DB_PROJECT" > "$DB_PROJECT_FILE"
-  "$PY" spatialforge_app.py db --project "$DB_PROJECT"
+  "$PY" benchforge_app.py db --project "$DB_PROJECT"
 elif [ "$DB_MANAGED" = false ]; then
   echo "[1/3] 使用外部 PostgreSQL"
   : > "$DB_PROJECT_FILE"
@@ -120,20 +125,20 @@ else
   die "无法读取数据库部署方式"
 fi
 
-echo "[2/3] 启动 SpatialForge 服务 (端口 $SERVICE_PORT)"
+echo "[2/3] 启动 BenchForge 服务 (端口 $SERVICE_PORT)"
 if port_open "$SERVICE_PORT"; then
   echo "  端口已监听，保留现有进程"
 else
-  echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/spatialforge.log"
+  echo "==== $(date '+%F %T') start ====" >> "$LOG_DIR/benchforge.log"
   # setsid 脱离当前终端会话，关闭终端后服务继续运行
-  setsid "$PY" "$ROOT/spatialforge_app.py" serve >> "$LOG_DIR/spatialforge.log" 2>&1 < /dev/null &
-  echo $! > "$SF_PID_FILE"
+  setsid "$PY" "$ROOT/benchforge_app.py" serve >> "$LOG_DIR/benchforge.log" 2>&1 < /dev/null &
+  echo $! > "$SERVICE_PID_FILE"
   if ! wait_port "$SERVICE_PORT" 90; then
-    tail -n 20 "$LOG_DIR/spatialforge.log" >&2 || true
-    fail_start "$SF_PID_FILE"
-    die "BenchForgeV2 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/spatialforge.log"
+    tail -n 20 "$LOG_DIR/benchforge.log" >&2 || true
+    fail_start "$SERVICE_PID_FILE"
+    die "BenchForge 在 90 秒内未监听 $SERVICE_PORT，见 $LOG_DIR/benchforge.log"
   fi
-  echo "  已启动 (PID $(<"$SF_PID_FILE"))"
+  echo "  已启动 (PID $(<"$SERVICE_PID_FILE"))"
 fi
 
 echo "[3/3] 启动 BenchForge DSH Web (端口 $WEB_PORT)"
@@ -164,10 +169,10 @@ fi
 
 echo
 echo "验证："
-if "$PY" spatialforge_app.py status > /dev/null 2>&1; then
+if "$PY" benchforge_app.py status > /dev/null 2>&1; then
   echo "  数据库 / 服务 / 令牌：正常"
 else
-  die "数据库 / BenchForgeV2 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
+  die "数据库 / BenchForge 服务 / DSH 令牌健康检查失败；未报告启动成功。请查看 $LOG_DIR 下的服务日志并修复后重试。"
 fi
 
 URL="$(latest_url)"

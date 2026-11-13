@@ -1,7 +1,7 @@
 # 第三方依赖
 
 以下六个仓库以 **Git 子模块** 引入，保留各自的源码、许可证和版本历史。
-BenchForgeV2 的提交固定每个子模块的具体版本；仓库地址在根目录
+BenchForge 的提交固定每个子模块的具体版本；仓库地址在根目录
 [`.gitmodules`](../.gitmodules) 中维护，用途在
 [`dependencies.json`](dependencies.json) 中登记。
 
@@ -19,11 +19,11 @@ BenchForgeV2 的提交固定每个子模块的具体版本；仓库地址在根�
 首次下载主仓库和全部子模块，包括它们的嵌套依赖：
 
 ```bash
-git clone --branch simulator-access-integration --recurse-submodules --shallow-submodules https://github.com/EurecaMoment/BenchForgeV2.git
-cd BenchForgeV2
+git clone --branch simulator-access-integration --recurse-submodules --shallow-submodules https://github.com/EurecaMoment/BenchForgeV2.git benchforge
+cd benchforge
 ```
 
-已有 BenchForgeV2 代码，在拉取主仓库更新后执行：
+已有 BenchForge 代码，在拉取主仓库更新后执行：
 
 ```bash
 git submodule sync --recursive

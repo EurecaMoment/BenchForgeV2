@@ -4,9 +4,10 @@ import json
 from copy import deepcopy
 from pathlib import Path
 from ..runtime import read, write
+from . import canonical_steps
 from .catalog import all_templates, capability_id, selected_templates, pipeline_files, relevance
 from .adapters import supports
-from .assessment import validate_assessment
+from .assessment import assessment_with_current_schema, validate_assessment
 from .plan_versions import current,activate,verify_application
 from .plan_input import resolve_request, FIELDS
 
@@ -60,12 +61,13 @@ def plan(args, directory, config=None):
                 if tid not in catalog:
                     raise ValueError(f'Unknown template {tid}')
         inputs.update(selections=selections, split=inputs.get('split', 'train'), seed=inputs.get('seed', 20261013))
-    value = {'schema': 'spatialforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe,
-             'objective': objective, 'inputs': inputs, 'steps': pipeline['steps'], 'selections': selections,
+    value = {'schema': 'benchforge.pipeline/v1', 'version': 1, 'pipeline_id': recipe,
+             'objective': objective, 'inputs': inputs, 'steps': canonical_steps(pipeline['steps']), 'selections': selections,
              'template_contracts': [{k: catalog[tid][k] for k in ('id', 'task_id', 'task_name', 'protocol_id', 'parameters', 'effective_measurement_conditions', 'output_schema', 'catalog_capability_links')} | {'execution': supports(tid)} for tid in dict.fromkeys(tid for s in selections for tid in s['template_ids'])]}
     if args.get('assessment') is not None:
         try:
             value['assessment'] = validate_assessment(args['assessment'], selections, inputs)
+            value['assessment'] = assessment_with_current_schema(value['assessment'])
         except ValueError as error:
             if not authoring_sources:
                 draft = Path(directory) / 'plan-request-draft.json'

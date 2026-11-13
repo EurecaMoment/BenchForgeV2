@@ -18,14 +18,14 @@ class ArtifactGraphTests(unittest.TestCase):
                 'execution_mode': 'exploration',
             })
             plan = {
-                'schema': 'spatialforge.pipeline/v1', 'version': 1,
+                'schema': 'benchforge.pipeline/v1', 'version': 1,
                 'pipeline_id': 'fixture',
                 'inputs': {'service_config': str(root / 'fixture.json')},
                 'steps': [
-                    {'id': 'capture', 'uses': 'spatialforge.capture',
+                    {'id': 'capture', 'uses': 'benchforge.capture',
                      'artifact_type': 'scene.capture',
                      'arguments': {'scene_program_path': '/workspace/scene.json'}},
-                    {'id': 'ready', 'uses': 'spatialforge.observe',
+                    {'id': 'ready', 'uses': 'benchforge.observe',
                      'artifact_type': 'scene.evidence',
                      'arguments': {'run_id': '$capture.run_id'},
                      'await_terminal': True},
@@ -58,9 +58,9 @@ class ArtifactGraphTests(unittest.TestCase):
             root = Path(temp)
             plan_path = root / 'plan.json'
             write(plan_path, {
-                'schema': 'spatialforge.pipeline/v1', 'version': 1,
+                'schema': 'benchforge.pipeline/v1', 'version': 1,
                 'pipeline_id': 'fixture', 'inputs': {},
-                'steps': [{'id': 'capture', 'uses': 'spatialforge.capture',
+                'steps': [{'id': 'capture', 'uses': 'benchforge.capture',
                            'arguments': {'scene_program_path': '$inputs.scene_program_path'}}],
             })
             result = run({'plan': str(plan_path), '_workspace': str(root)}, root / 'execution', client=lambda *args: {})

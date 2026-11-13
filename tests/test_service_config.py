@@ -18,7 +18,7 @@ class ServiceClientConfig(unittest.TestCase):
             legacy.write_text(json.dumps({'service_url': 'https://legacy.invalid',
                                           'operator_token': 'test-only', 'execution_mode': 'exploration'}),
                               encoding='utf-8')
-            client = generated / legacy.name
+            client = generated / 'benchforge-client.local.json'
             with patch.dict(os.environ, {}, clear=True):
                 self.assertEqual(load_service_client_config(client)['service_url'], 'https://legacy.invalid')
                 client.write_text('{"port":1,"port":2}', encoding='utf-8')
@@ -56,6 +56,21 @@ class ServiceClientConfig(unittest.TestCase):
         self.assertEqual(value['operator_token'], 'environment-token')
         self.assertEqual(value['scene_policy_path'], str((root / 'policy.json').resolve()))
 
+    def test_legacy_projection_and_env_references_resolve_new_config_and_tokens(self):
+        with tempfile.TemporaryDirectory() as folder:
+            generated = Path(folder) / 'config' / 'generated'
+            generated.mkdir(parents=True)
+            server = generated / 'benchforge-server.local.json'
+            server.write_text(json.dumps({'operator_token_env': 'SPATIALFORGE_OPERATOR_TOKEN',
+                                          'execution_mode': 'exploration'}), encoding='utf-8')
+            client = generated / 'benchforge-client.local.json'
+            client.write_text(json.dumps({'service_config': 'spatialforge-server.local.json'}), encoding='utf-8')
+            with patch.dict(os.environ, {'BENCHFORGE_OPERATOR_TOKEN': 'canonical-test-token',
+                                         'SPATIALFORGE_SERVICE_URL': 'https://legacy.invalid'}, clear=True):
+                value = load_service_client_config(generated / 'spatialforge.local.json')
+            self.assertEqual(value['operator_token'], 'canonical-test-token')
+            self.assertEqual(value['service_url'], 'https://legacy.invalid')
+
     def test_duplicate_json_fields_and_invalid_production_policy_are_rejected(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -86,7 +101,7 @@ class ServiceClientConfig(unittest.TestCase):
             config = root / 'service.json'
             config.write_text(json.dumps({'operator_token': 'fixture', 'execution_mode': 'production',
                                           'scene_policy_path': str(policy)}))
-            with patch.dict(os.environ, {'SPATIALFORGE_EXECUTION_MODE': 'exploration'}, clear=True):
+            with patch.dict(os.environ, {'BENCHFORGE_EXECUTION_MODE': 'exploration'}, clear=True):
                 with self.assertRaisesRegex(ValueError, 'conflicts with configured execution_mode'):
                     load_service_client_config(config)
 

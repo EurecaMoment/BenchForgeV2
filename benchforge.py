@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Set up and launch BenchForgeV2 in an isolated DSH Web profile."""
+"""Set up and launch BenchForge in an isolated DSH Web profile."""
 import argparse
 import json
 import os
@@ -9,7 +9,7 @@ import subprocess
 import sys
 import venv
 
-import spatialforge_app
+import benchforge_app
 
 ROOT=Path(__file__).resolve().parent
 
@@ -20,16 +20,11 @@ def run(argv, **kwargs):
 
 def uses_local_service(preset):
     import yaml
-    from integrations.spatialforge.check_config import service_config_paths
+    from integrations.benchforge.check_config import service_config_paths
 
     profile = yaml.load(preset.read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
     config = ROOT / 'config'
-    local = {
-        (config / 'spatialforge.local.json').resolve(),
-        (config / 'spatialforge-server.local.json').resolve(),
-        (config / 'generated/spatialforge.local.json').resolve(),
-        (config / 'generated/spatialforge-server.local.json').resolve(),
-    }
+    local = benchforge_app.settings.local_service_configs(config, config / 'generated')
     return any(isinstance(reference, str) and (ROOT / reference).resolve() in local
                for reference in service_config_paths(profile))
 
@@ -41,22 +36,26 @@ def main():
     parser.add_argument('command',choices=['setup','start'])
     parser.add_argument('--dsh-root',type=Path,help='Reuse an already built DSH checkout')
     parser.add_argument('--no-open',action='store_true')
-    parser.add_argument('--spatialforge-config', type=Path, help='Enable BenchForgeV2 tools using an existing service configuration')
+    parser.add_argument('--benchforge-config', '--service-config', type=Path,
+                        help='Enable BenchForge tools using an existing service configuration')
     parser.add_argument('--port', type=int, help='Override the configured Web port')
     parser.add_argument('--check-config', action='store_true', help='Validate the Web setup before launching it')
     parser.add_argument('--config-synced', action='store_true', help=argparse.SUPPRESS)
     args=parser.parse_args()
     preset=ROOT/'config/generated/benchforge.local.yml'
     model_config=ROOT/'config/benchforge.local.json'
-    service_config=(args.spatialforge_config or ROOT/'config/generated/spatialforge.local.json').resolve()
+    generated = ROOT / 'config/generated'
+    service_config = (args.benchforge_config or generated / benchforge_app.settings.CLIENT_CONFIG).resolve()
     if args.command=='setup':
         if args.check_config:
             parser.error('--check-config requires start')
-        if args.spatialforge_config is None:
-            run([sys.executable, ROOT/'spatialforge_app.py', 'sync'], cwd=ROOT)
+        local = benchforge_app.settings.local_service_configs(generated.parent, generated)
+        if service_config in local:
+            run([sys.executable, ROOT/'benchforge_app.py', 'sync'], cwd=ROOT)
+            service_config = local[service_config]
         if not service_config.is_file():
-            parser.error(f'BenchForgeV2 configuration not found: {service_config}. '
-                         'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
+            parser.error(f'BenchForge configuration not found: {service_config}. '
+                         'Run python benchforge_app.py init, or pass --benchforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
@@ -100,18 +99,22 @@ def main():
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
     if preset.is_file() and not args.config_synced and uses_local_service(preset):
-        run([python, ROOT/'spatialforge_app.py', 'sync'], cwd=ROOT)
-    env = spatialforge_app.build_environment(database=False)
+        run([python, ROOT/'benchforge_app.py', 'sync'], cwd=ROOT)
+    env = benchforge_app.build_environment(database=False)
     env['DSH_HOME'] = str(state/'dsh-home')
+    paths = [str(ROOT / 'src')]
+    if env.get('PYTHONPATH'):
+        paths.append(env['PYTHONPATH'])
+    env['PYTHONPATH'] = os.pathsep.join(paths)
     try:
-        port = args.port if args.port is not None else spatialforge_app.configured_web_port()
+        port = args.port if args.port is not None else benchforge_app.configured_web_port()
     except ValueError as error:
         parser.error(str(error))
     from integrations.dsh.build_preset import refresh_model_patches
     if not args.config_synced or args.check_config:
         refresh_model_patches(preset, model_config)
     try:
-        run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT,env=env)
+        run([python,ROOT/'integrations/benchforge/check_config.py','--preset',preset],cwd=ROOT,env=env)
     except subprocess.CalledProcessError as error:
         raise SystemExit(error.returncode) from None
     if args.check_config:

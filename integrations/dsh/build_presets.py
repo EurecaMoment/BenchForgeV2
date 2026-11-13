@@ -1,11 +1,11 @@
-"""Build the two BenchForgeV2 Agent presets from one capability definition."""
+"""Build the two BenchForge Agent presets from one capability definition."""
 import argparse
 import importlib.util
 from pathlib import Path
 
 INTEGRATIONS = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('spatialforge_preset_definition',
-                                             INTEGRATIONS / 'spatialforge/preset_definition.py')
+spec = importlib.util.spec_from_file_location('benchforge_preset_definition',
+                                             INTEGRATIONS / 'benchforge/preset_definition.py')
 spatial = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(spatial)
 base, yaml = spatial.base, spatial.yaml
@@ -16,8 +16,10 @@ def build(sources, dsh_root, python, config_path, service_config, *, package_imp
                              with_ui=False, package_imports=package_imports)
     workbench = spatial.build(sources, dsh_root, python, service_config, config_path=config_path,
                               with_ui=True, package_imports=package_imports)
-    return [{'insert': [row for result in (headless, workbench)
-                        for patch in result for row in patch.get('insert', [])]},
+    entries = [row for result in (headless, workbench)
+               for patch in result for row in patch.get('insert', [])
+               if row.get('id') != base.PRESET_ALIASES_PLUGIN_ID]
+    return [{'insert': [*entries, base.preset_alias_entry(package_imports=package_imports)]},
             *([] if package_imports else base.model_patches(config_path))]
 
 
@@ -34,8 +36,8 @@ def main():
         base.DEFAULT_SERVICE_CONFIG if args.package_imports else base.default_service_config())
     # A portable package has no deployment config yet; a local overlay must.
     if not args.package_imports and not service_config.is_file():
-        parser.error(f'BenchForgeV2 configuration not found: {service_config.resolve()}. '
-                     'Run python spatialforge_app.py init, or pass --service-config with the actual file path.')
+        parser.error(f'BenchForge configuration not found: {service_config.resolve()}. '
+                     'Run python benchforge_app.py init, or pass --service-config with the actual file path.')
     sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
     result = build(sources, args.dsh_root, args.python, args.config, service_config,
                    package_imports=args.package_imports)

@@ -2,10 +2,10 @@
 __pycache__/
 *.py[cod]
 # 本地测试 gRPC 服务的 pid / 日志
-components/spatialforge/grpc/.test_server.pid
-components/spatialforge/grpc/.test_server.log
+components/benchforge/grpc/.test_server.pid
+components/benchforge/grpc/.test_server.log
 # mock 服务的作业/工件目录
-components/spatialforge/grpc/_mock_jobs/
+components/benchforge/grpc/_mock_jobs/
 *.egg-info/
 .venv/
 venv/

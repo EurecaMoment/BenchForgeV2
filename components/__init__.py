@@ -1,1 +1,1 @@
-"""Versioned runtime components bundled with BenchForgeV2."""
+"""Versioned runtime components bundled with BenchForge."""

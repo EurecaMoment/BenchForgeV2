@@ -131,7 +131,8 @@ class Runtime:
         headers = {"Content-Type": "application/json"}
         token = cfg.get("token")
         if not token and cfg.get("token_env"):
-            token = os.environ.get(cfg["token_env"])
+            from .service_config import environment_value
+            token = environment_value(cfg["token_env"])
         if token:
             headers["Authorization"] = "Bearer " + token
         request = urllib.request.Request(cfg["url"].rstrip("/") + route, data=body, headers=headers, method=method)
@@ -144,7 +145,7 @@ class Runtime:
                 "note": "Model masks, labels and inferred depth remain predictions; depth scale requires calibration."}
 
     def _isaac_client(self):
-        client_path = Path(__file__).resolve().parents[2] / "components/spatialforge/grpc/client.py"
+        client_path = Path(__file__).resolve().parents[2] / "components/benchforge/grpc/client.py"
         if not client_path.is_file():
             raise ValueError(f"Isaac gRPC client not found at {client_path}; run from the BenchForge repository checkout.")
         import importlib.util
@@ -157,7 +158,7 @@ class Runtime:
         grpc_cfg = (self.config.get("isaac") or {}).get("grpc") or {}
         host = grpc_cfg.get("host", "")
         if not host or str(host).startswith("YOUR_CONFIG"):
-            raise ValueError("Configure isaac.grpc.host/port in config/benchforge.local.json and run spatialforge_app.py sync.")
+            raise ValueError("Configure isaac.grpc.host/port in config/benchforge.local.json and run benchforge_app.py sync.")
         port = grpc_cfg.get("port")
         timeout = grpc_cfg.get("timeout_seconds")
         if not port or not timeout:

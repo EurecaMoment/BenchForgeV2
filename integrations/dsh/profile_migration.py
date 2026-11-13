@@ -10,7 +10,7 @@ spec.loader.exec_module(catalog)
 base, spatial = catalog.base, catalog.spatial
 UI_ID = spatial.WORKBENCH_PLUGIN_ID
 LEGACY_UI_ID = spatial.LEGACY_WORKBENCH_PLUGIN_ID
-BUSINESS_PLUGINS = {'benchforge-tools', 'spatial-learning-tools', 'spatialforge-tools'}
+BUSINESS_PLUGINS = {'benchforge-tools', 'spatial-learning-tools', 'benchforge-scene-tools'}
 
 
 def inserted_rows(profile):
@@ -35,6 +35,8 @@ def _merge_plugins(previous, incoming):
             merged['config'] = {**deepcopy(old_config), **deepcopy(new_config)}
             if key == 'persona' and 'suffix' in old_config:
                 merged['config']['suffix'] = old_config['suffix']
+            if key == base.SCENE_PLUGIN_ID and 'serviceConfig' in old_config:
+                merged['config']['serviceConfig'] = old_config['serviceConfig']
         elif isinstance(old_config, list) and isinstance(new_config, list):
             merged['config'] = _merge_plugins(old_config, new_config)
         result.append(merged)
@@ -68,7 +70,7 @@ def replace_entries(profile, replacements):
             continue
         rows = []
         for row in patch['insert']:
-            key = UI_ID if row.get('id') == UI_ID else preset_id(row)
+            key = row['id'] if row.get('id') in {UI_ID, base.PRESET_ALIASES_PLUGIN_ID} else preset_id(row)
             if key not in replacements:
                 rows.append(row)
             elif key in remaining:
@@ -83,8 +85,9 @@ def replace_entries(profile, replacements):
 
 
 def migrate_profile(profile, generated, revision=None):
-    """Install the two V2 presets and a single workbench reader."""
-    profile = profile or []
+    """Install the two BenchForge presets and a single workbench reader."""
+    profile = deepcopy(profile or [])
+    base.refresh_preset_identity(profile)
     old = {}
     for row in inserted_rows(profile):
         if preset_id(row) in base.PRESETS:
@@ -103,7 +106,7 @@ def migrate_profile(profile, generated, revision=None):
             if revision is not None:
                 new['config']['description'] += ', runtime revision ' + revision
                 for plugin in new['config']['plugins']:
-                    if plugin.get('id') == 'spatialforge-tools':
+                    if plugin.get('id') == 'benchforge-scene-tools':
                         plugin['config']['preparationRevision'] = revision
             replacements[key] = new
         elif row.get('id') == UI_ID:
@@ -112,18 +115,22 @@ def migrate_profile(profile, generated, revision=None):
             if revision is not None:
                 new['config']['uiRevision'] = revision
             replacements[UI_ID] = new
-    if set(replacements) != set(base.PRESETS) | {UI_ID}:
-        raise ValueError('Expected BenchForgeV2, BenchForgeV2_UI and their workbench reader')
-    result = replace_entries(profile, replacements)
-    base.remove_retired_preset(result)
-    return result
+        elif row.get('id') == base.PRESET_ALIASES_PLUGIN_ID:
+            replacements[base.PRESET_ALIASES_PLUGIN_ID] = deepcopy(row)
+    if base.PRESET_ALIASES_PLUGIN_ID not in replacements:
+        replacements[base.PRESET_ALIASES_PLUGIN_ID] = base.preset_alias_entry()
+    if set(replacements) != set(base.PRESETS) | {UI_ID, base.PRESET_ALIASES_PLUGIN_ID}:
+        raise ValueError('Expected BenchForge, BenchForge_UI and their workbench reader')
+    return replace_entries(profile, replacements)
 
 
 def update_workbench(profile, root, workspace_paths=None, revision=None):
     """Refresh only UI presentation; all session identities and data paths survive."""
+    profile = deepcopy(profile)
+    base.refresh_preset_identity(profile)
     matches = [row for row in inserted_rows(profile) if preset_id(row) == base.WORKBENCH_PRESET_ID]
     if len(matches) != 1:
-        raise ValueError('BenchForgeV2_UI preset is missing or duplicated')
+        raise ValueError('BenchForge_UI preset is missing or duplicated')
     preset = deepcopy(matches[0])
     preset['config']['name'] = base.PRESETS[base.WORKBENCH_PRESET_ID]['name']
     preset['config']['plugins'] = [row for row in preset['config'].get('plugins', [])
@@ -133,5 +140,8 @@ def update_workbench(profile, root, workspace_paths=None, revision=None):
         config['workspacePaths'] = [str(path) for path in workspace_paths]
     if revision is not None:
         config['uiRevision'] = revision
-    ui = {'id': UI_ID, 'name': str(root / 'integrations/spatialforge/ui/stage_products.js'), 'config': config}
-    return replace_entries(profile, {base.WORKBENCH_PRESET_ID: preset, UI_ID: ui})
+    ui = {'id': UI_ID, 'name': str(root / 'integrations/benchforge/ui/stage_products.js'), 'config': config}
+    aliases = next((row for row in inserted_rows(profile) if row.get('id') == base.PRESET_ALIASES_PLUGIN_ID),
+                   base.preset_alias_entry())
+    return replace_entries(profile, {base.WORKBENCH_PRESET_ID: preset, UI_ID: ui,
+                                     base.PRESET_ALIASES_PLUGIN_ID: aliases})

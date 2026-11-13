@@ -5,6 +5,7 @@ Source generators still own measurement semantics and public-information suffici
 """
 import re
 from copy import deepcopy
+from . import canonical_identifier
 
 SCHEMA = 'benchforge.question-writing/v1'
 INSTRUCTIONS = (
@@ -48,7 +49,7 @@ def public_value(value):
 def validate_spec(spec, parameters, media_count):
     if not isinstance(spec, dict):
         raise ValueError('Source evidence needs question_spec; read pipeline_catalog question_authoring')
-    if 'schema' in spec and spec['schema'] != SCHEMA:
+    if 'schema' in spec and canonical_identifier(spec['schema']) != SCHEMA:
         raise ValueError('Unsupported question_spec.schema; use ' + SCHEMA)
     if spec.get('parameter_bindings') != parameters:
         raise ValueError('question_spec.parameter_bindings must preserve the exact source parameters')

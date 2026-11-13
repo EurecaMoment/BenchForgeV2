@@ -4,7 +4,7 @@ from pathlib import Path
 from copy import deepcopy
 from benchforge_core.pipelines.question_writing import SCHEMA, public_value, question_text, validate_spec
 
-adapter_spec=importlib.util.spec_from_file_location('question_revision',Path(__file__).resolve().parents[1]/'integrations/spatialforge/rewrite_question_set.py')
+adapter_spec=importlib.util.spec_from_file_location('question_revision',Path(__file__).resolve().parents[1]/'integrations/benchforge/rewrite_question_set.py')
 revision=importlib.util.module_from_spec(adapter_spec)
 adapter_spec.loader.exec_module(revision)
 

@@ -10,7 +10,7 @@ from benchforge_core.pipelines.plan_versions import current
 from benchforge_core.runtime import Runtime, read
 import test_assessment_plan as fixtures
 
-source = Path(__file__).resolve().parents[1] / 'integrations/spatialforge/ui/plan_request_cli.py'
+source = Path(__file__).resolve().parents[1] / 'integrations/benchforge/ui/plan_request_cli.py'
 spec = importlib.util.spec_from_file_location('legacy_plan_request', source)
 legacy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(legacy)

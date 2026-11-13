@@ -75,8 +75,8 @@ def artifact_type(operation: str, declared: str | None = None) -> str:
         return "benchmark.package"
     if operation == "pipeline":
         return "pipeline.output"
-    if operation.startswith("spatialforge."):
-        return "scene." + operation.removeprefix("spatialforge.")
+    if operation.startswith("benchforge."):
+        return "scene." + operation.removeprefix("benchforge.")
     return "pipeline.output"
 
 

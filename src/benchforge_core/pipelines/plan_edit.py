@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import re
 from ..runtime import read, Runtime
+from .assessment import assessment_with_current_schema
 from .plan_versions import current
 
 
@@ -71,7 +72,7 @@ def save_edit(workspace,session,base_plan,assessment=None,split=None,*,markdown=
             baseline_markdown=base_markdown
         else:
             base_document=assessment_from_markdown(base_markdown,required=False)
-            if base_document is None or merge(old.get('assessment',{}),base_document)==old.get('assessment',{}):
+            if base_document is None or assessment_with_current_schema(merge(old.get('assessment',{}),base_document))==assessment_with_current_schema(old.get('assessment',{})):
                 baseline_markdown=base_markdown
             else:
                 raise ValueError('The Markdown baseline does not match the saved assessment; refresh before editing.')
@@ -85,8 +86,10 @@ def save_edit(workspace,session,base_plan,assessment=None,split=None,*,markdown=
         raise ValueError('A complete assessment document is required')
     # Preserve fields deliberately excluded from the public document.
     document=merge(old.get('assessment',{}),document)
+    prior_assessment = assessment_with_current_schema(old.get('assessment', {}))
+    document = assessment_with_current_schema(document)
     if markdown_edit and parsed is not None:
-        markdown_normalization=document==old.get('assessment',{})
+        markdown_normalization=document==prior_assessment
     selections=[{'template_ids':[row['template_id']],'count':row['count'],'reason':row['selection_reason']}
                 for row in document['coverage']]
     inputs=deepcopy(old['inputs'])
@@ -95,7 +98,7 @@ def save_edit(workspace,session,base_plan,assessment=None,split=None,*,markdown=
     if split is not None:
         if split not in ('train','dev','test','sealed'):raise ValueError('Unknown execution partition')
         inputs['split']=split
-    changes=[key for key in document if document.get(key)!=old.get('assessment',{}).get(key)]
+    changes=[key for key in document if document.get(key)!=prior_assessment.get(key)]
     if markdown_edit and markdown != old.get('user_markdown'):
         changes.append('markdown_document')
     if inputs.get('split')!=old['inputs'].get('split'):changes.append('split')

@@ -1,5 +1,5 @@
 {
-  "config_version": 1,
+  "config_version": 2,
   "web": {
     "port": 3081
   },
@@ -9,13 +9,15 @@
     "operator_token_env": null,
     "worker_token_env": null,
     "gpu_candidates": "0",
-    "artifacts": "../.spatialforge/artifacts",
-    "task_root": "../.spatialforge/artifacts/operator_workspaces",
+    "artifacts": "../.benchforge/backend/artifacts",
+    "task_root": "../.benchforge/backend/artifacts/operator_workspaces",
     "execution_mode": "production",
     "scene_policy_path": "generated/scene-library/policy.json"
   },
   "database": {
-    "project": "benchforgev2-spatialforge",
+    "project": "benchforge",
+    "user": "benchforge",
+    "name": "benchforge",
     "port": 55432,
     "url": null,
     "url_env": null,
@@ -25,7 +27,7 @@
   "worker": {
     "worker_id": "desktop-isaac-main",
     "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
-    "runs": "D:/BenchForgeV2-runs"
+    "runs": "D:/BenchForge-runs"
   },
   "services": {
     "sam3": {
@@ -80,7 +82,7 @@
     "qwen": {
       "url": "http://127.0.0.1:9001/v1",
       "model": "YOUR_DEPLOYED_QWEN_VL_MODEL",
-      "token_env": "QWEN_RELAY_API_KEY",
+      "token_env": "BENCHFORGE_MODEL_API_KEY",
       "max_tokens": 4096,
       "timeout_seconds": 180,
       "retries": 1,

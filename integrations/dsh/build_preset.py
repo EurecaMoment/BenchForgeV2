@@ -3,6 +3,7 @@ from copy import deepcopy
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import yaml
 
@@ -23,18 +24,23 @@ Loader.add_constructor('tag:yaml.org,2002:js', lambda loader,node:JavaScript(loa
 Dumper.add_representer(JavaScript, lambda dumper,value:dumper.represent_scalar('tag:yaml.org,2002:js',str(value)))
 
 
-RETIRED_PRESET_ID = 'benchforge'
-RETIRED_SCENE_TOOL = 'spatialforge_dataset'
-BENCHFORGE_V2_ID = 'benchforgev2'
-# Existing session logs contain this identity. Only its display name changes.
-WORKBENCH_PRESET_ID = 'spatialforge-standard-ptc'
+RETIRED_SCENE_TOOL = 'benchforge_dataset'
+BENCHFORGE_ID = 'benchforge'
+WORKBENCH_PRESET_ID = 'benchforge-ui'
+PRESET_ALIASES = {'benchforgev2': BENCHFORGE_ID, 'spatialforge-standard-ptc': WORKBENCH_PRESET_ID}
+PRESET_ALIASES_PLUGIN_ID = 'benchforge-preset-aliases'
+SCENE_PLUGIN_ID = 'benchforge-scene-tools'
+LEGACY_SCENE_PLUGIN_ID = 'spatialforge-tools'
+LEGACY_WORKBENCH_PLUGIN_ID = 'spatialforge-evaluation-ui'
+WORKBENCH_PLUGIN_ID = 'benchforge-workbench-ui'
+SCENE_TOOL_NAMES = {'catalog', 'status', 'sam3', 'sam3d', 'evidence', 'collaboration'}
 PRESETS = {
-    BENCHFORGE_V2_ID: {
-        'name': 'BenchForgeV2', 'order': -2,
+    BENCHFORGE_ID: {
+        'name': 'BenchForge', 'order': -2,
         'description': 'Scene and data production in the standard conversation interface.',
     },
     WORKBENCH_PRESET_ID: {
-        'name': 'BenchForgeV2_UI', 'order': -1,
+        'name': 'BenchForge_UI', 'order': -1,
         'description': 'Scene and data production with the visual workbench.',
     },
 }
@@ -43,14 +49,27 @@ MODEL_TOOLS = [
     'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
     'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
 ]
-DEFAULT_SERVICE_CONFIG = Path('config/generated/spatialforge.local.json')
-LEGACY_SERVICE_CONFIG = Path('config/spatialforge.local.json')
+DEFAULT_SERVICE_CONFIG = Path('config/generated/benchforge-client.local.json')
+LEGACY_SERVICE_CONFIG = Path('config/benchforge-client.local.json')
+LEGACY_SERVICE_CONFIGS = (
+    LEGACY_SERVICE_CONFIG, Path('config/generated/spatialforge.local.json'), Path('config/spatialforge.local.json'),
+)
+SERVER_SERVICE_CONFIGS = (
+    Path('config/generated/benchforge-server.local.json'),
+    Path('config/generated/spatialforge-server.local.json'), Path('config/spatialforge-server.local.json'),
+)
 
 
 def set_identity(row, preset_id):
     """Keep preset metadata in one place, independent of tool composition."""
     row['id'] = 'preset-' + preset_id
     row['config'].update(id=preset_id, **PRESETS[preset_id])
+
+
+def preset_alias_entry(*, package_imports=False):
+    name = '@eurecamoment/benchforge-dsh/preset-aliases' if package_imports else str(
+        Path(__file__).with_name('preset_aliases.mjs').resolve())
+    return {'id': PRESET_ALIASES_PLUGIN_ID, 'name': name, 'config': {'aliases': PRESET_ALIASES.copy()}}
 
 
 def config_reference(path, package_imports=False):
@@ -61,8 +80,8 @@ def config_reference(path, package_imports=False):
 
 def default_service_config(root=Path('.')):
     current = root / DEFAULT_SERVICE_CONFIG
-    legacy = root / LEGACY_SERVICE_CONFIG
-    return legacy if not current.is_file() and legacy.is_file() else current
+    return next((path for path in (current, *(root / path for path in LEGACY_SERVICE_CONFIGS))
+                 if path.is_file()), current)
 
 
 def load_sources(dsh_root=None, node=None, resolve_from=None):
@@ -142,6 +161,13 @@ def preset_id(row):
     return config.get('id') if isinstance(config, dict) and isinstance(config.get('plugins'), list) else None
 
 
+def is_retired_preset(row):
+    # The first-generation preset shared the new public id but only loaded the Python tools.
+    return preset_id(row) == BENCHFORGE_ID and not any(
+        plugin.get('id') in {SCENE_PLUGIN_ID, LEGACY_SCENE_PLUGIN_ID}
+        for plugin in row['config']['plugins'])
+
+
 def remove_retired_preset(profile):
     """Drop the old preset declaration from the config without touching sessions."""
     changed = False
@@ -149,9 +175,96 @@ def remove_retired_preset(profile):
         if 'insert' not in patch:
             continue
         prior = patch['insert']
-        current = [row for row in prior if preset_id(row) != RETIRED_PRESET_ID]
+        current = [row for row in prior if not is_retired_preset(row)]
         if len(current) != len(prior):
             patch['insert'] = current
+            changed = True
+    return changed
+
+
+def _rename_scene_tokens(value):
+    def rename(match):
+        suffix = match.group(1)
+        return ('benchforge_scene_' if suffix in SCENE_TOOL_NAMES else 'benchforge_') + suffix
+
+    return re.sub(r'\bspatialforge_([a-z0-9_]+)\b', rename, value)
+
+
+def _refresh_preset_plugins(plugins):
+    for row in plugins:
+        config = row.get('config')
+        name = row.get('name')
+        if row.get('id') == LEGACY_SCENE_PLUGIN_ID:
+            row['id'] = SCENE_PLUGIN_ID
+        if isinstance(name, str):
+            for old, new in (
+                ('@eurecamoment/benchforge-dsh/spatialforge-tools', '@eurecamoment/benchforge-dsh/benchforge-scene-tools'),
+                ('@eurecamoment/benchforge-dsh/spatialforge-ui', '@eurecamoment/benchforge-dsh/benchforge-ui'),
+            ):
+                if name == old:
+                    row['name'] = new
+            row['name'] = row['name'].replace('integrations/spatialforge/', 'integrations/benchforge/').replace(
+                'integrations\\spatialforge\\', 'integrations\\benchforge\\')
+        if isinstance(config, list):
+            _refresh_preset_plugins(config)
+        elif isinstance(config, dict):
+            for key in (('prefix', 'suffix') if row.get('id') == 'persona' else ('persona',)
+                        if name == '@deepseek-ai/dsh-tool-subagent' else ()):
+                if isinstance(config.get(key), str):
+                    prompt = _rename_scene_tokens(config[key])
+                    prompt = re.sub(r'(?<!/)\bBenchForgeV2\b|\bSpatialForge\b', 'BenchForge', prompt)
+                    config[key] = prompt.replace('BenchForgeV2_UI', 'BenchForge_UI').replace(
+                        'integrations/spatialforge/', 'integrations/benchforge/')
+            tool_filter = config.get('toolFilter')
+            if isinstance(tool_filter, dict):
+                for key in ('allow', 'deny'):
+                    if isinstance(tool_filter.get(key), list):
+                        tool_filter[key] = [_rename_scene_tokens(value) if isinstance(value, str) else value
+                                            for value in tool_filter[key]]
+
+
+def refresh_preset_identity(profile):
+    """Promote earlier profile declarations to their canonical preset and plugin ids."""
+    changed = remove_retired_preset(profile)
+    declared = set()
+    for patch in profile:
+        if patch.get('id') == 'agent-preset-registry':
+            changed = _refresh_registry_defaults(patch) or changed
+        if 'insert' not in patch:
+            continue
+        rows = []
+        for row in patch.get('insert', []):
+            previous_id = preset_id(row)
+            canonical_id = PRESET_ALIASES.get(previous_id, previous_id)
+            if canonical_id in PRESETS:
+                if canonical_id in declared:
+                    changed = True
+                    continue
+                declared.add(canonical_id)
+                previous = deepcopy(row)
+                if canonical_id != previous_id:
+                    if row.get('id') == 'preset-' + previous_id:
+                        row['id'] = 'preset-' + canonical_id
+                    row['config'].update(id=canonical_id, name=PRESETS[canonical_id]['name'])
+                _refresh_preset_plugins(row['config']['plugins'])
+                changed = row != previous or changed
+            elif row.get('id') == WORKBENCH_PLUGIN_ID:
+                previous = row.get('name')
+                _refresh_preset_plugins([row])
+                changed = row.get('name') != previous or changed
+            elif row.get('id') == 'agent-preset-registry':
+                changed = _refresh_registry_defaults(row) or changed
+            rows.append(row)
+        patch['insert'] = rows
+    return changed
+
+
+def _refresh_registry_defaults(row):
+    changed = False
+    options = row.get('config') or {}
+    for key in ('default', 'selectedDefault'):
+        if isinstance(options.get(key), str) and options[key] in PRESET_ALIASES:
+            options[key] = PRESET_ALIASES[options[key]]
             changed = True
     return changed
 
@@ -165,8 +278,9 @@ def remove_retired_tool_filter(plugins):
         elif plugin.get('name') == '@deepseek-ai/dsh-tool-subagent' and isinstance(config, dict):
             tool_filter = config.get('toolFilter') or {}
             deny = tool_filter.get('deny', [])
-            if RETIRED_SCENE_TOOL in deny:
-                remaining = [name for name in deny if name != RETIRED_SCENE_TOOL]
+            retired = {RETIRED_SCENE_TOOL, 'spatialforge_dataset'}
+            if retired.intersection(deny):
+                remaining = [name for name in deny if name not in retired]
                 tool_filter.pop('deny')
                 if remaining:
                     tool_filter['deny'] = remaining
@@ -181,8 +295,8 @@ def refresh_service_paths(profile, config_path):
     current = root / DEFAULT_SERVICE_CONFIG
     if not current.is_file():
         return False
-    legacy = (root / LEGACY_SERVICE_CONFIG).resolve()
-    server = current.with_name('spatialforge-server.local.json').resolve()
+    legacy = {(root / path).resolve() for path in LEGACY_SERVICE_CONFIGS}
+    servers = {(root / path).resolve() for path in SERVER_SERVICE_CONFIGS}
     current = current.resolve()
 
     def refresh(row, key, old_paths):
@@ -196,15 +310,15 @@ def refresh_service_paths(profile, config_path):
     changed = False
     for patch in profile:
         for row in patch.get('insert', []):
-            if row.get('id') in {'benchforge-workbench-ui', 'spatialforge-evaluation-ui'}:
-                changed = refresh(row, 'productionConfig', {legacy, server}) or changed
+            if row.get('id') in {WORKBENCH_PLUGIN_ID, LEGACY_WORKBENCH_PLUGIN_ID}:
+                changed = refresh(row, 'productionConfig', legacy | servers) or changed
             if preset_id(row) not in PRESETS:
                 continue
             for plugin in row['config']['plugins']:
-                if plugin.get('id') == 'spatialforge-tools':
-                    changed = refresh(plugin, 'serviceConfig', {legacy}) or changed
-                if plugin.get('id') == 'spatialforge-evaluation-ui':
-                    changed = refresh(plugin, 'productionConfig', {legacy, server}) or changed
+                if plugin.get('id') == SCENE_PLUGIN_ID:
+                    changed = refresh(plugin, 'serviceConfig', legacy | servers) or changed
+                if plugin.get('id') == LEGACY_WORKBENCH_PLUGIN_ID:
+                    changed = refresh(plugin, 'productionConfig', legacy | servers) or changed
     return changed
 
 
@@ -214,9 +328,14 @@ def refresh_model_patches(preset_path, config_path):
     if not preset_path.is_file():
         return
     patches = model_patches(config_path)
-    profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader)
-    changed = remove_retired_preset(profile)
+    profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader) or []
+    changed = refresh_preset_identity(profile)
     changed = refresh_service_paths(profile, config_path) or changed
+    inserts = [row for patch in profile for row in patch.get('insert', [])]
+    if any(preset_id(row) in PRESETS for row in inserts) and not any(
+            row.get('id') == PRESET_ALIASES_PLUGIN_ID for row in inserts):
+        profile.append({'insert': [preset_alias_entry()]})
+        changed = True
     for patch in profile:
         for row in patch.get('insert', []):
             if preset_id(row) in PRESETS:

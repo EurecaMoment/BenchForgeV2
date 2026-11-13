@@ -1,12 +1,12 @@
 """Standard-library client for existing asynchronous model service endpoints."""
 import argparse
 import json
-import os
 from pathlib import Path
 import time
 from urllib.parse import quote
 from urllib.request import Request, ProxyHandler, build_opener
 from urllib.error import URLError
+from ..service_config import environment_value
 
 
 class ModelUnavailableError(RuntimeError):
@@ -16,7 +16,7 @@ class ModelUnavailableError(RuntimeError):
 class ModelService:
     def __init__(self, config=None):
         self.config = load_config() if config is None else config
-        self.url = (self.config.get("url") or os.environ.get("BENCHFORGE_INFERENCE_URL", "")).rstrip("/")
+        self.url = (self.config.get("url") or environment_value("BENCHFORGE_INFERENCE_URL", "")).rstrip("/")
         if not self.url:
             raise ValueError("Configure model_services.url or BENCHFORGE_INFERENCE_URL")
         self.opener = build_opener(ProxyHandler({}))
@@ -25,7 +25,7 @@ class ModelService:
         headers = {"Content-Type": "application/json"}
         token = self.config.get("token")
         if not token and self.config.get("token_env"):
-            token = os.environ.get(self.config["token_env"])
+            token = environment_value(self.config["token_env"])
         if token:
             headers["Authorization"] = "Bearer " + token
         body = None if payload is None else json.dumps(payload).encode()
@@ -82,7 +82,7 @@ class ModelService:
 
 
 def load_config(path=None):
-    path = path or os.environ.get("BENCHFORGE_MODEL_SERVICES_CONFIG")
+    path = path or environment_value("BENCHFORGE_MODEL_SERVICES_CONFIG")
     if path is None and Path('config/benchforge.local.json').is_file():
         path = Path('config/benchforge.local.json')
     return json.loads(Path(path).read_text(encoding="utf-8")).get("model_services", {}) if path else {}

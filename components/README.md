@@ -1,6 +1,6 @@
-# SpatialForge runtime
+# BenchForge runtime
 
-The bundled `spatialforge/` package manages scene programs, generated and native
+The bundled `benchforge/` package manages scene programs, generated and native
 assets, the PostgreSQL job queue, capture transport, delivery and the desktop
 dispatcher. It includes SAM3 and SAM3D worker dependencies under `src/pic2sim/`.
 The Isaac executor and model deployments require their own installed runtimes,

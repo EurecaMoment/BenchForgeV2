@@ -1,1 +1,1 @@
-"""BenchForgeV2 production and evaluation tools."""
+"""BenchForge production and evaluation tools."""

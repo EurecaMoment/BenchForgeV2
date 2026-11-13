@@ -4,14 +4,15 @@ from pathlib import Path
 
 from ..artifact_io import read_json as read
 from ..stage_review import STAGES
+from . import canonical_identifier
 from .artifact_graph import binding_roots
 
 def stage_of(step):
     if step.get('review_stage') in ('S1','S2','S3','S4','S5'):
         return step['review_stage']
-    return {'spatialforge.start':'S2','spatialforge.capture':'S2','spatialforge.observe':'S2',
-            'spatialforge.refine':'S2','spatialforge.extend':'S2','spatialforge.asset':'S2','spatialforge.evidence':'S3',
-            'templates.produce':'S4','data.package':'S5'}.get(step['uses'])
+    return {'benchforge.start':'S2','benchforge.capture':'S2','benchforge.observe':'S2',
+            'benchforge.refine':'S2','benchforge.extend':'S2','benchforge.asset':'S2','benchforge.evidence':'S3',
+            'templates.produce':'S4','data.package':'S5'}.get(canonical_identifier(step['uses']))
 
 def review_scope(plan, run_root, plan_path):
     """One review owner for the leaf artifacts of a composed production run."""
@@ -41,7 +42,7 @@ def review_scope(plan, run_root, plan_path):
             else:
                 stage = stage_of(step)
                 if stage in members:
-                    members[stage].append({'step': step['id'], 'label': label, 'uses': step['uses'],
+                    members[stage].append({'step': step['id'], 'label': label, 'uses': canonical_identifier(step['uses']),
                         'run': str(root.resolve()), 'result_path': str((step_root/'result.json').resolve()),
                         'terminal': step['id'] not in consumed})
 

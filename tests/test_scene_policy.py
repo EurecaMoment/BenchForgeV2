@@ -44,8 +44,8 @@ class ScenePolicyTests(unittest.TestCase):
 
     def test_production_environment_cannot_silently_run_without_policy(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict('os.environ', {'SPATIALFORGE_EXECUTION_MODE': 'production',
-                                           'SPATIALFORGE_SCENE_POLICY': str(Path(tmp) / 'missing.json')}):
+            with patch.dict('os.environ', {'BENCHFORGE_EXECUTION_MODE': 'production',
+                                           'BENCHFORGE_SCENE_POLICY': str(Path(tmp) / 'missing.json')}):
                 with self.assertRaisesRegex(ValueError, 'requires an enabled'):
                     load_policy(tmp)
 
@@ -58,7 +58,7 @@ class ScenePolicyTests(unittest.TestCase):
             selected = root / 'canonical.json'
             selected.write_text(json.dumps({'enabled': True, 'enforce_realism': True,
                                             'excluded_tasks': ['canonical']}))
-            with patch.dict('os.environ', {'SPATIALFORGE_SCENE_POLICY': str(selected)}):
+            with patch.dict('os.environ', {'BENCHFORGE_SCENE_POLICY': str(selected)}):
                 policy = load_policy(root)
             self.assertEqual(policy['execution_mode'], 'production')
             with self.assertRaisesRegex(ValueError, 'removed by the user'):
@@ -70,7 +70,7 @@ class ScenePolicyTests(unittest.TestCase):
         from benchforge_core.pipelines.runner import stage_of
         definition=next(row for row in pipeline_files() if row['id']=='scene.extend')
         self.assertIn('scene_program_path',definition['inputs'])
-        self.assertEqual(definition['steps'][0]['uses'],'spatialforge.extend')
+        self.assertEqual(definition['steps'][0]['uses'],'benchforge.extend')
         self.assertEqual(stage_of(definition['steps'][0]),'S2')
 
     def test_realism_policy_always_requires_a_saved_scene_brief(self):
@@ -106,7 +106,7 @@ class ScenePolicyTests(unittest.TestCase):
             bad=json.loads(json.dumps(value));bad['scenes']['geometry_exceptions'][0]['purpose']=''
             with self.assertRaisesRegex(ValueError,'purpose'):
                 validate_assessment(bad,AssessmentPlanTests.selections,AssessmentPlanTests.inputs)
-            ui=Path(__file__).resolve().parents[1]/'integrations/spatialforge/ui'
+            ui=Path(__file__).resolve().parents[1]/'integrations/benchforge/ui'
             with patch.object(sys,'path',[str(ui),*sys.path]):
                 spec=importlib.util.spec_from_file_location('test_geometry_library',ui/'scene_library.py')
                 library=importlib.util.module_from_spec(spec);spec.loader.exec_module(library)
@@ -175,7 +175,7 @@ class ScenePolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);self.policy(root)
             plan=root/'plan.json'
-            plan.write_text(json.dumps({'schema':'spatialforge.assessment/v1','scenes':{'designs':[{
+            plan.write_text(json.dumps({'schema':'benchforge.assessment/v1','scenes':{'designs':[{
                 'id':'chair-scene','name':'Chair scene','summary':'A chair stands on the floor with clear access around it.',
                 'hard_requirements':['The chair remains upright'],'physical_assumptions':['Static support'],
                 'object_roles':[{'object_id':'chair','role':'A chair used to test scene admission'}],
@@ -188,7 +188,7 @@ class ScenePolicyTests(unittest.TestCase):
             client=Mock()
             environment={'_workspace':str(root),'inputs':{},'_run_key':'fixture'}
             with self.assertRaisesRegex(ValueError,'Scene rejected'):
-                execute_step({'id':'capture','uses':'spatialforge.capture'},{'scene_program_path':str(program)},root,environment,client)
+                execute_step({'id':'capture','uses':'benchforge.capture'},{'scene_program_path':str(program)},root,environment,client)
             client.assert_not_called()
             program_value['objects'][0]['kind']='mesh'
             program.write_text(json.dumps(program_value))
@@ -207,7 +207,7 @@ class ScenePolicyTests(unittest.TestCase):
                 check_source(load_policy(root),scene_group='scene-v1:removed')
 
     def test_removal_moves_only_rejected_tasks_and_clears_saved_selections(self):
-        spec=importlib.util.spec_from_file_location('remove_cubes',Path(__file__).resolve().parents[1]/'integrations/spatialforge/remove_cube_scenes.py')
+        spec=importlib.util.spec_from_file_location('remove_cubes',Path(__file__).resolve().parents[1]/'integrations/benchforge/remove_cube_scenes.py')
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);ws=root/'workspace';library=ws/'scene-library';(library/'selections').mkdir(parents=True)

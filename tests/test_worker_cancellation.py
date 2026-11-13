@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import Mock
 
-spec=importlib.util.spec_from_file_location('worker_cancellation',Path(__file__).resolve().parents[1]/'integrations/spatialforge/worker_cancellation.py')
+spec=importlib.util.spec_from_file_location('worker_cancellation',Path(__file__).resolve().parents[1]/'integrations/benchforge/worker_cancellation.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 

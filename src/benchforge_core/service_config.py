@@ -1,4 +1,4 @@
-"""Small BenchForgeV2 client-config resolver for BenchForge HTTP calls."""
+"""Small BenchForge client-config resolver for BenchForge HTTP calls."""
 import json
 import os
 from pathlib import Path
@@ -7,6 +7,17 @@ from urllib.parse import urlsplit
 
 
 _ENV_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)|%([A-Za-z_][A-Za-z0-9_]*)%")
+
+
+def environment_value(name, default=None, *, environ=None):
+    environ = os.environ if environ is None else environ
+    if name in environ:
+        return environ[name]
+    if name.startswith('BENCHFORGE_'):
+        return environ.get('SPATIALFORGE_' + name.removeprefix('BENCHFORGE_'), default)
+    if name.startswith('SPATIALFORGE_'):
+        return environ.get('BENCHFORGE_' + name.removeprefix('SPATIALFORGE_'), default)
+    return default
 
 
 def _reject_duplicate_keys(pairs):
@@ -21,15 +32,16 @@ def _reject_duplicate_keys(pairs):
 def _expand_environment(value):
     def replace(match):
         name = next(part for part in match.groups() if part is not None)
-        if name not in os.environ:
+        resolved = environment_value(name)
+        if resolved is None:
             raise ValueError(f'configuration references unset environment variable {name}')
-        return os.environ[name]
+        return resolved
 
     return _ENV_REFERENCE.sub(replace, value)
 
 
 def _service_url(config):
-    value = os.environ.get('SPATIALFORGE_SERVICE_URL') or config.get('service_url')
+    value = environment_value('BENCHFORGE_SERVICE_URL') or config.get('service_url')
     if value:
         url = _expand_environment(str(value)).rstrip('/')
     else:
@@ -51,13 +63,13 @@ def _operator_token(config):
     env_name = config.get('operator_token_env')
     if env_name:
         env_name = _expand_environment(str(env_name))
-        token = os.environ.get(env_name)
+        token = environment_value(env_name)
         if not token:
             raise ValueError(f'operator_token_env references unset environment variable {env_name}')
         return token
-    token = config.get('operator_token') or os.environ.get('SPATIALFORGE_OPERATOR_TOKEN')
+    token = config.get('operator_token') or environment_value('BENCHFORGE_OPERATOR_TOKEN')
     if not token:
-        raise ValueError('Configure operator_token or set SPATIALFORGE_OPERATOR_TOKEN')
+        raise ValueError('Configure operator_token or set BENCHFORGE_OPERATOR_TOKEN')
     return token
 
 
@@ -72,25 +84,35 @@ def _config_path(value, config_path):
 def resolve_service_config_file(path):
     """Select a local client projection, with a fallback for older DSH installs."""
     path = Path(_expand_environment(os.fspath(path))).expanduser().resolve()
-    if (path.name == 'spatialforge.local.json'
-            and path.parent.name == 'generated'
-            and path.parent.parent.name == 'config'
-            and not path.exists()):
-        legacy = path.parent.parent / path.name
-        if legacy.is_file():
-            return legacy
+    if path.is_file():
+        return path
+    for names in (
+        ('benchforge-client.local.json', 'spatialforge.local.json'),
+        ('benchforge-server.local.json', 'spatialforge-server.local.json'),
+    ):
+        if path.name in names:
+            folders = [path.parent]
+            if path.parent.name == 'generated' and path.parent.parent.name == 'config':
+                folders.append(path.parent.parent)
+            elif path.parent.name == 'config':
+                folders.append(path.parent / 'generated')
+            return next(
+                (candidate for folder in folders for name in names
+                 if (candidate := folder / name).is_file()),
+                path,
+            )
     return path
 
 
 def _execution_policy(config, config_path):
     configured_mode = config.get('execution_mode')
-    environment_mode = os.environ.get('SPATIALFORGE_EXECUTION_MODE')
+    environment_mode = environment_value('BENCHFORGE_EXECUTION_MODE')
     if configured_mode is not None and environment_mode is not None and configured_mode != environment_mode:
-        raise ValueError('SPATIALFORGE_EXECUTION_MODE conflicts with configured execution_mode')
+        raise ValueError('BENCHFORGE_EXECUTION_MODE conflicts with configured execution_mode')
     mode = configured_mode if configured_mode is not None else environment_mode or 'production'
     if mode not in ('production', 'exploration'):
         raise ValueError('execution_mode must be production or exploration')
-    policy = os.environ.get('SPATIALFORGE_SCENE_POLICY') or config.get('scene_policy_path')
+    policy = environment_value('BENCHFORGE_SCENE_POLICY') or config.get('scene_policy_path')
     if not policy:
         task_root = config.get('task_root')
         candidates = []
@@ -121,12 +143,12 @@ def load_service_client_config(path):
     config_path = resolve_service_config_file(path)
     config = json.loads(config_path.read_text(encoding='utf-8'), object_pairs_hook=_reject_duplicate_keys)
     if not isinstance(config, dict):
-        raise ValueError('BenchForgeV2 service configuration must be a JSON object')
+        raise ValueError('BenchForge service configuration must be a JSON object')
     if config.get('service_config'):
-        base_path = _config_path(config['service_config'], config_path)
+        base_path = resolve_service_config_file(_config_path(config['service_config'], config_path))
         base = json.loads(base_path.read_text(encoding='utf-8'), object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(base, dict):
-            raise ValueError('Referenced BenchForgeV2 service configuration must be a JSON object')
+            raise ValueError('Referenced BenchForge service configuration must be a JSON object')
         overrides = {key: value for key, value in config.items() if key != 'service_config'}
         for field in ('port', 'service_url', 'execution_mode', 'scene_policy_path'):
             if field in overrides and field in base and overrides[field] != base[field]:

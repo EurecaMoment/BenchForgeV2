@@ -1,1 +1,1 @@
-include components/spatialforge/src/spatialforge/scene_design.py
+include components/benchforge/src/benchforge_backend/scene_design.py

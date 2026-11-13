@@ -1,5 +1,5 @@
 {
-  "mode": "BenchForgeV2",
+  "mode": "BenchForge",
   "interaction": "Use the pipeline catalog to select production recipes and task templates. The request examples describe independent CLI and DSH operations.",
   "workflow": [
     {

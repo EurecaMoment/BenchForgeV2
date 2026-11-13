@@ -1,7 +1,7 @@
 """Independent native Isaac Sim capture adapter; run with Isaac's Python.
 
 Supports explicitly authored cuboids, cameras and optional initial velocity.
-No scene planning, generated assets or BenchForgeV2 integration is implicit.
+No scene planning, generated assets or BenchForge integration is implicit.
 """
 import argparse
 import json

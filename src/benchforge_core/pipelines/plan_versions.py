@@ -5,7 +5,8 @@ import re
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from .assessment import validate_assessment
+from . import canonical_steps
+from .assessment import assessment_with_current_schema, validate_assessment
 
 
 def connection(workspace):
@@ -130,7 +131,8 @@ def _check_normalization(saved,previous,args):
     assessment=args.get('assessment')
     if not isinstance(assessment,dict):
         raise ValueError('Markdown normalization requires a complete resolved assessment')
-    changes=_leaf_changes(saved['assessment'],assessment)
+    changes=_leaf_changes(assessment_with_current_schema(saved['assessment']),
+                          assessment_with_current_schema(assessment))
     rows=args.get('markdown_resolution')
     if not isinstance(rows,list) or len(rows)!=len(changes):
         raise ValueError('markdown_resolution must cover every changed assessment field exactly once')
@@ -207,7 +209,8 @@ def verify_application(active,args):
     if normalization:
         rows,only_parameters,unmapped_narrative=_check_normalization(saved,previous,args)
     else:
-        if args.get('assessment')!=saved['assessment'] or args.get('selections')!=saved['selections']:
+        if (assessment_with_current_schema(args.get('assessment')) !=
+                assessment_with_current_schema(saved['assessment']) or args.get('selections') != saved['selections']):
             raise ValueError('Execution changes must retain the saved user-edited assessment and template allocation.')
         inputs={**args.get('inputs',{}),**{k:args[k] for k in ('seed','split') if k in args}}
         for key in ('seed','split','target_items','scene_selection','target_scene_count'):
@@ -221,16 +224,16 @@ def verify_application(active,args):
     coverage=lambda document:[{key:value for key,value in row.items() if key not in ('count','selection_reason')} for row in document.get('coverage',[])]
     dataset=lambda document:{key:value for key,value in document.get('dataset',{}).items() if key not in ('target_items','seed')}
     changed=changed or coverage(effective_assessment)!=coverage(previous.get('assessment',{})) or dataset(effective_assessment)!=dataset(previous.get('assessment',{}))
-    if changed and args.get('steps')==saved['steps'] and inputs.get('evidence')==saved['inputs'].get('evidence'):
+    steps_changed = canonical_steps(args.get('steps')) != canonical_steps(saved['steps'])
+    evidence_changed = inputs.get('evidence') != saved['inputs'].get('evidence')
+    if changed and not (steps_changed or evidence_changed):
         raise ValueError('Changed production rules require updated executable steps or evidence inputs; repeating the document does not apply them.')
     if normalization:
-        steps_changed=args.get('steps')!=saved['steps']
-        evidence_changed=inputs.get('evidence')!=saved['inputs'].get('evidence')
         if (unmapped_narrative or (rows and not only_parameters)) and not (steps_changed or evidence_changed):
             raise ValueError('Narrative rules outside resolved production parameters require updated executable steps or evidence inputs.')
         return rows
     if 'user_markdown' in saved:
         markdown_changed=_plain_text(saved['user_markdown'])!=_plain_text(previous.get('user_markdown',''))
-        if markdown_changed and args.get('steps')==saved['steps'] and inputs.get('evidence')==saved['inputs'].get('evidence'):
+        if markdown_changed and not (steps_changed or evidence_changed):
             raise ValueError('Markdown instructions outside the assessment-yaml block require updated executable steps or evidence inputs.')
     return None
