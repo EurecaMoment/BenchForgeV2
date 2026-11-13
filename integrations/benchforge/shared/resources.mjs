@@ -1,12 +1,24 @@
-import fs from 'node:fs/promises';
-import {fileURLToPath} from 'node:url';
+import {readFile} from 'node:fs/promises';
 
-const resource = (name) => new URL(`../../resources/${name}`, import.meta.url);
+const source = new URL('../../../src/benchforge_core/pipelines/', import.meta.url);
+const packaged = new URL('../../dist/resources/', import.meta.url);
+
+async function readResource(name) {
+  let contents;
+  try {
+    // Checkouts always read the Python package's source files, even after npm pack.
+    contents = await readFile(new URL(name, source), 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    contents = await readFile(new URL(name, packaged), 'utf8');
+  }
+  return JSON.parse(contents);
+}
 
 export async function readTaskTemplates() {
-  return JSON.parse(await fs.readFile(fileURLToPath(resource('task_templates.json')), 'utf8'));
+  return readResource('task_templates.json');
 }
 
 export async function readAssessmentTemplate() {
-  return JSON.parse(await fs.readFile(fileURLToPath(resource('assessment_template.json')), 'utf8'));
+  return readResource('assessment_template.json');
 }

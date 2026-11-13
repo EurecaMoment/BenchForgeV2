@@ -3,6 +3,7 @@ import path from 'node:path';
 import {defineTool} from '@deepseek-ai/dsh-tools';
 import Schema from '@deepseek-ai/schemastery';
 import {launchEnvironmentOf} from '@deepseek-ai/dsh-launch-environment';
+import {executeHandoff, handoffParameters} from '../benchforge/shared/collaboration.mjs';
 
 export const name = 'benchforge-tools';
 export const inject = ['tools', 'attachments', 'subprocess'];
@@ -76,7 +77,6 @@ export async function apply(ctx, config) {
     evidence:'Import evidence JSONL. provenance.path references one JSON source document; selectors are JSON pointers into it. All relative paths resolve against the input JSONL directory. media contains public images only; assets retains private raw depth, labels and oracle code. Derive JSON oracle outputs from binary simulation inputs in task code.',
     build:'Build model-visible items/media plus separate authority sources and private assets, deriving answers from source JSON and reporting coverage. Keep raw depth and authority labels in the evidence side of the bundle.',
     evaluate:'Score saved predictions with exact match; report missing answers. Does not call model APIs.',
-    collaboration:'Share lightweight, structured handoffs in the task workspace. Agents can publish observations, artifacts, decisions, blockers and next actions, relate a handoff to earlier work, and reply to another agent. List or read the record when joining, resuming or reconciling parallel work; the protocol does not prescribe an orchestration graph.'
   };
   const object={type:'object',properties:{},additionalProperties:true};
   Object.assign(definitions, {
@@ -124,7 +124,6 @@ export async function apply(ctx, config) {
     evidence:{input:{type:'string',required:true,description:'Source records JSONL with provenance and JSON-pointer selectors.'}},
     build:{evidence:{type:'string',required:true},items:{type:'string',required:true}},
     evaluate:{authority:{type:'string',required:true},predictions:{type:'string',required:true}},
-    collaboration:{action:{type:'string',enum:['publish','list','read'],required:true},history:{type:'boolean',description:'For list: include earlier versions. Default returns only the latest record per handoff, then applies filters.'},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},
     isaac:{scene_program:{type:'string',required:true},timeout_seconds:{type:'integer'}}
   };
   const production = {
@@ -372,7 +371,6 @@ export async function apply(ctx, config) {
   }
   for (const [tool, description] of Object.entries(definitions)) {
     if (config.includeTools && !config.includeTools.includes(tool)) continue;
-    if (tool === 'collaboration') continue;
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output:tool==='catalog'?output:tool==='status'?statusOutput:operationOutput,
@@ -380,48 +378,10 @@ export async function apply(ctx, config) {
         const sessionEnvironment = {...environment, BENCHFORGE_DSH_SESSION_ID: exec.agent?.session?.id || '', BENCHFORGE_DSH_CALL_ID: exec.callId || ''};
         return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment:sessionEnvironment,active});}}));
   }
-  if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration', description:definitions.collaboration,
-    parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...schemas.collaboration}, output,
-    execute:async (args,exec)=>{
-      exec.signal?.throwIfAborted();
-      const {workspace,...request}=args;
-      const directory=path.join(path.resolve(workspace),'.benchforge','collaboration');
-      const file=path.join(directory,'handoffs.jsonl');
-      if(request.action==='publish'){
-        if(!request.role || !request.summary) throw new Error('collaboration publish needs role and summary');
-        await fs.mkdir(directory,{recursive:true});
-        exec.signal?.throwIfAborted();
-        const handoff={handoff_id:request.handoff_id || `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-          created_at:new Date().toISOString(),agent:request.agent || exec.agent?.session?.id || 'current-agent',
-          role:request.role,status:request.status || 'working',summary:request.summary,
-          inputs:request.inputs || [],artifacts:request.artifacts || [],findings:request.findings || [],
-          blockers:request.blockers || [],next_actions:request.next_actions || [],parent_handoff_id:request.parent_handoff_id || null,
-          reply_to:request.reply_to || null,related_handoff_ids:request.related_handoff_ids || [],
-          requested_from:request.requested_from || [],decision:request.decision || null,
-          confidence:request.confidence ?? null,supersedes_handoff_id:request.supersedes_handoff_id || null};
-        // Join a begun append before observing cancellation, keeping each record whole.
-        await fs.appendFile(file,JSON.stringify(handoff)+'\n','utf8');
-        exec.signal?.throwIfAborted();
-        return handoff;
-      }
-      let rows=[];
-      try{rows=(await fs.readFile(file,{encoding:'utf8',signal:exec.signal})).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}
-      catch(error){if(error.code!=='ENOENT') throw error;}
-      if(request.action==='list') {
-        if(!request.history) rows=[...new Map(rows.map(item=>[item.handoff_id,item])).values()];
-        const filter=request.filter || {};
-        return {handoffs:rows.filter(item =>
-          (!filter.status || item.status===filter.status) &&
-          (!filter.role || item.role===filter.role) &&
-          (!filter.agent || item.agent===filter.agent))};
-      }
-      if(request.action==='read'){
-        const row=rows.findLast(item=>item.handoff_id===request.handoff_id);
-        if(!row) throw new Error(`Unknown collaboration handoff: ${request.handoff_id}`);
-        return row;
-      }
-      throw new Error(`Unknown collaboration action: ${request.action}`);
-    }}));
+  if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration',
+    description:'Share lightweight, structured handoffs in the task workspace. Agents can publish observations, artifacts, decisions, blockers and next actions, relate a handoff to earlier work, and reply to another agent. List or read the record when joining, resuming or reconciling parallel work; the protocol does not prescribe an orchestration graph.',
+    parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace shared by related agents.'},...handoffParameters},
+    output,execute:executeHandoff}));
   if (!config.includeTools || config.includeTools.includes('view_image')) ctx.tools.register(defineTool({name:'benchforge_view_image', description:'Show a real local capture or annotation image to the model and user.',
     parameters:{path:{type:'string',required:true}},
     output:{...output,render:(_args,value)=>[{type:'image',attachment:value.image}]},

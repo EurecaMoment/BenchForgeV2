@@ -7,15 +7,14 @@ import os
 import re
 from pathlib import Path
 import time
-import urllib.request
 from urllib.error import HTTPError
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
 
-from sqlalchemy import create_engine, inspect, text
 from benchforge_core.service_config import environment_value, resolve_service_config_file
+from benchforge_core.service_http import post_service_json
 
 
 PIPELINE_SCHEMAS = ('benchforge.pipeline/v1', 'spatialforge.pipeline/v1')
@@ -27,6 +26,7 @@ def load_workbench_config(path):
     config = json.loads(path.read_text(encoding='utf-8'))
     if config.get('service_config'):
         path = (path.parent / Path(os.path.expandvars(config.pop('service_config'))).expanduser()).resolve()
+        path = resolve_service_config_file(path)
         config = {**json.loads(path.read_text(encoding='utf-8')), **config}
     for key in ('harness', 'artifacts'):
         if config.get(key):
@@ -36,25 +36,26 @@ def load_workbench_config(path):
         config['operator_token'] = environment_value(name) or ''
     elif not config.get('operator_token'):
         config['operator_token'] = environment_value('BENCHFORGE_OPERATOR_TOKEN') or ''
+    config['_workbench_config_dir'] = path.parent
+    return config
+
+
+def workbench_database_url(config):
+    """Resolve credentials only for the older direct-read deployment."""
     if config.get('database_url_env'):
         name = os.path.expandvars(config['database_url_env'])
         database = environment_value(name)
-        env_file = path.with_name('database.env')
-        if env_file.is_file():
+        directory = config.get('_workbench_config_dir')
+        env_file = directory / 'database.env' if directory else None
+        if env_file and env_file.is_file():
             values = dict(line.split('=', 1) for line in env_file.read_text(encoding='utf-8').splitlines()
                           if '=' in line and not line.lstrip().startswith('#'))
             managed = name in {'BENCHFORGE_DATABASE_URL', 'SPATIALFORGE_DATABASE_URL'} and (
                 environment_value('BENCHFORGE_DATABASE_MANAGED', environ=values) == 'true')
             configured_url = environment_value(name, environ=values)
             database = configured_url if managed else database or configured_url
-        config['database_url'] = database
-    elif config.get('database_url'):
-        config['database_url'] = os.path.expandvars(config['database_url'])
-    return config
-
-
-def workbench_database_url(config):
-    database = config.get('database_url')
+    else:
+        database = os.path.expandvars(config.get('database_url') or '')
     if database:
         return database
     if config.get('harness'):
@@ -64,31 +65,56 @@ def workbench_database_url(config):
     raise ValueError('Configure database_url or database_url_env for the workbench service')
 
 
-def request_keys_table(connection):
-    if inspect(connection).has_table('benchforge_request_keys'):
-        return 'benchforge_request_keys'
-    return 'spatialforge_request_keys'
+def workbench_metadata(config, route, value):
+    """Use the service first. An older deployment can still read its local DB."""
+    legacy = any(config.get(key) for key in ('database_url', 'database_url_env', 'harness'))
+    if config.get('operator_token'):
+        try:
+            return service_read(config, route, value)
+        except HTTPError as error:
+            if error.code != 404:
+                raise
+            try:
+                detail = json.load(error)
+            except ValueError:
+                raise error
+            if detail != {'error': 'unknown operation'}:
+                raise error
+    if not legacy:
+        return None
+    return _legacy_workbench_metadata(config, route, value)
+
+
+def _legacy_workbench_metadata(config, route, value):
+    from sqlalchemy import create_engine
+
+    integrations = Path(__file__).resolve().parents[2]
+    source = integrations.parent / 'components/benchforge/src/benchforge_backend/workbench_queries.py'
+    if not source.is_file():
+        source = integrations / 'dist/workbench/workbench_queries.py'
+    if source.is_file():
+        spec = importlib.util.spec_from_file_location('benchforge_workbench_queries', source)
+        workbench_queries = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(workbench_queries)
+    else:
+        workbench_queries = importlib.import_module('benchforge_backend.workbench_queries')
+
+    query = workbench_queries.WORKBENCH_QUERIES.get(route)
+    if query is None:
+        raise ValueError('Unknown workbench metadata query')
+    engine = create_engine(workbench_database_url(config), hide_parameters=True)
+    try:
+        with workbench_queries.read_connection(engine) as connection:
+            return query(connection, value)
+    finally:
+        engine.dispose()
 
 
 def session_runs(config, session, sessions=()):
-    engine = create_engine(workbench_database_url(config), hide_parameters=True)
-    try:
-        with engine.connect() as connection:
-            if engine.dialect.name == 'postgresql':
-                connection.exec_driver_sql('SET TRANSACTION READ ONLY')
-                connection.exec_driver_sql("SET LOCAL statement_timeout = '2000ms'")
-            ids = list(dict.fromkeys([session, *sessions]))[:9]
-            prefixes = {'prefix' + str(i): 'dsh:' + value + ':' for i, value in enumerate(ids)}
-            conditions = ' OR '.join('substr(k.id,1,length(:'+key+'))=:'+key for key in prefixes)
-            table = request_keys_table(connection)
-            rows = connection.execute(text(
-                "SELECT DISTINCT r.id,r.created_at,r.plan->>'workflow' AS workflow,CASE WHEN r.state IN ('SUCCEEDED','FAILED_FINAL','CANCELED') THEN 1 ELSE 0 END AS priority "
-                f'FROM {table} k JOIN runs r ON r.id=k.run_id '
-                'WHERE ('+conditions+') ORDER BY priority,r.created_at DESC LIMIT 12'),
-                prefixes).mappings().all()
-    finally:
-        engine.dispose()
-    return rows
+    value = workbench_metadata(config, '/workbench/session-runs', {
+        'session_id': session, 'related_session_ids': list(dict.fromkeys(sessions))[:8],
+    })
+    return value['runs'] if value else []
 
 
 def service_read(config, route, value):
@@ -98,11 +124,7 @@ def service_read(config, route, value):
         if ':' in host and not host.startswith('['):
             host = f'[{host}]'
         url = f"http://{host}:{config.get('port', 3841)}"
-    request = urllib.request.Request(url.rstrip('/') + route, data=json.dumps(value).encode(),
-        headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config['operator_token']})
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(request, timeout=3) as response:
-        return json.load(response)
+    return post_service_json(url, route, value, token=config['operator_token'], timeout=3)
 
 
 def production_observation(config, run_id):
@@ -355,13 +377,15 @@ def current_production_progress(config, workspace, session):
 
 def observe(config, session, run_ids, sessions=(), workspace=None):
     local = current_production_progress(config, workspace, session)
-    rows = []
-    if config.get('database_url') or config.get('database_url_env') or config.get('harness'):
-        try:
-            rows = session_runs(config, session, sessions)
-        except Exception as error:
-            return {**local, 'status': 'unavailable', 'error': type(error).__name__, 'runs': []}
     registered = [row['run_id'] for row in local.get('current_collection', {}).get('rows', []) if row.get('run_id')]
+    warning = None
+    try:
+        rows = session_runs(config, session, sessions)
+    except Exception as error:
+        if not (registered or run_ids):
+            return {**local, 'status': 'unavailable', 'error': type(error).__name__, 'runs': []}
+        rows = []
+        warning = type(error).__name__
     ids = list(dict.fromkeys(registered + [row['id'] for row in rows] + run_ids))[:12]
     workflows = {row['id']: row['workflow'] or 'scene' for row in rows}
 
@@ -379,7 +403,8 @@ def observe(config, session, run_ids, sessions=(), workspace=None):
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         runs = list(pool.map(read, ids))
-    return {**local, 'status': 'partial' if any('error' in row for row in runs) else 'connected',
+    return {**local, **({'error': warning} if warning else {}),
+            'status': 'partial' if warning or any('error' in row for row in runs) else 'connected',
             'scope': 'session_request_keys_and_persisted_pipeline_refs', 'limit': 12, 'runs': runs}
 
 

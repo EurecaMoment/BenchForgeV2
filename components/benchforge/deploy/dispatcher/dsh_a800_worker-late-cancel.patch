@@ -6,7 +6,7 @@
  
 +def finish_canceled_capture(job,job_id):
 +    import importlib.util
-+    spec=importlib.util.spec_from_file_location('capture_cancel_ack','/home/maqiang/GitHub/BenchForgeV2/integrations/benchforge/worker_cancellation.py')
++    spec=importlib.util.spec_from_file_location('capture_cancel_ack','/home/maqiang/GitHub/BenchForgeV2/components/benchforge/deploy/dispatcher/worker_cancellation.py')
 +    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 +    return module.finish_canceled_capture(job,job_id,CLIENT,api)
 +

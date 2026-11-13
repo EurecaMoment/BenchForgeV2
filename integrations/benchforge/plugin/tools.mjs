@@ -7,6 +7,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
 import {loadServiceConfig} from '../shared/config.mjs';
+import {executeHandoff, handoffParameters} from '../shared/collaboration.mjs';
 // An operator-issued revision refreshes this plugin and its local helpers while
 // the official Harness keeps already-bound agent revisions alive.
 const revision = new URL(import.meta.url).search;
@@ -130,24 +131,10 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
     }}},
   },output,execute:createPreparationHandler({ctx,batchSize:config.preparationBatchSize || 3,
     revision:config.preparationRevision ? '?revision=' + encodeURIComponent(config.preparationRevision) : revision})}));
-  ctx.tools.register(defineTool({name:'benchforge_scene_collaboration',description:'Share lightweight handoffs in the task workspace. Publish observations, artifacts, decisions, blockers and next actions; relate or reply to earlier handoffs; list or read records when agents join, resume or reconcile parallel work. The protocol does not prescribe a fixed orchestration graph.',parameters:{workspace:{type:'string',required:true,description:'Absolute shared task workspace.'},action:{type:'string',enum:['publish','list','read'],required:true},history:{type:'boolean',description:'For list: include earlier versions. Default returns only the latest record per handoff, then applies filters.'},handoff_id:{type:'string'},role:{type:'string'},agent:{type:'string'},status:{type:'string',enum:['working','ready','blocked','done']},summary:{type:'string'},inputs:{type:'array',items:{type:'string'}},artifacts:{type:'array',items:{type:'string'}},findings:{type:'array',items:{type:'string'}},blockers:{type:'array',items:{type:'string'}},next_actions:{type:'array',items:{type:'string'}},parent_handoff_id:{type:'string'},reply_to:{type:'string'},related_handoff_ids:{type:'array',items:{type:'string'}},requested_from:{type:'array',items:{type:'string'}},decision:{type:'string'},confidence:{type:'number'},supersedes_handoff_id:{type:'string'},filter:{type:'object',additionalProperties:false,properties:{status:{type:'string'},role:{type:'string'},agent:{type:'string'}}}},output,execute:async(args,exec)=>{
-    exec.signal.throwIfAborted();
-    const file=path.join(path.resolve(args.workspace),'.benchforge','collaboration','handoffs.jsonl');
-    if(args.action==='publish'){
-      if(!args.role||!args.summary) throw new Error('collaboration publish needs role and summary');
-      await fs.promises.mkdir(path.dirname(file),{recursive:true});
-      exec.signal.throwIfAborted();
-      const handoff={handoff_id:args.handoff_id||`${Date.now()}-${Math.random().toString(36).slice(2,8)}`,created_at:new Date().toISOString(),agent:args.agent||exec.agent?.session?.id||'current-agent',role:args.role,status:args.status||'working',summary:args.summary,inputs:args.inputs||[],artifacts:args.artifacts||[],findings:args.findings||[],blockers:args.blockers||[],next_actions:args.next_actions||[],parent_handoff_id:args.parent_handoff_id||null,reply_to:args.reply_to||null,related_handoff_ids:args.related_handoff_ids||[],requested_from:args.requested_from||[],decision:args.decision||null,confidence:args.confidence??null,supersedes_handoff_id:args.supersedes_handoff_id||null};
-      // Complete a begun append so cancellation cannot leave a partial JSONL record.
-      await fs.promises.writeFile(file,JSON.stringify(handoff)+'\n',{encoding:'utf8',flag:'a'});
-      exec.signal.throwIfAborted(); return handoff;
-    }
-    let rows=[]; try{rows=(await fs.promises.readFile(file,{encoding:'utf8',signal:exec.signal})).split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));}catch(error){if(error.code!=='ENOENT')throw error;}
-    exec.signal.throwIfAborted();
-    if(args.action==='list'){if(!args.history)rows=[...new Map(rows.map(item=>[item.handoff_id,item])).values()];const filter=args.filter||{};return {handoffs:rows.filter(item=>(!filter.status||item.status===filter.status)&&(!filter.role||item.role===filter.role)&&(!filter.agent||item.agent===filter.agent))};}
-    if(args.action==='read'){const row=rows.findLast(item=>item.handoff_id===args.handoff_id);if(!row)throw new Error(`Unknown collaboration handoff: ${args.handoff_id}`);return row;}
-    throw new Error(`Unknown collaboration action: ${args.action}`);
-  }}));
+  ctx.tools.register(defineTool({name:'benchforge_scene_collaboration',
+    description:'Share lightweight handoffs in the task workspace. Publish observations, artifacts, decisions, blockers and next actions; relate or reply to earlier handoffs; list or read records when agents join, resume or reconcile parallel work. The protocol does not prescribe a fixed orchestration graph.',
+    parameters:{workspace:{type:'string',required:true,description:'Absolute shared task workspace.'},...handoffParameters},
+    output,execute:executeHandoff}));
   const stage=(name,path,description,parameters)=>ctx.tools.register(defineTool({name,description,parameters:{request_key:requestKey,...parameters},output:taskRunOutput,execute:(args,exec)=>submit(path,args,exec)}));
   stage('benchforge_diffusion','/diffusion','Generate or edit an image with FLUX. Takes your prompt directly and returns a task with image evidence. Use the returned source_path with segmentation, reconstruction or scene authoring when those steps are useful.',{
     prompt:{type:'string',required:true},source_image:{type:'string',description:'Optional input image source_path for editing.'},width:{type:'integer'},height:{type:'integer'},steps:{type:'integer'},seed:{type:'integer'}});

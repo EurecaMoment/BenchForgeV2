@@ -1,9 +1,7 @@
 """Authenticated HTTP client for BenchForge pipeline operations."""
 
-import json
-import urllib.request
-
 from ..service_config import load_service_client_config
+from ..service_http import post_service_json
 
 
 MODE_ROUTES = {'/start', '/capture', '/refine', '/extend', '/retry', '/dataset'}
@@ -37,15 +35,6 @@ def _bind_execution_mode(route, arguments, configured_mode):
 def service_call(route, arguments, config_path):
     config = load_service_client_config(config_path)
     arguments = _bind_execution_mode(route, arguments, config['execution_mode'])
-    request = urllib.request.Request(
-        config['service_url'].rstrip('/') + route,
-        data=json.dumps(arguments).encode('utf-8'),
-        method='POST',
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + config['operator_token'],
-        },
+    return post_service_json(
+        config['service_url'], route, arguments, token=config['operator_token'], timeout=60,
     )
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(request, timeout=60) as response:
-        return json.load(response)

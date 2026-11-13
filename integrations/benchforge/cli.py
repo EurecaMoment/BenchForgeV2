@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 from pathlib import Path
-from urllib.request import Request, urlopen
 
 def load_config(path=None):
     path = path or os.environ.get('BENCHFORGE_CONFIG')
@@ -18,12 +17,10 @@ def status(config, run_id=None):
     token = config.get('operator_token') or os.environ.get(token_name)
     if not token:
         raise ValueError(f'Configure operator_token or set {token_name}')
+    from benchforge_core.service_http import post_service_json
+
     route, payload = ('/observe', {'run_id': run_id}) if run_id else ('/catalog', {})
-    request = Request(config['service_url'].rstrip('/') + route,
-                      data=json.dumps(payload).encode(),
-                      headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
-    with urlopen(request, timeout=30) as response:
-        return json.load(response)
+    return post_service_json(config['service_url'], route, payload, token=token, timeout=30, use_proxy=True)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

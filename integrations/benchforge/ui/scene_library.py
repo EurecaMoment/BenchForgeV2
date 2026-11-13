@@ -10,7 +10,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
 from production_observer import (
-    PIPELINE_SCHEMAS, load_workbench_config, request_keys_table, service_read, stage_artifacts, workbench_database_url,
+    PIPELINE_SCHEMAS, load_workbench_config, service_read, stage_artifacts, workbench_metadata,
 )
 from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION, scene_design_parser
 
@@ -85,25 +85,20 @@ def locked(folder):
 
 
 def completed_tasks(config):
-    """One metadata query; no Store construction, historical evidence scan or image hashing."""
-    from sqlalchemy import create_engine, text
-    engine = create_engine(workbench_database_url(config), hide_parameters=True)
-    try:
-        with engine.connect() as connection:
-            if engine.dialect.name == 'postgresql':
-                connection.exec_driver_sql('SET TRANSACTION READ ONLY')
-                connection.exec_driver_sql("SET LOCAL statement_timeout = '2000ms'")
-            table = request_keys_table(connection)
-            return [dict(row) for row in connection.execute(text(
-                "SELECT t.id,t.run_id,t.unit,r.created_at,"
-                f"(SELECT k.id FROM {table} k WHERE k.run_id=r.id ORDER BY k.id LIMIT 1) AS request_key "
-                "FROM work_items t JOIN runs r ON r.id=t.run_id "
-                "WHERE r.plan->>'schema' IN (:current_schema, :legacy_schema) "
-                "AND COALESCE(t.unit->>'workflow','scene')='scene' AND t.state='SUCCEEDED' "
-                "ORDER BY r.created_at DESC,t.id"),
-                dict(zip(('current_schema', 'legacy_schema'), PIPELINE_SCHEMAS))).mappings()]
-    finally:
-        engine.dispose()
+    """Read shared scene metadata in pages before checking the saved evidence."""
+    rows = []
+    value = {}
+    while True:
+        page = workbench_metadata(config, '/workbench/scene-catalog', value)
+        if page is None:
+            raise ValueError('The service does not provide the shared scene catalog')
+        rows.extend(page['items'])
+        cursor = page['next']
+        if cursor is None:
+            return rows
+        if cursor == value.get('after'):
+            raise ValueError('The scene catalog cursor did not advance')
+        value = {'after': cursor}
 
 
 @contextmanager
@@ -284,7 +279,6 @@ def scanned_items(config, folder, previous, tasks=None):
                 continue
             if not admission['allowed']:
                 continue
-        origin = re.match(r'dsh:(session-[a-zA-Z0-9-]+):', task['request_key'] or '')
         receipt=read_json(source/'scene_acceptance.json',{})
         accepted=receipt.get('passed') is True and receipt.get('enforced') is True
         if accepted:
@@ -302,7 +296,7 @@ def scanned_items(config, folder, previous, tasks=None):
                       'name': brief.get('name') or intent.get('name') or task['id'],
                       'description': (brief.get('summary') or intent.get('description') or '')[:1200],
                       'split': intent.get('split'), 'scene_family': intent.get('scene_family'),
-                      'origin_session': origin.group(1) if origin else None, 'created_at': task['created_at'],
+                      'origin_session': task.get('origin_session'), 'created_at': task['created_at'],
                       'source_directory': str(source), 'available': (source / 'capture').is_dir(),
                       'scene_style': (admission or {}).get('scene_style', 'realistic_assets'),
                       'geometry_purpose': ((admission or {}).get('geometry_exception') or {}).get('purpose'),
@@ -341,7 +335,7 @@ def sync_catalog(config, folder):
             # Recheck only a newly committed native source missed by the query.
             # Ownership comes from its verified registration, never program provenance.
             task = {'id': row['task_id'], 'run_id': row['run_id'], 'unit': {'revision': row['revision']},
-                    'request_key': None, 'created_at': row.get('created_at')}
+                    'created_at': row.get('created_at')}
             current = scanned_items(config, folder, latest, tasks=[task])
             if current:
                 fresh[task_id] = current[0]

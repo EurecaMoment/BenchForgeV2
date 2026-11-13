@@ -21,7 +21,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build:benchforge-ui": "node ./benchforge/ui/build_client.mjs"
+    "build:benchforge-ui": "node ./benchforge/ui/build_client.mjs",
+    "prepack": "node ./stage_package.mjs"
   },
   "files": [
     "dsh/*.mjs",
@@ -29,6 +30,9 @@
     "dsh/build_presets.py",
     "dsh/profile_migration.py",
     "dsh/install_preset.py",
+    "dsh/hot_update.py",
+    "dsh/install_workbench.py",
+    "dsh/preset_definition.py",
     "benchforge/plugin/*.mjs",
     "benchforge/shared/*.mjs",
     "benchforge/scene_policy_gate.py",
@@ -36,11 +40,11 @@
     "benchforge/capture_finish.py",
     "benchforge/native_asset_facing.py",
     "benchforge/native_asset_facing.json",
+    "benchforge/maintenance/repair_scene_library.py",
     "benchforge/repair_scene_library.py",
     "benchforge/build_preset.py",
     "benchforge/check_config.py",
     "benchforge/build_development_preset.py",
-    "benchforge/preset_definition.py",
     "benchforge/task_support/*.py",
     "benchforge/task_support/README.md",
     "benchforge/ui/DESIGN.md",
@@ -51,7 +55,9 @@
     "benchforge/ui/*.py",
     "benchforge/ui/client/**/*.js",
     "benchforge/ui/workbench/**/*.js",
-    "resources/*.json",
+    "dist/resources/*.json",
+    "dist/dispatcher/capture_finish.py",
+    "dist/workbench/workbench_queries.py",
     "benchforge/ui/package.json",
     "cordis.patch.yml",
     "README.md"

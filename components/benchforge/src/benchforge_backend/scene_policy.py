@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 from .runtime_config import environment_value
+from .scene_design import references_excluded_source
 
 
 EXECUTION_MODES = {"production", "exploration"}
@@ -55,31 +56,8 @@ def policy_for(root, execution_mode=None):
     return {}
 
 
-def _inside_exclusion(value, policy):
-    if value in (
-        set(policy.get("excluded_tasks", []))
-        | set(policy.get("excluded_runs", []))
-        | set(policy.get("excluded_scene_groups", []))
-    ):
-        return True
-    if Path(value).is_absolute():
-        path = Path(value).resolve()
-        return any(
-            path == Path(item).resolve()
-            or path.is_relative_to(Path(item).resolve())
-            for item in policy.get("excluded_paths", [])
-        )
-    return False
-
-
 def check_references(value, policy):
-    if isinstance(value, dict):
-        for child in value.values():
-            check_references(child, policy)
-    elif isinstance(value, list):
-        for child in value:
-            check_references(child, policy)
-    elif isinstance(value, str) and _inside_exclusion(value, policy):
+    if references_excluded_source(value, policy):
         raise ValueError(
             "Scene was removed by the user; its source and derived artifacts cannot be reused"
         )

@@ -2,13 +2,17 @@
 
 `plugin/tools.mjs` contains the production tool definitions and the delivery
 review hooks, using public DSH package imports, service URL and token environment
-variable. No private host paths or tokens are embedded. `preset_definition.py`
+variable. `../dsh/preset_definition.py`
 shares production capabilities between **BenchForge** (standard conversation)
 and **BenchForge_UI** (visual workbench). Previously saved conversations can
 open in their corresponding preset and workbench. `../dsh/build_presets.py` generates
 both presets together. The installable
 Node bundle and supported package/Node versions are documented in
 [the integration guide](../README.md).
+
+Operator commands for repairing the scene library, removing proxy scenes and
+rewriting question sets live in [`maintenance/`](maintenance/). Worker deployment
+and the external dispatcher bundle live in [the backend deployment directory](../../components/benchforge/deploy/dispatcher/).
 
 ## Current FIT service connection
 
@@ -89,8 +93,9 @@ The workbench registers completed captured scenes from the configured operator
 service in `<workspace>/scene-library/catalog.json`. This includes past and new
 productions, with a stable task ID, revision, name and original source directory.
 The index retains original media and scene programs in their existing locations.
-Only the displayed page loads capture-view metadata; the index uses one database
-metadata query and does not scan historical evidence trees or hash scene files.
+The workbench fetches scene metadata from the backend in pages and loads
+capture-view metadata for the displayed page. Configure the artifact directory
+so the workbench can read the saved evidence and media it serves.
 
 The scene page supports search, current-conversation/history filters, pagination,
 per-scene checkboxes and select/clear for the displayed page. Preview remains

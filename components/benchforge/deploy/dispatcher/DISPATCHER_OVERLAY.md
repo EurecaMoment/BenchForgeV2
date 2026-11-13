@@ -4,7 +4,7 @@ This source overlay carries the owned retry-context and canonical acknowledgemen
 fixes for an existing `dsh_a800_worker.py`. The renderer, Isaac installation,
 `isaac_client`, queue capacity and worker supervisor remain external prerequisites.
 
-`/worker/context` and `/worker/finish` run `capture_finish.py` in the explicitly
+`/worker/context` and `/worker/finish` run the capture control script in the explicitly
 configured **backend Python**. Its native Store validates the existing task ID,
 revision, token and transport retry; the overlay never reads management `/inspect`
 or changes database fields. Context preserves the full resume receipt. Finish
@@ -19,7 +19,7 @@ dependencies. The dispatcher and renderer use their existing interpreter.
 
 Copy `dispatcher_overlay.example.json` to a private settings file and fill the
 existing dispatcher path and backend Python. A null adapter path selects this
-directory's `capture_finish.py`; service configuration continues to come from
+backend's `dispatcher_control.py` or the bundle's `capture_finish.py`. Service configuration comes from
 the dispatcher's existing `CONFIG`, so control and worker HTTP use the same store.
 The module is loaded by an absolute path. Keep this source directory in place.
 
@@ -57,7 +57,7 @@ The Node client package intentionally does not install an external Isaac worker.
 Ship this overlay from the repository checkout or build its independent zip:
 
 ```bash
-python integrations/benchforge/deploy_dispatcher_overlay.py \
+python components/benchforge/deploy/dispatcher/deploy_dispatcher_overlay.py \
   --bundle /tmp/benchforge-dispatcher-overlay.zip
 ```
 

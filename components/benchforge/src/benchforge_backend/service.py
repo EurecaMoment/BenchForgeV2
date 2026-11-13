@@ -21,6 +21,7 @@ from .program_submission import read_program_submission
 from .design import start_design_request,require_prior_reference
 from . import scene_requests as _scene_requests
 from .scene_requests import context_from_request as _request_context
+from .workbench_queries import WORKBENCH_QUERIES, read_connection
 
 
 scene_intent = _scene_requests.scene_intent
@@ -152,6 +153,8 @@ def main():
             try:
                 length=int(self.headers.get('Content-Length','0'))
                 limit=CHUNK_BYTES if self.path=='/worker/upload-chunk' else 250*1024*1024 if self.path=='/worker/upload' else 2*1024*1024
+                if self.path in WORKBENCH_QUERIES:
+                    limit = 4096
                 if length<0 or length>limit:raise ValueError('request size exceeds endpoint limit')
                 raw=self.rfile.read(length)
                 if len(raw)!=length:raise ValueError('incomplete request body')
@@ -177,7 +180,11 @@ def main():
                 self.request_task_id = value.get('task_id') if isinstance(value, dict) else None
                 from .scene_acceptance import check_request
                 check_request(store.root,self.path,value)
-                if self.path=='/catalog':
+                if self.path in WORKBENCH_QUERIES:
+                    with read_connection(store.repo.engine) as connection:
+                        result = WORKBENCH_QUERIES[self.path](connection, value)
+                    self.reply(result)
+                elif self.path=='/catalog':
                     from .operator_catalog import catalog_response
                     self.reply(catalog_response(store,value))
                 elif self.path=='/layout':

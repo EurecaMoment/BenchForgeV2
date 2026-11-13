@@ -3,9 +3,8 @@ import argparse
 import importlib.util
 from pathlib import Path
 
-INTEGRATIONS = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('benchforge_preset_definition',
-                                             INTEGRATIONS / 'benchforge/preset_definition.py')
+                                             Path(__file__).with_name('preset_definition.py'))
 spatial = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(spatial)
 base, yaml = spatial.base, spatial.yaml

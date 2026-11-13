@@ -17,7 +17,7 @@ The DSH preset integration resolves saved conversations to the current preset
 names while preserving their session history, workspace and saved artifacts.
 Active sessions retain their bound tool version until DSH releases it.
 
-The two presets share `benchforge/preset_definition.py`. The UI variant
+The two presets share `dsh/preset_definition.py`. The UI variant
 adds workbench guidance and the host reader. `dsh/build_preset.py` composes the common
 DSH plugins, `dsh/build_presets.py` generates the catalog, and
 `dsh/profile_migration.py` retires the old preset declaration during profile merges.
@@ -29,14 +29,23 @@ Existing session files stay in their workspace.
 the DSH BenchForge_UI session workbench with persisted runs/artifacts, version-isolated dataset
 browsing, server-side pagination and generation quality reports. It does not edit
 official DSH source or start model/simulator services. Install or refresh it in an
-already running DSH with `python integrations/benchforge/install_workbench.py`.
+already running DSH with `python integrations/dsh/install_workbench.py`.
 The reader is registered once at the host level so already-bound conversations
 can still browse their history. The client mounts the workbench for
 `benchforge-ui` and previously saved workbench sessions. `install_workbench.py` and
 `hot_update.py` use the same migration logic and preserve configured historical
 workspace roots.
-The workbench uses the backend configuration and its database connection to read
-session-owned runs and the shared scene catalog.
+The workbench uses the configured service URL and operator token to read run
+history and the shared scene catalog over the BenchForge API. The backend owns
+the database queries. Existing workbenches with local database settings can use
+the same read-only queries when configured for database-only access or when the
+backend reports an unknown route.
+
+The workbench and Python core share the assessment and task templates in
+`src/benchforge_core/pipelines/`. The npm pack step copies them into the published
+bundle so it can load templates outside the source checkout. It also includes
+the backend's read-only query and capture acknowledgement modules for earlier
+backend installations.
 
 ## Current FIT simulation route
 
@@ -83,7 +92,7 @@ branch; it does not switch branches or replace uncommitted deployment edits.
 
 ```bash
 cd /home/maqiang/GitHub/BenchForgeV2
-.deployment/python-development integrations/benchforge/hot_update.py --pull
+.deployment/python-development integrations/dsh/hot_update.py --pull
 ```
 
 The script fast-forwards the checkout's current branch when requested, consolidates the two

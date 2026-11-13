@@ -1,4 +1,6 @@
 """Operator scene exclusions and a lightweight box-proxy admission rule."""
+from functools import cache
+import importlib.util
 import json
 from pathlib import Path
 import re
@@ -6,25 +8,20 @@ from ..service_config import environment_value
 
 STRUCTURE = re.compile(r'^(?:floor|ceiling|wall(?:_|$)|ground|terrain|pavement|asphalt|roof|road(?:_|$)|bay_line|rug|carpet|window|door(?:_|$))', re.I)
 CLASSIFIER_VERSION = 4
+EXCLUDED_SCENE = 'This cube/proxy scene was removed by the user and cannot be reused'
 
 
+@cache
 def scene_design_parser():
-    # The monorepo tool runner and separately deployed service share this parser.
+    # A core wheel ships the contract from its own revision.
     try:
-        from benchforge_backend import scene_design as module
+        from . import _scene_design as module
     except ImportError:
-        # Normal installs use the validator bundled from the same source at
-        # wheel build time. BenchForge itself requires Python >=3.11 and is
-        # intentionally optional for the core's Python 3.10 support.
-        try:
-            from . import _scene_design as module
-            return module
-        except ImportError:
-            pass
-        import importlib.util
-        file=Path(__file__).resolve().parents[3]/'components/benchforge/src/benchforge_backend/scene_design.py'
-        spec=importlib.util.spec_from_file_location('scene_design_policy',file)
-        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        # Editable installs use the same source directly from the checkout.
+        file = Path(__file__).resolve().parents[3] / 'components/benchforge/src/benchforge_backend/scene_design.py'
+        spec = importlib.util.spec_from_file_location('scene_design_policy', file)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
     return module
 
 
@@ -103,8 +100,7 @@ def load_policy(workspace, service_config=None):
 
 
 def excluded_path(policy, value):
-    path = Path(value).resolve()
-    return any(path == Path(root).resolve() or path.is_relative_to(Path(root).resolve()) for root in policy.get('excluded_paths', []))
+    return scene_design_parser().path_is_excluded(value, policy)
 
 
 def check_source(policy, *, task_id=None, run_id=None, scene_group=None, source_path=None):
@@ -112,21 +108,15 @@ def check_source(policy, *, task_id=None, run_id=None, scene_group=None, source_
         return
     if (task_id in policy.get('excluded_tasks', []) or run_id in policy.get('excluded_runs', []) or
             scene_group in policy.get('excluded_scene_groups', []) or source_path and excluded_path(policy, source_path)):
-        raise ValueError('This cube/proxy scene was removed by the user and cannot be reused')
+        raise ValueError(EXCLUDED_SCENE)
 
 
 def check_program(policy, program):
     if policy.get('enabled'):
-        def inspect(value):
-            if isinstance(value, dict):
-                for child in value.values():inspect(child)
-            elif isinstance(value, list):
-                for child in value:inspect(child)
-            elif isinstance(value, str):
-                check_source(policy, task_id=value, run_id=value, scene_group=value,
-                             source_path=value if Path(value).is_absolute() else None)
-        inspect(program)
-        scene_design_parser().scene_brief(program, policy)
+        scene_design = scene_design_parser()
+        if scene_design.references_excluded_source(program, policy):
+            raise ValueError(EXCLUDED_SCENE)
+        scene_design.scene_brief(program, policy)
         verdict = classify_planned(program, policy)
         if not verdict['allowed']:
             raise ValueError('Scene rejected: ' + verdict['reason'] + '. Default to recognizable assets; declare any intentional simplified geometry and its exact scope in the saved scene production plan.')
@@ -139,15 +129,8 @@ def check_submission(workspace, route, arguments, service_config=None):
     if route not in ('/start', '/capture', '/refine', '/extend', '/retry', '/dataset'):
         return
     check_source(policy, task_id=arguments.get('parent_task_id') or arguments.get('task_id'), run_id=arguments.get('run_id'))
-    def inspect(value):
-        if isinstance(value, dict):
-            for child in value.values():inspect(child)
-        elif isinstance(value, list):
-            for child in value:inspect(child)
-        elif isinstance(value, str):
-            check_source(policy, task_id=value, run_id=value, scene_group=value,
-                         source_path=value if Path(value).is_absolute() else None)
-    inspect(arguments)
+    if scene_design_parser().references_excluded_source(arguments, policy):
+        raise ValueError(EXCLUDED_SCENE)
     if route == '/retry' and re.fullmatch(r'sf_[a-zA-Z0-9_-]+\.scene\d+',str(arguments.get('task_id',''))):
         catalog=Path(workspace)/'scene-library/catalog.json'
         accepted=json.loads(catalog.read_text(encoding='utf-8')) if catalog.is_file() else {'items':[]}

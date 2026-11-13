@@ -29,20 +29,69 @@ class StageArtifactsTest(unittest.TestCase):
             variable = 'BENCHFORGE_DATABASE_URL=' + projected + '\n'
             with patch.dict('os.environ', {'BENCHFORGE_DATABASE_URL': ambient}):
                 env.write_text('BENCHFORGE_DATABASE_MANAGED=true\n' + variable, encoding='utf-8')
-                self.assertEqual(observer.load_workbench_config(server)['database_url'], projected)
+                self.assertEqual(observer.workbench_database_url(observer.load_workbench_config(server)), projected)
                 env.write_text('BENCHFORGE_DATABASE_MANAGED=false\n' + variable, encoding='utf-8')
-                self.assertEqual(observer.load_workbench_config(server)['database_url'], ambient)
+                self.assertEqual(observer.workbench_database_url(observer.load_workbench_config(server)), ambient)
 
     def test_remote_client_reads_associated_runs_without_database_access(self):
         config = {'service_url': 'https://fixture.invalid', 'operator_token': 'test-only'}
-        with patch.object(observer, 'session_runs') as database, \
+        with patch.object(observer, 'service_read', side_effect=HTTPError(
+                    config['service_url'], 404, 'not found', {}, io.BytesIO(b'{"error":"unknown operation"}'))) as metadata, \
+                patch.object(observer, '_legacy_workbench_metadata') as database, \
                 patch.object(observer, 'production_observation', return_value={
                     'state': 'RUNNING', 'terminal': False, 'tasks': [],
                 }) as read:
             value = observer.observe(config, 'session-test', ['sf_saved'])
         database.assert_not_called()
+        metadata.assert_called_once_with(config, '/workbench/session-runs', {
+            'session_id': 'session-test', 'related_session_ids': [],
+        })
         read.assert_called_once_with(config, 'sf_saved')
         self.assertEqual(value['runs'][0]['run_id'], 'sf_saved')
+
+    def test_remote_metadata_reads_do_not_open_the_configured_legacy_database(self):
+        config = {'service_url': 'https://fixture.invalid', 'operator_token': 'test-only',
+                  'database_url': 'sqlite:///unavailable-legacy-fixture'}
+        rows = [{'id': 'sf_one', 'workflow': 'scene'}]
+        with patch.object(observer, 'service_read', return_value={'runs': rows}) as read, \
+                patch.object(observer, '_legacy_workbench_metadata') as database:
+            self.assertEqual(observer.session_runs(config, 'session-one', ['session-child']), rows)
+        database.assert_not_called()
+        read.assert_called_once_with(config, '/workbench/session-runs', {
+            'session_id': 'session-one', 'related_session_ids': ['session-child'],
+        })
+
+    def test_discovery_failure_keeps_runs_registered_by_the_workbench(self):
+        config = {'operator_token': 'fixture', 'database_url': 'sqlite:///unused-fixture'}
+        local = {'current_collection': {'rows': [{'run_id': 'sf_registered'}]}}
+        with patch.object(observer, 'current_production_progress', return_value=local), \
+                patch.object(observer, 'session_runs', side_effect=URLError('discovery failed')), \
+                patch.object(observer, 'production_observation', return_value={
+                    'state': 'RUNNING', 'terminal': False, 'tasks': [],
+                }) as read:
+            value = observer.observe(config, 'session-test', ['sf_saved'])
+        self.assertEqual(value['status'], 'partial')
+        self.assertEqual(value['error'], 'URLError')
+        self.assertEqual([row['run_id'] for row in value['runs']], ['sf_registered', 'sf_saved'])
+        self.assertCountEqual([call.args for call in read.call_args_list],
+                              [(config, 'sf_registered'), (config, 'sf_saved')])
+
+    def test_only_an_unknown_route_allows_legacy_metadata_fallback(self):
+        config = {'service_url': 'http://localhost', 'operator_token': 'fixture', 'harness': '/older'}
+        value = {'session_id': 'session-one', 'related_session_ids': []}
+        with patch.object(observer, '_legacy_workbench_metadata', return_value={'runs': []}) as database:
+            for code, body in ((401, b'{}'), (404, b'{"error":"missing"}'), (500, b'{}')):
+                error = HTTPError(config['service_url'], code, 'failure', {}, io.BytesIO(body))
+                with patch.object(observer, 'service_read', side_effect=error):
+                    with self.assertRaises(HTTPError) as response:
+                        observer.workbench_metadata(config, '/workbench/session-runs', value)
+                    self.assertIs(response.exception, error)
+            database.assert_not_called()
+            error = HTTPError(config['service_url'], 404, 'missing route', {},
+                              io.BytesIO(b'{"error":"unknown operation"}'))
+            with patch.object(observer, 'service_read', side_effect=error):
+                self.assertEqual(observer.workbench_metadata(config, '/workbench/session-runs', value), {'runs': []})
+            database.assert_called_once_with(config, '/workbench/session-runs', value)
 
     def test_workspace_paths_normalize_root_and_reject_escape(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -226,6 +275,14 @@ class StageArtifactsTest(unittest.TestCase):
 
 
 class SceneLibraryTest(unittest.TestCase):
+    def test_http_catalog_follows_the_backend_cursor(self):
+        cursor = {'task_id': 'sf_one.scene0', 'created_at': '1'}
+        pages = [{'items': [{'id': 'sf_one.scene0'}], 'next': cursor},
+                 {'items': [{'id': 'sf_two.scene0'}], 'next': None}]
+        with patch.object(library, 'workbench_metadata', side_effect=pages) as metadata:
+            self.assertEqual(library.completed_tasks({}), [page['items'][0] for page in pages])
+        self.assertEqual([call.args[2] for call in metadata.call_args_list], [{}, {'after': cursor}])
+
     def fixtures(self, root):
         tasks = []
         for name, session, revision in [('history', 'session-older', 2), ('current', 'session-current', 0)]:
@@ -235,7 +292,7 @@ class SceneLibraryTest(unittest.TestCase):
             (source / 'capture/view_0.png').write_bytes(b'public-frame')
             (source / 'program.json').write_text('{}')
             tasks.append({'id': task_id, 'run_id': 'sf_' + name, 'unit': {'revision': revision, 'intent': {'name': name}},
-                          'created_at': '1', 'request_key': 'dsh:' + session + ':call'})
+                          'created_at': '1', 'origin_session': session})
         return tasks
 
     def test_shared_catalog_selection_persistence_isolation_and_source_versions(self):
@@ -294,11 +351,11 @@ class SceneLibraryTest(unittest.TestCase):
             with sqlite3.connect(database) as connection:
                 connection.executescript('CREATE TABLE runs(id TEXT,plan TEXT,created_at TEXT); '
                                          'CREATE TABLE work_items(id TEXT,run_id TEXT,unit TEXT,state TEXT); '
-                                         'CREATE TABLE benchforge_request_keys(id TEXT,run_id TEXT);')
+                                         'CREATE TABLE spatialforge_request_keys(id TEXT,run_id TEXT);')
                 connection.execute('INSERT INTO runs VALUES(?,?,?)', ('sf_real', json.dumps({'schema': 'benchforge.pipeline/v1'}), '1'))
                 for state in ['SUCCEEDED', 'FAILED_FINAL']:
                     connection.execute('INSERT INTO work_items VALUES(?,?,?,?)', ('sf_real.' + state, 'sf_real', json.dumps({'revision': 0}), state))
-                connection.execute('INSERT INTO benchforge_request_keys VALUES(?,?)', ('dsh:session-real:call', 'sf_real'))
+                connection.execute('INSERT INTO spatialforge_request_keys VALUES(?,?)', ('dsh:session-real:call', 'sf_real'))
             connection.close()
             url = 'sqlite:///' + database.as_posix()
             (root / 'deployment.local.json').write_text(json.dumps({'database_url': url}), encoding='utf-8')
@@ -311,7 +368,8 @@ class SceneLibraryTest(unittest.TestCase):
             before = database.stat().st_mtime_ns
             rows = library.completed_tasks(config)
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]['request_key'], 'dsh:session-real:call')
+            self.assertEqual(rows[0]['origin_session'], 'session-real')
+            self.assertNotIn('request_key', rows[0])
             self.assertEqual(database.stat().st_mtime_ns, before)
             self.assertEqual(library.completed_tasks({'harness': str(root)}), rows)
 

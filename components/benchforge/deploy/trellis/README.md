@@ -1,6 +1,6 @@
 # Resident TRELLIS.2 reconstruction
 
-`benchforge.trellis_service` keeps the TRELLIS.2-4B pipeline on one dedicated
+`benchforge_backend.trellis_service` keeps the TRELLIS.2-4B pipeline on one dedicated
 GPU. It takes local/shared-storage 1024x1024 images and optional object masks,
 then exports GLB geometry with embedded 4096x4096 base-color and
 metallic/roughness textures. The profile uses `1024_cascade`, twelve sampling
@@ -21,10 +21,10 @@ Example configuration:
 ```
 
 ```bash
-CUDA_VISIBLE_DEVICES=7 python -m benchforge.trellis_service --config service.json
-python integrations/benchforge/trellis/benchmark.py --mode single \
+CUDA_VISIBLE_DEVICES=7 python -m benchforge_backend.trellis_service --config service.json
+python components/benchforge/deploy/trellis/benchmark.py --mode single \
   --root /opt/benchforge/trellis2 --url http://127.0.0.1:3956 --image /path/input.png
-python integrations/benchforge/trellis/benchmark.py --mode burst64 \
+python components/benchforge/deploy/trellis/benchmark.py --mode burst64 \
   --root /opt/benchforge/trellis2 --url http://127.0.0.1:3956 --image /path/input.png
 ```
 

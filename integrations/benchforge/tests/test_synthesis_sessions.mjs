@@ -222,7 +222,7 @@ print(json.dumps({'initial': initial, 'options': options, 'withSpatial': with_sp
 `;
   const python = process.env.BENCHFORGE_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   const result = JSON.parse(execFileSync(python, ['-B', '-c', program,
-    fileURLToPath(new URL('../preset_definition.py', import.meta.url))], {encoding: 'utf8'}));
+    fileURLToPath(new URL('../../dsh/preset_definition.py', import.meta.url))], {encoding: 'utf8'}));
   assert.deepEqual(result.initial, ['benchforge_pipeline_run', 'benchforge_stage_review']);
   assert.deepEqual(result.options, {provider: 'saved-route', model: 'saved-model'});
   assert.ok(result.withSpatial.includes('benchforge_capture'));

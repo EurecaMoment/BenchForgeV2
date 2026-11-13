@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-spec=importlib.util.spec_from_file_location('repair_scene_library',Path(__file__).parents[1]/'repair_scene_library.py')
+spec=importlib.util.spec_from_file_location('repair_scene_library',Path(__file__).parents[1]/'maintenance/repair_scene_library.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 

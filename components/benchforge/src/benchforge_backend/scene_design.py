@@ -7,6 +7,24 @@ import re
 DETAIL_FIELDS = ('purpose', 'reason', 'simplifications', 'retained_constraints', 'excluded_claims')
 
 
+def path_is_excluded(path, policy):
+    source = Path(path).resolve()
+    return any(source.is_relative_to(Path(root).resolve()) for root in policy.get('excluded_paths', []))
+
+
+def references_excluded_source(value, policy):
+    if isinstance(value, dict):
+        return any(references_excluded_source(child, policy) for child in value.values())
+    if isinstance(value, list):
+        return any(references_excluded_source(child, policy) for child in value)
+    if not isinstance(value, str):
+        return False
+    return (
+        any(value in policy.get(field, ()) for field in ('excluded_tasks', 'excluded_runs', 'excluded_scene_groups'))
+        or Path(value).is_absolute() and path_is_excluded(value, policy)
+    )
+
+
 def canonical_schema(value):
     """Read a saved schema identifier under its current product name."""
     if isinstance(value, str) and value.startswith('spatialforge.'):
@@ -56,8 +74,7 @@ def saved_design(program, policy=None):
     path = Path(reference['path'])
     if not path.is_absolute() or not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
         raise ValueError('Scene plan must be an existing saved JSON document')
-    if policy and any(path.resolve() == Path(p).resolve() or path.resolve().is_relative_to(Path(p).resolve())
-                      for p in policy.get('excluded_paths', [])):
+    if policy and path_is_excluded(path, policy):
         raise ValueError('Removed scene plans cannot declare a new geometry exception')
     plan = json.loads(path.read_text(encoding='utf-8-sig'))
     if not isinstance(plan, dict):

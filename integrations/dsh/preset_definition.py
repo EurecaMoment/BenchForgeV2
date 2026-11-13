@@ -1,4 +1,5 @@
 """Shared production capabilities for BenchForge and BenchForge_UI."""
+import argparse
 import importlib.util
 from pathlib import Path
 import yaml
@@ -8,6 +9,24 @@ ROOT = INTEGRATIONS.parent
 spec = importlib.util.spec_from_file_location('benchforge_preset', INTEGRATIONS / 'dsh/build_preset.py')
 base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
+
+
+def single_preset_main(description, *, with_ui, require_config=False):
+    parser = argparse.ArgumentParser(description=description)
+    base.add_source_arguments(parser)
+    parser.add_argument('--python', required=True)
+    parser.add_argument('--config', type=Path, required=require_config)
+    parser.add_argument('--service-config', type=Path, required=True)
+    parser.add_argument('--output', type=Path, required=True)
+    args = parser.parse_args()
+    if not args.service_config.is_file():
+        parser.error(f'BenchForge configuration not found: {args.service_config.resolve()}. '
+                     'Run python benchforge_app.py init, or pass --service-config with the actual file path.')
+    sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
+    result = build(sources, args.dsh_root, args.python, args.service_config,
+                   config_path=args.config, with_ui=with_ui)
+    args.output.write_text(yaml.dump(result, Dumper=base.Dumper, sort_keys=False, allow_unicode=True),
+                           encoding='utf-8')
 
 LEARNING_TOOLS = ['spatial_catalog', 'spatial_generate', 'spatial_export', 'spatial_evaluate',
                   'curriculum', 'spatial_train', 'spatial_experiment', 'training_monitor',
