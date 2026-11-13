@@ -8,15 +8,18 @@ import shutil
 import subprocess
 import sys
 import time
-from urllib.request import Request, urlopen
 import venv
 
 ROOT = Path(__file__).resolve().parent
+SOURCE = ROOT / 'src'
+BACKEND = SOURCE / 'backend'
 # This repository launcher also runs outside the private backend environment.
-sys.path.insert(0, str(ROOT / 'components/benchforge/src'))
+sys.path.insert(0, str(BACKEND))
+sys.path.insert(0, str(SOURCE))
 sys.path.insert(0, str(ROOT))
 import deployment_config as settings
 from benchforge_backend.runtime_config import load_service_config
+from benchforge_core.service_http import post_service_json
 
 CONFIG = ROOT / 'config'
 STATE = ROOT / '.benchforge/backend'
@@ -114,8 +117,7 @@ def _database_command(project, stop):
         # Compose expands its required service environment even for down. The
         # running containers and volumes do not use this interpolation value.
         environment.setdefault('POSTGRES_PASSWORD', 'unused-for-container-stop')
-    command = ['docker', 'compose', '-p', name, '-f',
-               str(ROOT / 'components/benchforge/deploy/compose.yml')]
+    command = ['docker', 'compose', '-p', name, '-f', str(BACKEND / 'deploy/compose.yml')]
     command += ['down'] if stop else ['up', '-d', '--wait']
     subprocess.run(command, env=environment, check=True)
 
@@ -135,12 +137,10 @@ def _read_runtime_server():
 
 
 def api(config, operation, value):
-    request = Request(f'http://127.0.0.1:{config["port"]}/{operation}',
-                      data=json.dumps(value).encode(),
-                      headers={'Authorization': 'Bearer ' + config['operator_token'],
-                               'Content-Type': 'application/json'})
-    with urlopen(request, timeout=60) as response:
-        return json.load(response)
+    return post_service_json(
+        f'http://127.0.0.1:{config["port"]}', '/' + operation, value,
+        token=config['operator_token'], timeout=60, use_proxy=True,
+    )
 
 
 def main():
@@ -180,7 +180,7 @@ def main():
         python = backend_python()
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(STATE / 'venv')
-        subprocess.run([str(python), '-m', 'pip', 'install', '-e', str(ROOT / 'components/benchforge')], check=True)
+        subprocess.run([str(python), '-m', 'pip', 'install', '-e', str(BACKEND)], check=True)
     elif args.command == 'init':
         _init_configs(args.port, args.db_port, args.project, web_port=args.web_port)
         print(f"Configuration: {CONFIG / 'benchforge.local.json'}")
@@ -189,7 +189,7 @@ def main():
     elif args.command == 'serve':
         _ensure_runtime_configuration()
         environment = build_environment()
-        paths = [str(ROOT / 'components/benchforge/src')]
+        paths = [str(BACKEND)]
         if environment.get('PYTHONPATH'):
             paths.append(environment['PYTHONPATH'])
         environment['PYTHONPATH'] = os.pathsep.join(paths)
@@ -214,7 +214,7 @@ def main():
         profile = args.config or GENERATED / 'worker.local.json'
         if args.config is None:
             _ensure_runtime_configuration()
-        command = [sys.executable, str(ROOT / 'components/benchforge/desktop/worker.py'),
+        command = [sys.executable, str(BACKEND / 'desktop/worker.py'),
                    '--config', str(profile.resolve())]
         if args.once:
             command.append('--once')

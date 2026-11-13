@@ -35,7 +35,15 @@ flowchart TB
   Train --> RSI[RSI model training]
 ```
 
-The diagram shows the boundaries between the harness, external providers, and the evaluation and training services.
+## 源码目录
+
+| 目录 | 职责 |
+| --- | --- |
+| [`src/benchforge_core/`](src/benchforge_core/) | Python 核心，负责评测计划、流水线恢复、证据、出题、评分和训练数据。 |
+| [`src/backend/`](src/backend/) | 场景生产后端、任务队列、模型适配、Isaac gRPC、桌面采集和部署工具。 |
+| [`src/dsh/`](src/dsh/) | DSH 预设、工具插件、Web 工作台和运维命令。 |
+
+`config/` 提供部署配置，`third_party/` 提供固定版本的外部模型和仿真源码。
 
 ## 独立部署与两个 Agent 预设
 
@@ -56,7 +64,7 @@ UI 版沿用旧会话的内部 ID，已有会话继续关联自己的工作台�
 ## Current capabilities
 
 - **Harness and workflows:** DSH plugin integration; a catalog of 89 tasks and 267 measurement templates; persistent pipelines that can resume; stage reviews; model and simulator adapters.
-- **BenchForge:** scene programs, asset generation, simulation queue, capture evidence, operator review, and public data export. See the [integration guide](integrations/benchforge/README.md).
+- **BenchForge:** scene programs, asset generation, simulation queue, capture evidence, operator review, and public data export. See the [integration guide](src/dsh/README.md).
 - **Evidence and delivery:** keep model-visible questions separate from authority answers; record source and capture evidence; validate declared public assets before packaging.
 - **Evaluation and training:** deterministic local scoring, dataset packaging, spatial capability templates, and local training tools.
 
@@ -187,12 +195,12 @@ git branch --show-current
 ```bash
 python3.11 -m venv .venv
 .venv/bin/python -m pip install -e '.[dsh,production,research]'
-npm ci --prefix integrations
+npm ci --prefix src/dsh
 .venv/bin/python benchforge_app.py setup
 ```
 
 `.venv/` 是核心与 DSH 辅助程序环境，`.benchforge/backend/venv/` 是后端环境。
-`npm ci --prefix integrations` 安装插件依赖，不能用 Python 安装替代。
+`npm ci --prefix src/dsh` 安装插件依赖，不能用 Python 安装替代。
 这一步完成后还没有启动服务，也没有配置模型或仿真器。
 
 ### 3. 初始化本实例配置
@@ -316,7 +324,7 @@ docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=c
 
 # 发起真实、带认证的 POST /catalog，不需要手动复制 token。
 .venv/bin/python benchforge_app.py status
-.venv/bin/python integrations/benchforge/cli.py status --config config/generated/benchforge-client.local.json
+.venv/bin/python src/dsh/cli.py status --config config/generated/benchforge-client.local.json
 
 ```
 
@@ -389,7 +397,7 @@ DSH 启动时自动刷新模型配置快照，实际模型配置生效后，新�
 BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
 git pull --ff-only origin simulator-access-integration
 .venv/bin/python -m pip install -e '.[dsh,production,research]'
-npm ci --prefix integrations
+npm ci --prefix src/dsh
 .venv/bin/python benchforge_app.py setup
 .venv/bin/python benchforge_app.py sync
 ./start.sh
@@ -399,6 +407,10 @@ npm ci --prefix integrations
 需要重新生成时先备份 `config/generated/benchforge.local.yml`，生成后合回自己的追加项。
 升级旧版实例时，保留 `config/benchforge.local.json`、旧后端数据目录和 PostgreSQL 数据卷。
 `setup` 会在已有的后端 Python 环境中安装新包，`sync` 会保留已配置的数据库连接和工件路径。
+启动时会更新本实例预设里的旧插件源码路径。独立维护的 DSH profile 使用
+[`src/dsh/presets/hot_update.py`](src/dsh/presets/hot_update.py) 更新。
+如果外置 Isaac dispatcher 引用了旧仓库绝对路径，按
+[dispatcher 迁移说明](src/backend/deploy/dispatcher/DISPATCHER_OVERLAY.md) 重新应用 overlay。
 
 ### 10. 常见失败及处理
 
@@ -410,7 +422,7 @@ npm ci --prefix integrations
 | Docker `permission denied` / daemon 不可用 | 完成 Docker 官方安装后配置并重新登录，先让 `docker info` 成功。 |
 | 端口占用 | 新部署在初始化前换空闲端口和独立 `--project`；不要让启动脚本误认其他实例的监听端口。 |
 | `benchforge-scene-tools` 的配置文件 `ENOENT` | 执行 `benchforge_app.py sync` 再启动；如更换了预设绑定的路径，重新运行 `dsh-setup`。 |
-| `Cannot find module '@deepseek-ai/...'` | 在仓库执行 `npm ci --prefix integrations`，然后重启当前实例。 |
+| `Cannot find module '@deepseek-ai/...'` | 在仓库执行 `npm ci --prefix src/dsh`，然后重启当前实例。 |
 | token 无效 / `dsh web authentication required` | 使用当前进程的新 URL；通过隧道时只替换端口，保留完整 token。 |
 | 端口已监听却没有新 token | 查看 `.benchforge/logs/dsh.log` 的真实错误；并非所有情况都是 inotify 问题。 |
 | 明确出现 `ENOSPC: file watchers` | 主机文件监视器配额耗尽；可请管理员提高 inotify 配额，或按下方方法在当前实例关闭配置热更新。 |
@@ -435,7 +447,7 @@ JSON 的路径。客户端从该文件读取地址、operator token 和生产策
 
 ```bash
 .venv/bin/python benchforge_app.py sync
-.venv/bin/python integrations/benchforge/cli.py status --config config/generated/benchforge-client.local.json
+.venv/bin/python src/dsh/cli.py status --config config/generated/benchforge-client.local.json
 .venv/bin/python benchforge.py setup
 .venv/bin/python benchforge.py start --no-open
 ```
@@ -452,5 +464,5 @@ JSON 的路径。客户端从该文件读取地址、operator token 和生产策
 以下是开发者修改代码后的检查，不是部署者必须跑完的安装步骤：
 
 ```bash
-.venv/bin/python integrations/benchforge/smoke.py
+.venv/bin/python src/dsh/smoke.py
 ```

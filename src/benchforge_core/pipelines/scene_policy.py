@@ -18,7 +18,7 @@ def scene_design_parser():
         from . import _scene_design as module
     except ImportError:
         # Editable installs use the same source directly from the checkout.
-        file = Path(__file__).resolve().parents[3] / 'components/benchforge/src/benchforge_backend/scene_design.py'
+        file = Path(__file__).resolve().parents[2] / 'backend/benchforge_backend/scene_design.py'
         spec = importlib.util.spec_from_file_location('scene_design_policy', file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

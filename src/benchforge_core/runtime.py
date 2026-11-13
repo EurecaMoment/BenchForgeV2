@@ -145,7 +145,7 @@ class Runtime:
                 "note": "Model masks, labels and inferred depth remain predictions; depth scale requires calibration."}
 
     def _isaac_client(self):
-        client_path = Path(__file__).resolve().parents[2] / "components/benchforge/grpc/client.py"
+        client_path = Path(__file__).resolve().parents[1] / "backend/grpc/client.py"
         if not client_path.is_file():
             raise ValueError(f"Isaac gRPC client not found at {client_path}; run from the BenchForge repository checkout.")
         import importlib.util

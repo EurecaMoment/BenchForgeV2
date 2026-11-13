@@ -20,7 +20,7 @@ def run(argv, **kwargs):
 
 def uses_local_service(preset):
     import yaml
-    from integrations.benchforge.check_config import service_config_paths
+    from dsh.check_config import service_config_paths
 
     profile = yaml.load(preset.read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
     config = ROOT / 'config'
@@ -87,7 +87,7 @@ def main():
         if not model_config.exists():
             shutil.copyfile(ROOT/'config/benchforge.example.json',model_config)
         preset.parent.mkdir(parents=True,exist_ok=True)
-        run([python,ROOT/'integrations/dsh/build_presets.py',
+        run([python,ROOT/'src/dsh/presets/build_presets.py',
              '--dsh-root',dsh,'--node',node,'--python',python,'--config',model_config,
              '--service-config',service_config,'--output',preset])
         saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
@@ -110,11 +110,11 @@ def main():
         port = args.port if args.port is not None else benchforge_app.configured_web_port()
     except ValueError as error:
         parser.error(str(error))
-    from integrations.dsh.build_preset import refresh_model_patches
+    from dsh.presets.build_preset import refresh_model_patches
     if not args.config_synced or args.check_config:
         refresh_model_patches(preset, model_config)
     try:
-        run([python,ROOT/'integrations/benchforge/check_config.py','--preset',preset],cwd=ROOT,env=env)
+        run([python,ROOT/'src/dsh/check_config.py','--preset',preset],cwd=ROOT,env=env)
     except subprocess.CalledProcessError as error:
         raise SystemExit(error.returncode) from None
     if args.check_config:

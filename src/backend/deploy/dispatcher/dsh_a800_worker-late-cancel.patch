@@ -1,0 +1,36 @@
+--- dsh_a800_worker.py
++++ dsh_a800_worker.py
+@@ -117,6 +117,12 @@
+                 offset=reply['offset']
+     return api('/worker/upload-commit',{'job':ident})
+ 
++def finish_canceled_capture(job,job_id):
++    import importlib.util
++    spec=importlib.util.spec_from_file_location('capture_cancel_ack','/home/maqiang/GitHub/BenchForgeV2/src/backend/deploy/dispatcher/worker_cancellation.py')
++    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
++    return module.finish_canceled_capture(job,job_id,CLIENT,api)
++
+ def execute(job,test_shared=False,benchmark_modes=None):
+     directory=RUNS/job['token'];directory.mkdir(exist_ok=True)
+     state_path=directory/'state.json'
+@@ -146,11 +152,18 @@
+             if health['state']['active_job']==job_id:time.sleep(1);continue
+             return api('/worker/finish',{'job':identity(job),'outcome':'canceled' if state.get('canceling') else 'failed',
+                 'processes_stopped':True,'error':remote.get('error','Remote job failed')})
+-        if remote['status']=='succeeded':break
++        if remote['status']=='succeeded':
++            if heart.get('cancel'):return finish_canceled_capture(job,job_id)
++            break
+         time.sleep(.2)
+     capture=directory/'capture'
+     if not (capture/'report.json').exists():CLIENT.download(job_id,capture,scene_key=job['program']['scene_id'])
+-    result=upload(job,capture)
++    try:
++        result=upload(job,capture)
++    except RuntimeError as error:
++        if str(error) in ('Capture canceled before upload','Capture canceled during upload'):
++            return finish_canceled_capture(job,job_id)
++        raise
+     marker=capture/'.a800-download-complete'
+     state.update(finished_at=time.time(),commit=result,remote_result=remote.get('result'),
+         artifact_transport=json.loads(marker.read_text()) if marker.exists() else None)
