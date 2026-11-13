@@ -18,3 +18,7 @@
 	path = third_party/FastFLUX2Klein
 	url = https://github.com/EurecaMoment/FastFLUX2Klein.git
 	shallow = true
+[submodule "third_party/FastDA3"]
+	path = third_party/FastDA3
+	url = https://github.com/EurecaMoment/FastDA3.git
+	shallow = true

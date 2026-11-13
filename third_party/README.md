@@ -1,6 +1,6 @@
 # 第三方依赖
 
-以下五个仓库以 **Git 子模块** 引入，保留各自的源码、许可证和版本历史。
+以下六个仓库以 **Git 子模块** 引入，保留各自的源码、许可证和版本历史。
 BenchForgeV2 的提交固定每个子模块的具体版本；仓库地址在根目录
 [`.gitmodules`](../.gitmodules) 中维护，用途在
 [`dependencies.json`](dependencies.json) 中登记。
@@ -12,6 +12,7 @@ BenchForgeV2 的提交固定每个子模块的具体版本；仓库地址在根�
 | `IssacSim4A100/` | [EurecaMoment/IssacSim4A100](https://github.com/EurecaMoment/IssacSim4A100) | A100 上的 Isaac Sim 部署与仿真支持 |
 | `FastSAM3/` | [EurecaMoment/FastSAM3](https://github.com/EurecaMoment/FastSAM3) | SAM 3 分割与推理服务 |
 | `FastFLUX2Klein/` | [EurecaMoment/FastFLUX2Klein](https://github.com/EurecaMoment/FastFLUX2Klein) | FLUX.2 Klein 图像生成与编辑 |
+| `FastDA3/` | [EurecaMoment/FastDA3](https://github.com/EurecaMoment/FastDA3) | Depth Anything 3 米制深度、相机位姿和长视频几何推理 |
 
 ## 下载
 
@@ -49,4 +50,4 @@ git submodule update --init --recursive --depth 1 -- third_party/FastSAM3
 普通 `git submodule update --init --recursive` 恢复主仓库记录的版本，不会自动追踪上游最新版本。
 
 `deepseek-harness/` 是主项目安装脚本生成的 DSH 运行目录，继续被 Git 忽略，
-不属于以上五个子模块。DSH 版本保存在 `dependencies.json` 中。
+不属于以上六个子模块。DSH 版本保存在 `dependencies.json` 中。

@@ -26,6 +26,10 @@
     "FastFLUX2Klein": {
       "path": "third_party/FastFLUX2Klein",
       "usage": "FLUX.2 Klein image generation and editing"
+    },
+    "FastDA3": {
+      "path": "third_party/FastDA3",
+      "usage": "Depth Anything 3 inference for metric depth, camera pose, and long-video geometry"
     }
   }
 }
