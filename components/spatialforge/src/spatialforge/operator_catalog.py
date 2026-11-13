@@ -17,12 +17,6 @@ SECTIONS = {
     'generation_tools': 'Independent image generation, segmentation, reconstruction, depth and mesh import',
     'materials': 'Registered texture materials with source/repeat preview paths for read_image',
     'environments': 'Registered HDR environments',
-    'dataset_sources': 'Legacy data source plugins and request schemas',
-    'dataset_templates': 'Data question templates',
-    'dataset_recipes': 'Registered dataset recipes',
-    'dataset_processing': 'Processing plugins excluding target-model evaluators',
-    'dataset_guidance': 'Dataset request fields and operating limits',
-    'knowledge': 'Registered legacy reference knowledge',
 }
 
 
@@ -55,7 +49,7 @@ def _overview():
             'Write SceneProgram with standard file tools or task_code and submit scene_program_path to preserve your design. Scene data, assets, lights and cameras are operator-controlled.',
             'Submitted ScenePrograms retain operator control after review: inspect screenshots and scene_review, then revise your program as needed. The run exports eligible data with its actual quality outcome; it does not launch an automatic rewriting planner. Text-only scene requests keep their existing automatic repair budget.',
             'Evidence displays reference images, masks and actual captures, including earlier revisions. source_path outputs connect tools without copying or regenerating files.',
-            'Scene data derives from desktop Isaac; dataset_* sections cover other registered sources.'
+            'Scene data derives from Isaac capture. Use benchforge_pipeline_catalog and data.capability for template-based dataset production.'
         ],
         'task_workspace': {'writable': '/workspace', 'read_only': ['/harness', '/assets'],
             'path_mapping': 'workspace_file is usable inside task_code; source_path is for service tool parameters',
@@ -119,17 +113,7 @@ def _load_rows(store, section, item_id):
                            'value': {key: value.get(key) for key in ('asset_id', 'label', 'prompt', 'size_bounds', 'source', 'status', 'geometry', 'physics', 'appearance')},
                            'detail': 'Use item_id for current mesh bounds and transported appearance; metadata does not prove semantic orientation.'})
         return result
-    from .integration import catalog
-    legacy = catalog(store.harness)
-    mapping = {'dataset_sources': 'sources', 'dataset_templates': 'templates', 'dataset_recipes': 'recipes',
-               'dataset_processing': 'processing_plugins', 'knowledge': 'legacy_knowledge'}
-    if section == 'dataset_guidance':
-        return _rows({key: legacy[key] for key in ('dataset_intent', 'operating_limits', 'benchforge')})
-    if section == 'dataset_templates' and isinstance(legacy['templates'], dict):
-        info = legacy['templates']
-        return _rows(info.get('templates', [])) + [{'id': 'metadata:' + key, 'value': value}
-                                                   for key, value in info.items() if key != 'templates']
-    return _rows(legacy[mapping[section]])
+    raise ValueError('Unknown SpatialForge catalog section: ' + section)
 
 
 def _copy(store, workspace_id, section, rows, filters):

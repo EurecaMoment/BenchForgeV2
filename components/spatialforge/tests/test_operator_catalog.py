@@ -11,11 +11,11 @@ from spatialforge.generation import GenerationTools
 class OperatorCatalog(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
-        self.store = SimpleNamespace(root=self.root, harness=self.root)
+        self.root = Path(self.temp.name).resolve()
+        self.store = SimpleNamespace(root=self.root)
     def tearDown(self): self.temp.cleanup()
 
-    def test_overview_does_not_load_meshes_or_legacy_data(self):
+    def test_overview_does_not_load_meshes(self):
         with patch.object(catalog, '_load_rows', side_effect=AssertionError('overview must be cheap')):
             result = catalog.catalog_response(self.store, {})
         self.assertLess(len(catalog._encoded(result)), catalog.MAX_RESPONSE_BYTES)
@@ -89,15 +89,12 @@ class OperatorCatalog(unittest.TestCase):
         self.assertEqual(json.loads(Path(result['copy']['source_path']).read_text())['items'],rows)
         self.assertLessEqual(len(catalog._encoded(result)),catalog.MAX_RESPONSE_BYTES)
 
-    def test_dataset_lookup_is_lazy_and_excludes_evaluator_section(self):
-        legacy={'templates':{'templates':[{'template_id':'T021','description':'left-right'}], 'sets':{'selected':['T021']}}}
-        with patch('spatialforge.integration.catalog', return_value=legacy) as source:
-            catalog.catalog_response(self.store, {'section':'contracts'})
-            source.assert_not_called()
-            result=catalog.catalog_response(self.store, {'section':'dataset_templates','item_id':'T021'})
-            source.assert_called_once_with(self.root)
-        self.assertEqual(result['items'][0]['value']['description'], 'left-right')
-        self.assertNotIn('evaluators', catalog.SECTIONS)
+    def test_overview_points_template_requests_to_the_current_pipeline_catalog(self):
+        overview = catalog.catalog_response(self.store, {})
+        self.assertTrue(any('benchforge_pipeline_catalog' in step for step in overview['workflow']))
+        for section in ('dataset_templates', 'evaluators'):
+            with self.assertRaisesRegex(ValueError, 'unknown catalog section'):
+                catalog.catalog_response(self.store, {'section': section})
 
 
 if __name__ == '__main__': unittest.main()

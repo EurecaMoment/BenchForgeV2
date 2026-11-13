@@ -1,11 +1,11 @@
-"""Answer-free eligibility receipts for the existing BenchClaw marker renderer."""
+"""Answer-free eligibility receipts for scene-question markers."""
 from collections import Counter
 
 
 def filter_readable_candidates(pairs):
     """Keep geometry and GT untouched; require room around the center marker.
 
-    BenchClaw renders radius r with a white outline. Requiring bbox extent
+    The renderer draws radius r with a white outline. Requiring bbox extent
     2*r+6 leaves three pixels on each side of that diameter. This is a small
     marker eligibility rule, not a semantic, occlusion or realism certificate.
     """
@@ -33,7 +33,7 @@ def filter_readable_candidates(pairs):
         'filtered_candidates_by_source':dict(by_source),'marker_policy_by_source':policies,
         'excluded_object_count':len(examples),'excluded_objects':examples[:80],
         'excluded_objects_omitted':max(0,len(examples)-80),
-        'policy_basis':'BenchClaw spatial_tasks.render center radius; bbox minimum = marker diameter + 6 pixels',
+        'policy_basis':'SpatialForge marker center radius; bbox minimum = marker diameter + 6 pixels',
         'operator_guidance':'For excluded objects, inspect the capture and choose a closer or less occluded camera view if they matter to the task. No scene parameters are changed automatically.',
         'gt_modified':False,'semantic_acceptance':False,
         'limitations':['Marker size eligibility does not prove label visibility, lack of overlap, or semantic answerability.',

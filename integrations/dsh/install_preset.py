@@ -1,10 +1,10 @@
-"""Install the three custom presets (or a legacy BenchForge-only patch) into a profile."""
+"""Install the two BenchForgeV2 presets into a profile."""
 import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 import shutil
 import yaml
-from profile_migration import migrate_profile, inserted_rows, preset_id, base, replace_entries
+from profile_migration import migrate_profile, base
 
 Loader, Dumper = base.Loader, base.Dumper
 
@@ -12,14 +12,7 @@ Loader, Dumper = base.Loader, base.Dumper
 def install(profile, preset):
     current = yaml.load(profile.read_text(encoding='utf-8'), Loader=Loader) or []
     generated = yaml.load(preset.read_text(encoding='utf-8'), Loader=Loader)
-    incoming = inserted_rows(generated)
-    identities = {preset_id(row) for row in incoming if preset_id(row) is not None}
-    if identities == set(base.PRESETS):
-        current = migrate_profile(current, generated)
-    elif len(incoming) == 1 and identities == {base.BENCHFORGE_ID}:
-        current = replace_entries(current, {base.BENCHFORGE_ID: incoming[0]})
-    else:
-        raise ValueError('Expected all three custom presets or a BenchForge-only compatibility patch')
+    current = migrate_profile(current, generated)
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     backup = profile.with_name(profile.name + '.before-benchforge-' + timestamp)
     shutil.copy2(profile, backup)

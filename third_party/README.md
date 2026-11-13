@@ -18,7 +18,7 @@ BenchForgeV2 的提交固定每个子模块的具体版本；仓库地址在根�
 首次下载主仓库和全部子模块，包括它们的嵌套依赖：
 
 ```bash
-git clone --branch main --recurse-submodules --shallow-submodules https://github.com/EurecaMoment/BenchForgeV2.git
+git clone --branch simulator-access-integration --recurse-submodules --shallow-submodules https://github.com/EurecaMoment/BenchForgeV2.git
 cd BenchForgeV2
 ```
 
@@ -41,7 +41,7 @@ git submodule update --init --recursive --depth 1 -- third_party/FastSAM3
 ## 安装与版本更新
 
 下载源码后，按照各子模块自身的 README 配置运行环境、权重和服务。
-子模块是独立的可选依赖，不由主项目安装脚本自动启动，基础离线示例无需下载它们。
+子模块是独立的可选依赖，按实际需要的服务初始化与部署。
 服务调用是否可用还取决于对应适配器、地址配置和服务部署，不能由源码引入推定。
 各库及其依赖、权重和资产的许可，以其自身文件为准。
 
@@ -49,5 +49,4 @@ git submodule update --init --recursive --depth 1 -- third_party/FastSAM3
 普通 `git submodule update --init --recursive` 恢复主仓库记录的版本，不会自动追踪上游最新版本。
 
 `deepseek-harness/` 是主项目安装脚本生成的 DSH 运行目录，继续被 Git 忽略，
-不属于以上五个子模块。既有 DSH 版本和 BenchClaw 来源说明保留在
-`dependencies.json` 中。
+不属于以上五个子模块。DSH 版本保存在 `dependencies.json` 中。

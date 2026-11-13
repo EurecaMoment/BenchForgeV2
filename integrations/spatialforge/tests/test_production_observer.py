@@ -274,12 +274,20 @@ class SceneLibraryTest(unittest.TestCase):
                     connection.execute('INSERT INTO work_items VALUES(?,?,?,?)', ('sf_real.' + state, 'sf_real', json.dumps({'revision': 0}), state))
                 connection.execute('INSERT INTO spatialforge_request_keys VALUES(?,?)', ('dsh:session-real:call', 'sf_real'))
             connection.close()
-            (root / 'deployment.local.json').write_text(json.dumps({'database_url': 'sqlite:///' + str(database)}))
+            url = 'sqlite:///' + database.as_posix()
+            (root / 'deployment.local.json').write_text(json.dumps({'database_url': url}), encoding='utf-8')
+            server = root / 'spatialforge-server.local.json'
+            server.write_text(json.dumps({'database_url_env': 'BENCHFORGE_TEST_DATABASE_URL'}), encoding='utf-8')
+            (root / 'database.env').write_text('BENCHFORGE_TEST_DATABASE_URL=' + url + '\n', encoding='utf-8')
+            client = root / 'spatialforge.local.json'
+            client.write_text(json.dumps({'service_config': server.name}), encoding='utf-8')
+            config = observer.load_workbench_config(client)
             before = database.stat().st_mtime_ns
-            rows = library.completed_tasks({'harness': str(root)})
+            rows = library.completed_tasks(config)
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]['request_key'], 'dsh:session-real:call')
             self.assertEqual(database.stat().st_mtime_ns, before)
+            self.assertEqual(library.completed_tasks({'harness': str(root)}), rows)
 
 
 if __name__ == '__main__':

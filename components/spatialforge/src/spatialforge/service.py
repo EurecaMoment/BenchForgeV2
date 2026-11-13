@@ -11,7 +11,7 @@ from pathlib import Path
 import threading
 import zipfile
 from urllib.parse import quote,urlparse,unquote
-from benchclaw.store import safe_path
+from .files import safe_path
 from .storage import Store,uid
 from .engine import coordinate
 from .generation import GenerationTools
@@ -92,7 +92,8 @@ def main():
     faulthandler.enable()
     if hasattr(signal,'SIGUSR1'):faulthandler.register(signal.SIGUSR1)
     from .runtime_config import load_service_config
-    config=load_service_config(args.config);store=Store(config['artifacts'],config['harness'],config.get('database_url'))
+    config=load_service_config(args.config)
+    store=Store(config['artifacts'],config.get('harness'),config.get('database_url'))
     transfer=CaptureTransfer(store)
     stop=threading.Event()
     # Recover only FIT stages; desktop stages require the same worker to reconcile.
@@ -143,6 +144,11 @@ def main():
         def do_POST(self):
             role='worker' if self.path.startswith('/worker/') else 'operator'
             if not hmac.compare_digest(self.headers.get('Authorization',''),'Bearer '+config[role+'_token']):self.reply({'error':'unauthorized'},401);return
+            if self.path == '/dataset':
+                self.reply({
+                    'error':'Legacy dataset jobs are retired. Use data.capability or POST /start with target_items.',
+                },410)
+                return
             try:
                 length=int(self.headers.get('Content-Length','0'))
                 limit=CHUNK_BYTES if self.path=='/worker/upload-chunk' else 250*1024*1024 if self.path=='/worker/upload' else 2*1024*1024
@@ -200,14 +206,6 @@ def main():
                     self.reply(extend_scene_request(store,value))
                 elif self.path=='/refine':
                     self.reply(refine_scene_request(store,value))
-                elif self.path=='/dataset':
-                    intent=value['intent']
-                    if not isinstance(intent,dict):raise ValueError('dataset intent must be an object')
-                    from .integration import prepare_spec
-                    prepare_spec(intent,store.harness)
-                    context=_request_context(value)
-                    kwargs={'context':context} if context is not None else {}
-                    self.reply({'run_id':store.submit(value['request_key'],[intent],'dataset',**kwargs),'state':'accepted'})
                 elif self.path=='/observe':
                     from .observation import observe
                     result=observe(store,value['run_id']);result.pop('cursor')

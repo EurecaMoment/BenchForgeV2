@@ -1,4 +1,4 @@
-"""Native simulator records to compiler evidence, preserving camera/sequence semantics."""
+"""Convert native simulator records into evidence with camera and sequence metadata."""
 import math
 from pathlib import Path
 from .artifacts import read, write, jsonl

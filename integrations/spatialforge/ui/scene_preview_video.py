@@ -130,7 +130,8 @@ if __name__ == '__main__':
     parser.add_argument('--run-ids', default='[]')
     args = parser.parse_args()
     try:
-        result = prepare_scene(json.loads(Path(args.config).read_text()), args.session, args.scene, json.loads(args.run_ids))
+        from production_observer import load_workbench_config
+        result = prepare_scene(load_workbench_config(args.config), args.session, args.scene, json.loads(args.run_ids))
     except Exception as error:
         result = {'error': 'Scene movie export failed (' + type(error).__name__ + ')'}
     print(json.dumps(result))

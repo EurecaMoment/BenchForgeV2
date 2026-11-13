@@ -151,7 +151,8 @@ def package(args,directory,config):
         gold.append({**row,'id':identity(row),'media':['../public/'+p for p in relocated]})
     jsonl(pub/'items.jsonl',public);jsonl(private/'items.jsonl',gold)
     shutil.copyfile(Path(__file__),root/'score.py')
-    shutil.copyfile(Path(__file__).with_name('artifacts.py'),root/'artifacts.py')
+    for module in ('artifacts.py', 'artifact_io.py', 'processes.py'):
+        shutil.copyfile(Path(__file__).with_name(module), root/module)
     if args.get('bundle'):
         bundle=Path(args['bundle']).resolve()
         copied=root/'reproduce'
@@ -194,15 +195,7 @@ Score saved predictions (standard Python only):
 
 Each prediction is `{"id":"...","answer":"..."}`. Missing predictions score zero; duplicate/unknown IDs are rejected.
 
-When `reproduce/` exists, install NumPy and Pillow, then run the supplied generator:
-
-    python -X utf8 reproduce/scripts/generate_items.py --bundle reproduce --evidence-index reproduce/evidence_index.jsonl --out regenerated.jsonl --limit 0 --seed 42
-
-Replay native camera-range measurements when the source provides raw depth and calibration:
-
-    python -X utf8 reproduce/scripts/replay_native_depth.py --bundle reproduce
-
-The reproduction bundle includes original inputs and executable template/metric code. Keep it private during model inference. Declared template complexity and small-sample diagnostics are not empirical proof of benchmark difficulty.
+When supplied, `reproduce/` contains the caller's reproduction bundle and copied inputs. Keep it private during model inference.
 ''',encoding='utf-8')
     shutil.make_archive(str(directory/'benchmark-public'),'zip',pub)
     shutil.make_archive(str(directory/'benchmark-complete'),'zip',root)

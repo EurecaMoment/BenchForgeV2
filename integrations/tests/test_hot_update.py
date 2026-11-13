@@ -62,12 +62,13 @@ class HotUpdate(unittest.TestCase):
         result = hot.update_profile(profile, ROOT, ROOT / ".deployment/python-development",
                                     ROOT / "config/benchforge.local.json", ROOT / "config/generated/spatialforge.local.json", "123")
         self.assertEqual(profile, original)
-        self.assertEqual([row["id"] for row in result[0]["insert"]], [row["id"] for row in original[0]["insert"]])
+        self.assertEqual([row["id"] for row in result[0]["insert"]],
+                         [row["id"] for row in original[0]["insert"] if row["id"] != "legacy"])
         self.assertEqual(result[0]["insert"][0], original[0]["insert"][0])
         presets = {row['config']['id']: row['config'] for row in result[0]['insert']
                    if isinstance(row.get('config'), dict) and 'plugins' in row['config']}
-        self.assertEqual([presets[key]['name'] for key in ('benchforge', 'benchforgev2', hot.PRESET_ID)],
-                         ['BenchForge', 'BenchForgeV2', 'BenchForgeV2_UI'])
+        self.assertEqual([presets[key]['name'] for key in ('benchforgev2', hot.PRESET_ID)],
+                         ['BenchForgeV2', 'BenchForgeV2_UI'])
         ui = next(row for row in result[0]["insert"] if row["id"] == "benchforge-workbench-ui")
         self.assertEqual(ui["name"], str(ROOT / "integrations/spatialforge/ui/stage_products.js"))
         self.assertEqual(ui["config"], {**original[0]["insert"][1]["config"],

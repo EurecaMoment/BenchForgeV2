@@ -18,9 +18,8 @@ def main():
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    config = json.loads(args.config.read_text())
-    root = Path(__file__).resolve().parents[3]
-    program = json.loads((root / 'examples/push_box_scene.json').read_text())
+    config = json.loads(args.config.read_text(encoding='utf-8'))
+    program = json.loads(Path(__file__).with_name('fixtures').joinpath('push_box_scene.json').read_text(encoding='utf-8'))
     args.output.mkdir(parents=True, exist_ok=True)
     log = (args.output / 'service.log').open('a')
     process = None
@@ -56,7 +55,13 @@ def main():
             raise AssertionError('Unauthenticated catalog allowed')
         except HTTPError as error:
             assert error.code in (401,403)
-        templates = api('/catalog', {'section':'dataset_templates'})
+        contracts = api('/catalog', {'section':'contracts'})
+        assert contracts['items'], contracts
+        try:
+            api('/dataset', {})
+            raise AssertionError('Retired dataset route accepted a job')
+        except HTTPError as error:
+            assert error.code == 410
         code = 'import json\nfrom pathlib import Path\nPath("scene.json").write_text(' + repr(json.dumps(program)) + ')\nprint("created scene.json")'
         authored = api('/task-code', {'workspace_id':'install-roundtrip','code':code})
         assert authored['returncode'] == 0, authored
@@ -76,7 +81,7 @@ def main():
         receipt = {'postgresql_http_sandbox_roundtrip':'passed', 'run_id':run_id,
                    'auth_rejection':True,'sandbox_returncode':authored['returncode'],
                    'idempotent_submission':True,'restart_retained_request':True,
-                   'final_state':after['state'],'dataset_templates_returned':bool(templates),
+                   'final_state':after['state'],'scene_contracts_returned':bool(contracts['items']),
                    'model_api_calls':0,'isaac_starts':0,'scene_quality_accepted':False}
         (args.output / 'roundtrip.json').write_text(json.dumps(receipt, indent=2))
         print(json.dumps(receipt))

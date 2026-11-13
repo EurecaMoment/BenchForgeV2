@@ -1,6 +1,5 @@
 """Small real geometry/export checks; only the model responses are fixtures."""
 import json
-import importlib.util
 import tempfile
 import threading
 import unittest
@@ -10,13 +9,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
-HAS_HARNESS=importlib.util.find_spec('benchclaw') is not None
-if HAS_HARNESS:
-    from spatialforge import products
+from spatialforge import products, spatial_tasks
 from spatialforge.run_context import RunCancelled
 
 
-@unittest.skipUnless(HAS_HARNESS,'Requires the real BenchClaw spatial task generator')
 class ProductExports(unittest.TestCase):
     def capture(self, directory):
         capture=directory/'capture';capture.mkdir()
@@ -28,7 +24,6 @@ class ProductExports(unittest.TestCase):
         }]}))
 
     def test_render_only_selected_preserves_candidate_selection_and_gt(self):
-        from benchclaw import spatial_tasks
         with tempfile.TemporaryDirectory() as tmp:
             directory=Path(tmp);self.capture(directory);capture=directory/'capture'
             frame=json.loads((capture/'evidence.json').read_text())['frames'][0]
@@ -93,7 +88,7 @@ class ProductExports(unittest.TestCase):
 
     def test_marker_filter_removes_real_corner_counterexample_without_changing_gt(self):
         from spatialforge.data_selection import filter_readable_candidates
-        from benchclaw.spatial_tasks import generate_spatial
+        from spatialforge.spatial_tasks import generate_spatial
         objects=[{'object_id':name,'bbox_2d':{'xyxy':box},'confidence':{'value':1}}
                  for name,box in [('tray_parts',[954,712,960,720]),
                                  ('healthy_a',[100,100,200,200]),('healthy_b',[500,400,600,500])]]
@@ -114,7 +109,7 @@ class ProductExports(unittest.TestCase):
         self.assertNotIn('"answer"',json.dumps(report));self.assertNotIn('gt_values',json.dumps(report))
 
     def test_replenishment_reaches_target_without_repeating_evidence_or_leaking_answers(self):
-        from benchclaw.spatial_tasks import _signature
+        from spatialforge.spatial_tasks import _signature
         with tempfile.TemporaryDirectory() as tmp:
             directory=Path(tmp);self.capture(directory)
             replies=[{'items':[]},{'valid':False,'issues':['fixture rejection']},
@@ -218,9 +213,9 @@ class ProductExports(unittest.TestCase):
             self.assertFalse(summary['scene_quality_passed'])
             self.assertEqual(summary['publication_status'],'exploration_requires_improvement')
             release=directory/'release'
-            self.assertEqual(json.loads((release/'collection_report.json').read_text()),summary)
-            self.assertEqual(json.loads((release/'complete.json').read_text()),summary)
-            authority=json.loads((release/'authority_bundle.json').read_text())
+            self.assertEqual(json.loads((release/'collection_report.json').read_text(encoding='utf-8')),summary)
+            self.assertEqual(json.loads((release/'complete.json').read_text(encoding='utf-8')),summary)
+            authority=json.loads((release/'authority_bundle.json').read_text(encoding='utf-8'))
             with zipfile.ZipFile(release/'training_bundle.zip') as archive:
                 sample=json.loads(archive.read('sft.jsonl').decode().strip())
                 self.assertIn(sample['images'][0],archive.namelist())

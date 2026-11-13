@@ -1,10 +1,8 @@
 """Artifact helpers shared by callable production capabilities."""
 from __future__ import annotations
-import json
 import os
 import subprocess
 import sys
-import signal
 from pathlib import Path
 
 if __package__:
@@ -13,11 +11,6 @@ if __package__:
 else:
     from artifact_io import read_json, read_jsonl, write_json, write_jsonl
     from processes import terminate_process_tree
-
-VENDOR = Path(__file__).with_name('vendor') / 'benchclaw'
-BUILD = VENDOR / 'compiler'
-COMPILER = BUILD
-
 
 read = read_json
 rows = read_jsonl
@@ -50,12 +43,6 @@ def run(script, argv, directory, *, config=None, env=None, timeout=600, name=Non
         tail+=(directory/(stem+'.stdout.log')).read_text(encoding='utf-8')[-2000:]
         raise RuntimeError(f'{stem} exited {result.returncode}; logs: {directory}; {tail}')
     return result.returncode
-
-
-def inside(root, relative):
-    path=(Path(root)/relative).resolve()
-    path.relative_to(Path(root).resolve())
-    return path
 
 
 def unique(values, key='id'):

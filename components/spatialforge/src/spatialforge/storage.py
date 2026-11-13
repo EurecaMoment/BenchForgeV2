@@ -1,29 +1,31 @@
-"""One database authority: uses the existing Harness PostgreSQL and tables."""
+"""Persist scene production and capture state in the SpatialForge database."""
 import json
 from pathlib import Path
 import time
 import uuid
 from sqlalchemy import Table, Column, String, JSON, MetaData, select, update as sql_update
-from benchclaw.metadata import Repository, runs, tasks, events, artifacts
-from benchclaw.store import write_json, safe_path
+from .metadata import Repository, runs, tasks
+from .files import write_json, safe_path
 from .contracts import normalize_native_asset_references
 from .run_context import RunContext
+from .runtime_config import resolve_database_url
 
 
 def uid(prefix): return prefix+'_'+uuid.uuid4().hex[:16]
 
 
 class Store:
-    def __init__(self, root, harness, database_url=None):
+    def __init__(self, root, harness=None, database_url=None):
         self.root=Path(root); self.root.mkdir(parents=True,exist_ok=True)
-        self.harness=Path(harness)
-        self.repo=Repository(database_url or json.loads((Path(harness)/'deployment.local.json').read_text())['database_url'])
+        self.repo=Repository(resolve_database_url(harness,database_url))
         meta=MetaData()
         self.keys=Table('spatialforge_request_keys',meta,Column('id',String,primary_key=True),Column('run_id',String))
         self.device=Table('spatialforge_devices',meta,Column('id',String,primary_key=True),Column('record',JSON))
         meta.create_all(self.repo.engine)
 
     def submit(self,key,intents,workflow='scene',submitted_programs=None,context=None):
+        if workflow == 'dataset':
+            raise ValueError('Legacy dataset jobs are retired. Use data.capability or submit a scene with target_items.')
         from .scene_acceptance import policy_for, check_references, admit_program
         external_context = RunContext.from_request(context)
         if external_context is None:
@@ -93,7 +95,7 @@ class Store:
             c.execute(runs.insert().values(id=rid,state='PENDING',plan=plan,created_at=str(time.time()),code_revision='spatialforge-0.2.0'))
             for i,intent in enumerate(intents):
                 tid=f'{rid}.scene{i}'
-                unit={'intent':intent,'index':i,'workflow':workflow,'phase':workflow if workflow in {'asset','dataset','layout','generation'} else 'plan','revision':0}
+                unit={'intent':intent,'index':i,'workflow':workflow,'phase':workflow if workflow in {'asset','layout','generation'} else 'plan','revision':0}
                 unit['run_context'] = run_context.to_dict()
                 if submitted_programs and submitted_programs[i] is not None:unit['submitted_program']=submitted_programs[i]
                 c.execute(tasks.insert().values(id=tid,run_id=rid,task_id=f'scene{i}',unit=unit,state='PENDING',attempt=0,ready_at=0))
@@ -213,6 +215,8 @@ class Store:
             c.exec_driver_sql('SELECT pg_advisory_xact_lock(7420391)')
             task=c.execute(select(tasks).where(tasks.c.id==tid).with_for_update()).mappings().one()
             run=c.execute(select(runs).where(runs.c.id==task['run_id']).with_for_update()).mappings().one()
+            if task['unit'].get('phase') == 'dataset':
+                raise ValueError('Legacy dataset jobs are retired. Use data.capability or submit a scene with target_items.')
             if run['state'] in {'CANCELED','SUCCEEDED'}:raise ValueError('cannot retry a canceled or successful run')
             if task['state']!='FAILED_FINAL':raise ValueError('only failed tasks need retry')
             recovery_id=None

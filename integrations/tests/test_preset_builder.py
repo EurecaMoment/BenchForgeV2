@@ -21,19 +21,17 @@ class PresetBuilderTest(unittest.TestCase):
     def setUpClass(cls):
         cls.sources = builder.base.load_sources()
 
-    def test_catalog_has_exactly_three_independent_custom_presets(self):
+    def test_catalog_has_exactly_two_independent_v2_presets(self):
         before = deepcopy(self.sources)
         result = catalog.build(self.sources, None, 'python3', Path('config/benchforge.local.json'),
                                 Path('config/spatialforge.local.json'), package_imports=True)
         rows = result[0]['insert']
         presets = [row['config'] for row in rows if row['name'] == '@deepseek-ai/dsh-agent-preset']
         self.assertEqual([(row['id'], row['name']) for row in presets], [
-            ('benchforge', 'BenchForge'), ('benchforgev2', 'BenchForgeV2'),
+            ('benchforgev2', 'BenchForgeV2'),
             ('spatialforge-standard-ptc', 'BenchForgeV2_UI')])
         self.assertEqual(self.sources, before)
-        first, headless, workbench = presets
-        self.assertIn('benchforge-tools', [p['id'] for p in first['plugins']])
-        self.assertNotIn('spatialforge-tools', [p['id'] for p in first['plugins']])
+        headless, workbench = presets
         for preset in presets:
             self.assertNotIn('spatialforge-evaluation-ui', [p['id'] for p in preset['plugins']])
             persona = next(plugin['config']['prefix'] for plugin in preset['plugins'] if plugin['id'] == 'persona')

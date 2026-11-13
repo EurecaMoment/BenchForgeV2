@@ -35,60 +35,32 @@ flowchart TB
   Train --> RSI[RSI model training]
 ```
 
-The diagram shows the intended boundaries. Some adapters, scene capture, dataset production, evaluation, and local training utilities exist today; the roadmap below separates those from planned work.
+The diagram shows the boundaries between the harness, external providers, and the evaluation and training services.
 
-## 独立部署与三个 Agent 预设
+## 独立部署与两个 Agent 预设
 
 下方提供 Linux 服务机的完整安装步骤，可在另一台机器或另一目录部署，
 不需要已有 FIT 服务、旧 DSH 配置或其他分支的文件。按顺序执行
 [独立部署指令](#独立部署指令linux)，先启动 Web、BenchForgeV2 和独立数据库。
 
-本分支的完整安装生成三个相对独立的自定义 Agent 预设：
+本分支安装两个自定义 Agent 预设：
 
 | 显示名称 | 用途 |
 | --- | --- |
-| **BenchForge** | 第一代评测构建，使用仓库内置的 BenchClaw 能力 |
 | **BenchForgeV2** | 场景和数据生产，使用标准对话界面 |
 | **BenchForgeV2_UI** | 同一生产能力，附带评测生产工作台 |
 
 UI 版沿用旧会话的内部 ID，已有会话继续关联自己的工作台和历史产物。
-基础安装不需要 GPU、模型密钥或 Isaac。模型问答、图像生成和仿真采集需要另外
-配置对应服务；安装命令不会替你提供这些能力。工作台随完整预设一起接入，使用方式见
-[工作台说明](docs/frontend-workbench-v2.md)。
+基础安装不需要 GPU、模型密钥或 Isaac。模型问答、图像生成和仿真采集需要另外配置对应服务。
 
 ## Current capabilities
 
 - **Harness and workflows:** DSH plugin integration; a catalog of 89 tasks and 267 measurement templates; persistent pipelines that can resume; stage reviews; model and simulator adapters.
 - **BenchForgeV2:** scene programs, asset generation, simulation queue, capture evidence, operator review, and public data export. See the [integration guide](integrations/spatialforge/README.md).
 - **Evidence and delivery:** keep model-visible questions separate from authority answers; record source and capture evidence; validate declared public assets before packaging.
-- **Evaluation and training:** deterministic local scoring, dataset packaging, spatial capability templates, and controlled training examples. These do not imply that a target RSI model has been evaluated or trained.
+- **Evaluation and training:** deterministic local scoring, dataset packaging, spatial capability templates, and local training tools.
 
 The task/template catalog and the separate spatial-learning capability graph serve different purposes. Model predictions are candidate annotations, not ground truth. Ground truth must be derived from an accepted official source, executable task, or simulator evidence.
-
-## Architecture and roadmap
-
-See [architecture and evolution](docs/ARCHITECTURE_AND_ROADMAP.zh-CN.md) for module boundaries, design rules, milestones, and staffing needs.
-
-Near-term work prioritizes clear contracts, configuration ownership, resumable execution, delivery status, and a reproducible package. Follow-on work can add annotation review, evidence lineage, workflow orchestration, multimodal model iteration, performance work, and RSI evaluation/training services behind those boundaries.
-
-## Quick start
-
-Python 3.10+ can run an offline example without a model API, GPU, or simulator:
-
-```bash
-git -c http.version=HTTP/1.1 clone --branch main https://github.com/EurecaMoment/BenchForgeV2.git
-cd BenchForgeV2
-python benchforge.py demo
-```
-
-For the controlled dataset example:
-
-```bash
-python -m pip install -e ".[production,research]"
-python examples/production_demo.py --workspace runs/production
-```
-
-To attach BenchForgeV2 tools to an existing DSH profile, follow [integration setup](integrations/README.md). To run the bundled service and a self-hosted desktop worker, use the [installation guide](docs/SPATIALFORGE_INSTALL.md). Neither path migrates or restarts an existing production deployment.
 
 ## Third-party provider libraries
 
@@ -108,13 +80,13 @@ own README to install its environment, weights, and service.
 
 Start from the checked-in examples under `config/`. Copy an example to a matching ignored `*.local.json` file for machine-specific values. Keep credentials, local model paths, runtime databases, generated datasets, logs, and backups outside version control.
 
-BenchForgeV2 uses one server configuration as the source for its execution mode and scene policy. In `production` mode, a valid scene policy is required. The client and DSH plugin read the resolved service URL and credentials without changing the server's environment. See [configuration and deployment boundaries](docs/SPATIALFORGE_INSTALL.md).
+BenchForgeV2 uses one server configuration as the source for its execution mode and scene policy. In `production` mode, a valid scene policy is required. The client and DSH plugin read the resolved service URL and credentials without changing the server's environment.
 
-The root `.gitignore` excludes local configuration and generated output. CI also checks tracked path names for private configuration and disposable artifacts; this is a repository hygiene check, not a content-based secret scan.
+The root `.gitignore` excludes local configuration and generated output.
 
 ## Verification
 
-Run the [portable verification steps](docs/VALIDATION.md) locally. CI covers Windows and Linux on Python 3.10 and 3.12, with additional BenchForgeV2 tests on Python 3.12. A passing offline test does not certify live service availability, GPU throughput, simulator fidelity, or model quality. Those require acceptance on the named target system.
+CI covers Windows and Linux on Python 3.10 and 3.12, with extra SpatialForge checks on Python 3.12. Run `python -m unittest discover -s tests -v` to check the core.
 
 ## 独立部署指令（Linux）
 
@@ -193,18 +165,18 @@ docker info
 docker compose version
 ```
 
-### 1. 下载 main 到新目录
+### 1. 下载当前分支到新目录
 
 `benchforge-3092` 是示例部署的独立目录名；已有同名目录时换一个新名称。
 
 ```bash
 cd "$HOME"
-git -c http.version=HTTP/1.1 clone --branch main --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-3092
+git -c http.version=HTTP/1.1 clone --branch simulator-access-integration --single-branch https://github.com/EurecaMoment/BenchForgeV2.git benchforge-3092
 cd benchforge-3092
 git branch --show-current
 ```
 
-最后一行应输出 `main`。之后所有服务器命令都在这个目录执行。
+最后一行应输出 `simulator-access-integration`。之后所有服务器命令都在这个目录执行。
 不要复制旧部署的 `config/`、`.benchforge/` 或 `.spatialforge/`。
 `-c http.version=HTTP/1.1` 仅对本次克隆生效，用于减少部分网络链路上的 GitHub
 连接中断，不修改全局 Git 配置。若下载仍失败，保留错误并检查网络；重试前确认目标
@@ -260,7 +232,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 | `config/generated/spatialforge-server.local.json` | API 端口、数据库环境变量引用、产物目录、服务凭据、生产策略和 `isaac` 透传 | 否 |
 | `config/generated/spatialforge.local.json` | 引用服务端配置，继承地址、operator token 和生产策略 | 否 |
 | `config/generated/worker.local.json` | 引用服务端配置，另设本机 Isaac 路径、`isaac_grpc` 和 worker 参数 | 接入 worker 时配置 |
-| `config/generated/benchforge.local.yml` | DSH 三个预设与工作台插件，由 `init`/`sync`/`build_presets.py` 生成 | 否 |
+| `config/generated/benchforge.local.yml` | 两个 DSH 预设与工作台插件，由 `build_presets.py` 生成 | 否 |
 
 `config/generated/` 下的文件都是自动产物，不要手改端口或凭据；服务端配置是唯一
 连接信息来源，客户端和同机 worker 不重复保存 token 或端口。本地配置、虚拟环境、
@@ -274,7 +246,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
 
 此命令从公开仓库下载锁定版本的 DSH，在 `third_party/deepseek-harness/` 构建，
-然后生成 `config/benchforge.local.json`、含三个预设和工作台插件的
+然后生成 `config/benchforge.local.json`、含两个预设和工作台插件的
 `config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
 `Ready. Run: python benchforge.py start`，且命令退出码为 0。
@@ -286,8 +258,8 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 .venv/bin/python benchforge.py setup --spatialforge-config config/generated/spatialforge.local.json
 ```
 
-单独执行 `benchforge.py setup` 只安装第一代 `BenchForge`，不会接入另外两个 BenchForgeV2 预设。
-重新生成预设会覆盖手工追加的模型配置，已有修改时先备份本地 YAML。
+`benchforge.py setup` 默认使用本实例的 `config/generated/spatialforge.local.json`。
+首次从旧版升级时重新执行 `dsh-setup` 以更新预设。已有手工模型配置时先备份本地 YAML。
 DSH 本身默认通过锁定的 pnpm 版本安装；不需要复制另一部署的 DSH。
 
 如果此步骤在下载 DSH 时出现 `unexpected eof`、`SSL_read` 或 `schannel` 连接错误，
@@ -343,7 +315,7 @@ http://127.0.0.1:13092/?token=第5节输出的实际令牌
 
 本地 `13092` 被占用时只改隧道左侧端口，并同步改浏览器 URL。
 直接打开不带 token 的根地址可能返回 `dsh web authentication required`。
-进入页面后，新建会话应能选择 **`BenchForge`、`BenchForgeV2`、`BenchForgeV2_UI`**。
+进入页面后，新建会话应能选择 **`BenchForgeV2` 和 `BenchForgeV2_UI`**。
 选择 `BenchForgeV2_UI` 查看工作台；尚未配置模型时先不要发起生产任务。
 
 ### 7. 验收基础安装
@@ -358,8 +330,6 @@ docker compose --env-file config/generated/database.env -f components/spatialfor
 .venv/bin/python spatialforge_app.py status
 .venv/bin/python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
 
-# 只运行一次不需要 GPU/模型的离线例子。
-.venv/bin/python benchforge.py demo
 ```
 
 两次目录查询应返回 `catalog_schema: spatialforge.operator-catalog/v2` 和 `sections`，
@@ -370,9 +340,7 @@ docker compose --env-file config/generated/database.env -f components/spatialfor
 然后重跑 `./start.sh`——启动前的自动 `sync` 会把新端口同步到所有生成物。
 DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
-离线例子应输出 `Offline demo complete: 2 items, exact-match accuracy 0.5`，
-其中一个预测故意错误，0.5 是预期结果。产物在 `runs/quickstart/`。
-再确认网页能够登录、三个预设均可选，且 `BenchForgeV2_UI` 能显示工作台、没有加载错误。
+再确认网页能够登录、两个预设均可选，且 `BenchForgeV2_UI` 能显示工作台、没有加载错误。
 页面验收必须新建并选择 **`BenchForgeV2_UI`** 会话、绑定本实例的独立工作区，确认
 “评测计划、场景预览、标注预览、评测配置与题目表、最终报告”五个阶段可以打开。
 只看到 DSH 默认 Standard 对话页面，不能算工作台安装成功。新实例应显示空的生产状态，
@@ -384,21 +352,19 @@ DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 所有模型统一在 **`config/benchforge.local.json`** 声明，初始化时从
 [`config/benchforge.example.json`](config/benchforge.example.json) 创建。
 不要再新建或编辑 `config/generated/models.local.json`，也不要在服务端 JSON 或预设 YAML
-中重复维护模型地址。各字段的完整说明见 [统一模型配置](docs/MODEL_CONFIGURATION.md)。
+中重复维护模型地址。
 
-- **DSH 对话、自动规划、标注大模型**：在 `models` 声明一次地址、模型 ID 和密钥环境变量名，
+- **DSH 对话、自动规划、独立标注接口的模型**：在 `models` 声明地址、模型 ID 和密钥环境变量名，
   再让 `model_roles.dsh/scene/annotation` 引用它；使用不同模型时分别声明和引用。
 - **图像、分割、深度、三维模型**：`services` 保存原生标注接口，
   `model_services` 保存异步推理网关及各工具默认参数，
   `models` 和 `sources` 保存可选本地执行所需的解释器、权重和源码路径。
   `generation.mode=remote` 使用网关，`local` 使用本地已安装模型。
   地址和路径示例不代表相应服务、权重或依赖已经可用。
-- **Isaac 真值与采集**：按 [自托管安装指南](docs/SPATIALFORGE_INSTALL.md)
-  接入自己的 Isaac 和 worker，使用本次生成的 `config/generated/worker.local.json`；
-  worker 通过 `config/benchforge.local.json` 的 `isaac.grpc` 调用远程 Isaac Sim gRPC 服务。
-  先验收文档中的程序化 capture 例子，再让 Agent 发起生成任务。
-- **场景工作台 UI**：完整安装已经接入。选择 `BenchForgeV2_UI` 使用，见
-  [工作台说明](docs/frontend-workbench-v2.md)；另外两个预设使用标准对话界面。
+- **Isaac 真值与采集**：在 `config/benchforge.local.json` 设置 `isaac.grpc`，运行 `spatialforge_app.py sync`，
+  然后在 worker 机器上执行 `python spatialforge_app.py worker --config <worker-config>`。
+  worker 配置可从 `config/generated/worker.local.json` 复制，再填写该机器可用的服务地址、令牌和目录。
+- **场景工作台 UI**：选择 `BenchForgeV2_UI` 打开评测工作台，`BenchForgeV2` 使用标准对话界面。
 
 模型凭据存放在被忽略的 `config/dsh.env` 中，以统一 JSON 里的 `token_env` 引用；
 `start.sh` 会在启动后端和 DSH 前加载，`spatialforge_app.py serve` 也会加载此文件。
@@ -412,7 +378,7 @@ BENCHFORGE_WEB_PORT=3092 ./restart.sh
 ```
 
 `sync` 首次执行会把旧的模型路径和服务端模型字段补入统一文件，已有统一字段优先，
-旧文件保留；服务端改为引用统一文件。DSH 启动时自动刷新模型配置快照，不重建三个预设或改写
+旧文件保留；服务端改为引用统一文件。DSH 启动时自动刷新模型配置快照，不重建预设或改写
 已有会话。占位模型不会覆盖 DSH 默认模型；填写实际模型后，新会话默认使用 `model_roles.dsh`。
 
 ### 9. 停止、重启和更新
@@ -430,11 +396,11 @@ BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
 BENCHFORGE_WEB_PORT=3092 ./shutdown.sh
 ```
 
-更新 main 时先保留自己的本地配置和数据，再停止应用、拉取代码、更新依赖：
+更新 `simulator-access-integration` 时，先保留本地配置和数据，再停止应用、拉取代码和更新依赖。
 
 ```bash
 BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
-git pull --ff-only origin main
+git pull --ff-only origin simulator-access-integration
 .venv/bin/python -m pip install -e '.[dsh,production,research]'
 npm ci --prefix integrations
 .venv/bin/python spatialforge_app.py setup
@@ -493,7 +459,7 @@ cp config/spatialforge.example.json config/generated/spatialforge.local.json
 这条路线不使用 `start.sh` 创建另一数据库。已构建 DSH 可额外传入
 `--dsh-root /path/to/deepseek-harness`；新手独立安装无需此选项。
 
-## 开发检查与进一步文档
+## 开发检查
 
 以下是开发者修改代码后的检查，不是部署者必须跑完的安装步骤：
 
@@ -501,8 +467,3 @@ cp config/spatialforge.example.json config/generated/spatialforge.local.json
 .venv/bin/python -m unittest discover -s integrations/tests -v
 .venv/bin/python integrations/spatialforge/smoke.py
 ```
-
-- [Pipeline catalog and evidence requirements](docs/pipelines.md)
-- [Spatial learning and training utilities](docs/spatial-learning.md)
-- [Model-service boundary](docs/MODEL_SERVICES.md)
-- [Self-hosted BenchForgeV2 installation](docs/SPATIALFORGE_INSTALL.md)

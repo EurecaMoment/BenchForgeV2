@@ -7,7 +7,6 @@ from pathlib import Path
 from benchforge_core.evaluation import score_predictions,model_eval
 from benchforge_core.artifacts import jsonl
 from benchforge_core.research import review,design
-from benchforge_core.recipes import compute,generate
 
 
 class ProductionTests(unittest.TestCase):
@@ -21,34 +20,6 @@ class ProductionTests(unittest.TestCase):
                 'flux': {'python': '/opt/flux/bin/python', 'path': '/opt/flux-model'},
             }})
             self.assertEqual([row['model'] for row in result['models']], ['qwen'])
-
-    def test_collection_rejects_constant_answer_shortcut(self):
-        from benchforge_core.collection import assess
-        items=[{'id':str(i),'question':'Compare A and B','template_id':'relation','source':str(i%2),
-            'media':[str(i)+'.png'],'evidence_refs':[str(i)],'answer':'A',
-            'answerability_proof':{'visible_media':[str(i)+'.png'],'question_references_visible_anchor':True,
-            'why_visible_anchor_is_sufficient':'A and B identify the visible regions'}} for i in range(4)]
-        report=assess(items,{'max_template_majority':0.75,'min_sources':2})
-        self.assertEqual(report['failures'],['constant_answer_shortcut'])
-    def test_temporal_recipe_rejects_unordered_evidence_and_ties(self):
-        self.assertEqual(compute({'op':'difference','inputs':['/start','/end']},{'start':2,'end':5}),3)
-        with self.assertRaisesRegex(ValueError,'tie'):
-            compute({'op':'order','inputs':['/a','/b'],'labels':['A','B']},{'a':3,'b':3})
-        result,rejected=generate('.', [{'id':'frame','provenance':{'kind':'simulation'},'sequence_semantics':'independent_capture'}],
-            [{'template_id':'motion','sequence_semantics':'ordered_sequence'}])
-        self.assertEqual(result,[])
-        self.assertIn('Sequence semantics',rejected[0]['reason'])
-
-    def test_native_replay_detects_drift(self):
-        import numpy as np
-        from benchforge_core.replay import replay
-        with tempfile.TemporaryDirectory() as temp:
-            root=Path(temp);np.save(root/'depth.npy',np.ones((3,3)))
-            jsonl(root/'evidence_index.jsonl',[{'id':'native','raw_depth_path':'depth.npy',
-                'camera':{'fx':2,'fy':2,'cx':1,'cy':1},'objects':[{'object_id':'patch','bbox_xyxy':[1,1,2,2],'depth_median':1}]}])
-            self.assertEqual(replay(root)['status'],'passed')
-            np.save(root/'depth.npy',np.ones((3,3))*2)
-            self.assertEqual(replay(root)['status'],'failed')
 
     def test_metrics_and_incomplete_responses(self):
         items=[{'id':'a','answer':['A','C'],'metric_id':'set_f1'},

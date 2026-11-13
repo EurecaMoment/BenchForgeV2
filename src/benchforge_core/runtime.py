@@ -50,24 +50,14 @@ class Runtime:
     def call(self, tool: str, args: dict[str, Any]) -> dict[str, Any]:
         """Execute one harness operation and persist its request and result."""
         if tool == "catalog":
-            if args.get('section') == 'migration':
-                inventory = read(Path(__file__).with_name('knowledge') / 'skill-migration.json')
-                query = args.get('query', '').casefold()
-                matches = [row for row in inventory['skills'] if query in json.dumps(row, ensure_ascii=False).casefold()]
-                offset, limit = max(0, args.get('offset', 0)), max(1, min(100, args.get('limit', 10)))
-                return {**{k: v for k, v in inventory.items() if k != 'skills'},
-                        'skills': matches[offset:offset+limit], 'total': len(matches),
-                        'next_offset': offset+limit if offset+limit < len(matches) else None}
-            if args.get('section') == 'templates':
-                import runpy
-                module=Path(__file__).with_name('vendor')/'benchclaw/compiler/write_one_click_runtime.py'
-                templates=runpy.run_path(str(module))['DEFAULT_TEMPLATES']
-                query = args.get('query', '').casefold()
-                matches = [t for t in templates if not query or any(word in json.dumps(t, ensure_ascii=False).casefold() for word in query.split())]
-                offset, limit = args.get('offset', 0), args.get('limit', 10)
-                return {'templates': matches[offset:offset+limit], 'total': len(matches),
-                        'next_offset': offset+limit if offset+limit < len(matches) else None,
-                        'status': 'Bundled executable templates; supported evidence and visible-anchor requirements still apply. Original broader taxonomy is available through method.'}
+            section = args.get('section', 'overview')
+            if section == 'templates':
+                from .pipelines.catalog import catalog
+                result = catalog({'limit': 10, **args})
+                return {'templates': result['items'], 'total': result['total'],
+                        'next_offset': result['next_offset'], 'source': result['source']}
+            if section != 'overview':
+                raise ValueError('section must be overview or templates')
             return read(Path(__file__).with_name("capabilities.json"))
         if tool == "status":
             result = self.db.execute("SELECT id,tool,state,artifact,error FROM operations ORDER BY rowid DESC LIMIT 30").fetchall()
@@ -98,9 +88,9 @@ class Runtime:
                                work=args.get("work") or str(directory / "inference"),
                                job_id=args.get("job_id"), config=self.config.get("model_services"),
                                timeout_seconds=args.get("timeout_seconds", 300))
-        from .workbench import OPERATIONS, execute
-        if tool in OPERATIONS or tool == 'method':
-            return execute(tool,args,directory,self.config)
+        from .workbench import OPERATIONS
+        if tool in OPERATIONS:
+            return OPERATIONS[tool](args, directory, self.config)
         if tool == "plan":
             write(directory / "brief.json", args)
             return {"brief": str(directory / "brief.json"), "next": "Choose sources, collect or import evidence, then build. No stage locks."}
@@ -252,7 +242,7 @@ class Runtime:
         if not files:
             raise RuntimeError(f"{tool} returned without capture artifacts; stdout: {directory / 'stdout.log'}")
         return {"output_dir": str(output), "files": files, "execution_complete": True,
-                "quality": "not_assessed", "next": "Inspect real images and raw state before compiling benchmark evidence."}
+                "quality": "not_assessed", "next": "Inspect real images and raw state before building benchmark evidence."}
 
     def evidence(self, args, directory):
         source = Path(args["input"]).resolve()

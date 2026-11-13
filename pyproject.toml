@@ -30,7 +30,7 @@ where = ["src"]
 include = ["benchforge_core*"]
 
 [tool.setuptools.package-data]
-benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "vendor/**/*"]
+benchforge_core = ["capabilities.json", "collectors/*.py"]
 "benchforge_core.spatial_learning" = ["graph.json", "templates.json"]
 "benchforge_core.pipelines" = ["task_templates.json", "assessment_template.json", "definitions/*.json"]
 
@@ -40,12 +40,7 @@ benchforge_core = ["capabilities.json", "collectors/*.py", "knowledge/*.json", "
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-extend-exclude = [
-    "src/benchforge_core/vendor/**",
-    "components/benchclaw/BenchClaw/**",
-    "components/benchclaw/src/benchclaw/resources/BenchClaw/**",
-    "work/**",
-]
+extend-exclude = ["work/**"]
 
 [tool.ruff.lint]
 select = ["E9", "F63", "F7", "F82"]

@@ -62,7 +62,7 @@ export async function apply(ctx, config) {
   const operationOutput = {...output,schema:{type:'object',properties:{operation_id:{type:'string',required:true},artifact_dir:{type:'string',required:true}},additionalProperties:true}};
   const statusOutput = {...output,schema:{type:'object',properties:{operations:{type:'array',required:true,items:{type:'object',properties:{id:{type:'string',required:true},tool:{type:'string',required:true},state:{type:'string',required:true}},additionalProperties:true}}},additionalProperties:true}};
   const definitions = {
-    catalog:'Discover callable production tools and exact request examples. Start with requests and compiler_templates. section=migration separates implementation from validation.',
+    catalog:'Discover callable production tools and exact request examples. See exact request examples and the V2 task template catalog.',
     status:'Read persisted operation results and artifact paths. Does not retry operations.',
     plan:'Save a benchmark brief. Planning and capability choices belong to you; no fixed stage sequence.',
     sam3:'Segment an image through the configured SAM3 service. Returns candidate masks, scores and paths for inspection; source labels remain the authority for ground truth.',
@@ -118,7 +118,7 @@ export async function apply(ctx, config) {
     training_monitor:{run:{type:'string',required:true},guidance:{type:'object',additionalProperties:true,properties:{pause:{type:'boolean'},stop_after_window:{type:'boolean'},learning_rate:{type:'number'},hint_fraction:{type:'number'},difficulty:{type:'integer'}}}},
     backend:{name:{type:'string',required:true},action:{type:'string',enum:['status','start']}},
     adapt_capture:{input:{type:'string',required:true},simulator:{type:'string',enum:['habitat','libero','carla']},camera:{type:'object',additionalProperties:true},regions:{type:'integer'},radius:{type:'integer'}},
-    catalog:{section:{type:'string',enum:['overview','templates','migration']},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
+    catalog:{section:{type:'string',enum:['overview','templates']},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
     status:{},
     plan:{objective:{type:'string',required:true},sources:{type:'array',items:{type:'string'}},target_items:{type:'integer'},notes:{type:'string'}},
     evidence:{input:{type:'string',required:true,description:'Source records JSONL with provenance and JSON-pointer selectors.'}},
@@ -128,17 +128,6 @@ export async function apply(ctx, config) {
     isaac:{scene_program:{type:'string',required:true},timeout_seconds:{type:'integer'}}
   };
   const production = {
-  "method": [
-    "Read original professional methods adapted to the harness; search by skill name or topic.",
-    {
-      "query": {
-        "type": "string"
-      },
-      "limit": {
-        "type": "integer"
-      }
-    }
-  ],
   "acquire": [
     "Import local records or download an explicitly selected dataset file, preserving original labels and source fields.",
     {
@@ -226,24 +215,6 @@ export async function apply(ctx, config) {
       }
     }
   ],
-  "annotate": [
-    "Run the original VLM→YOLOE→SAM3→DA3 chain per image; retain candidate annotations and a review queue. Predictions never become GT.",
-    {
-      "input": {
-        "type": "string",
-        "required": true
-      },
-      "hint": {
-        "type": "string"
-      },
-      "max_terms": {
-        "type": "integer"
-      },
-      "annotate_simulation": {
-        "type": "boolean"
-      }
-    }
-  ],
   "literature": [
     "Retrieve primary papers from explicit URLs or an arXiv query and extract full text. Downloaded papers remain unread until inspected.",
     {
@@ -286,111 +257,6 @@ export async function apply(ctx, config) {
         "type": "object",
         "additionalProperties": true,
         "required": true
-      }
-    }
-  ],
-  "kinship": [
-    "Analyze GT field nodes, relationships, reasoning chains and difficulty support using the original implementation.",
-    {
-      "input": {
-        "type": "string",
-        "required": true
-      },
-      "bundle": {
-        "type": "string"
-      },
-      "max_records": {
-        "type": "integer"
-      },
-      "max_pairs": {
-        "type": "integer"
-      }
-    }
-  ],
-  "images": [
-    "Create reusable neutral overlays, crops and panels from supplied annotations/recipes; bind the image manifest into the compiler bundle.",
-    {
-      "bundle": {
-        "type": "string",
-        "required": true
-      },
-      "input": {
-        "type": "string"
-      },
-      "requests": {
-        "type": "string"
-      }
-    }
-  ],
-  "compile": [
-    "Compile authoritative evidence into reusable GT/asset/template/metric/generator bundle using migrated BenchClaw algorithms. Run a pilot before scale-up.",
-    {
-      "spec": {"description":"Validated benchmark_spec.json path or design object; compiler checks template/metric bindings", "oneOf":[{"type":"string"},{"type":"object","additionalProperties":true}]},
-      "input": {
-        "type": "string",
-        "required": true
-      },
-      "templates": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      "adapter": {
-        "type": "string"
-      },
-      "generator": {
-        "type": "string"
-      },
-      "image_requests": {
-        "type": "string"
-      },
-      "difficulty": {
-        "type": "object",
-        "additionalProperties": true
-      }
-    }
-  ],
-  "synthesize": [
-    "Generate pilot or full benchmark with deterministic oracle, screen invalid items, check scorer controls and package portable artifacts.",
-    {
-      "bundle": {
-        "type": "string",
-        "required": true
-      },
-      "input": {
-        "type": "string"
-      },
-      "limit": {
-        "type": "integer"
-      },
-      "seed": {
-        "type": "integer"
-      },
-      "template_id": {
-        "type": "string"
-      },
-      "mode": {
-        "type": "string",
-        "enum": [
-          "pilot",
-          "full"
-        ]
-      },
-      "package": {
-        "type": "boolean"
-      }
-    }
-  ],
-  "screen": [
-    "Run deterministic malformed-option, media, anchor and provenance screening; output accepted/rejected items with findings.",
-    {
-      "items": {
-        "type": "string",
-        "required": true
-      },
-      "bundle": {
-        "type": "string"
       }
     }
   ],
@@ -440,23 +306,8 @@ export async function apply(ctx, config) {
       }
     }
   ],
-  "diagnose": [
-    "Run original CDM/IRT response-matrix diagnostics; report small-sample limits and Rasch-style proxy interpretation.",
-    {
-      "scores": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "required": true
-      },
-      "items": {
-        "type": "string"
-      }
-    }
-  ],
   "package": [
-    "Package model-visible media/questions separately from authority and reproducible compiler code with copied input files.",
+    "Create public and authority packages with media and questions. Optionally include a caller-provided reproducibility bundle.",
     {
       "items": {
         "type": "string",
@@ -490,11 +341,8 @@ export async function apply(ctx, config) {
   ]
 };
   for (const [name, [description, schema]] of Object.entries(production)) {definitions[name]=description; schemas[name]=schema;}
-  schemas.compile.templates={oneOf:[{type:'string'},{type:'array',items:{oneOf:[{type:'string'},{type:'object',additionalProperties:true}]}}],description:'Built-in template IDs, complete template objects, or a JSONL registry path.'};
   schemas.clean.min_contrast={type:'number',description:'Minimum grayscale standard deviation; default 1 rejects near-constant images.'};
-  schemas.compile.collection={type:'object',additionalProperties:true,description:'Optional full-synthesis gates: min_sources, min_unique_media, max_items_per_source_media, max_template_majority, reject_duplicate_evidence_questions.'};
   schemas.clean.min_bright_fraction={type:'number',description:'Optional fraction of pixels above luminance 16, e.g. 0.5 for well-lit captures.'};
-  schemas.compile.recipes={type:'array',items:{type:'object',additionalProperties:true},description:'Optional declarative template contracts with answer_program and visible_anchor; supports comparisons, counts, ordering, distance, temporal differences and mappings.'};
   for(const tool of ['sam3','yoloe','depthanything3','llm_local']) schemas[tool]={
     action:{type:'string',description:'infer (default), health; DA3 also task, YOLOE visual, local VLM models.'},
     payload:{...object,description:'Native backend inference arguments. Catalog includes exact examples.'},task_id:{type:'string'},timeout_seconds:{type:'integer'}};

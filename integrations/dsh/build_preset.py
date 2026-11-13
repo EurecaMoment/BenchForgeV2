@@ -1,5 +1,4 @@
-"""Compose the first-generation BenchForge preset from public DSH exports."""
-import argparse
+"""Common DSH preset composition and model settings."""
 from copy import deepcopy
 import json
 import os
@@ -24,15 +23,12 @@ Loader.add_constructor('tag:yaml.org,2002:js', lambda loader,node:JavaScript(loa
 Dumper.add_representer(JavaScript, lambda dumper,value:dumper.represent_scalar('tag:yaml.org,2002:js',str(value)))
 
 
-BENCHFORGE_ID = 'benchforge'
+RETIRED_PRESET_ID = 'benchforge'
+RETIRED_SCENE_TOOL = 'spatialforge_dataset'
 BENCHFORGE_V2_ID = 'benchforgev2'
 # Existing session logs contain this identity. Only its display name changes.
 WORKBENCH_PRESET_ID = 'spatialforge-standard-ptc'
 PRESETS = {
-    BENCHFORGE_ID: {
-        'name': 'BenchForge', 'order': -3,
-        'description': 'First-generation benchmark construction with bundled BenchClaw capabilities.',
-    },
     BENCHFORGE_V2_ID: {
         'name': 'BenchForgeV2', 'order': -2,
         'description': 'Scene and data production in the standard conversation interface.',
@@ -46,14 +42,6 @@ MODEL_TOOLS = [
     'model_yoloe', 'model_sam3', 'model_moge', 'model_lama', 'model_flux_fill',
     'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
     'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
-]
-BENCHFORGE_TOOLS = [
-    'catalog', 'status', 'plan', 'method', 'literature', 'research_review', 'design',
-    'acquire', 'normalize', 'clean', 'annotate', 'sam3', 'yoloe', 'depthanything3', 'llm_local',
-    'habitat', 'libero', 'carla', 'isaac', 'adapt_capture', 'backend',
-    'evidence', 'build', 'evaluate', 'kinship', 'images', 'compile', 'synthesize', 'screen',
-    'score', 'model_eval', 'baselines', 'diagnose', 'package', 'report', 'usage',
-    'collaboration', 'view_image', *MODEL_TOOLS,
 ]
 
 
@@ -141,14 +129,57 @@ def model_patches(config_path):
             {'id': 'agent-default-model', 'config': selection}]
 
 
+def preset_id(row):
+    config = row.get('config')
+    return config.get('id') if isinstance(config, dict) and isinstance(config.get('plugins'), list) else None
+
+
+def remove_retired_preset(profile):
+    """Drop the old preset declaration from the config without touching sessions."""
+    changed = False
+    for patch in profile:
+        if 'insert' not in patch:
+            continue
+        prior = patch['insert']
+        current = [row for row in prior if preset_id(row) != RETIRED_PRESET_ID]
+        if len(current) != len(prior):
+            patch['insert'] = current
+            changed = True
+    return changed
+
+
+def remove_retired_tool_filter(plugins):
+    changed = False
+    for plugin in plugins:
+        config = plugin.get('config')
+        if isinstance(config, list):
+            changed = remove_retired_tool_filter(config) or changed
+        elif plugin.get('name') == '@deepseek-ai/dsh-tool-subagent' and isinstance(config, dict):
+            tool_filter = config.get('toolFilter') or {}
+            deny = tool_filter.get('deny', [])
+            if RETIRED_SCENE_TOOL in deny:
+                remaining = [name for name in deny if name != RETIRED_SCENE_TOOL]
+                tool_filter.pop('deny')
+                if remaining:
+                    tool_filter['deny'] = remaining
+                if not tool_filter:
+                    config.pop('toolFilter')
+                changed = True
+    return changed
+
+
 def refresh_model_patches(preset_path, config_path):
-    """Refresh generated model snapshots without replacing presets or UI bindings."""
+    """Refresh generated deployment settings and retire old preset entries."""
     preset_path = Path(preset_path)
     if not preset_path.is_file():
         return
     patches = model_patches(config_path)
     profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader)
-    changed = False
+    changed = remove_retired_preset(profile)
+    for patch in profile:
+        for row in patch.get('insert', []):
+            if preset_id(row) in PRESETS:
+                changed = remove_retired_tool_filter(row['config']['plugins']) or changed
     if not patches:
         retained = []
         for row in profile:
@@ -178,34 +209,17 @@ def refresh_model_patches(preset_path, config_path):
             changed = changed or prior != existing
     if changed:
         temporary = preset_path.with_suffix(preset_path.suffix + '.tmp')
-        temporary.write_text('# Generated model settings read config/benchforge.local.json.\n'
+        temporary.write_text('# Generated settings read config/benchforge.local.json.\n'
                              + yaml.dump(profile, Dumper=Dumper, sort_keys=False, allow_unicode=True),
                              encoding='utf-8', newline='\n')
         temporary.replace(preset_path)
 
 
-PERSONA = '''You operate BenchForge, an independent benchmark construction mode.
-Keep Standard's conversational interaction, file tools, image inspection and task code. Choose the available tools that fit the current objective; catalog, methods, source processing, annotation, compilation, synthesis, scoring, review and reporting are composable capabilities rather than a required sequence.
-Use direct tools, PTC and collaboration tools when they help. Split genuinely independent work among available agents, keep a shared workspace, and publish concise handoffs so another agent can resume, reply, reconcile evidence or take over a blocked piece. Handoffs may link related work and state a decision, but no fixed graph, round count, role roster or approval step is implied. Coordinate simulator submissions through the configured execution boundary and avoid overwriting active artifacts.
-Discover exact tool contracts from the session catalog when needed, then use the listed tools directly. Arrays of capabilities, sources, templates and metrics contain objects with id fields. Prefer supplied domain methods, compilers, annotation chains and validation evidence; write an adapter only when the source or task actually needs one.
-Use the bundled first-generation BenchClaw capabilities through catalog, method, plan, acquisition, annotation, compilation and evaluation tools. Their implementation and required resources ship with this repository; never locate or execute an external BenchClaw source checkout. Preserve exact source protocols, public evidence and scoring conditions. Scene-production workflows and spatial-learning tools belong to the separate BenchForgeV2 presets.
-Inspect relevant images and returned evidence, and let observations guide the next code or tool call. Preserve source labels, simulator state and provenance. Model masks, inferred depth and review findings are predictions or guidance; they do not replace GT from official records, task programs or simulation.
-For simulation distance questions, use the declared depth semantics and camera intrinsics so the oracle matches the wording. Keep authority data and raw arrays separate from public media, and resolve relative evidence paths from their source document.
-Package public questions/media separately from authority data. Scale synthesis when the requested coverage and scorer controls are met; use configured model evaluation only on public inputs and label proxy baselines as such. Report concrete artifacts, evidence and remaining gaps.
-Keep the objective open while a requested deliverable is missing or a repairable gap remains; a successful tool call, capture, or checked TODO is not completion. At the end of a turn, give a formal user-facing delivery note with the outcome, evidence and artifacts, plus any unresolved blocker or next action. Do not expose scratch reasoning or present a TODO list as the final result.
-Prefer task code and inputs for task-specific changes. Keep verification proportional to the deliverable and avoid checksum manifests or broad filesystem audits unless they answer a concrete question.
-'''
-
-
-def build(sources, root, python, config_path, *, package_imports=False):
+def compose_standard(sources, *, package_imports=False):
     def preset(name):
         return next(row for patch in sources[name] for row in patch.get('insert',[]) if row['id']=='preset-'+name)
     result=deepcopy(preset('standard'))
-    set_identity(result, BENCHFORGE_ID)
-    cfg=result['config']
-    plugins=cfg['plugins']
-    persona=next(p for p in plugins if p['id']=='persona')
-    persona['config']['prefix']=PERSONA
+    plugins=result['config']['plugins']
     presentation=deepcopy(next(p for p in preset('ptc')['config']['plugins'] if p['id']=='tool-presentation'))
     presentation['config']['mode']='both'
     plugins.append(presentation)
@@ -217,23 +231,4 @@ def build(sources, root, python, config_path, *, package_imports=False):
             row['config']={**row.get('config',{}),'shell':shell}
     plugins.append(persistent)
     plugins.append(deepcopy(next(p for p in preset('cordis')['config']['plugins'] if p['id']=='tool-cordis')))
-    plugins.append({'id':'benchforge-tools','name':'@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports else str(Path(__file__).with_name('tools.mjs').resolve()),
-                    'config':{'python':str(python),'configPath':config_reference(config_path, package_imports),
-                              'includeTools':list(BENCHFORGE_TOOLS)}})
-    return [{'insert':[result]}, *([] if package_imports else model_patches(config_path))]
-
-
-def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    add_source_arguments(parser)
-    parser.add_argument('--python',default='python')
-    parser.add_argument('--config',required=True,type=Path)
-    parser.add_argument('--output',required=True,type=Path)
-    args=parser.parse_args()
-    sources=load_sources(args.dsh_root,args.node,args.dsh_resolve_from)
-    result=build(sources,args.dsh_root,args.python,args.config)
-    args.output.write_text(yaml.dump(result,Dumper=Dumper,sort_keys=False,allow_unicode=True),encoding='utf-8')
-
-
-if __name__=='__main__':
-    main()
+    return result

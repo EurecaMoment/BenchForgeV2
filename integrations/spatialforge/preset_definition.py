@@ -77,7 +77,7 @@ PARENT_OWNED_SYNTHESIS_TOOLS = [
     'benchforge_pipeline_plan', 'benchforge_pipeline_run', 'benchforge_pipeline_repair_plan',
     'benchforge_pipeline_evaluate', 'benchforge_stage_review', 'benchforge_spatial_export',
     'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine', 'spatialforge_extend',
-    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code', 'spatialforge_prepare',
+    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_task_code', 'spatialforge_prepare',
 ]
 # Preparation effort is resolved from the parent's exact model by the trusted
 # factory. A raw native delegate retains its existing parent route/defaults.
@@ -177,25 +177,27 @@ def workbench_entry(python, service_config, *, package_imports=False):
 
 def build(sources, dsh_root, python, service_config, *, config_path=None,
           with_ui=True, package_imports=False):
-    result = base.build(sources, dsh_root, python, config_path or service_config,
-                        package_imports=package_imports)
-    preset = result[0]['insert'][0]
+    preset = base.compose_standard(sources, package_imports=package_imports)
     base.set_identity(preset, base.WORKBENCH_PRESET_ID if with_ui else base.BENCHFORGE_V2_ID)
     config = preset['config']
     plugins = config['plugins']
     persona_plugin = next(row for row in plugins if row['id'] == 'persona')
     persona_plugin['config'].update(prefix=persona(with_ui),
                                     suffix='Your working directory is {{cwd}}. You are using {{model}}.')
-    learning = next(row for row in plugins if row['id'] == 'benchforge-tools')
-    learning['id'] = 'spatial-learning-tools'
-    learning['config'] = {'python': str(python), 'includeTools': list(LEARNING_TOOLS)}
+    learning_config = {'python': str(python), 'includeTools': list(LEARNING_TOOLS)}
     if config_path is not None:
-        learning['config']['configPath'] = base.config_reference(config_path, package_imports)
+        learning_config['configPath'] = base.config_reference(config_path, package_imports)
+    plugins.append({'id': 'spatial-learning-tools',
+                    'name': '@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports
+                            else str(INTEGRATIONS / 'dsh/tools.mjs'),
+                    'config': learning_config})
     plugins.append({'id': 'spatialforge-tools',
                     'name': '@eurecamoment/benchforge-dsh/spatialforge-tools' if package_imports else str(INTEGRATIONS / 'spatialforge/plugin/tools.mjs'),
                     'config': {'serviceConfig': base.config_reference(service_config, package_imports),
                                'policyPython': str(python)}})
+    entries = [preset]
     if with_ui:
-        result[0]['insert'].append(workbench_entry(python, service_config, package_imports=package_imports))
+        entries.append(workbench_entry(python, service_config, package_imports=package_imports))
     configure_synthesis_delegation(plugins)
-    return result
+    models = [] if package_imports else base.model_patches(config_path or service_config)
+    return [{'insert': entries}, *models]

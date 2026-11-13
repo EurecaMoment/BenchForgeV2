@@ -132,7 +132,7 @@ class InstallConfigTest(unittest.TestCase):
                 load.assert_not_called()
                 self.assertEqual(preset.read_text(encoding='utf-8'), 'keep existing overrides')
 
-    def test_setup_and_start_share_the_three_preset_deployment_file(self):
+    def test_setup_and_start_share_the_v2_preset_deployment_file(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
             dsh = root / 'dsh'
@@ -141,6 +141,8 @@ class InstallConfigTest(unittest.TestCase):
             entry.touch()
             (root / 'third_party').mkdir()
             shutil.copyfile(ROOT / 'third_party/dependencies.json', root / 'third_party/dependencies.json')
+            (root / 'config').mkdir()
+            shutil.copyfile(ROOT / 'config/benchforge.example.json', root / 'config/benchforge.example.json')
             service = root / 'service.json'
             service.write_text('{}', encoding='utf-8')
             python = root / '.venv' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
@@ -181,7 +183,7 @@ class InstallConfigTest(unittest.TestCase):
             preset.write_text(yaml.safe_dump(profile), encoding='utf-8')
             self.assertEqual(check_config.check_preset(preset), {actual.resolve()})
 
-    def test_plain_benchforge_and_disabled_spatialforge_need_no_client(self):
+    def test_generic_tools_and_disabled_spatialforge_need_no_client(self):
         with tempfile.TemporaryDirectory() as folder:
             preset = Path(folder) / 'preset.yml'
             preset.write_text('- insert:\n  - id: benchforge-tools\n    config:\n'

@@ -7,7 +7,7 @@ name = "spatialforge"
 version = "0.3.0"
 description = "DSH controlled embodied scene and dataset production"
 requires-python = ">=3.11,<3.14"
-dependencies = ["sqlalchemy>=2", "psycopg[binary]", "Pillow", "numpy", "trimesh>=4", "grpcio>=1.60", "protobuf>=4.25", "benchclaw-harness==0.1.0"]
+dependencies = ["sqlalchemy>=2", "psycopg[binary]", "Pillow", "numpy", "trimesh>=4", "grpcio>=1.60", "protobuf>=4.25"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

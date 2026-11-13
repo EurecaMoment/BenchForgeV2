@@ -1,22 +1,10 @@
 import json
-import sys
 import tempfile
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
-
-# Local unit tests do not require the remote Harness package. Production loads
-# its atomic writer from the installed Harness environment.
-if "benchclaw.store" not in sys.modules:
-    store = types.ModuleType("benchclaw.store")
-    store.write_json = lambda path, value: Path(path).write_text(json.dumps(value), encoding="utf-8")
-    benchclaw = types.ModuleType("benchclaw")
-    benchclaw.store = store
-    sys.modules["benchclaw"] = benchclaw
-    sys.modules["benchclaw.store"] = store
 
 from spatialforge.asset_review import review_generated_asset
 

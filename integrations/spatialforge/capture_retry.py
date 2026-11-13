@@ -19,12 +19,12 @@ if importlib.util.find_spec('spatialforge') is None:
     if (source/'spatialforge/storage.py').is_file():sys.path.insert(0,str(source))
 from spatialforge.runtime_config import load_service_config
 from spatialforge.storage import Store
-from spatialforge.scene_acceptance import check_request
+from spatialforge.scene_policy import check_request
 configuration=load_service_config(options.config)
 arguments=json.load(sys.stdin)
 if set(arguments)-{'task_id','feedback','capture_mode'}:raise ValueError('Unsupported retry arguments')
-store=Store(configuration['artifacts'],configuration['harness'],
-            **({'database_url':configuration['database_url']} if configuration.get('database_url') else {}))
+store=Store(configuration['artifacts'],harness=configuration.get('harness'),
+            database_url=configuration.get('database_url'))
 try:
     check_request(store.root,'/retry',arguments)
     value=store.retry(arguments['task_id'],arguments.get('feedback'),arguments.get('capture_mode','auto'))

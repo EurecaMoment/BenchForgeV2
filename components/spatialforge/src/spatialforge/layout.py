@@ -5,7 +5,7 @@ import shutil
 import re
 from pathlib import Path
 from PIL import Image
-from benchclaw.store import write_json
+from .files import write_json
 from .generation import _file_record
 from .progress import record_progress
 

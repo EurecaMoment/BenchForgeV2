@@ -16,9 +16,48 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sqlalchemy import create_engine, text
 
 
+def load_workbench_config(path):
+    """Read the service configuration and resolve values needed by read-only helpers."""
+    path = Path(path).expanduser().resolve()
+    config = json.loads(path.read_text(encoding='utf-8'))
+    if config.get('service_config'):
+        path = (path.parent / Path(os.path.expandvars(config.pop('service_config'))).expanduser()).resolve()
+        config = {**json.loads(path.read_text(encoding='utf-8')), **config}
+    for key in ('harness', 'artifacts'):
+        if config.get(key):
+            config[key] = str((path.parent / Path(os.path.expandvars(config[key])).expanduser()).resolve())
+    if config.get('operator_token_env'):
+        name = os.path.expandvars(config['operator_token_env'])
+        config['operator_token'] = os.environ.get(name, '')
+    elif not config.get('operator_token'):
+        config['operator_token'] = os.environ.get('SPATIALFORGE_OPERATOR_TOKEN', '')
+    if config.get('database_url_env'):
+        name = os.path.expandvars(config['database_url_env'])
+        database = os.environ.get(name)
+        env_file = path.with_name('database.env')
+        if not database and env_file.is_file():
+            prefix = name + '='
+            database = next((line[len(prefix):] for line in env_file.read_text(encoding='utf-8').splitlines()
+                             if line.startswith(prefix)), None)
+        config['database_url'] = database
+    elif config.get('database_url'):
+        config['database_url'] = os.path.expandvars(config['database_url'])
+    return config
+
+
+def workbench_database_url(config):
+    database = config.get('database_url')
+    if database:
+        return database
+    if config.get('harness'):
+        deployment = Path(config['harness']) / 'deployment.local.json'
+        if deployment.is_file():
+            return json.loads(deployment.read_text(encoding='utf-8'))['database_url']
+    raise ValueError('Configure database_url or database_url_env for the workbench service')
+
+
 def session_runs(config, session, sessions=()):
-    database = json.loads((Path(config['harness']) / 'deployment.local.json').read_text())['database_url']
-    engine = create_engine(database, hide_parameters=True)
+    engine = create_engine(workbench_database_url(config), hide_parameters=True)
     try:
         with engine.connect() as connection:
             if engine.dialect.name == 'postgresql':
@@ -38,7 +77,7 @@ def session_runs(config, session, sessions=()):
 
 
 def service_read(config, route, value):
-    url = config.get('service_url') or f"http://127.0.0.1:{config.get('port', 3841)}"
+    url = config.get('service_url') or f"http://{config.get('service_host', '127.0.0.1')}:{config.get('port', 3841)}"
     request = urllib.request.Request(url.rstrip('/') + route, data=json.dumps(value).encode(),
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config['operator_token']})
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -469,7 +508,7 @@ if __name__ == '__main__':
     parser.add_argument('--file')
     args = parser.parse_args()
     try:
-        config = json.loads(Path(args.config).read_text())
+        config = load_workbench_config(args.config)
         if args.action == 'observe':
             result = observe(config, args.session, json.loads(args.run_ids), json.loads(args.sessions), args.workspace)
         else:

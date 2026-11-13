@@ -1,4 +1,4 @@
-"""Directly reuses BenchClaw spatial-v2 GT, marking and diverse candidate selection."""
+"""Select, review, and publish SpatialForge scene questions and evidence."""
 import json
 import os
 import shutil
@@ -7,8 +7,8 @@ import uuid
 import threading
 from pathlib import Path
 from types import SimpleNamespace
-from benchclaw.spatial_tasks import generate_spatial, select_diverse, render
-from benchclaw.store import write_json
+from .spatial_tasks import SCENE_TEMPLATE_IDS, generate_spatial, select_diverse, render
+from .files import write_json
 from .model import completion
 from .data_selection import filter_readable_candidates
 from .quantity_contract import delivery_status, validate_quantity_contract
@@ -41,7 +41,7 @@ def produce(directory,split='dev',intent=None,*,stop=None,context=None):
     with _PUBLISH_LOCK:
         receipt=published/'complete.json'
         if receipt.exists():
-            summary=json.loads(receipt.read_text())
+            summary=json.loads(receipt.read_text(encoding='utf-8'))
             if summary['split']!=split:raise ValueError('Completed release split is immutable; use its original split')
             if summary['accepted']<1:raise ValueError('Existing empty release is not a usable dataset; retain it for inspection')
             return summary
@@ -61,7 +61,7 @@ def produce(directory,split='dev',intent=None,*,stop=None,context=None):
         write_json(attempt/'complete.json',summary)
         try:attempt.rename(published)
         except FileExistsError:
-            if (published/'complete.json').exists():return json.loads((published/'complete.json').read_text())
+            if (published/'complete.json').exists():return json.loads((published/'complete.json').read_text(encoding='utf-8'))
             raise
         return summary
 
@@ -70,8 +70,8 @@ def _question_candidates(capture,frames,target):
     pairs=[]
     sources={f['frame_id']:capture/f['image'] for f in frames}
     for f in frames:
-        record=SimpleNamespace(record_id=f['frame_id'],data={'entities':{'image_size':f['image_size'],'objects':f['objects']},'range_verified':False})
-        spec=SimpleNamespace(template_ids=['T021','T022','T023','T024','T025','T034','T035'],seed=29,target_items=target)
+        record=SimpleNamespace(record_id=f['frame_id'],data={'entities':{'image_size':f['image_size'],'objects':f['objects']}})
+        spec=SimpleNamespace(template_ids=SCENE_TEMPLATE_IDS,seed=29,target_items=target)
         for row in generate_spatial(record,sources[record.record_id],spec,output=None):pairs.append((row,record))
     return pairs
 
@@ -104,7 +104,7 @@ def _produce(directory,release,split,intent,*,stop=None,context=None):
     run_context = RunContext.from_record(context)
     if type(target) is not int or not 1 <= target <= 1000:
         raise ValueError('target_items must be an integer in 1..1000')
-    capture=directory/'capture';evidence=json.loads((capture/'evidence.json').read_text())
+    capture=directory/'capture';evidence=json.loads((capture/'evidence.json').read_text(encoding='utf-8'))
     pairs=_question_candidates(capture,evidence['frames'],target)
     eligible,selection=filter_readable_candidates(pairs)
     extra_budget=min(target,8);review_budget=target+extra_budget
@@ -153,7 +153,7 @@ def _produce(directory,release,split,intent,*,stop=None,context=None):
                 shutil.copy2(row['image'],media/Path(row['image']).name)
                 item['image']='images/'+Path(row['image']).name;item['split']=split
                 public.append(item)
-                authority.append({'item_id':row['item_id'],'answer':row['answer'],'derivation':row['derivation'],'evidence':row['provenance'],'truth_domain':'synthetic_world','GT_writer':'benchclaw.spatial_tasks.generate_spatial'})
+                authority.append({'item_id':row['item_id'],'answer':row['answer'],'derivation':row['derivation'],'evidence':row['provenance'],'truth_domain':'synthetic_world','GT_writer':'spatialforge.spatial_tasks.generate_spatial'})
             save_selection('reviewing')
     check_cancelled(stop, 'release assembly')
     save_selection('target_reached' if len(public)>=target else ('review_budget_exhausted' if len(reviews)>=review_budget else 'candidate_pool_exhausted'))
@@ -179,9 +179,9 @@ def _produce(directory,release,split,intent,*,stop=None,context=None):
     summary['collection_diagnostics']=_collection_diagnostics(public,authority,evidence,pairs,selected,target,summary['scene_family'])
     summary['data_selection']=selection
     scene_review=directory/'scene_review.json'
-    if (directory/'layout_reference.json').is_file():summary['layout_guidance']=json.loads((directory/'layout_reference.json').read_text())
+    if (directory/'layout_reference.json').is_file():summary['layout_guidance']=json.loads((directory/'layout_reference.json').read_text(encoding='utf-8'))
     if scene_review.is_file():
-        reviewed_scene=json.loads(scene_review.read_text())
+        reviewed_scene=json.loads(scene_review.read_text(encoding='utf-8'))
         summary['scene_quality_passed']=reviewed_scene.get('passed') is True
         summary['visual_realism']=reviewed_scene.get('visual_realism',{'status':'not_assessed','basis':'no_separate_realism_review'})
         if public:

@@ -89,7 +89,7 @@ def check_request(root, route, arguments):
     intents = arguments.get("intents", []) if route == "/start" else [arguments]
     if route == "/start" and not intents:
         return
-    if route not in {"/start", "/capture", "/refine", "/extend", "/retry", "/dataset"}:
+    if route not in {"/start", "/capture", "/refine", "/extend", "/retry"}:
         return
 
     from . import scene_acceptance

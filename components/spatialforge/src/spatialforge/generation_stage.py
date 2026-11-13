@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-from benchclaw.store import write_json
+from .files import write_json
 from .generation import GenerationTools, _file_record
 from .progress import record_progress
 

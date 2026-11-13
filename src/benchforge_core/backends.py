@@ -8,7 +8,7 @@ from .processes import start_background
 
 def backend(args,directory,config):
     name=args['name'];cfg=config.get('backends',{}).get(name)
-    if not cfg:raise ValueError(f'Configure backends.{name}.command, cwd, env and health_url; see docs/BACKENDS.md')
+    if not cfg:raise ValueError(f'Configure backends.{name}.command, cwd, env and health_url in your BenchForgeV2 configuration')
     action=args.get('action','status')
     def health():
         try:

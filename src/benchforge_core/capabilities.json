@@ -1,10 +1,10 @@
 {
-  "mode": "BenchForge",
-  "interaction": "Compose callable production capabilities in DSH. Read methods only when needed; use catalog request examples directly. No compulsory stages or child agents.",
+  "mode": "BenchForgeV2",
+  "interaction": "Use the pipeline catalog to select production recipes and task templates. The request examples describe independent CLI and DSH operations.",
   "workflow": [
     {
       "area": "research/design",
-      "tools": "literature, research_review, design, method"
+      "tools": "literature, research_review, design"
     },
     {
       "area": "data",
@@ -12,15 +12,15 @@
     },
     {
       "area": "annotation/cleaning",
-      "tools": "annotate, sam3, yoloe, depthanything3, llm_local, clean"
+      "tools": "sam3, yoloe, depthanything3, llm_local, clean"
     },
     {
-      "area": "compilation",
-      "tools": "compile, kinship, images, synthesize, screen"
+      "area": "production pipelines",
+      "tools": "pipeline_catalog, pipeline_plan, pipeline_run, pipeline_status, pipeline_artifacts, pipeline_repair_plan, pipeline_evaluate, stage_review"
     },
     {
       "area": "evaluation/release",
-      "tools": "model_eval, score, baselines, diagnose, report, package, usage"
+      "tools": "model_eval, score, baselines, report, package, usage"
     },
     {
       "area": "spatial capability learning",
@@ -110,7 +110,7 @@
       "input": "/task/source-records.jsonl"
     },
     "build": {
-      "evidence": "/task/compiled/evidence.jsonl",
+      "evidence": "/task/evidence.jsonl",
       "items": "/task/items.jsonl"
     },
     "evaluate": {
@@ -132,8 +132,19 @@
     },
     "catalog_templates": {
       "section": "templates",
-      "query": "T001",
+      "query": "C01-T01",
       "limit": 10
+    },
+    "pipeline_catalog": {
+      "section": "templates",
+      "item_id": "C01-T01"
+    },
+    "pipeline_plan": {
+      "template_ids": ["C01-T01"],
+      "target_items": 10
+    },
+    "pipeline_run": {
+      "plan": "/task/plan.json"
     },
     "adapt_capture": {
       "input": "/path/to/capture/collection_manifest.json",
@@ -149,23 +160,6 @@
       "input": "/path/to/normalized.jsonl",
       "backend": "native"
     },
-    "annotate": {
-      "input": "/path/to/unlabeled.jsonl",
-      "max_terms": 10
-    },
-    "compile": {
-      "input": "/path/to/evidence.jsonl",
-      "templates": [
-        "BC_D3_001_LEFT_OF_YN",
-        "BC_D3_002_ABOVE_YN",
-        "BC_D5_001_CLOSER_TO_CAMERA_YN"
-      ]
-    },
-    "synthesize": {
-      "bundle": "/path/to/compile/bundle",
-      "mode": "pilot",
-      "limit": 24
-    },
     "model_eval": {
       "public_items": "/path/to/package/public/items.jsonl",
       "items": "/path/to/package/authority/items.jsonl",
@@ -179,12 +173,6 @@
     },
     "baselines": {
       "items": "/path/to/items.jsonl"
-    },
-    "diagnose": {
-      "items": "/path/to/items.jsonl",
-      "scores": [
-        "/path/to/model/score_items.jsonl"
-      ]
     },
     "report": {
       "scores": [
@@ -219,7 +207,7 @@
         ],
         "templates": [
           {
-            "id": "BC_D3_001_LEFT_OF_YN",
+            "id": "left_of",
             "capabilities": [
               "spatial"
             ],
@@ -311,22 +299,7 @@
     "assets": "Private source arrays, calibration and oracle code copied to authority/assets",
     "depth": "Habitat returns camera-forward Z. Use camera intrinsics to obtain Euclidean camera range for distance questions."
   },
-  "migration": {
-    "full_parity": false,
-    "inventory": {
-      "section": "migration",
-      "limit": 10
-    },
-    "note": "Professional algorithms are now exposed as production tools; consult current validation evidence before claiming a backend or task family accepted."
-  },
   "production": {
-    "method": {
-      "description": "Read original professional methods adapted to the harness; search by skill name or topic.",
-      "arguments": [
-        "query",
-        "limit"
-      ]
-    },
     "acquire": {
       "description": "Import local records or download an explicitly selected dataset file, preserving original labels and source fields.",
       "arguments": [
@@ -362,15 +335,6 @@
         "operators"
       ]
     },
-    "annotate": {
-      "description": "Run the original VLM→YOLOE→SAM3→DA3 chain per image; retain candidate annotations and a review queue. Predictions never become GT.",
-      "arguments": [
-        "input",
-        "hint",
-        "max_terms",
-        "annotate_simulation"
-      ]
-    },
     "literature": {
       "description": "Retrieve primary papers from explicit URLs or an arXiv query and extract full text. Downloaded papers remain unread until inspected.",
       "arguments": [
@@ -390,53 +354,6 @@
       "description": "Validate benchmark intent, capability definitions, source/template/metric bindings and emit Q-matrix plus specification.",
       "arguments": [
         "spec"
-      ]
-    },
-    "kinship": {
-      "description": "Analyze GT field nodes, relationships, reasoning chains and difficulty support using the original implementation.",
-      "arguments": [
-        "input",
-        "bundle",
-        "max_records",
-        "max_pairs"
-      ]
-    },
-    "images": {
-      "description": "Create reusable neutral overlays, crops and panels from supplied annotations/recipes; bind the image manifest into the compiler bundle.",
-      "arguments": [
-        "bundle",
-        "input",
-        "requests"
-      ]
-    },
-    "compile": {
-      "description": "Compile authoritative evidence into reusable GT/asset/template/metric/generator bundle using migrated BenchClaw algorithms. Run a pilot before scale-up.",
-      "arguments": [
-        "input",
-        "templates",
-        "adapter",
-        "generator",
-        "image_requests",
-        "difficulty"
-      ]
-    },
-    "synthesize": {
-      "description": "Generate pilot or full benchmark with deterministic oracle, screen invalid items, check scorer controls and package portable artifacts.",
-      "arguments": [
-        "bundle",
-        "input",
-        "limit",
-        "seed",
-        "template_id",
-        "mode",
-        "package"
-      ]
-    },
-    "screen": {
-      "description": "Run deterministic malformed-option, media, anchor and provenance screening; output accepted/rejected items with findings.",
-      "arguments": [
-        "items",
-        "bundle"
       ]
     },
     "score": {
@@ -462,15 +379,8 @@
         "seed"
       ]
     },
-    "diagnose": {
-      "description": "Run original CDM/IRT response-matrix diagnostics; report small-sample limits and Rasch-style proxy interpretation.",
-      "arguments": [
-        "scores",
-        "items"
-      ]
-    },
     "package": {
-      "description": "Package model-visible media/questions separately from authority and reproducible compiler code with copied input files.",
+      "description": "Package public questions and media separately from authority and an optional reproduction bundle.",
       "arguments": [
         "items",
         "bundle"
@@ -488,20 +398,5 @@
         "events"
       ]
     }
-  },
-  "compiler_templates": {
-    "built_in": [
-      "BC_D1_001_CATEGORY_VISIBLE_YN",
-      "BC_D2_001_CATEGORY_COUNT_INTERVAL",
-      "BC_D3_001_LEFT_OF_YN",
-      "BC_D3_002_ABOVE_YN",
-      "BC_D3_005_LEFT_TO_RIGHT_ORDER",
-      "BC_D4_001_LARGEST_VISIBLE_AREA",
-      "BC_D5_001_CLOSER_TO_CAMERA_YN",
-      "BC_SIM_001_SCENE_TYPE",
-      "BC_SIM_002_DEPTH_BAND",
-      "BC_SIM_003_POSE_ORIENTATION"
-    ],
-    "extension": "compile.recipes accepts deterministic declarative answer programs; see examples/production_demo.py and docs/PRODUCTION.md. Missing visible evidence must disable the item."
   }
 }

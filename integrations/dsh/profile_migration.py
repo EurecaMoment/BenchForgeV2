@@ -17,10 +17,7 @@ def inserted_rows(profile):
     return [row for patch in profile for row in patch.get('insert', [])]
 
 
-def preset_id(row):
-    config = row.get('config')
-    return config.get('id') if isinstance(config, dict) and isinstance(config.get('plugins'), list) else None
-
+preset_id = base.preset_id
 
 def _merge_plugins(previous, incoming):
     """Refresh owned contracts while keeping deployment options and extra plugins."""
@@ -86,7 +83,7 @@ def replace_entries(profile, replacements):
 
 
 def migrate_profile(profile, generated, revision=None):
-    """Install exactly the three owned presets and a single live workbench reader."""
+    """Install the two V2 presets and a single workbench reader."""
     profile = profile or []
     old = {}
     for row in inserted_rows(profile):
@@ -101,8 +98,8 @@ def migrate_profile(profile, generated, revision=None):
             new = {**deepcopy(previous), **deepcopy(row)}
             new['config'] = {**deepcopy(previous_config), **deepcopy(row['config'])}
             new['config']['plugins'] = _merge_plugins(previous_config.get('plugins', []), row['config']['plugins'])
-            if key != base.BENCHFORGE_ID:
-                spatial.configure_synthesis_delegation(new['config']['plugins'])
+            base.remove_retired_tool_filter(new['config']['plugins'])
+            spatial.configure_synthesis_delegation(new['config']['plugins'])
             if revision is not None:
                 new['config']['description'] += ', runtime revision ' + revision
                 for plugin in new['config']['plugins']:
@@ -116,8 +113,10 @@ def migrate_profile(profile, generated, revision=None):
                 new['config']['uiRevision'] = revision
             replacements[UI_ID] = new
     if set(replacements) != set(base.PRESETS) | {UI_ID}:
-        raise ValueError('Expected BenchForge, BenchForgeV2, BenchForgeV2_UI and their workbench reader')
-    return replace_entries(profile, replacements)
+        raise ValueError('Expected BenchForgeV2, BenchForgeV2_UI and their workbench reader')
+    result = replace_entries(profile, replacements)
+    base.remove_retired_preset(result)
+    return result
 
 
 def update_workbench(profile, root, workspace_paths=None, revision=None):

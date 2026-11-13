@@ -1,4 +1,4 @@
-"""Hot-update the three BenchForge presets and preserve existing workbench sessions."""
+"""Hot-update the two BenchForgeV2 presets and preserve existing workbench sessions."""
 import argparse
 import http.cookiejar
 import importlib.util
@@ -109,7 +109,7 @@ def main():
             ready = all(preset_id in presets and not presets[preset_id].get('broken')
                         and presets[preset_id].get('name') == metadata['name']
                         for preset_id, metadata in development.base.PRESETS.items())
-            if ready and all(revision in json.dumps(rpc.call('agentPresets/read', {'agentPreset': preset_id}))
+            if ready and development.base.RETIRED_PRESET_ID not in presets and all(revision in json.dumps(rpc.call('agentPresets/read', {'agentPreset': preset_id}))
                              for preset_id in development.base.PRESETS):
                 try:
                     with rpc.opener.open(args.dsh_url.rstrip('/') + '/api/benchforge/workbench?view=runtime',
@@ -120,7 +120,7 @@ def main():
                 except (OSError, ValueError):
                     pass  # The old reader may still be retiring; never count it as adoption.
             if time.monotonic() >= deadline:
-                raise TimeoutError("DSH did not adopt the three BenchForge presets within 40 seconds")
+                raise TimeoutError("DSH did not adopt the two BenchForgeV2 presets within 40 seconds")
             time.sleep(2)
         services_after = {name: service_state(name) for name in services_before}
         if services_after != services_before:

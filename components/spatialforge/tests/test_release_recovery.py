@@ -2,7 +2,6 @@
 import json
 import sys
 import tempfile
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -10,30 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'src'))
 
-try:
-    from spatialforge import products
-except ModuleNotFoundError as exc:
-    if exc.name != 'benchclaw':
-        raise
-    # Product publication can be tested without the optional Harness runtime.
-    benchclaw = types.ModuleType('benchclaw')
-    benchclaw.__path__ = []
-    spatial_tasks = types.ModuleType('benchclaw.spatial_tasks')
-    spatial_tasks.generate_spatial = lambda *args, **kwargs: ()
-    spatial_tasks.select_diverse = lambda pairs, target: []
-    spatial_tasks.render = lambda *args, **kwargs: None
-    store = types.ModuleType('benchclaw.store')
-
-    def write_json(path, value):
-        Path(path).write_text(json.dumps(value), encoding='utf-8')
-
-    store.write_json = write_json
-    sys.modules.update({
-        'benchclaw': benchclaw,
-        'benchclaw.spatial_tasks': spatial_tasks,
-        'benchclaw.store': store,
-    })
-    from spatialforge import products
+from spatialforge import products
 
 
 class ReleaseRecovery(unittest.TestCase):
@@ -41,7 +17,7 @@ class ReleaseRecovery(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
 
-            def interrupt(_directory, attempt, _split, _intent):
+            def interrupt(_directory, attempt, _split, _intent, *, stop, context):
                 (attempt/'authority_bundle.json').write_text('partial GT', encoding='utf-8')
                 raise RuntimeError('injected export interruption')
 
@@ -56,7 +32,7 @@ class ReleaseRecovery(unittest.TestCase):
 
             summary = {'accepted': 1, 'split': 'dev'}
 
-            def finish(_directory, attempt, _split, _intent):
+            def finish(_directory, attempt, _split, _intent, *, stop, context):
                 (attempt/'authority_bundle.json').write_text('committed GT', encoding='utf-8')
                 return summary
 
@@ -73,7 +49,7 @@ class ReleaseRecovery(unittest.TestCase):
             summary = {'accepted': 1, 'split': 'dev'}
             calls = []
 
-            def finish(_directory, attempt, split, _intent):
+            def finish(_directory, attempt, split, _intent, *, stop, context):
                 calls.append(split)
                 (attempt/'authority_bundle.json').write_text('original GT', encoding='utf-8')
                 return summary

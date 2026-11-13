@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BenchForge: one entry point for demo, DSH setup and isolated web launch."""
+"""Set up and launch BenchForgeV2 in an isolated DSH Web profile."""
 import argparse
 import json
 import os
@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import venv
 
 ROOT=Path(__file__).resolve().parent
 
@@ -19,23 +20,24 @@ def main():
     if sys.version_info < (3, 10):
         raise SystemExit('Python 3.10+ is required. Run this launcher with your installed Python 3.10+ interpreter.')
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command',choices=['demo','setup','start'])
+    parser.add_argument('command',choices=['setup','start'])
     parser.add_argument('--dsh-root',type=Path,help='Reuse an already built DSH checkout')
     parser.add_argument('--no-open',action='store_true')
     parser.add_argument('--spatialforge-config', type=Path, help='Enable BenchForgeV2 tools using an existing service configuration')
     parser.add_argument('--port',type=int,default=3080)
     args=parser.parse_args()
     preset=ROOT/'config/generated/benchforge.local.yml'
-    if args.command=='demo':
-        run([sys.executable,ROOT/'quickstart.py'],cwd=ROOT)
-        return
-    if args.command=='setup' and args.spatialforge_config and not args.spatialforge_config.is_file():
-        parser.error(f'BenchForgeV2 configuration not found: {args.spatialforge_config.resolve()}. '
+    model_config=ROOT/'config/benchforge.local.json'
+    service_config=(args.spatialforge_config or ROOT/'config/generated/spatialforge.local.json').resolve()
+    if args.command=='setup' and not service_config.is_file():
+        parser.error(f'BenchForgeV2 configuration not found: {service_config}. '
                      'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
     saved=state/'runtime.json'
+    environment=ROOT/'.venv'
+    python=environment/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
     if args.command=='setup':
         node=shutil.which('node')
         if not node:
@@ -55,24 +57,26 @@ def main():
                 run([*command,'run','build'],cwd=dsh)
         if not (dsh/'apps/cli/lib/bin.js').is_file():
             parser.error('DSH checkout is not built; run pnpm install and pnpm run build in it')
-        run([sys.executable,ROOT/'quickstart.py','--dsh-root',dsh])
-        if args.spatialforge_config:
-            python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
-            run([python,ROOT/'integrations/dsh/build_presets.py',
-                 '--dsh-root',dsh,'--node',node,'--python',python,'--config',ROOT/'config/benchforge.local.json',
-                 '--service-config',args.spatialforge_config.resolve(),'--output',preset])
+        if not python.exists():
+            venv.EnvBuilder(with_pip=True).create(environment)
+        run([python,'-m','pip','install',str(ROOT)+'[dsh,production,research]'],cwd=ROOT)
+        if not model_config.exists():
+            shutil.copyfile(ROOT/'config/benchforge.example.json',model_config)
+        preset.parent.mkdir(parents=True,exist_ok=True)
+        run([python,ROOT/'integrations/dsh/build_presets.py',
+             '--dsh-root',dsh,'--node',node,'--python',python,'--config',model_config,
+             '--service-config',service_config,'--output',preset])
         saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
         print('Ready. Run: python benchforge.py start')
         return
     if not saved.is_file():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
-    from integrations.dsh.build_preset import refresh_model_patches
-    refresh_model_patches(preset, ROOT / 'config/benchforge.local.json')
     env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
-    python=ROOT/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
+    from integrations.dsh.build_preset import refresh_model_patches
+    refresh_model_patches(preset, model_config)
     try:
         run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT)
     except subprocess.CalledProcessError as error:

@@ -14,19 +14,19 @@ source=Path(options.config).resolve().parent/'src'
 if (source/'spatialforge/storage.py').is_file():sys.path.insert(0,str(source))
 from spatialforge.runtime_config import load_service_config
 configuration=load_service_config(options.config)
-# Dispatchers use the render environment; acknowledgements need the backend runtime.
-if any(importlib.util.find_spec(name) is None for name in ('sqlalchemy', 'benchclaw')):
-    interpreter=Path(configuration['harness'])/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
-    if not interpreter.is_file() or interpreter.absolute()==Path(sys.executable).absolute():
-        raise RuntimeError('Native capture acknowledgement requires the configured harness Python')
+# Older dispatchers can still use an explicit historical backend environment.
+harness=configuration.get('harness')
+if importlib.util.find_spec('sqlalchemy') is None:
+    interpreter=Path(harness)/'.venv'/('Scripts/python.exe' if os.name=='nt' else 'bin/python') if harness else None
+    if interpreter is None or not interpreter.is_file() or interpreter.absolute()==Path(sys.executable).absolute():
+        raise RuntimeError('Run capture acknowledgement with the configured SpatialForge backend Python')
     os.execv(str(interpreter),[str(interpreter),'-B',str(Path(__file__).resolve()),*sys.argv[1:]])
 from spatialforge.storage import Store
 arguments=json.load(sys.stdin)
 allowed={'job'} if options.operation=='context' else {'job','outcome','processes_stopped','error','capture_complete','capture_receipt','transport_retry'}
 if set(arguments)-allowed:
     raise ValueError('Unsupported capture acknowledgement arguments')
-store=Store(configuration['artifacts'],configuration['harness'],
-            **({'database_url':configuration['database_url']} if configuration.get('database_url') else {}))
+store=Store(configuration['artifacts'],harness=harness,database_url=configuration.get('database_url'))
 try:
     if options.operation=='context':
         job=arguments['job']

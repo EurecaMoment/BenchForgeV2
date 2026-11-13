@@ -167,7 +167,9 @@ test('scene policy rejects cube capture and unchecked generation before any serv
   await fs.writeFile(program,JSON.stringify(sceneProgram));
   await assert.rejects(f.tools.get('spatialforge_capture').execute({scene_program_path:program},f.exec()),/Scene rejected/);
   await assert.rejects(f.tools.get('spatialforge_run').execute({intents:[{name:'living room',description:'Indoor scene',split:'train'}]},f.exec()),/unchecked default planner/);
-  await assert.rejects(f.tools.get('spatialforge_dataset').execute({intent:{source_task_id:'sf_removed.scene0'}},f.exec()),/removed by the user/);
+  await assert.rejects(f.tools.get('spatialforge_refine').execute({
+    parent_task_id:'sf_removed.scene0', name:'fixture', description:'fixture',
+  },f.exec()),/removed by the user/);
   assert.equal(f.requests.length,0);
   sceneProgram.objects[0].kind='mesh';
   await fs.writeFile(program,JSON.stringify(sceneProgram));
@@ -181,7 +183,8 @@ test('Config rejects missing or mistyped service config and accepts the legacy p
   assert.throws(()=>Config({}),/serviceConfig/);
   assert.throws(()=>Config({serviceConfig:12}),/serviceConfig/);
   const f=await fixture(t);
-  assert.equal(f.tools.size,23);
+  assert.equal(f.tools.size,22);
+  assert.ok(!f.tools.has('spatialforge_dataset'));
   assert.ok(f.tools.has('spatialforge_trellis'));
   assert.ok(f.tools.has('spatialforge_sam3d'));
 });
@@ -193,7 +196,6 @@ test('HTTP routing uses the configured operator token and stable output families
     ['spatialforge_capture','/capture',{scene_program_path:'/fixture/program.json'},{run_id:'r',task_id:'r.scene0',state:'accepted',operation:'capture_only'}],
     ['spatialforge_layout','/layout',{name:'fixture',description:'fixture'},{run_id:'r',state:'accepted',workflow:'layout',gt_source:false}],
     ['spatialforge_asset','/asset',{intent:{name:'fixture',description:'fixture'}},{run_id:'r',state:'accepted'}],
-    ['spatialforge_dataset','/dataset',{intent:{recipe:'fixture'}},{run_id:'r',state:'accepted'}],
     ['spatialforge_status','/observe',{run_id:'r'},{run_id:'r',state:'SUCCEEDED',tasks:[],cursor:'ignored',terminal:true}],
     ['spatialforge_status','/inspect',{run_id:'r',detail:true},{run_id:'r',state:'SUCCEEDED',tasks:[],gallery_url:'/gallery/r'}],
     ['spatialforge_wait','/wait',{run_id:'r'},{run_id:'r',state:'SUCCEEDED',tasks:[],cursor:'ignored',changed:true}],

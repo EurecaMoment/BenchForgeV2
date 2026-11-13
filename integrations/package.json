@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "type": "module",
   "license": "Apache-2.0",
-  "description": "BenchForge, BenchForgeV2 and BenchForgeV2_UI presets for DeepSeek Harness",
+  "description": "BenchForgeV2 and BenchForgeV2_UI presets for DeepSeek Harness",
   "repository": {
     "type": "git",
     "url": "https://github.com/EurecaMoment/BenchForgeV2.git",

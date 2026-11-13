@@ -9,7 +9,7 @@ import sys
 import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
-from production_observer import service_read, stage_artifacts
+from production_observer import load_workbench_config, service_read, stage_artifacts, workbench_database_url
 from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION, scene_design_parser
 
 SCHEMA = 'benchforge.scene-library/v1'
@@ -85,8 +85,7 @@ def locked(folder):
 def completed_tasks(config):
     """One metadata query; no Store construction, historical evidence scan or image hashing."""
     from sqlalchemy import create_engine, text
-    database = json.loads((Path(config['harness']) / 'deployment.local.json').read_text())['database_url']
-    engine = create_engine(database, hide_parameters=True)
+    engine = create_engine(workbench_database_url(config), hide_parameters=True)
     try:
         with engine.connect() as connection:
             if engine.dialect.name == 'postgresql':
@@ -496,7 +495,7 @@ if __name__ == '__main__':
     parser.add_argument('--file')
     args = parser.parse_args()
     try:
-        result = operate(json.loads(Path(args.config).read_text()), args.workspace, args.session, args.action,
+        result = operate(load_workbench_config(args.config), args.workspace, args.session, args.action,
                          json.loads(args.value), max(1, args.page), max(1, min(24, args.size)), args.query,
                          args.origin, args.task, args.revision, args.file)
     except LibraryError as error:

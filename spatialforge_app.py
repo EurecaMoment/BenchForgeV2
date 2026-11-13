@@ -60,10 +60,6 @@ def sync_ports():
     if db_port is not None and isinstance(config.get('database_url'), str):
         config['database_url'] = _rewrite_database_port(config['database_url'], db_port)
     write(SERVER, config)
-    harness = config.get('harness')
-    if isinstance(harness, str) and harness and config.get('database_url'):
-        # 工作台 python 读取器从 <harness>/deployment.local.json 取数据库地址
-        write(Path(harness, 'deployment.local.json'), {'database_url': config['database_url']})
     client = GENERATED / 'spatialforge.local.json'
     if client.exists() and service_port is not None:
         value = json.loads(client.read_text(encoding='utf8'))
@@ -255,8 +251,7 @@ def main():
             p.error('BenchForgeV2 requires Python 3.11 or 3.12/3.13')
         if not PYTHON.exists():
             venv.EnvBuilder(with_pip=True).create(STATE / 'venv')
-        subprocess.run([str(PYTHON), '-m', 'pip', 'install', '-e', str(ROOT / 'components/benchclaw') + '[postgres,imports]',
-                        '-e', str(ROOT / 'components/spatialforge')], check=True)
+        subprocess.run([str(PYTHON), '-m', 'pip', 'install', '-e', str(ROOT / 'components/spatialforge')], check=True)
     elif args.command == 'init':
         _init_configs(args.port, args.db_port, args.project)
         print(f'Configuration: {SERVER}; desktop configuration: {SERVER.parent / "worker.local.json"}')

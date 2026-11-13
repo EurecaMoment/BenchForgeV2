@@ -9,8 +9,8 @@ from .model_services import MODEL_TOOLS
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Composable BenchClaw capabilities")
-    parser.add_argument("tool", choices=["catalog", "status", "plan", "sam3", "yoloe", "depthanything3", "llm_local", "habitat", "libero", "carla", "isaac", "evidence", "build", "evaluate", "method", *OPERATIONS, *MODEL_TOOLS])
+    parser = argparse.ArgumentParser(description="BenchForgeV2 production and evaluation tools")
+    parser.add_argument("tool", choices=["catalog", "status", "plan", "sam3", "yoloe", "depthanything3", "llm_local", "habitat", "libero", "carla", "isaac", "evidence", "build", "evaluate", *OPERATIONS, *MODEL_TOOLS])
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--config", default="config/benchforge.local.json"
                         if Path("config/benchforge.local.json").is_file() else None)

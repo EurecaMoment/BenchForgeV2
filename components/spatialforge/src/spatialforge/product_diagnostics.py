@@ -1,13 +1,31 @@
 """Observational corpus statistics for accepted scene-derived items."""
-from collections import Counter
-from types import SimpleNamespace
+from collections import Counter, defaultdict
+import json
+
+from .spatial_tasks import comparison_family
+
+
+def _template_statistics(groups):
+    result = {}
+    for template, rows in groups.items():
+        labels = Counter(json.dumps(gold, ensure_ascii=False, sort_keys=True) for gold, _, _ in rows)
+        semantics = Counter(json.dumps(answer, ensure_ascii=False, sort_keys=True) for _, answer, _ in rows)
+        discrete = all(kind in {'single_choice', 'interval', 'text'} for _, _, kind in rows)
+        result[template] = {
+            'count': len(rows),
+            'answer_histogram': dict(labels),
+            'semantic_answer_histogram': dict(semantics),
+            'majority_constant_baseline': max(max(labels.values()), max(semantics.values())) / len(rows) if discrete else None,
+            'baseline_kind': (
+                'in_sample_constant_answer_diagnostic_not_model_no_image_evaluation' if discrete
+                else 'not_estimated_for_structured_answers'
+            ),
+        }
+    return result
 
 
 def collection_diagnostics(public, authority, evidence, candidates, selected, target, scene_family):
-    """Reuse Harness arithmetic without turning inherited defaults into gates."""
-    from benchclaw.collection_review import collection_statistics, policy_violations
-    from benchclaw.domain import CollectionPolicy
-
+    """Measure coverage, repeated comparisons, and answer shortcuts for review."""
     frames = {frame['frame_id']: frame for frame in evidence['frames']}
     if len(frames) != len(evidence['frames']):
         raise ValueError('Duplicate source frame IDs')
@@ -24,9 +42,11 @@ def collection_diagnostics(public, authority, evidence, candidates, selected, ta
     if not set(public_ids) <= selected_ids:
         raise ValueError('Accepted item is absent from selected candidates')
     answers = {row['item_id']: row for row in authority}
-    visible_rows = []
-    answer_rows = []
-    evidence_rows = []
+    templates = defaultdict(list)
+    source_counts = Counter()
+    source_images = set()
+    prompts = Counter()
+    comparisons = Counter()
     for item in public:
         contract = item['task_contract']
         source = contract['source_record']
@@ -35,50 +55,45 @@ def collection_diagnostics(public, authority, evidence, candidates, selected, ta
         original_objects = {obj['object_id'] for obj in frames[source]['objects']}
         if not set(contract['objects']) <= original_objects:
             raise ValueError('Collection item refers to an unknown source object')
-        item_id = item['item_id']
-        evidence_id = 'ev_' + item_id
-        visible_rows.append(
-            SimpleNamespace(
-                item_id=item_id,
-                prompt=item['question'],
-                choices=item['options'],
-                answer_type=item['answer_type'],
-            )
-        )
-        answer_rows.append(
-            SimpleNamespace(
-                item_id=item_id,
-                gold=answers[item_id]['answer'],
-                template_id=item['template_id'],
-                evidence_refs=[evidence_id],
-            )
-        )
-        evidence_rows.append(
-            SimpleNamespace(
-                evidence_id=evidence_id,
-                source_refs=[source],
-                asset_refs=[frames[source]['image']],
-                fields={'task_contract': contract},
-            )
-        )
+        gold = answers[item['item_id']]['answer']
+        choices = item['options']
+        semantics = choices.get(gold, gold) if isinstance(gold, str) and isinstance(choices, dict) else gold
+        template = item['template_id']
+        templates[template].append((gold, semantics, item['answer_type']))
+        source_counts[source] += 1
+        source_images.add(frames[source]['image'])
+        prompts[item['question']] += 1
+        comparisons[(source, comparison_family(template), tuple(sorted(contract['objects'])))] += 1
 
-    bundle = SimpleNamespace(
-        visible=visible_rows,
-        answers=answer_rows,
-        evidence=evidence_rows,
-    )
-    stats = collection_statistics(bundle)
-    policy = CollectionPolicy()
-    reference = policy.model_dump(
-        include={
-            'min_items',
-            'min_source_records',
-            'max_majority_baseline',
-            'baseline_min_items',
-            'required_templates',
-        }
-    )
-    findings = policy_violations(stats, policy)
+    stats = {
+        'items': len(public),
+        'source_records': len(source_counts),
+        'source_images': len(source_images),
+        'items_by_source': dict(source_counts),
+        'templates': _template_statistics(templates),
+        'duplicate_evidence_groups': sum(n - 1 for n in comparisons.values() if n > 1),
+        'repeated_prompt_groups': sum(n > 1 for n in prompts.values()),
+        'note': 'Repeated wording may be valid when images differ. Gold answers are private.',
+    }
+    reference = {
+        'min_items': 1,
+        'min_source_records': 1,
+        'max_majority_baseline': 0.75,
+        'baseline_min_items': 4,
+        'required_templates': [],
+    }
+    findings = []
+    if stats['items'] < reference['min_items']:
+        findings.append(f"item coverage {stats['items']} < {reference['min_items']}")
+    if stats['source_records'] < reference['min_source_records']:
+        findings.append(f"source coverage {stats['source_records']} < {reference['min_source_records']}")
+    threshold = reference['max_majority_baseline']
+    for template, values in stats['templates'].items():
+        baseline = values['majority_constant_baseline']
+        if values['count'] >= reference['baseline_min_items'] and baseline is not None and baseline > threshold:
+            findings.append(f'{template} constant-answer baseline {baseline:.3f} > {threshold:.3f}')
+    if stats['duplicate_evidence_groups']:
+        findings.append('repeated source/object comparison evidence')
     candidate_sources = {record.record_id for _, record in candidates}
     selected_sources = {record.record_id for _, record in selected}
     accepted_sources = set(stats['items_by_source'])
@@ -97,11 +112,11 @@ def collection_diagnostics(public, authority, evidence, candidates, selected, ta
         )
     return {
         'schema': 'spatialforge.collection-diagnostics/v1',
-        'implementation': 'benchclaw.collection_review.collection_statistics/policy_violations',
+        'implementation': 'spatialforge.product_diagnostics.collection_diagnostics',
         'mode': 'record_only',
         'collection_acceptance': 'not_assessed',
         'reference_policy': reference,
-        'reference_policy_source': 'inherited CollectionPolicy defaults; observational only',
+        'reference_policy_source': 'spatialforge.collection-diagnostics/v1 observational thresholds',
         'statistics': stats,
         'findings': findings,
         'scope': {

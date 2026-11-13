@@ -29,7 +29,7 @@ async function fixture(t, batchSize = 3) {
     'benchforge_pipeline_plan', 'benchforge_pipeline_run', 'benchforge_pipeline_repair_plan',
     'benchforge_pipeline_evaluate', 'benchforge_stage_review', 'benchforge_spatial_export',
     'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine', 'spatialforge_extend',
-    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code',
+    'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_task_code',
   ]);
   const accept = spec => {
     const content = spec.request.prompt;

@@ -1,1 +1,1 @@
-"""Independent BenchClaw production harness."""
+"""BenchForgeV2 production and evaluation tools."""

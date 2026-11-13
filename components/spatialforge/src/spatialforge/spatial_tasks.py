@@ -1,10 +1,8 @@
-"""Executable task definitions: public wording and private arithmetic together.
+"""Deterministic scene questions based on visible box-center measurements.
 
-Legacy templates remain replayable. This contract uses visible box centers for
-2D tasks, and calibrated range measurements for depth tasks. Unsupported tasks
-return no candidates instead of guessing or quietly changing the capability.
+Adapted from the Apache-2.0 BenchClaw spatial-task generator. The original
+template IDs, scoring contracts and candidate order are retained for replay.
 """
-import io
 import itertools
 import json
 import math
@@ -13,7 +11,7 @@ from collections import Counter
 from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
 
-IDS={'T021','T022','T023','T024','T025','T034','T035','T036','T037'}
+SCENE_TEMPLATE_IDS=('T021','T022','T023','T024','T025','T034','T035')
 COLORS=['#e53935','#007fd4','#158238','#ad5700']
 
 
@@ -43,9 +41,8 @@ def render(image_path,objects,path):
 
 def generate_spatial(record,image_path,spec,output=None):
     requested=set(spec.template_ids) or {'T021','T023','T025','T034'}
-    if requested-IDS:
-        from .domain import HarnessError
-        raise HarnessError('TASK_CONTRACT_UNSUPPORTED','spatial-v2 definitions: '+','.join(sorted(IDS)))
+    if requested-set(SCENE_TEMPLATE_IDS):
+        raise ValueError('Supported SpatialForge scene templates: '+','.join(SCENE_TEMPLATE_IDS))
     entities=record.data['entities'];width=entities['image_size']['width'];height=entities['image_size']['height']
     objects=[]
     for raw in entities['objects']:
@@ -67,12 +64,12 @@ def generate_spatial(record,image_path,spec,output=None):
         path=(Path(output) if output else Path('/replay'))/record.record_id/f'{iid}.png'
         if output is not None:render(image_path,chosen,path)
         choices={'A':'是','B':'否'} if len(chosen)==2 else {chr(65+i):'标记 '+chr(65+i) for i in range(len(chosen))}
-        contract={'version':'spatial-v2','measure':'visible_bbox_center_px' if tid not in {'T036','T037'} else 'median_euclidean_range_m',
+        contract={'version':'spatial-v2','measure':'visible_bbox_center_px',
                   'objects':[o['id'] for o in chosen],'source_record':record.record_id}
         rows.append({'item_id':iid,'template_id':tid,'question':question,'options':choices,'answer':answer,'answer_type':kind,
             'image':str(path),'auxiliary_images':['original_rgb'],'derivation':'spatial-task/v2','task_contract':contract,
             'scoring':{'metric':'ordered_list_pairwise_accuracy' if kind=='ordering' else 'choice_exact/v1'},
-            'capability_ids':['relative_position_2d' if tid not in {'T036','T037'} else 'relative_depth'],
+            'capability_ids':['relative_position_2d'],
             'provenance':{'objects':chosen,'gt_values':values or {}}})
     words={'T021':(0,'左侧',-1),'T022':(0,'右侧',1),'T023':(1,'上方',-1),'T024':(1,'下方',1)}
     for a,b in pairs:
@@ -82,9 +79,6 @@ def generate_spatial(record,image_path,spec,output=None):
             if abs(delta)>=.06*(width if axis==0 else height):
                 add(tid,chosen,f'比较图中 A、B 标注框中心的彩色圆点：A 点是否在 B 点的{word}？',
                     'A' if delta*direction>0 else 'B',values={'delta_px':delta})
-        if record.data.get('range_verified') and a['range'] and b['range'] and abs(a['range']-b['range'])>.15*min(a['range'],b['range']):
-            add('T036',chosen,'标记 A 对应的可见表面是否比 B 更靠近相机？距离按可见表面到相机光心的直线距离中位数比较。',
-                'A' if a['range']<b['range'] else 'B',values={'A_range_m':a['range'],'B_range_m':b['range']})
     if len(objects)>=4:
         seen=set()
         for _ in range(limit*20):
@@ -99,10 +93,6 @@ def generate_spatial(record,image_path,spec,output=None):
                 order=sorted(range(4),key=lambda i:chosen[i]['center'][axis]);values=[chosen[i]['center'][axis] for i in order]
                 if min(b-a for a,b in zip(values,values[1:]))>.06*(width if axis==0 else height):
                     add(tid,chosen,f'按标注框中心的彩色圆点从{word}排列，输出对应字母的 JSON 列表。',[chr(65+i) for i in order],'ordering')
-            if record.data.get('range_verified') and all(o['range'] for o in chosen):
-                order=sorted(range(4),key=lambda i:chosen[i]['range'])
-                if chosen[order[1]]['range']>chosen[order[0]]['range']*1.15:
-                    add('T037',chosen,'哪个标记对应的可见表面离相机最近？距离按可见表面到相机光心的直线距离中位数比较。',chr(65+order[0]))
     return rows
 
 
@@ -126,7 +116,14 @@ def select_diverse(candidates,target):
     return chosen
 
 
+def comparison_family(template_id):
+    if template_id in {'T021', 'T022'}:
+        return 'horizontal'
+    if template_id in {'T023', 'T024'}:
+        return 'vertical'
+    return template_id
+
+
 def _signature(row,record):
-    # Reversing A/B or asking left and right of the same pair is not new evidence.
-    tid=row['template_id'];family='horizontal' if tid in {'T021','T022'} else 'vertical' if tid in {'T023','T024'} else tid
-    return record.record_id,family,tuple(sorted(row['task_contract']['objects']))
+    # Reversed objects and reciprocal questions describe the same comparison.
+    return record.record_id,comparison_family(row['template_id']),tuple(sorted(row['task_contract']['objects']))

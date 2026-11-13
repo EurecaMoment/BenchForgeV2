@@ -6,8 +6,7 @@ variable. No private host paths or tokens are embedded. `preset_definition.py`
 shares production capabilities between **BenchForgeV2** (standard conversation)
 and **BenchForgeV2_UI** (visual workbench). The latter keeps the historical
 workbench session identity so old conversations and their workbench remain
-viewable. `../dsh/build_presets.py` generates those two and the independent
-first-generation **BenchForge** preset together. The installable
+viewable. `../dsh/build_presets.py` generates both V2 presets together. The installable
 Node bundle and supported package/Node versions are documented in
 [the integration guide](../README.md).
 
@@ -109,9 +108,7 @@ with the bridge's internal virtual Request origin.
 
 ## Test the code without production jobs
 
-For native Isaac video/trajectory data, see
-[the SpatialTree trajectory contract](../../docs/SPATIALTREE_TRAJECTORIES.md).
-It is an opt-in extension of action recordings and exports RGB, depth,
+The native Isaac SpatialTree trajectory option extends action recordings with RGB, depth,
 semantic/instance annotators, camera/object poses and action timestamps from the
 same simulator state.
 
@@ -165,8 +162,8 @@ deployed BenchForgeV2 `tools.mjs` for the same replay.
 
 ## Install the bundled service
 
-The service, PostgreSQL/BenchClaw engine, SAM worker adapters and desktop executor
-are under `components/`. Use [the installation guide](../../docs/SPATIALFORGE_INSTALL.md)
+The SpatialForge service, PostgreSQL storage, SAM worker adapters and desktop executor
+are under `components/spatialforge/`. See the [installation instructions](../../README.md)
 to create a new service and attach one Windows desktop. The root
 `spatialforge_app.py dsh-setup` and `dsh-start` commands use the locally generated
 service credentials automatically. Model setup is documented separately so a

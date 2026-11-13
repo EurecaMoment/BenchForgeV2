@@ -52,6 +52,17 @@ def resolve_path(value, config_path, environ=None):
     return path.resolve()
 
 
+def resolve_database_url(harness=None, database_url=None):
+    """Resolve an explicit URL or the database receipt used by older deployments."""
+    if database_url is None and harness:
+        receipt = Path(harness) / 'deployment.local.json'
+        if receipt.is_file():
+            database_url = read_json(receipt).get('database_url')
+    if not isinstance(database_url, str) or not database_url:
+        raise ValueError('Configure database_url or database_url_env in the SpatialForge server config')
+    return database_url
+
+
 def _resolve_environment_value(config, key, env_name, config_path):
     if env_name in os.environ:
         value = os.environ[env_name]

@@ -16,7 +16,7 @@ import sys
 import time
 import uuid
 
-from benchclaw.store import write_json
+from .files import write_json
 from .progress import record_progress
 from .mesh_appearance import inspect_mesh_appearance
 

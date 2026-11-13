@@ -46,12 +46,10 @@ class ProfileMigrationTest(unittest.TestCase):
         self.assertEqual(result[1], original[1])
         rows = migration.inserted_rows(result)
         presets = {migration.preset_id(row): row for row in rows if migration.preset_id(row) in catalog.base.PRESETS}
-        self.assertEqual(len(presets), 3)
+        self.assertEqual(len(presets), 2)
+        self.assertNotIn('benchforge', [migration.preset_id(row) for row in rows])
         self.assertEqual(presets['spatialforge-standard-ptc']['id'], 'legacy-ui')
         self.assertEqual(presets['spatialforge-standard-ptc']['config']['name'], 'BenchForgeV2_UI')
-        first = next(p for p in presets['benchforge']['config']['plugins'] if p['id'] == 'benchforge-tools')
-        self.assertEqual(first['config']['configPath'], 'config/benchforge.local.json')
-        self.assertEqual(first['config']['environment'], {'KEEP_THIS_OPTION': '1'})
         learning = next(p for p in presets['benchforgev2']['config']['plugins'] if p['id'] == 'spatial-learning-tools')
         self.assertEqual(learning['config']['maxOutputBytes'], 12345)
         plugins = presets['spatialforge-standard-ptc']['config']['plugins']
@@ -63,18 +61,36 @@ class ProfileMigrationTest(unittest.TestCase):
 
     def test_duplicate_rows_collapse_without_changing_the_historical_preset_id(self):
         profile = deepcopy(self.generated)
-        profile.append({'insert': [deepcopy(self.generated[0]['insert'][2]),
-                                   deepcopy(self.generated[0]['insert'][3])]})
+        profile.append({'insert': [deepcopy(self.generated[0]['insert'][1]),
+                                   deepcopy(self.generated[0]['insert'][2])]})
         result = migration.migrate_profile(profile, self.generated)
         rows = migration.inserted_rows(result)
-        self.assertEqual(len(rows), 4)
-        self.assertEqual([migration.preset_id(row) for row in rows[:3]], list(catalog.base.PRESETS))
+        self.assertEqual(len(rows), 3)
+        self.assertEqual([migration.preset_id(row) for row in rows[:2]], list(catalog.base.PRESETS))
         self.assertEqual(migration.migrate_profile(result, self.generated), result)
 
     def test_shipped_bundle_is_the_portable_catalog(self):
         bundle = catalog.yaml.load((INTEGRATIONS / 'cordis.patch.yml').read_text(encoding='utf-8'),
                                    Loader=catalog.base.Loader)
         self.assertEqual(bundle, self.generated)
+
+    def test_standalone_refresh_removes_retired_preset_and_tool_filter(self):
+        profile = deepcopy(self.generated)
+        headless = next(row for row in profile[0]['insert'] if migration.preset_id(row) == 'benchforgev2')
+        delegate = {'name': '@deepseek-ai/dsh-tool-subagent', 'config': {
+            'toolFilter': {'deny': ['spatialforge_dataset', 'spatialforge_capture']}}}
+        headless['config']['plugins'].append(delegate)
+        profile[0]['insert'].insert(0, {'id': 'legacy-row', 'config': {'id': 'benchforge', 'plugins': []}})
+        with tempfile.TemporaryDirectory(prefix='benchforge-refresh-') as directory:
+            root = Path(directory)
+            generated = root / 'preset.yml'
+            generated.write_text(catalog.yaml.dump(profile, Dumper=catalog.base.Dumper), encoding='utf-8')
+            catalog.base.refresh_model_patches(generated, root / 'missing-model-config.json')
+            result = catalog.yaml.load(generated.read_text(encoding='utf-8'), Loader=catalog.base.Loader)
+            self.assertEqual([migration.preset_id(row) for row in migration.inserted_rows(result) if migration.preset_id(row)],
+                             list(catalog.base.PRESETS))
+            refreshed = result[0]['insert'][0]['config']['plugins'][-1]
+            self.assertEqual(refreshed['config']['toolFilter']['deny'], ['spatialforge_capture'])
 
     def test_installer_preserves_original_profile_in_backup(self):
         with tempfile.TemporaryDirectory(prefix='benchforge-presets-') as directory:
@@ -93,7 +109,7 @@ class ProfileMigrationTest(unittest.TestCase):
             installed = catalog.yaml.load(profile.read_text(encoding='utf-8'), Loader=catalog.base.Loader)
             self.assertEqual(installed[0]['insert'][0], {'id': 'unrelated', 'name': 'keep-this-plugin'})
             self.assertEqual(len([row for row in migration.inserted_rows(installed)
-                                  if migration.preset_id(row) in catalog.base.PRESETS]), 3)
+                                  if migration.preset_id(row) in catalog.base.PRESETS]), 2)
 
 
 if __name__ == '__main__':

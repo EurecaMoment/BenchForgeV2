@@ -11,7 +11,7 @@ const FACING_REFERENCE = fileURLToPath(new URL('../native_asset_facing.json', im
 const FACING_HELPER = fileURLToPath(new URL('../native_asset_facing.py', import.meta.url));
 const PARENT_TOOLS = ['pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', 'pipeline_evaluate',
   'stage_review', 'spatial_export', 'spatialforge_run', 'spatialforge_capture', 'spatialforge_refine',
-  'spatialforge_extend', 'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_dataset', 'spatialforge_task_code',
+  'spatialforge_extend', 'spatialforge_retry', 'spatialforge_cancel', 'spatialforge_task_code',
   'spatialforge_prepare'];
 const PERSONA = `You are a BenchForgeV2 preparation worker for one self-contained artifact assignment. Read the supplied frozen plan, contracts and relevant saved evidence. Write only inside the assigned output directory. Start file operations by changing to that directory and using explicit paths; preserve parent plans, scene selections, runner state, accepted artifacts and other workers' files.
 At the start of file work, batch-copy the supplied source scripts or programs into your directory and save manifest.json with status preparing, the working artifact paths and known missing inputs. Use the supplied source paths instead of rediscovering the workspace or checking the whole production chain first. On recovery, preserve saved edits and continue the existing working copies. If a source is actually missing, record its exact path and continue the already determined scope; when no source was supplied, save the known design or script scaffold and preparing manifest first.

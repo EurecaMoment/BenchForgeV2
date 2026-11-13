@@ -5,7 +5,7 @@ from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from sqlalchemy.exc import TimeoutError as DatabaseTimeout, OperationalError
-from benchclaw.store import write_json
+from .files import write_json
 from .contracts import SCENE_SCHEMA_DESCRIPTION,validate_program,merge_scene_extension,normalize_native_asset_references
 from .model import completion
 from .products import produce

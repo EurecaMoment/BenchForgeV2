@@ -12,10 +12,8 @@ preserves the outcome, error, stopped-process flag and complete native receipt.
 Control errors and timeout return promptly, without a management fallback or a
 new capture. The existing remote-executor failure acknowledgement is unchanged.
 
-Backend Python needs the configured native BenchForgeV2/SQLAlchemy/BenchClaw
-dependencies. It is separate from the interpreter used by the dispatcher and
-renderer: the overlay does not change `sys.executable`, the Client, render
-requests, image transfer, successful-file resume, or slot subprocess commands.
+Use the configured SpatialForge backend Python with its SQLAlchemy and PostgreSQL
+dependencies. The dispatcher and renderer use their existing interpreter.
 
 ## Prepare and install
 

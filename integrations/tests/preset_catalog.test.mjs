@@ -72,7 +72,7 @@ test('shipped custom preset configurations validate against installed DSH and pl
     }
   }
   walk(catalog.flatMap(patch => patch.insert || []));
-  assert.equal(checked.filter(id => id.startsWith('preset-')).length, 3);
+  assert.equal(checked.filter(id => id.startsWith('preset-')).length, 2);
   assert.equal(checked.filter(id => id === 'benchforge-workbench-ui').length, 1);
   assert.equal(checked.filter(id => id === 'spatialforge-tools').length, 2);
 });
@@ -82,7 +82,7 @@ test('DSH resolves a retained SpatialForge session identity to the new visible n
   const original = structuredClone(session);
   const presets = catalog.flatMap(patch => patch.insert || [])
     .filter(row => row.name === '@deepseek-ai/dsh-agent-preset').map(row => row.config);
-  assert.deepEqual(presets.map(preset => preset.name), ['BenchForge', 'BenchForgeV2', 'BenchForgeV2_UI']);
+  assert.deepEqual(presets.map(preset => preset.name), ['BenchForgeV2', 'BenchForgeV2_UI']);
   const selected = presets.find(preset => preset.id === session.projectionValues.agentPreset);
   assert.equal(presetDisplayText(selected, key => key).name, 'BenchForgeV2_UI');
   assert.deepEqual(session, original);
@@ -106,13 +106,17 @@ test('each preset registers its declared tool set without starting services or p
     await applyBusinessTools({get: () => undefined, tools: {register: tool => tools.push(tool)},
       effect: fn => cleanup.push(fn()), subprocess: {}, attachments: {}}, business.config);
     assert.deepEqual(tools.map(tool => tool.name).sort(), business.config.includeTools.map(id => 'benchforge_' + id).sort());
-    if (preset.config.id === 'benchforge') {
-      assert.ok(tools.some(tool => tool.name === 'benchforge_compile'));
-      assert.ok(!tools.some(tool => tool.name === 'benchforge_pipeline_run'));
-    } else {
-      assert.ok(tools.some(tool => tool.name === 'benchforge_pipeline_run'));
-      assert.ok(!tools.some(tool => tool.name === 'benchforge_compile'));
-    }
+    assert.ok(tools.some(tool => tool.name === 'benchforge_pipeline_run'));
     for (const dispose of cleanup.reverse()) if (typeof dispose === 'function') await dispose();
   }
+});
+
+test('the business plugin omits retired tools even with no configured include list', async () => {
+  const tools = [], cleanup = [];
+  await applyBusinessTools({get: () => undefined, tools: {register: tool => tools.push(tool)},
+    effect: fn => cleanup.push(fn()), subprocess: {}, attachments: {}}, {});
+  const retired = ['method', 'annotate', 'kinship', 'images', 'compile', 'synthesize', 'screen', 'diagnose'];
+  assert.ok(tools.some(tool => tool.name === 'benchforge_pipeline_run'));
+  assert.ok(tools.every(tool => !retired.includes(tool.name.replace(/^benchforge_/, ''))));
+  for (const dispose of cleanup.reverse()) if (typeof dispose === 'function') await dispose();
 });

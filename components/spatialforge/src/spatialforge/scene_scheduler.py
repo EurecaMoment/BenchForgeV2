@@ -146,14 +146,13 @@ def coordinate(
                         unit={**task['unit'], 'phase': 'complete'},
                     )
                 elif phase == 'dataset':
-                    from .integration import run_dataset
-
-                    result = run_dataset(stage_store, task, stop=task_stop)
                     stage_store.update(
                         task['id'],
-                        state='SUCCEEDED',
-                        result=result,
-                        unit={**task['unit'], 'phase': 'complete'},
+                        state='FAILED_FINAL',
+                        failure={
+                            'code': 'LEGACY_DATASET_RETIRED',
+                            'detail': 'Use data.capability or submit a scene with target_items.',
+                        },
                     )
                 elif phase == 'review' and task['unit']['intent'].get('capture_only') and policy_for(
                     stage_store.root,

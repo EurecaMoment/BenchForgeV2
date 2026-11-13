@@ -74,7 +74,7 @@ class BackendContracts(unittest.TestCase):
                 resolve_execution_mode('exploration')
             self.assertEqual(resolve_execution_mode('production'), 'production')
             with self.assertRaisesRegex(ValueError, 'conflicts with configured mode'):
-                check_request(Path.cwd(), '/dataset', {'execution_mode': 'exploration'})
+                check_request(Path.cwd(), '/capture', {'execution_mode': 'exploration'})
 
     def test_production_submission_requires_frozen_scene_program_before_database_write(self):
         store = Store.__new__(Store)

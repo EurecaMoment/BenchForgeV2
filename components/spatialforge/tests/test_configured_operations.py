@@ -10,7 +10,6 @@ from unittest.mock import patch
 
 from PIL import Image
 from spatialforge.generation import GenerationTools
-from spatialforge.integration import prepare_spec
 from spatialforge.layout import prepare_layout
 from spatialforge.model import completion
 from spatialforge.operator_catalog import _overview
@@ -85,39 +84,6 @@ class ConfiguredOperations(unittest.TestCase):
                 request = send.call_args.args[0]
                 self.assertEqual(request.full_url, 'http://fixture.invalid/v1/chat/completions')
                 self.assertEqual(json.loads(request.data)['model'], 'my-vision-model')
-
-    def spec(self):
-        return {'name':'configured_source','objective':'Preserve official answers',
-                'sources':[{'source_id':'official','plugin':'source.evalset','parameters':{
-                    'path':str(self.root/'source.jsonl'),'source_uri':'local:fixture',
-                    'license_id':'fixture','split':'test','indices':[0]}}],
-                'target_items':1,'capabilities':['official_qa'],'cleaning':'none'}
-
-    def test_official_source_without_review_needs_no_model(self):
-        spec = prepare_spec({'spec':self.spec(),'review':False}, self.root)
-        self.assertEqual(spec.semantic_review, {})
-        self.assertEqual(spec.sources[0].parameters['split'], 'test')
-
-    def test_review_uses_explicit_configuration_without_private_route(self):
-        for env in ({}, {'SPATIALFORGE_MODEL_ID':'my-vision-model'}):
-            with patch.dict(os.environ,env,clear=True), self.assertRaisesRegex(ValueError,'SPATIALFORGE_MODEL_URL'):
-                prepare_spec({'spec':self.spec()}, self.root)
-        os.environ.update(SPATIALFORGE_MODEL_ID='my-vision-model', SPATIALFORGE_MODEL_URL='http://fixture.invalid/v1')
-        spec = prepare_spec({'spec':self.spec()}, self.root)
-        self.assertEqual(spec.semantic_review['endpoint'],'http://fixture.invalid/v1/chat/completions')
-        self.assertEqual(spec.semantic_review['model_id'],'my-vision-model')
-        from benchclaw.compiler import compile_spec
-        from benchclaw.plugins import Registry
-        plan = compile_spec(spec, Registry())
-        self.assertIn('review.semantic', [task.plugin_id for task in plan.tasks])
-
-    def test_configured_remote_endpoint_retains_url_and_credential_validation(self):
-        from benchclaw.local_agent import LocalModel
-        remote = LocalModel(model_id='custom-model', endpoint='https://models.example.net/openai/v1/chat/completions')
-        self.assertEqual(remote.endpoint, 'https://models.example.net/openai/v1/chat/completions')
-        for endpoint in ('file:///tmp/request', 'https://user:secret@models.example.net/v1/chat/completions'):
-            with self.subTest(endpoint=endpoint), self.assertRaises(ValueError):
-                LocalModel(model_id='custom-model',endpoint=endpoint)
 
     def test_submission_uses_workspace_and_optional_configured_task_root(self):
         artifact = self.root/'artifacts'

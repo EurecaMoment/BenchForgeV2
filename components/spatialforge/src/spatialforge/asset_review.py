@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from benchclaw.store import write_json
+from .files import write_json
 
 from .model import completion
 from .generation import ResourceWait

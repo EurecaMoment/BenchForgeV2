@@ -1,4 +1,4 @@
-"""Build the three custom Agent presets from one capability definition."""
+"""Build the two BenchForgeV2 Agent presets from one capability definition."""
 import argparse
 import importlib.util
 from pathlib import Path
@@ -12,12 +12,11 @@ base, yaml = spatial.base, spatial.yaml
 
 
 def build(sources, dsh_root, python, config_path, service_config, *, package_imports=False):
-    first = base.build(sources, dsh_root, python, config_path, package_imports=package_imports)
     headless = spatial.build(sources, dsh_root, python, service_config, config_path=config_path,
                              with_ui=False, package_imports=package_imports)
     workbench = spatial.build(sources, dsh_root, python, service_config, config_path=config_path,
                               with_ui=True, package_imports=package_imports)
-    return [{'insert': [row for result in (first, headless, workbench)
+    return [{'insert': [row for result in (headless, workbench)
                         for patch in result for row in patch.get('insert', [])]},
             *([] if package_imports else base.model_patches(config_path))]
 
