@@ -86,7 +86,7 @@ The root `.gitignore` excludes local configuration and generated output.
 
 ## Verification
 
-CI covers Windows and Linux on Python 3.10 and 3.12, with extra BenchForge checks on Python 3.12. Run `python -m unittest discover -s tests -v` to check the core.
+CI checks installation and integration on Windows and Linux with Python 3.10 and 3.12, and runs additional backend checks on Python 3.12.
 
 ## 独立部署指令（Linux）
 

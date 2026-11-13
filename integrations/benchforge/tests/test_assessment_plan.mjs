@@ -30,12 +30,58 @@ test('saved assessment reaches the authenticated plan API while private payload 
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'assessment-plan-api-'));
   try {
-    const script = ['import json,sys', 'sys.path.insert(0,"tests")', 'from test_assessment_plan import assessment_fixture',
-      'from benchforge_core.runtime import Runtime', 'r=Runtime(sys.argv[1])',
-      'p=r.call("pipeline_plan",{"objective":"Distance assessment", "selections":[{"template_ids":["C01-T01","C01-T02"],"count":5,"reason":"Distance protocols"}], "inputs":{"seed":1030,"target_items":5}, "assessment":assessment_fixture()})',
-      'r.close()', 'r=Runtime(sys.argv[1]);r.dsh_context={"session_id":"session-assessment-plain"}',
-      'q=r.call("pipeline_plan",{"objective":"Distance assessment", "selections":[{"template_ids":["C01-T01","C01-T02"],"count":5,"reason":"Distance protocols"}], "inputs":{"seed":1030,"target_items":5}, "assessment":assessment_fixture()})',
-      'r.close()', 'print(json.dumps({"with_markdown":p,"plain":q}))'].join('\n');
+    const script = `
+import json
+import sys
+from benchforge_core.pipelines.assessment import assessment_template
+from benchforge_core.runtime import Runtime
+
+def fill(value):
+    if isinstance(value, dict):
+        return {key: fill(child) for key, child in value.items()}
+    if isinstance(value, list):
+        return [fill(child) for child in value]
+    return 'Fixture design condition' if value == '' else value
+
+assessment = fill(assessment_template()['assessment'])
+assessment['objectives'][0]['id'] = 'distance'
+counts = [('C01-T01', 3), ('C01-T02', 2)]
+assessment['coverage'] = [
+    {'objective_id': 'distance', 'template_id': template, 'count': count,
+     'difficulty': 'medium', 'conditions': 'Calibrated public geometry',
+     'selection_reason': 'Measure the declared distance protocol'}
+    for template, count in counts
+]
+assessment['scenes'].update(allow_new_scenes=True, target_scene_count=2)
+assessment['dataset'].update(target_items=5, seed=1030)
+assessment['scoring']['metrics'] = [
+    {'template_id': template, 'metric': 'absolute error', 'unit': 'm',
+     'tolerance': '0.02 m', 'aggregation': 'per-template mean'}
+    for template, _count in counts
+]
+assessment['delivery']['artifacts'] = [
+    {'stage': stage, 'path': stage + '/artifact.json', 'format': 'json',
+     'contents': 'Viewable stage artifact'}
+    for stage in ('S1', 'S2', 'S3', 'S4', 'S5')
+]
+arguments = {
+    'objective': 'Distance assessment',
+    'selections': [{'template_ids': [template for template, _count in counts],
+                    'count': 5, 'reason': 'Distance protocols'}],
+    'inputs': {'seed': 1030, 'target_items': 5},
+    'assessment': assessment,
+}
+plans = {}
+for name, session in (('with_markdown', None), ('plain', 'session-assessment-plain')):
+    runtime = Runtime(sys.argv[1])
+    try:
+        if session is not None:
+            runtime.dsh_context = {'session_id': session}
+        plans[name] = runtime.call('pipeline_plan', arguments)
+    finally:
+        runtime.close()
+print(json.dumps(plans))
+`;
     const plans = JSON.parse(execFileSync(process.env.PYTHON || (process.platform === 'win32' ? 'python' : 'python3'), ['-c', script, directory],
       {cwd: root, env: {...process.env, PYTHONPATH: path.join(root, 'src'), BENCHFORGE_DSH_SESSION_ID: 'session-assessment-api'}, encoding: 'utf8'}));
     const result=plans.with_markdown;
