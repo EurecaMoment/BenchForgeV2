@@ -12,13 +12,15 @@ from urllib.error import HTTPError
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'src'))
 
 from sqlalchemy import create_engine, text
+from benchforge_core.service_config import resolve_service_config_file
 
 
 def load_workbench_config(path):
     """Read the service configuration and resolve values needed by read-only helpers."""
-    path = Path(path).expanduser().resolve()
+    path = resolve_service_config_file(path)
     config = json.loads(path.read_text(encoding='utf-8'))
     if config.get('service_config'):
         path = (path.parent / Path(os.path.expandvars(config.pop('service_config'))).expanduser()).resolve()
@@ -35,10 +37,11 @@ def load_workbench_config(path):
         name = os.path.expandvars(config['database_url_env'])
         database = os.environ.get(name)
         env_file = path.with_name('database.env')
-        if not database and env_file.is_file():
-            prefix = name + '='
-            database = next((line[len(prefix):] for line in env_file.read_text(encoding='utf-8').splitlines()
-                             if line.startswith(prefix)), None)
+        if env_file.is_file():
+            values = dict(line.split('=', 1) for line in env_file.read_text(encoding='utf-8').splitlines()
+                          if '=' in line and not line.lstrip().startswith('#'))
+            managed = name == 'SPATIALFORGE_DATABASE_URL' and values.get('BENCHFORGE_DATABASE_MANAGED') == 'true'
+            database = values.get(name) if managed else database or values.get(name)
         config['database_url'] = database
     elif config.get('database_url'):
         config['database_url'] = os.path.expandvars(config['database_url'])
@@ -77,7 +80,12 @@ def session_runs(config, session, sessions=()):
 
 
 def service_read(config, route, value):
-    url = config.get('service_url') or f"http://{config.get('service_host', '127.0.0.1')}:{config.get('port', 3841)}"
+    url = config.get('service_url')
+    if not url:
+        host = config.get('service_host', '127.0.0.1')
+        if ':' in host and not host.startswith('['):
+            host = f'[{host}]'
+        url = f"http://{host}:{config.get('port', 3841)}"
     request = urllib.request.Request(url.rstrip('/') + route, data=json.dumps(value).encode(),
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config['operator_token']})
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -335,10 +343,12 @@ def current_production_progress(config, workspace, session):
 
 def observe(config, session, run_ids, sessions=(), workspace=None):
     local = current_production_progress(config, workspace, session)
-    try:
-        rows = session_runs(config, session, sessions)
-    except Exception as error:
-        return {**local, 'status': 'unavailable', 'error': type(error).__name__, 'runs': []}
+    rows = []
+    if config.get('database_url') or config.get('database_url_env') or config.get('harness'):
+        try:
+            rows = session_runs(config, session, sessions)
+        except Exception as error:
+            return {**local, 'status': 'unavailable', 'error': type(error).__name__, 'runs': []}
     registered = [row['run_id'] for row in local.get('current_collection', {}).get('rows', []) if row.get('run_id')]
     ids = list(dict.fromkeys(registered + [row['id'] for row in rows] + run_ids))[:12]
     workflows = {row['id']: row['workflow'] or 'scene' for row in rows}

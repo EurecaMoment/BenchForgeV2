@@ -78,7 +78,7 @@ async function api(path,args,signal){
   return data;
 }
 const readObservation=createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.policyPython});
-const retryCapture=createCaptureRetry({api,serviceConfig:config.serviceConfig,policyPython:config.policyPython});
+const retryCapture=createCaptureRetry({api,serviceConfig:loaded.clientPath,policyPython:config.policyPython});
 const watchController=new AbortController();
 ctx.on('dispose',()=>watchController.abort());
 const watchCapture=createCaptureWatcher({artifacts:cfg.artifacts,read:readObservation,signal:watchController.signal,

@@ -78,7 +78,7 @@ own README to install its environment, weights, and service.
 
 ## Configuration
 
-Start from the checked-in examples under `config/`. Copy an example to a matching ignored `*.local.json` file for machine-specific values. Keep credentials, local model paths, runtime databases, generated datasets, logs, and backups outside version control.
+`config/benchforge.example.json` is the configuration template. `spatialforge_app.py init` creates the private `config/benchforge.local.json`. Set ports, paths, models, the database, and worker connections in that file. `spatialforge_app.py sync` generates the runtime files used by SpatialForge, DSH, and Compose.
 
 BenchForgeV2 uses one server configuration as the source for its execution mode and scene policy. In `production` mode, a valid scene policy is required. The client and DSH plugin read the resolved service URL and credentials without changing the server's environment.
 
@@ -195,7 +195,7 @@ npm ci --prefix integrations
 `npm ci --prefix integrations` 安装插件依赖，不能用 Python 安装替代。
 这一步完成后还没有启动服务，也没有配置模型或仿真器。
 
-### 3. 选择端口并生成本实例配置
+### 3. 初始化本实例配置
 
 先检查这三个端口；没有输出表示当前未被监听。如有输出，换三个空闲端口，并在
 后面的初始化、启动和隧道命令中使用对应数值。不要停止别人占用端口的进程。
@@ -206,38 +206,25 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 ```bash
 .venv/bin/python spatialforge_app.py init \
-  --port 3858 --db-port 55548 --project benchforge-3092
+  --web-port 3092 --port 3858 --db-port 55548 --project benchforge-3092
 ```
 
-`--project` 是本实例的数据库项目名，同机不同部署必须不同。它保存为
-`config/generated/database.env` 的 `COMPOSE_PROJECT_NAME`，启动和停止会读取同一值；
-无需每次再手动指定。不要设置指向其他实例的 `COMPOSE_PROJECT_NAME` 环境变量。
+之后只编辑 **`config/benchforge.local.json`**。同机部署多套实例时，每套使用独立的
+`database.project` 和端口。重复执行 `init` 会使用本机文件中的既有配置。
 
-初始化会自动生成随机数据库密码及两种 token，并建立匹配的客户端、服务端与 worker
-配置。重复 `init` 会保留已有端口、项目配置和凭据，不会按新参数覆盖；因此首次就应
-选好端口。如果默认客户端文件丢失，重跑 `init` 可从已有服务端配置补齐。
+| 配置键 | 用途 |
+| --- | --- |
+| `web.port` | DSH Web 端口。可用 `BENCHFORGE_WEB_PORT` 临时覆盖。 |
+| `server` | 本机 SpatialForge API 端口、对客户端公开的服务地址、产物目录、场景策略和认证环境变量名。 |
+| `database` | PostgreSQL 端口、Compose 项目名和密码环境变量名。复用外部数据库时设置 `url` 或 `url_env`。 |
+| `client` | DSH 和 CLI 连接的 SpatialForge 后端。默认使用本机服务，亦可填 `service_config` 或 `service_url`。 |
+| `worker` 与 `isaac` | worker 的身份、路径和连接方式，以及远程 Isaac gRPC 地址与采集超时。 |
+| `models`、`model_roles`、`services`、`model_services` | 模型声明、模型使用角色和推理服务接口。 |
 
-端口统一收敛在 `config/ports.env`（`SPATIALFORGE_PORT`、`POSTGRES_PORT`、
-`BENCHFORGE_WEB_PORT`）。文件存在时，`./start.sh` 启动前会执行
-`spatialforge_app.py sync`，把端口写回 `config/generated/` 下的全部生成物
-（服务端 `port`、`database_url`、worker 的 `url`/`ssh_forward`、`database.env`）。
-之后改端口只需编辑 `config/ports.env` 并重跑 `./start.sh`；`init --port/--db-port`
-只决定首次初始化写入的初始值。
-
-| 文件 | 用途 | 基础启动是否需要手改 |
-| --- | --- | --- |
-| `config/ports.env` | **端口唯一权威来源**；`./start.sh` 启动前自动 sync 到生成物 | 改端口时 |
-| `config/benchforge.local.json` | **所有模型的唯一配置入口**：模型地址、ID、角色、解释器/权重、请求默认值，以及 `isaac.grpc` | 用模型/仿真器时配置 |
-| `config/generated/database.env` | 数据库密码、端口、独立项目名和连接地址 | 否 |
-| `config/generated/spatialforge-server.local.json` | API 端口、数据库环境变量引用、产物目录、服务凭据、生产策略和 `isaac` 透传 | 否 |
-| `config/generated/spatialforge.local.json` | 引用服务端配置，继承地址、operator token 和生产策略 | 否 |
-| `config/generated/worker.local.json` | 引用服务端配置，另设本机 Isaac 路径、`isaac_grpc` 和 worker 参数 | 接入 worker 时配置 |
-| `config/generated/benchforge.local.yml` | 两个 DSH 预设与工作台插件，由 `build_presets.py` 生成 | 否 |
-
-`config/generated/` 下的文件都是自动产物，不要手改端口或凭据；服务端配置是唯一
-连接信息来源，客户端和同机 worker 不重复保存 token 或端口。本地配置、虚拟环境、
-日志、产物都已被 Git 忽略；不要将密码或 token 上传到仓库。
-未使用 `--project` 的旧配置仍沿用 `benchforgev2-spatialforge` 项目名。
+`init` 和 `sync` 生成 `config/generated/` 下的服务端、客户端、worker 和 Compose 配置。
+`dsh-setup` 生成 DSH 预设。配置中的相对路径以 `config/benchforge.local.json` 所在目录为基准。
+模型密钥通过各字段指定的环境变量传入。首次初始化会为本实例生成缺省的数据库密码和服务令牌，
+保存在被 Git 忽略的部署状态里。
 
 ### 4. 安装 DSH 并生成完整预设
 
@@ -246,7 +233,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
 
 此命令从公开仓库下载锁定版本的 DSH，在 `third_party/deepseek-harness/` 构建，
-然后生成 `config/benchforge.local.json`、含两个预设和工作台插件的
+然后按本机配置生成含两个预设和工作台插件的
 `config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
 `Ready. Run: python benchforge.py start`，且命令退出码为 0。
@@ -276,7 +263,7 @@ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.version GIT_CONFIG_VALUE_0=HTTP/1.1 \
 ### 5. 启动本实例
 
 ```bash
-BENCHFORGE_WEB_PORT=3092 ./start.sh
+./start.sh
 ```
 
 脚本依次启动本实例的 PostgreSQL、BenchForgeV2 和 DSH，日志及 PID 写入当前目录的
@@ -287,7 +274,7 @@ http://127.0.0.1:3092/?token=本次启动的实际令牌
 ```
 
 后台服务与终端分离，安装成功后关闭 SSH 终端不会结束服务。
-每次启动或重启都应显式写 `BENCHFORGE_WEB_PORT=3092`；省略时脚本使用 `3081`。
+Web 端口使用本机配置里的 `web.port`。
 DSH 的会话和设置保存在当前目录 `.benchforge/dsh-home/`。
 
 如果没有正常结束或没有新地址，先查看本实例日志；仅端口监听不能证明插件加载完成：
@@ -323,8 +310,9 @@ http://127.0.0.1:13092/?token=第5节输出的实际令牌
 回到**服务器的仓库目录**执行：
 
 ```bash
-# 检查该实例的数据库容器，状态应为 healthy。
-docker compose --env-file config/generated/database.env -f components/spatialforge/deploy/compose.yml ps
+# 检查该实例的数据库容器，状态应为 healthy。外部数据库实例跳过此条。
+project="$(.venv/bin/python spatialforge_app.py setting database.project)"
+docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=com.docker.compose.service=database'
 
 # 发起真实、带认证的 POST /catalog，不需要手动复制 token。
 .venv/bin/python spatialforge_app.py status
@@ -336,9 +324,8 @@ docker compose --env-file config/generated/database.env -f components/spatialfor
 不应返回认证错误。`model: unconfigured` 表示还没有配置后端规划模型，基础安装允许此状态。
 不要用普通 `GET /catalog` 的 HTTP 200 代替检查：GET 会返回介绍页，实际目录接口是 POST。
 
-若端口被占用，编辑 `config/ports.env`（三个端口一处修改，原始端口可注释保留），
-然后重跑 `./start.sh`——启动前的自动 `sync` 会把新端口同步到所有生成物。
-DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
+若端口被占用，编辑 `config/benchforge.local.json` 的 `web.port`、`server.port` 或
+`database.port`，然后重新启动该实例。Web 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
 再确认网页能够登录、两个预设均可选，且 `BenchForgeV2_UI` 能显示工作台、没有加载错误。
 页面验收必须新建并选择 **`BenchForgeV2_UI`** 会话、绑定本实例的独立工作区，确认
@@ -361,25 +348,25 @@ DSH 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
   `models` 和 `sources` 保存可选本地执行所需的解释器、权重和源码路径。
   `generation.mode=remote` 使用网关，`local` 使用本地已安装模型。
   地址和路径示例不代表相应服务、权重或依赖已经可用。
-- **Isaac 真值与采集**：在 `config/benchforge.local.json` 设置 `isaac.grpc`，运行 `spatialforge_app.py sync`，
-  然后在 worker 机器上执行 `python spatialforge_app.py worker --config <worker-config>`。
-  worker 配置可从 `config/generated/worker.local.json` 复制，再填写该机器可用的服务地址、令牌和目录。
+- **Isaac 真值与采集**：设置 `isaac.grpc`，在 `worker` 中填写采集机使用的目录和连接参数，
+  运行 `spatialforge_app.py sync`，再在 worker 机器上执行
+  `python spatialforge_app.py worker --config <worker-config>`。
+  远程 worker 使用生成的 `config/generated/worker.local.json`。文件含 worker 令牌或其变量名，仅分发给采集机。
 - **场景工作台 UI**：选择 `BenchForgeV2_UI` 打开评测工作台，`BenchForgeV2` 使用标准对话界面。
 
-模型凭据存放在被忽略的 `config/dsh.env` 中，以统一 JSON 里的 `token_env` 引用；
-`start.sh` 会在启动后端和 DSH 前加载，`spatialforge_app.py serve` 也会加载此文件。
-不要把密钥值写进示例或提交 GitHub。
+模型凭据由启动环境注入，模型用 `token_env` 指定变量名，例如 `QWEN_RELAY_API_KEY`
+和 `BENCHFORGE_INFERENCE_API_KEY`。升级时仍可以读取已有的本地 `config/dsh.env`。
 
 编辑统一配置后，在本实例执行：
 
 ```bash
 .venv/bin/python spatialforge_app.py sync
-BENCHFORGE_WEB_PORT=3092 ./restart.sh
+./restart.sh
 ```
 
-`sync` 首次执行会把旧的模型路径和服务端模型字段补入统一文件，已有统一字段优先，
-旧文件保留；服务端改为引用统一文件。DSH 启动时自动刷新模型配置快照，不重建预设或改写
-已有会话。占位模型不会覆盖 DSH 默认模型；填写实际模型后，新会话默认使用 `model_roles.dsh`。
+首次升级执行 `sync` 会导入旧 `ports.env`、服务端、worker、数据库和模型配置。
+已在统一文件中填写的值优先。旧文件可以用于核对迁移后的值。
+DSH 启动时自动刷新模型配置快照，实际模型配置生效后，新会话默认使用 `model_roles.dsh`。
 
 ### 9. 停止、重启和更新
 
@@ -387,13 +374,13 @@ BENCHFORGE_WEB_PORT=3092 ./restart.sh
 
 ```bash
 # 修改本地配置后，保留数据库并重启应用。
-BENCHFORGE_WEB_PORT=3092 ./restart.sh
+./restart.sh
 
 # 只停止应用，保留数据库运行。
-BENCHFORGE_WEB_PORT=3092 ./shutdown.sh --keep-db
+./shutdown.sh --keep-db
 
 # 停止本实例全部服务；数据库数据卷仍然保留。
-BENCHFORGE_WEB_PORT=3092 ./shutdown.sh
+./shutdown.sh
 ```
 
 更新 `simulator-access-integration` 时，先保留本地配置和数据，再停止应用、拉取代码和更新依赖。
@@ -404,7 +391,8 @@ git pull --ff-only origin simulator-access-integration
 .venv/bin/python -m pip install -e '.[dsh,production,research]'
 npm ci --prefix integrations
 .venv/bin/python spatialforge_app.py setup
-BENCHFORGE_WEB_PORT=3092 ./start.sh
+.venv/bin/python spatialforge_app.py sync
+./start.sh
 ```
 
 除非确实需要重新生成预设，否则不要再次运行 `dsh-setup` 覆盖自己的模型配置。
@@ -420,7 +408,7 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
 | `venv` / `ensurepip` 缺失 | Conda 路线包含所需组件；系统 Python 路线需安装对应版本的 venv 包，例如 `python3.11-venv`。 |
 | Docker `permission denied` / daemon 不可用 | 完成 Docker 官方安装后配置并重新登录，先让 `docker info` 成功。 |
 | 端口占用 | 新部署在初始化前换空闲端口和独立 `--project`；不要让启动脚本误认其他实例的监听端口。 |
-| `spatialforge-tools` 的配置文件 `ENOENT` | 先执行第 3 节，再执行第 4 节；文件搬过位置时，修改生成预设里 `serviceConfig` 的实际路径。重跑 `init` 只补齐默认缺失客户端。 |
+| `spatialforge-tools` 的配置文件 `ENOENT` | 执行 `spatialforge_app.py sync` 再启动；如更换了预设绑定的路径，重新运行 `dsh-setup`。 |
 | `Cannot find module '@deepseek-ai/...'` | 在仓库执行 `npm ci --prefix integrations`，然后重启当前实例。 |
 | token 无效 / `dsh web authentication required` | 使用当前进程的新 URL；通过隧道时只替换端口，保留完整 token。 |
 | 端口已监听却没有新 token | 查看 `.benchforge/logs/dsh.log` 的真实错误；并非所有情况都是 inotify 问题。 |
@@ -441,20 +429,19 @@ BENCHFORGE_WEB_PORT=3092 ./start.sh
 ## 已有后端时的连接方式
 
 这条路线适用于**明确要复用既有服务**的人，独立部署请使用上面的第 0–7 节。
-同机复用时，复制客户端示例，将 `service_config` 改为既有服务端 JSON 的实际路径；
-地址、operator token 和生产策略从该文件继承，再验证连接和生成预设：
+同机复用时，在 `config/benchforge.local.json` 的 `client.service_config` 填入既有服务端
+JSON 的路径。客户端从该文件读取地址、operator token 和生产策略。
 
 ```bash
-cp config/spatialforge.example.json config/generated/spatialforge.local.json
-# 用编辑器将 service_config 改为既有服务端配置的路径后继续。
+.venv/bin/python spatialforge_app.py sync
 .venv/bin/python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
-.venv/bin/python benchforge.py setup --spatialforge-config config/generated/spatialforge.local.json
-.venv/bin/python benchforge.py start --port 3092 --no-open
+.venv/bin/python benchforge.py setup
+.venv/bin/python benchforge.py start --no-open
 ```
 
-跨机器连接时，可改用独立客户端 JSON，移除 `service_config`，填写 `service_url`、
-`operator_token_env`、`execution_mode` 和本机可读的 `scene_policy_path`；生产模式必须提供
-与后端一致的有效策略文件。将 token 注入指定环境变量后再执行上述验证与启动。
+跨机器连接时，在 `client` 填写 `service_url`、`operator_token_env`、`execution_mode`
+和本机可读的 `scene_policy_path`。生产模式使用与后端一致的有效策略文件。将 token
+注入指定环境变量后执行上述验证与启动。仍可用 `--spatialforge-config` 指定已有客户端文件。
 
 这条路线不使用 `start.sh` 创建另一数据库。已构建 DSH 可额外传入
 `--dsh-root /path/to/deepseek-harness`；新手独立安装无需此选项。

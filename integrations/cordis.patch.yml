@@ -750,7 +750,7 @@
       - id: spatialforge-tools
         name: '@eurecamoment/benchforge-dsh/spatialforge-tools'
         config:
-          serviceConfig: config/spatialforge.local.json
+          serviceConfig: config/generated/spatialforge.local.json
           policyPython: python3
       name: BenchForgeV2
       description: Scene and data production in the standard conversation interface.
@@ -1511,12 +1511,12 @@
       - id: spatialforge-tools
         name: '@eurecamoment/benchforge-dsh/spatialforge-tools'
         config:
-          serviceConfig: config/spatialforge.local.json
+          serviceConfig: config/generated/spatialforge.local.json
           policyPython: python3
       name: BenchForgeV2_UI
       description: Scene and data production with the visual workbench.
   - id: benchforge-workbench-ui
     name: '@eurecamoment/benchforge-dsh/spatialforge-ui'
     config:
-      productionConfig: config/spatialforge.local.json
+      productionConfig: config/generated/spatialforge.local.json
       productionPython: python3

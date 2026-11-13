@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createScopedCaptureObservations,createCaptureEvidence} from '../plugin/capture_runtime.mjs';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {attachCaptureRuntime,createScopedCaptureObservations,createCaptureEvidence} from '../plugin/capture_runtime.mjs';
 
 function fixture() {
   const hooks=new Set();
@@ -27,6 +30,43 @@ function fixture() {
 }
 
 const observation=()=>({run_id:'sf_test',state:'RUNNING',cursor:7,tasks:[{id:'sf_test.scene0',state:'RUNNING',result:{program:{large:true}}}]});
+
+test('workbench capture runtime follows the projected client pointer and keeps the server workspace', async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-workbench-config-'));
+  t.after(() => fs.rm(root, {recursive: true, force: true}));
+  const client = path.join(root, 'client.json');
+  const server = path.join(root, 'server');
+  await fs.mkdir(server);
+  await fs.writeFile(path.join(server, 'service.json'), JSON.stringify({
+    service_url: 'https://fixture.invalid', execution_mode: 'exploration', operator_token: 'default-token',
+  }));
+  await fs.writeFile(client, JSON.stringify({
+    service_config: 'server/service.json', operator_token: 'fixture-token',
+  }));
+  const hooks = new Map(), cleanup = [];
+  const ctx = {
+    get: () => undefined,
+    on: (name, callback) => hooks.set(name, callback),
+    effect: effect => cleanup.push(effect()),
+  };
+  t.after(() => cleanup.reverse().forEach(dispose => dispose()));
+  await attachCaptureRuntime(ctx, {productionConfig: client, productionPython: 'python3'});
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    calls.push([url, options.headers.Authorization]);
+    return Response.json(observation());
+  });
+
+  const agent = {id: 'session-fixture', session: {header: {cwd: server}}, ctx: {
+    get: () => ({get: () => true}),
+    on: (_, hook) => {hooks.set('tools/execute', hook); return () => {};},
+  }};
+  await hooks.get('agent/pre-step')({agent, signal: new AbortController().signal}, async () => ({messages: []}));
+  assert.ok(hooks.has('tools/execute'));
+  await hooks.get('tools/execute')({agent, name: 'spatialforge_status', arguments: {run_id: 'sf_test'},
+    signal: new AbortController().signal}, async () => assert.fail('workbench must use its configured service'));
+  assert.deepEqual(calls, [['https://fixture.invalid/observe', 'Bearer fixture-token']]);
+});
 
 test('status uses current bridge with immutable args and preserves full detail on request',async()=>{
   const f=fixture(),reads=[];

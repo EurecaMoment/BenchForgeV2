@@ -1,4 +1,32 @@
 {
+  "config_version": 1,
+  "web": {
+    "port": 3081
+  },
+  "server": {
+    "service_host": "127.0.0.1",
+    "port": 3841,
+    "operator_token_env": null,
+    "worker_token_env": null,
+    "gpu_candidates": "0",
+    "artifacts": "../.spatialforge/artifacts",
+    "task_root": "../.spatialforge/artifacts/operator_workspaces",
+    "execution_mode": "production",
+    "scene_policy_path": "generated/scene-library/policy.json"
+  },
+  "database": {
+    "project": "benchforgev2-spatialforge",
+    "port": 55432,
+    "url": null,
+    "url_env": null,
+    "password_env": null
+  },
+  "client": {},
+  "worker": {
+    "worker_id": "desktop-isaac-main",
+    "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
+    "runs": "D:/BenchForgeV2-runs"
+  },
   "services": {
     "sam3": {
       "url": "http://127.0.0.1:8765"

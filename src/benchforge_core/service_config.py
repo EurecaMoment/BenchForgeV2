@@ -69,6 +69,19 @@ def _config_path(value, config_path):
     return path.resolve()
 
 
+def resolve_service_config_file(path):
+    """Select a local client projection, with a fallback for older DSH installs."""
+    path = Path(_expand_environment(os.fspath(path))).expanduser().resolve()
+    if (path.name == 'spatialforge.local.json'
+            and path.parent.name == 'generated'
+            and path.parent.parent.name == 'config'
+            and not path.exists()):
+        legacy = path.parent.parent / path.name
+        if legacy.is_file():
+            return legacy
+    return path
+
+
 def _execution_policy(config, config_path):
     configured_mode = config.get('execution_mode')
     environment_mode = os.environ.get('SPATIALFORGE_EXECUTION_MODE')
@@ -105,7 +118,7 @@ def _execution_policy(config, config_path):
 
 def load_service_client_config(path):
     """Return the service URL and operator token from a local or legacy config."""
-    config_path = Path(_expand_environment(os.fspath(path))).expanduser().resolve()
+    config_path = resolve_service_config_file(path)
     config = json.loads(config_path.read_text(encoding='utf-8'), object_pairs_hook=_reject_duplicate_keys)
     if not isinstance(config, dict):
         raise ValueError('BenchForgeV2 service configuration must be a JSON object')

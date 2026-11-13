@@ -100,10 +100,10 @@ the current display name. New sessions use the updated composition. To use code
 already deployed, omit `--pull`. The profile is backed up under `.deployment/`
 and restored if runtime adoption fails.
 
-The private files `config/benchforge.local.json`,
-`config/generated/spatialforge.local.json` and `.deployment/python-development`
-must already exist. Configure available model endpoints under `model_services`
-in the shared BenchForge configuration.
+Keep the deployment's settings in `config/benchforge.local.json` and run
+`python spatialforge_app.py sync` to prepare the client configuration for hot
+update. The updater also uses the deployment's `.deployment/python-development`
+launcher. Configure available model endpoints under `model_services`.
 
 ## Install and configure
 
@@ -130,11 +130,12 @@ dsh plugin --profile web add ./integrations
 dsh --profile web --dump-config
 ```
 
-The portable bundle expects `python3`, `config/benchforge.local.json` and
-`config/spatialforge.local.json` relative to the DSH launch working directory. Copy the appropriate
-example configs and use the existing service endpoint; credentials belong in
-the DSH launch environment, not this package. To select another Python
-environment or absolute config paths, generate a deployment overlay:
+The portable bundle uses `python3`, `config/benchforge.local.json` and the generated
+`config/generated/spatialforge.local.json` relative to the DSH launch directory.
+Use `spatialforge_app.py init` to create the local file and `sync` after setting
+`client` and `model_services`. Pass credentials through the launch environment.
+To select another Python environment or explicit config paths, generate a
+deployment overlay:
 
 ```bash
 python integrations/dsh/build_presets.py \

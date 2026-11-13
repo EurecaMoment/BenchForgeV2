@@ -43,6 +43,8 @@ MODEL_TOOLS = [
     'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
     'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
 ]
+DEFAULT_SERVICE_CONFIG = Path('config/generated/spatialforge.local.json')
+LEGACY_SERVICE_CONFIG = Path('config/spatialforge.local.json')
 
 
 def set_identity(row, preset_id):
@@ -55,6 +57,12 @@ def config_reference(path, package_imports=False):
     """Bundle defaults stay relative; deployment overlays use absolute paths."""
     path = Path(path)
     return path.as_posix() if package_imports else str(path.resolve())
+
+
+def default_service_config(root=Path('.')):
+    current = root / DEFAULT_SERVICE_CONFIG
+    legacy = root / LEGACY_SERVICE_CONFIG
+    return legacy if not current.is_file() and legacy.is_file() else current
 
 
 def load_sources(dsh_root=None, node=None, resolve_from=None):
@@ -168,6 +176,38 @@ def remove_retired_tool_filter(plugins):
     return changed
 
 
+def refresh_service_paths(profile, config_path):
+    root = Path(config_path).resolve().parent.parent
+    current = root / DEFAULT_SERVICE_CONFIG
+    if not current.is_file():
+        return False
+    legacy = (root / LEGACY_SERVICE_CONFIG).resolve()
+    server = current.with_name('spatialforge-server.local.json').resolve()
+    current = current.resolve()
+
+    def refresh(row, key, old_paths):
+        options = row.get('config')
+        value = options.get(key) if isinstance(options, dict) else None
+        if isinstance(value, str) and value and (root / Path(value).expanduser()).resolve() in old_paths:
+            options[key] = str(current)
+            return True
+        return False
+
+    changed = False
+    for patch in profile:
+        for row in patch.get('insert', []):
+            if row.get('id') in {'benchforge-workbench-ui', 'spatialforge-evaluation-ui'}:
+                changed = refresh(row, 'productionConfig', {legacy, server}) or changed
+            if preset_id(row) not in PRESETS:
+                continue
+            for plugin in row['config']['plugins']:
+                if plugin.get('id') == 'spatialforge-tools':
+                    changed = refresh(plugin, 'serviceConfig', {legacy}) or changed
+                if plugin.get('id') == 'spatialforge-evaluation-ui':
+                    changed = refresh(plugin, 'productionConfig', {legacy, server}) or changed
+    return changed
+
+
 def refresh_model_patches(preset_path, config_path):
     """Refresh generated deployment settings and retire old preset entries."""
     preset_path = Path(preset_path)
@@ -176,6 +216,7 @@ def refresh_model_patches(preset_path, config_path):
     patches = model_patches(config_path)
     profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader)
     changed = remove_retired_preset(profile)
+    changed = refresh_service_paths(profile, config_path) or changed
     for patch in profile:
         for row in patch.get('insert', []):
             if preset_id(row) in PRESETS:

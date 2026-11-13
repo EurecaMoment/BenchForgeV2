@@ -2,8 +2,12 @@
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'src'))
+from benchforge_core.service_config import resolve_service_config_file
 
 
 def service_config_paths(value):
@@ -28,7 +32,7 @@ def check_preset(preset):
     for value in service_config_paths(profile):
         if not isinstance(value, str) or not value.strip():
             raise ValueError('spatialforge-tools.serviceConfig must name a configuration file')
-        path = Path(value).resolve()
+        path = resolve_service_config_file(value)
         if path in checked:
             continue
         if not path.is_file():

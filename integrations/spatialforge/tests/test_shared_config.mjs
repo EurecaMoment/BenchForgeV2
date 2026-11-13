@@ -32,6 +32,22 @@ test('service config reference resolves relative values and env-backed credentia
   assert.equal(result.scenePolicyPath, path.join(path.dirname(f.serverConfig), 'scene-policy.json'));
 });
 
+test('portable client default falls back only when the generated projection is absent', async t => {
+  const f = await fixture(t, {mode: 'exploration', policy: null});
+  const generated = path.join(path.dirname(f.clientConfig), 'generated', 'spatialforge.local.json');
+  const options = {getEnvironmentValue: f.getEnvironmentValue};
+  assert.equal((await loadServiceConfig(generated, options)).serviceUrl, 'http://127.0.0.1:3941');
+
+  await fs.mkdir(path.dirname(generated));
+  await fs.writeFile(generated, JSON.stringify({
+    service_url: 'https://fixture.invalid', operator_token_env: 'SPATIALFORGE_TEST_TOKEN',
+    execution_mode: 'exploration',
+  }));
+  assert.equal((await loadServiceConfig(generated, options)).serviceUrl, 'https://fixture.invalid');
+  await fs.writeFile(generated, '{"port":1,"port":2}');
+  await assert.rejects(loadServiceConfig(generated, options), /Duplicate JSON key/);
+});
+
 test('explicit service overrides resolve environment references and conflicting references fail', async t => {
   const f = await fixture(t, {mode: 'exploration', policy: null});
   await fs.writeFile(f.clientConfig, JSON.stringify({service_config: 'spatialforge-server.local.json', port: 3942}));

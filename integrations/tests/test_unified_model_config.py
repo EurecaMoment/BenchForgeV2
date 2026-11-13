@@ -24,7 +24,8 @@ class UnifiedModelConfig(unittest.TestCase):
                 'sources': {'sam3': '../sam3-source'},
             }), encoding='utf8')
             server = {'port': 3857, 'operator_token': 'operator', 'worker_token': 'worker',
-                      'database_url': 'existing-private-database', 'models_config': old_models.name,
+                      'database_url': 'postgresql+psycopg://operator:password@db.example/benchforge',
+                      'models_config': '../models.local.json',
                       'model_url': 'https://scene.example/v1', 'model_id': 'scene-vlm',
                       'model_api_key_env': 'SCENE_SECRET'}
             spatialforge_app.write(spatialforge_app.SERVER, server)
@@ -37,7 +38,8 @@ class UnifiedModelConfig(unittest.TestCase):
             self.assertEqual(saved['operator_token'], server['operator_token'])
             self.assertEqual(saved['database_url'], server['database_url'])
             self.assertNotIn('model_url', saved)
-            self.assertEqual(saved['models_config'], registry.name)
+            self.assertEqual((spatialforge_app.SERVER.parent / saved['models_config']).resolve(),
+                             registry.resolve())
             value = json.loads(registry.read_text(encoding='utf8'))
             self.assertEqual(value['models']['qwen']['model'], 'annotation-vlm')
             self.assertEqual(value['models']['scene']['model'], 'scene-vlm')
@@ -49,7 +51,7 @@ class UnifiedModelConfig(unittest.TestCase):
             self.assertEqual(loaded.data['sources']['sam3'], str(config.parent / 'sam3-source'))
             self.assertTrue(old_models.is_file())
             before = registry.read_text(encoding='utf8')
-            spatialforge_app.sync_model_config()
+            spatialforge_app.sync_configuration()
             self.assertEqual(registry.read_text(encoding='utf8'), before)
 
     def test_one_registry_drives_backend_generation_and_dsh_without_serializing_secrets(self):
@@ -116,12 +118,37 @@ class UnifiedModelConfig(unittest.TestCase):
     def test_isaac_sync_does_not_require_a_ports_file(self):
         with tempfile.TemporaryDirectory() as folder, local_configuration(Path(folder).resolve()) as config:
             spatialforge_app._init_configs(3857, 55432)
-            with patch.object(spatialforge_app, 'GENERATED', config):
-                spatialforge_app.sync_ports()
-            worker = json.loads((config / 'worker.local.json').read_text(encoding='utf8'))
+            spatialforge_app.sync_configuration()
+            worker = json.loads((spatialforge_app.GENERATED / 'worker.local.json').read_text(encoding='utf8'))
             registry = json.loads((config / 'benchforge.local.json').read_text(encoding='utf8'))
             self.assertEqual(worker['isaac_grpc'], registry['isaac']['grpc'])
             self.assertNotIn('isaac_resident', worker)
+
+    def test_legacy_root_database_secret_and_derived_worker_settings_migrate(self):
+        with tempfile.TemporaryDirectory() as folder, local_configuration(Path(folder).resolve()) as config:
+            saved_port = 3857
+            external_url = 'postgresql+psycopg://existing:secret@db.example/benchmark'
+            old_server = config / 'spatialforge-server.local.json'
+            spatialforge_app.write(old_server, {'port': saved_port, 'database_url_env': 'EXTERNAL_DB'})
+            (config / 'database.env').write_text(f'EXTERNAL_DB={external_url}\n', encoding='utf-8')
+            spatialforge_app.write(config / 'worker.local.json', {
+                'service_config': old_server.name, 'url': f'http://127.0.0.1:{saved_port}',
+                'ssh_forward': f'{saved_port}:127.0.0.1:{saved_port}', 'capture_timeout_seconds': 1800,
+            })
+            spatialforge_app.sync_configuration()
+            registry = config / 'benchforge.local.json'
+            self.assertNotIn(external_url, registry.read_text(encoding='utf-8'))
+            value = json.loads(registry.read_text(encoding='utf-8'))
+            self.assertEqual(value['database']['url_env'], 'EXTERNAL_DB')
+            self.assertEqual(spatialforge_app.build_environment()['EXTERNAL_DB'], external_url)
+            value['server']['port'] = 3858
+            value['isaac']['capture_timeout_seconds'] = 1200
+            spatialforge_app.write(registry, value)
+            spatialforge_app.sync_configuration()
+            worker = json.loads((spatialforge_app.GENERATED / 'worker.local.json').read_text(encoding='utf-8'))
+            self.assertEqual(worker['url'], 'http://127.0.0.1:3858')
+            self.assertEqual(worker['ssh_forward'], '3858:127.0.0.1:3858')
+            self.assertEqual(worker['capture_timeout_seconds'], 1200)
 
 
 if __name__ == '__main__':

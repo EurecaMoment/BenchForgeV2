@@ -90,10 +90,22 @@ async function isFile(file) {
   }
 }
 
-export async function loadServiceConfig(configFile, {getEnvironmentValue} = {}) {
-  let configPath = path.resolve(await expandEnvironment(configFile, getEnvironmentValue));
-  const source = await fs.readFile(configPath, 'utf8');
-  let config = parseStrictJson(source);
+async function serviceConfigFile(configFile, getEnvironmentValue) {
+  const configPath = path.resolve(await expandEnvironment(configFile, getEnvironmentValue));
+  const directory = path.dirname(configPath);
+  const parent = path.dirname(directory);
+  if (path.basename(configPath) === 'spatialforge.local.json' && path.basename(directory) === 'generated' &&
+      path.basename(parent) === 'config' && !(await isFile(configPath))) {
+    const legacy = path.join(parent, 'spatialforge.local.json');
+    if (await isFile(legacy)) return legacy;
+  }
+  return configPath;
+}
+
+export async function loadServiceConfig(configFile, {getEnvironmentValue, requireOperatorToken = true, requireScenePolicy = true} = {}) {
+  const clientPath = await serviceConfigFile(configFile, getEnvironmentValue);
+  let configPath = clientPath;
+  let config = parseStrictJson(await fs.readFile(configPath, 'utf8'));
   if (!config || typeof config !== 'object' || Array.isArray(config))
     throw new Error('BenchForgeV2 service configuration must be a JSON object');
   if (config.service_config) {
@@ -144,10 +156,10 @@ export async function loadServiceConfig(configFile, {getEnvironmentValue} = {}) 
     config.service_url = `http://${host}:${port}`;
   }
 
-  const envName = config.operator_token_env || 'SPATIALFORGE_OPERATOR_TOKEN';
+  const envName = await expandEnvironment(config.operator_token_env || 'SPATIALFORGE_OPERATOR_TOKEN', getEnvironmentValue);
   const configuredToken = await environmentValue(getEnvironmentValue, envName);
   const token = config.operator_token_env ? configuredToken : config.operator_token || configuredToken;
-  if (!token) throw new Error(`Configure operator_token or set ${envName}`);
+  if (requireOperatorToken && !token) throw new Error(`Configure operator_token or set ${envName}`);
   config.operator_token = token;
 
   let policyPath = config.scene_policy_path || '';
@@ -163,10 +175,10 @@ export async function loadServiceConfig(configFile, {getEnvironmentValue} = {}) 
   }
   if (policyPath && !(await isFile(policyPath)))
     throw new Error(`scene policy file does not exist: ${policyPath}`);
-  if (executionMode === 'production' && !policyPath)
+  if (requireScenePolicy && executionMode === 'production' && !policyPath)
     throw new Error('execution_mode=production requires scene_policy_path pointing to an existing policy.json');
   config.scene_policy_path = policyPath || '';
 
-  return {config, configPath, serviceUrl: config.service_url, operatorToken: token,
+  return {config, configPath, clientPath, serviceUrl: config.service_url, operatorToken: token,
     executionMode, scenePolicyPath: policyPath || null};
 }

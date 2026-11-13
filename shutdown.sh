@@ -12,14 +12,15 @@ STATE="$ROOT/.benchforge"
 RUN_DIR="$STATE/run"
 SF_PID_FILE="$RUN_DIR/spatialforge.pid"
 DSH_PID_FILE="$RUN_DIR/dsh.pid"
-# 端口唯一权威来源是 config/ports.env，这里只做读取
-[ -f "$ROOT/config/ports.env" ] && . "$ROOT/config/ports.env"
-WEB_PORT="${BENCHFORGE_WEB_PORT:-3081}"
+DB_PROJECT_FILE="$RUN_DIR/database-project"
+DB_ENV="$ROOT/config/generated/database.env"
 KEEP_DB=0
+RESTART=0
 
 for arg in "$@"; do
   case "$arg" in
     --keep-db) KEEP_DB=1 ;;
+    --for-restart) RESTART=1 ;;
     -h | --help)
       echo "用法: ./shutdown.sh [--keep-db]"
       exit 0
@@ -28,23 +29,27 @@ for arg in "$@"; do
   esac
 done
 
-stop_port() {
-  local name="$1" pidfile="$2" expected="$3" pid command group target
+stop_process() {
+  local name="$1" pidfile="$2" expected="$3" previous="${4:-}" pid command group target
   if [ ! -f "$pidfile" ]; then
     echo "  $name 未由本脚本启动"
     return 0
   fi
   pid="$(<"$pidfile")"
+  if [[ ! "$pid" =~ ^[1-9][0-9]*$ ]]; then
+    echo "  $name 的 PID 记录无效，保留记录" >&2
+    return 1
+  fi
   if ! kill -0 "$pid" 2>/dev/null; then
     echo "  $name 的记录进程已退出"
     rm -f "$pidfile"
     return 0
   fi
   command="$(ps -p "$pid" -o args= 2>/dev/null || true)"
-  case "$command" in
-    *"$expected"*) ;;
-    *) echo "  $name 的 PID 与预期命令不符，保留进程和记录"; return 0 ;;
-  esac
+  if [[ "$command" != *"$expected"* && ( -z "$previous" || "$command" != *"$previous"* ) ]]; then
+    echo "  $name 的 PID 与预期命令不符，保留进程和记录" >&2
+    return 1
+  fi
   # start.sh uses setsid. Stop the owned session's process group so the Python
   # launcher does not leave its Node child listening after a restart.
   group="$(ps -p "$pid" -o pgid= 2>/dev/null | tr -d ' ' || true)"
@@ -56,32 +61,53 @@ stop_port() {
     kill -0 -- "$target" 2>/dev/null || break
     sleep 1
   done
-  kill -0 -- "$target" 2>/dev/null && kill -KILL -- "$target" 2>/dev/null || true
+  if kill -0 -- "$target" 2>/dev/null && ! kill -KILL -- "$target" 2>/dev/null \
+    && kill -0 -- "$target" 2>/dev/null; then
+    echo "  $name 仍在运行，保留进程记录" >&2
+    return 1
+  fi
   rm -f "$pidfile"
 }
 
-if [ -f "$SERVER_CONFIG" ]; then
-  SERVICE_PORT="$("$PY" -c 'import json,sys;print(json.load(open(sys.argv[1]))["port"])' "$SERVER_CONFIG" 2>/dev/null || echo "${SPATIALFORGE_PORT:-3857}")"
-else
-  SERVICE_PORT="${SPATIALFORGE_PORT:-3857}"
+DB_PROJECT=""
+if [ -f "$DB_PROJECT_FILE" ]; then
+  DB_PROJECT="$(<"$DB_PROJECT_FILE")"
+elif [ -f "$DB_ENV" ] && ! grep -qx 'BENCHFORGE_DATABASE_MANAGED=false' "$DB_ENV" \
+  && grep -q '^POSTGRES_PASSWORD=' "$DB_ENV"; then
+  # Installations that predate the runtime record can still stop their database.
+  DB_PROJECT="$(grep -m 1 '^COMPOSE_PROJECT_NAME=' "$DB_ENV" | cut -d= -f2- || true)"
+  DB_PROJECT="${DB_PROJECT:-benchforgev2-spatialforge}"
+fi
+if [ "$RESTART" -eq 1 ] && [ -n "$DB_PROJECT" ]; then
+  DB_MANAGED="$("$PY" spatialforge_app.py setting database.managed)"
+  if [ "$DB_MANAGED" = true ]; then
+    NEXT_PROJECT="$("$PY" spatialforge_app.py setting database.project)"
+    if [ "$DB_PROJECT" = "$NEXT_PROJECT" ]; then KEEP_DB=1; fi
+  fi
 fi
 
-echo "[1/3] 停止 BenchForge DSH Web (端口 $WEB_PORT)"
-stop_port "DSH Web" "$DSH_PID_FILE" "benchforge.py start --port"
+echo "[1/3] 停止 BenchForge DSH Web"
+stop_process "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start"
 
-echo "[2/3] 停止 SpatialForge 服务 (端口 $SERVICE_PORT)"
-stop_port "SpatialForge" "$SF_PID_FILE" "spatialforge.service --config $SERVER_CONFIG"
+echo "[2/3] 停止 SpatialForge 服务"
+stop_process "SpatialForge" "$SF_PID_FILE" "$ROOT/spatialforge_app.py serve" \
+  "spatialforge.service --config $SERVER_CONFIG"
 
 # Isaac Sim gRPC 服务（本地 mock 或远程仿真器）不在此管理，需单独手动停止。
 
 if [ "$KEEP_DB" -eq 1 ]; then
-  echo "[3/3] 保留 PostgreSQL (--keep-db)"
+  echo "[3/3] 保留 PostgreSQL"
+  if [ -n "$DB_PROJECT" ]; then
+    mkdir -p "$RUN_DIR"
+    printf '%s\n' "$DB_PROJECT" > "$DB_PROJECT_FILE"
+  fi
+elif [ -z "$DB_PROJECT" ]; then
+  echo "[3/3] 本实例没有记录的 PostgreSQL 项目"
 else
-  echo "[3/3] 停止 PostgreSQL"
-  COMPOSE_PROJECT="$(grep -E '^COMPOSE_PROJECT_NAME=' config/generated/database.env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
-  [ -n "$COMPOSE_PROJECT" ] || COMPOSE_PROJECT=benchforgev2-spatialforge
-  docker compose -p "$COMPOSE_PROJECT" --env-file config/generated/database.env \
-    -f components/spatialforge/deploy/compose.yml down
+  echo "[3/3] 停止 PostgreSQL ($DB_PROJECT)"
+  "$PY" spatialforge_app.py db --stop --project "$DB_PROJECT"
+  mkdir -p "$RUN_DIR"
+  : > "$DB_PROJECT_FILE"
 fi
 
 echo "已停止。"

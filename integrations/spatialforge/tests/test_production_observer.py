@@ -18,6 +18,32 @@ import json
 
 
 class StageArtifactsTest(unittest.TestCase):
+    def test_managed_projection_database_precedes_ambient_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            server = root / 'spatialforge-server.local.json'
+            server.write_text(json.dumps({'database_url_env': 'SPATIALFORGE_DATABASE_URL'}), encoding='utf-8')
+            env = root / 'database.env'
+            projected = 'sqlite:///managed-fixture'
+            ambient = 'sqlite:///external-fixture'
+            variable = 'SPATIALFORGE_DATABASE_URL=' + projected + '\n'
+            with patch.dict('os.environ', {'SPATIALFORGE_DATABASE_URL': ambient}):
+                env.write_text('BENCHFORGE_DATABASE_MANAGED=true\n' + variable, encoding='utf-8')
+                self.assertEqual(observer.load_workbench_config(server)['database_url'], projected)
+                env.write_text('BENCHFORGE_DATABASE_MANAGED=false\n' + variable, encoding='utf-8')
+                self.assertEqual(observer.load_workbench_config(server)['database_url'], ambient)
+
+    def test_remote_client_reads_associated_runs_without_database_access(self):
+        config = {'service_url': 'https://fixture.invalid', 'operator_token': 'test-only'}
+        with patch.object(observer, 'session_runs') as database, \
+                patch.object(observer, 'production_observation', return_value={
+                    'state': 'RUNNING', 'terminal': False, 'tasks': [],
+                }) as read:
+            value = observer.observe(config, 'session-test', ['sf_saved'])
+        database.assert_not_called()
+        read.assert_called_once_with(config, 'sf_saved')
+        self.assertEqual(value['runs'][0]['run_id'], 'sf_saved')
+
     def test_workspace_paths_normalize_root_and_reject_escape(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

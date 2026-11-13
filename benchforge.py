@@ -9,11 +9,29 @@ import subprocess
 import sys
 import venv
 
+import spatialforge_app
+
 ROOT=Path(__file__).resolve().parent
 
 
 def run(argv, **kwargs):
     return subprocess.run([str(x) for x in argv],check=True,**kwargs)
+
+
+def uses_local_service(preset):
+    import yaml
+    from integrations.spatialforge.check_config import service_config_paths
+
+    profile = yaml.load(preset.read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
+    config = ROOT / 'config'
+    local = {
+        (config / 'spatialforge.local.json').resolve(),
+        (config / 'spatialforge-server.local.json').resolve(),
+        (config / 'generated/spatialforge.local.json').resolve(),
+        (config / 'generated/spatialforge-server.local.json').resolve(),
+    }
+    return any(isinstance(reference, str) and (ROOT / reference).resolve() in local
+               for reference in service_config_paths(profile))
 
 
 def main():
@@ -24,14 +42,21 @@ def main():
     parser.add_argument('--dsh-root',type=Path,help='Reuse an already built DSH checkout')
     parser.add_argument('--no-open',action='store_true')
     parser.add_argument('--spatialforge-config', type=Path, help='Enable BenchForgeV2 tools using an existing service configuration')
-    parser.add_argument('--port',type=int,default=3080)
+    parser.add_argument('--port', type=int, help='Override the configured Web port')
+    parser.add_argument('--check-config', action='store_true', help='Validate the Web setup before launching it')
+    parser.add_argument('--config-synced', action='store_true', help=argparse.SUPPRESS)
     args=parser.parse_args()
     preset=ROOT/'config/generated/benchforge.local.yml'
     model_config=ROOT/'config/benchforge.local.json'
     service_config=(args.spatialforge_config or ROOT/'config/generated/spatialforge.local.json').resolve()
-    if args.command=='setup' and not service_config.is_file():
-        parser.error(f'BenchForgeV2 configuration not found: {service_config}. '
-                     'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
+    if args.command=='setup':
+        if args.check_config:
+            parser.error('--check-config requires start')
+        if args.spatialforge_config is None:
+            run([sys.executable, ROOT/'spatialforge_app.py', 'sync'], cwd=ROOT)
+        if not service_config.is_file():
+            parser.error(f'BenchForgeV2 configuration not found: {service_config}. '
+                         'Run python spatialforge_app.py init, or pass --spatialforge-config with the actual file path.')
     lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
@@ -72,18 +97,28 @@ def main():
     if not saved.is_file():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
-    env={**os.environ,'DSH_HOME':str(state/'dsh-home')}
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
-    from integrations.dsh.build_preset import refresh_model_patches
-    refresh_model_patches(preset, model_config)
+    if preset.is_file() and not args.config_synced and uses_local_service(preset):
+        run([python, ROOT/'spatialforge_app.py', 'sync'], cwd=ROOT)
+    env = spatialforge_app.build_environment(database=False)
+    env['DSH_HOME'] = str(state/'dsh-home')
     try:
-        run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT)
+        port = args.port if args.port is not None else spatialforge_app.configured_web_port()
+    except ValueError as error:
+        parser.error(str(error))
+    from integrations.dsh.build_preset import refresh_model_patches
+    if not args.config_synced or args.check_config:
+        refresh_model_patches(preset, model_config)
+    try:
+        run([python,ROOT/'integrations/spatialforge/check_config.py','--preset',preset],cwd=ROOT,env=env)
     except subprocess.CalledProcessError as error:
         raise SystemExit(error.returncode) from None
+    if args.check_config:
+        return
     # An overlay and isolated home keep official presets and other installations untouched.
     command=[config['node'],str(Path(config['dsh_root'])/'apps/cli/lib/bin.js'),
-             '--profile','web','--patch',str(preset),'--host','127.0.0.1','--port',str(args.port)]
+             '--profile','web','--patch',str(preset),'--host','127.0.0.1','--port',str(port)]
     if args.no_open:
         command.append('--no-open')
     run(command,cwd=ROOT,env=env)

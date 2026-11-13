@@ -495,7 +495,7 @@ def run_job(job):
 def main():
     global config,state_root
     parser=argparse.ArgumentParser()
-    parser.add_argument('--config',type=Path,default=root/'config/generated/worker.local.json')
+    parser.add_argument('--config',type=Path,default=root.parents[1]/'config/generated/worker.local.json')
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
     config=load_worker_config(args.config)

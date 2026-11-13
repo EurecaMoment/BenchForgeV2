@@ -26,6 +26,8 @@ def update_profile(profile, root, python, mode_config, service_config, revision,
     sources = development.base.load_sources() if sources is None else sources
     generated = migration.catalog.build(sources, None, str(python), mode_config, service_config)
     result = migration.migrate_profile(profile, generated, revision)
+    if service_config.resolve() == (root / development.base.DEFAULT_SERVICE_CONFIG).resolve():
+        development.base.refresh_service_paths(result, mode_config)
     # Canonical URLs participate in DSH HMR. Revision is configuration, not a query.
     return migration.update_workbench(result, root, revision=revision)
 
@@ -73,7 +75,7 @@ def main():
     parser.add_argument("--profile", type=Path, default=Path.home() / ".local/share/dsh-qwen/home/profiles/web/cordis.patch.yml")
     parser.add_argument("--python", type=Path, default=ROOT / ".deployment/python-development")
     parser.add_argument("--mode-config", type=Path, default=ROOT / "config/benchforge.local.json")
-    parser.add_argument("--service-config", type=Path, default=ROOT / "config/generated/spatialforge.local.json")
+    parser.add_argument("--service-config", type=Path, default=development.base.default_service_config(ROOT))
     parser.add_argument("--dsh-service", default="dsh-qwen.service")
     parser.add_argument("--dsh-url", default="http://127.0.0.1:3080")
     parser.add_argument("--pull", action="store_true", help="First fast-forward the checkout's current branch")

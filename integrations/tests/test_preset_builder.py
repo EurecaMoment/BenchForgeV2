@@ -1,6 +1,7 @@
 """Focused preset composition test; uses the official installed package exports."""
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
 from copy import deepcopy
 
@@ -24,7 +25,7 @@ class PresetBuilderTest(unittest.TestCase):
     def test_catalog_has_exactly_two_independent_v2_presets(self):
         before = deepcopy(self.sources)
         result = catalog.build(self.sources, None, 'python3', Path('config/benchforge.local.json'),
-                                Path('config/spatialforge.local.json'), package_imports=True)
+                                catalog.base.DEFAULT_SERVICE_CONFIG, package_imports=True)
         rows = result[0]['insert']
         presets = [row['config'] for row in rows if row['name'] == '@deepseek-ai/dsh-agent-preset']
         self.assertEqual([(row['id'], row['name']) for row in presets], [
@@ -46,7 +47,26 @@ class PresetBuilderTest(unittest.TestCase):
         ui = [row for row in rows if row['id'] == 'benchforge-workbench-ui']
         self.assertEqual(len(ui), 1)
         self.assertEqual(ui[0]['name'], '@eurecamoment/benchforge-dsh/spatialforge-ui')
-        self.assertEqual(ui[0]['config']['productionConfig'], 'config/spatialforge.local.json')
+        self.assertEqual(ui[0]['config']['productionConfig'], catalog.base.DEFAULT_SERVICE_CONFIG.as_posix())
+
+    def test_tool_and_workbench_read_the_same_client_projection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            generated = root / 'config/generated'
+            generated.mkdir(parents=True)
+            server = generated / 'spatialforge-server.local.json'
+            server.write_text('{}', encoding='utf-8')
+            client = generated / 'spatialforge.local.json'
+            client.write_text('{"service_config":"spatialforge-server.local.json"}', encoding='utf-8')
+            self.assertEqual(catalog.base.default_service_config(root), client)
+
+            rows = catalog.build(self.sources, None, 'python3', root / 'config/benchforge.local.json',
+                                  client)[0]['insert']
+
+            self.assertEqual(rows[-1]['config']['productionConfig'], str(client))
+            for preset in rows[:2]:
+                tools = next(row for row in preset['config']['plugins'] if row['id'] == 'spatialforge-tools')
+                self.assertEqual(tools['config']['serviceConfig'], str(client))
 
     def test_development_retains_existing_identity_and_learning_subset(self):
         import copy

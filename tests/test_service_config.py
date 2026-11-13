@@ -9,6 +9,22 @@ from benchforge_core.service_config import load_service_client_config
 
 
 class ServiceClientConfig(unittest.TestCase):
+    def test_default_projection_falls_back_to_a_legacy_local_client_only_if_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder) / 'config'
+            generated = config / 'generated'
+            generated.mkdir(parents=True)
+            legacy = config / 'spatialforge.local.json'
+            legacy.write_text(json.dumps({'service_url': 'https://legacy.invalid',
+                                          'operator_token': 'test-only', 'execution_mode': 'exploration'}),
+                              encoding='utf-8')
+            client = generated / legacy.name
+            with patch.dict(os.environ, {}, clear=True):
+                self.assertEqual(load_service_client_config(client)['service_url'], 'https://legacy.invalid')
+                client.write_text('{"port":1,"port":2}', encoding='utf-8')
+                with self.assertRaisesRegex(ValueError, 'duplicate JSON key'):
+                    load_service_client_config(client)
+
     def test_relative_policy_and_port_fallback_resolve_from_config(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

@@ -19,7 +19,7 @@ class ProfileMigrationTest(unittest.TestCase):
     def setUpClass(cls):
         cls.generated = catalog.build(catalog.base.load_sources(), None, 'python3',
                                        Path('config/benchforge.local.json'),
-                                       Path('config/spatialforge.local.json'), package_imports=True)
+                                       catalog.base.DEFAULT_SERVICE_CONFIG, package_imports=True)
 
     def test_preserves_official_rows_extra_options_and_session_identity(self):
         official = {'id': 'preset-standard', 'name': '@deepseek-ai/dsh-agent-preset',
@@ -91,6 +91,34 @@ class ProfileMigrationTest(unittest.TestCase):
                              list(catalog.base.PRESETS))
             refreshed = result[0]['insert'][0]['config']['plugins'][-1]
             self.assertEqual(refreshed['config']['toolFilter']['deny'], ['spatialforge_capture'])
+
+    def test_standalone_refresh_retargets_only_owned_service_references(self):
+        with tempfile.TemporaryDirectory(prefix='benchforge-config-refresh-') as directory:
+            root = Path(directory).resolve()
+            folder = root / 'config/generated'
+            folder.mkdir(parents=True)
+            client = folder / 'spatialforge.local.json'
+            client.write_text('{}', encoding='utf-8')
+            custom = root / 'another-deployment/service.json'
+            profile = deepcopy(self.generated)
+            rows = profile[0]['insert']
+            headless, workbench = [next(plugin for plugin in row['config']['plugins']
+                                        if plugin['id'] == 'spatialforge-tools')['config'] for row in rows[:2]]
+            headless['serviceConfig'] = 'config/spatialforge.local.json'
+            workbench['serviceConfig'] = str(custom)
+            rows[2]['config']['productionConfig'] = str(folder / 'spatialforge-server.local.json')
+            ref = folder / 'benchforge.local.yml'
+            ref.write_text(catalog.yaml.dump(profile, Dumper=catalog.base.Dumper), encoding='utf-8')
+            models = root / 'config/benchforge.local.json'
+
+            catalog.base.refresh_model_patches(ref, models)
+            result = catalog.yaml.load(ref.read_text(encoding='utf-8'), Loader=catalog.base.Loader)
+            rows = result[0]['insert']
+            headless, workbench = [next(plugin for plugin in row['config']['plugins']
+                                        if plugin['id'] == 'spatialforge-tools')['config'] for row in rows[:2]]
+            self.assertEqual(headless['serviceConfig'], str(client))
+            self.assertEqual(workbench['serviceConfig'], str(custom))
+            self.assertEqual(rows[2]['config']['productionConfig'], str(client))
 
     def test_installer_preserves_original_profile_in_backup(self):
         with tempfile.TemporaryDirectory(prefix='benchforge-presets-') as directory:

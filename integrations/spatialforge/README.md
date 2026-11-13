@@ -34,13 +34,16 @@ This client never starts a second worker, simulator, tunnel or model service;
 do not configure both workers to claim the same queue without an explicit server
 capacity policy.
 
-Copy `config/spatialforge.example.json` to a private `config/spatialforge.local.json` and put the
-service `operator_token` in it, then:
+Use `config/benchforge.local.json` to configure the service. To connect to an
+existing service, set `client.service_config` to its server JSON or use the
+client's `service_url` and `operator_token_env`. Generate the client settings,
+verify the connection and start the Web profile:
 
 ```bash
-python integrations/spatialforge/cli.py status --config config/spatialforge.local.json
-python integrations/spatialforge/cli.py status --config config/spatialforge.local.json --run-id sf_YOUR_RUN
-python benchforge.py setup --spatialforge-config config/spatialforge.local.json
+python spatialforge_app.py sync
+python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json
+python integrations/spatialforge/cli.py status --config config/generated/spatialforge.local.json --run-id sf_YOUR_RUN
+python benchforge.py setup
 python benchforge.py start
 ```
 

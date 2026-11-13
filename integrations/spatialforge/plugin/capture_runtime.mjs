@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
+import {launchEnvironmentOf} from '@deepseek-ai/dsh-launch-environment';
+import {loadServiceConfig} from '../shared/config.mjs';
 const {compactCaptureObservation,captureRunId}=await import(new URL('./capture_watch.mjs'+new URL(import.meta.url).search,import.meta.url));
 
 // Retained tools can have old implementations and lost registration disposers.
@@ -146,8 +148,13 @@ export function createLegacyCaptureStep({watch, recover, read, associate, create
 
 export async function attachCaptureRuntime(ctx, config) {
   if (!config.productionConfig) return;
-  const cfg = JSON.parse(await fs.readFile(config.productionConfig, 'utf8'));
-  if (!cfg.operator_token) return; // Environment-only deployments keep their normal scoped adapter.
+  const environment = launchEnvironmentOf(ctx);
+  const {config: cfg, configPath, serviceUrl, operatorToken} = await loadServiceConfig(config.productionConfig, {
+    getEnvironmentValue: (name) => environment.getFrom(name, ['process','project-env','user-env']),
+    requireOperatorToken: false,
+    requireScenePolicy: false,
+  });
+  if (!operatorToken) return; // The scoped plugin still handles its own credentials.
   const revision = '?revision=' + encodeURIComponent(config.uiRevision);
   const {createObservationBridge} = await import('./observation_bridge.mjs' + revision);
   const {createCaptureRetry} = await import('./capture_retry.mjs' + revision);
@@ -156,15 +163,15 @@ export async function attachCaptureRuntime(ctx, config) {
   const controller = new AbortController();
   ctx.effect(()=>()=>controller.abort(),'benchforge capture runtime cancellation');
   const api = async (route, args, signal) => {
-    const response = await fetch((cfg.service_url || 'http://127.0.0.1:' + (cfg.port || 3841)) + route,
-      {method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+cfg.operator_token},body:JSON.stringify(args),signal});
+    const response = await fetch(serviceUrl + route,
+      {method:'POST', headers:{'Content-Type':'application/json',Authorization:'Bearer '+operatorToken},body:JSON.stringify(args),signal});
     const value = JSON.parse(await response.text(), (_key,item) => Object.is(item,-0) ? 0 : item);
     if (!response.ok) throw Object.assign(new Error('Native capture service rejected'),{status:response.status,response:value});
     return value;
   };
   const read = createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.productionPython});
-  const recover = createCaptureRetry({api,serviceConfig:config.productionConfig,policyPython:config.productionPython});
-  const roots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(config.productionConfig)];
+  const recover = createCaptureRetry({api,serviceConfig:configPath,policyPython:config.productionPython});
+  const roots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(configPath)];
   const associations = createCaptureAssociations({ctx, roots});
   const watch = createCaptureWatcher({artifacts:cfg.artifacts,read,signal:controller.signal,
     notify:async(agent,record)=>deliverCaptureNotice(agent,record,createUserMessage)});
