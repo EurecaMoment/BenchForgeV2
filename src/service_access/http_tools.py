@@ -20,7 +20,7 @@ from PIL import Image
 from PIL import ImageOps
 from pycocotools import mask as coco_mask
 
-from service_access.artifacts import write_json
+from storage.files import write_json
 from service_access.request_context import check_cancelled
 
 

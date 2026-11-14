@@ -23,18 +23,21 @@ datasets = ["pyarrow>=15"]
 training = ["torch>=2.4", "transformers>=4.49", "tokenizers>=0.21", "peft>=0.14", "Pillow>=10", "numpy>=1.24"]
 
 [project.scripts]
-benchforge = "benchmark_workflows.server.cli:main"
+benchforge = "server.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["benchmark_workflows*", "scene_production*", "spatial_learning*", "service_access*"]
+include = ["capabilities*", "pipelines*", "server*", "storage*", "service_access*", "ui*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-benchmark_workflows = ["resources/*.json", "resources/pipelines/*.json"]
-spatial_learning = ["resources/*.json", "client/*.html", "client/*.js", "client/*.css"]
-scene_production = ["resources/*.json", "resources/material_previews/*.jpg"]
-"scene_production.server.isaac_sim.grpc" = ["isaac_sim.proto"]
+"capabilities.task_catalog" = ["resources/*.json"]
+"capabilities.benchmark_design" = ["resources/*.json"]
+"capabilities.scene_authoring" = ["resources/*.json", "resources/material_previews/*.jpg"]
+"pipelines.scene_production" = ["recipes/*.json"]
+"pipelines.benchmark" = ["recipes/*.json"]
+"ui" = ["training_monitor/*.html", "training_monitor/*.js", "training_monitor/*.css"]
+"capabilities.isaac_sim.grpc" = ["isaac_sim.proto"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]

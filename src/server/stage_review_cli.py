@@ -1,0 +1,16 @@
+"""Authenticated UI adapter; the server supplies workspace and session scope."""
+import argparse
+import json
+
+from storage.stage_reviews import review
+
+parser=argparse.ArgumentParser()
+parser.add_argument('--workspace',required=True)
+parser.add_argument('--session',required=True)
+parser.add_argument('--request',default='{}')
+args=parser.parse_args()
+body=json.loads(args.request)
+if body.get('action','status') not in ('status','continue','pause','instruction'):
+    raise ValueError('This action is not available from the workbench')
+print(json.dumps(review(args.workspace,args.session,body.get('action','status'),
+    review_id=body.get('review_id'),instruction=body.get('instruction','')),ensure_ascii=False))

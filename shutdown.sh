@@ -98,7 +98,7 @@ stop_process "DSH Web" "$DSH_PID_FILE" "$ROOT/benchforge.py start"
 echo "[2/3] 停止 BenchForge 服务"
 if [ -f "$SERVICE_PID_FILE" ] || [ ! -f "$LEGACY_PID_FILE" ]; then
   stop_process "BenchForge" "$SERVICE_PID_FILE" "$ROOT/benchforge_app.py serve" \
-    "scene_production.service --config $SERVER_CONFIG"
+    "server.http_api --config $SERVER_CONFIG"
 fi
 if [ -f "$LEGACY_PID_FILE" ]; then
   stop_process "BenchForge" "$LEGACY_PID_FILE" "$ROOT/spatialforge_app.py serve" \

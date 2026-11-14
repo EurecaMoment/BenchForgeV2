@@ -9,7 +9,7 @@ import yaml
 
 DSH_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = DSH_ROOT.parent
-if (SOURCE / 'benchmark_workflows/__init__.py').is_file():
+if (SOURCE / 'service_access/__init__.py').is_file():
     sys.path.insert(0, str(SOURCE))
 from service_access import configuration as provider_config
 

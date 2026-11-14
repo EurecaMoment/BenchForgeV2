@@ -199,7 +199,7 @@
 
 
             If a retained older session tool schema lacks request_path, call the configured
-            production Python with SDK src/benchmark_workflows/server/assessment_planning/plan_request_cli.py
+            production Python with SDK src/server/plan_request_cli.py
             --workspace <workspace> --session <current native session> --request <saved
             request JSON>. This preserves plan validation and session provenance.
             Do not retranscribe the document or reopen a stage window for a repeated
@@ -257,7 +257,7 @@
             raw JSON as the main content. Keep identifiers in technical details and
             preserve object markers needed to answer questions. Reference images must
             be real saved captures, clearly distinguished from unexecuted scene designs.
-            Follow src/benchmark_workflows/client/DESIGN.md.'
+            Follow src/ui/workbench/DESIGN.md.'
           suffix: Your working directory is {{cwd}}. You are using {{model}}.
       - id: agent-instructions
         name: '@deepseek-ai/dsh-agent-instructions'

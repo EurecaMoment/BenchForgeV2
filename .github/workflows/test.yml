@@ -28,4 +28,4 @@ jobs:
         run: python -m pip install -e ".[dsh,production,research]"
       - run: benchforge --help
       - if: matrix.python == '3.12'
-        run: python -m scene_production.server.http_api --help
+        run: python -m server.http_api --help

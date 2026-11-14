@@ -27,13 +27,13 @@ var benchforgeClient = (() => {
   };
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // src/dsh/client/entry.js
+  // src/ui/workbench/entry.js
   var entry_exports = {};
   __export(entry_exports, {
     default: () => createPlugin
   });
 
-  // src/benchmark_workflows/client/i18n.js
+  // src/ui/workbench/i18n.js
   var dictionaries = {
     zh: {
       toggleWorkbench: "\u5C55\u5F00\uFF0F\u6536\u8D77\u5DE5\u4F5C\u53F0",
@@ -941,7 +941,7 @@ var benchforgeClient = (() => {
     }
   };
 
-  // src/benchmark_workflows/client/styles.js
+  // src/ui/workbench/styles.js
   var styles = `
 .bfw-review{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.6rem .75rem;margin-block:.5rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.6rem;font-size:.875rem}.bfw-review-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-inline-start:auto}.bfw-review p{flex-basis:100%;margin:.2rem 0;white-space:pre-wrap}.bfw-review [data-review-countdown]{font-variant-numeric:tabular-nums}.bfw-review .bfw-button{padding:.3rem .5rem;font-size:.8125rem}
 .bfw-root{height:100%;overflow:auto;box-sizing:border-box;container-type:inline-size;background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:.875rem/1.55 system-ui,sans-serif}
@@ -984,7 +984,7 @@ var benchforgeClient = (() => {
 .bfw-question-section{margin-block:.75rem;font-size:.875rem;line-height:1.6}.bfw-question-section h3{margin:0 0 .25rem;font-size:.75rem;color:var(--dsw-alias-label-secondary);font-weight:500}.bfw-question-section ul{margin:0;padding-inline-start:1.2rem}.bfw-question-section[data-question-section=options] ul{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;padding:0}.bfw-question-section[data-question-section=options] li{padding:.2rem .65rem;border:1px solid var(--dsw-alias-border-l3);border-radius:.4rem}.bfw-original-image{margin-inline-start:.75rem;font-size:.75rem;color:inherit}.bfw-question-response{font-size:.75rem;color:var(--dsw-alias-label-secondary);overflow-wrap:anywhere}
 `;
 
-  // src/benchmark_workflows/client/primitives.js
+  // src/ui/workbench/primitives.js
   function createPrimitives({ React, PLAN_FIELDS: PLAN_FIELDS2, PLAN_SECTIONS: PLAN_SECTIONS2 }) {
     const h = React.createElement;
     function status(value, t) {
@@ -1164,7 +1164,7 @@ var benchforgeClient = (() => {
     };
   }
 
-  // src/benchmark_workflows/client/state.js
+  // src/ui/workbench/state.js
   function createWorkbenchState({ STAGES: STAGES2, sceneName }) {
     function initialState(sessionId) {
       const fallback = {
@@ -1534,7 +1534,7 @@ var benchforgeClient = (() => {
     };
   }
 
-  // src/benchmark_workflows/client/api.js
+  // src/ui/workbench/api.js
   function createWorkbenchRequest(remote) {
     return async (params, { body, signal } = {}) => {
       const query = Object.fromEntries(new URLSearchParams(params));
@@ -1604,7 +1604,7 @@ var benchforgeClient = (() => {
     return { useRecord, usePanelVisible };
   }
 
-  // src/benchmark_workflows/client/components/progress.js
+  // src/ui/workbench/components/progress.js
   function createProgressComponents({ React, helpers }) {
     const h = React.createElement;
     const {
@@ -2005,7 +2005,7 @@ var benchforgeClient = (() => {
     return { TemplateCatalog, RunDetails, executionStage, reportedProgress, progressAmount, ParallelProgress, StageProgress };
   }
 
-  // src/scene_production/client/components/gallery.js
+  // src/ui/workbench/components/gallery.js
   function createGalleryComponents({ React, helpers }) {
     const h = React.createElement;
     const {
@@ -2472,7 +2472,7 @@ var benchforgeClient = (() => {
     return { PublicObservation, QuestionDialog, firstImage, sceneProjects, SceneGallery, SceneVideo, SceneLibrary, PreviewDialog, ArtifactGallery };
   }
 
-  // src/benchmark_workflows/client/components/products.js
+  // src/ui/workbench/components/products.js
   function createProductComponents({ React, helpers, components }) {
     const h = React.createElement;
     const {
@@ -2997,7 +2997,7 @@ var benchforgeClient = (() => {
     return { StageReviewPanel, DraftReview, DemandForm, SendDialog, PlanProduct, ReportProduct, Quality, DeliveryReceipt };
   }
 
-  // src/benchmark_workflows/client/components/workbench.js
+  // src/ui/workbench/components/workbench.js
   function createWorkbenchComponent({ React, helpers, components }) {
     const h = React.createElement;
     const {
@@ -3855,7 +3855,7 @@ var benchforgeClient = (() => {
     return { Workbench };
   }
 
-  // src/benchmark_workflows/contracts/remote/lib/typert.remote-client.js
+  // src/dsh/remote/lib/typert.remote-client.js
   var import_zod = __require("zod");
 
   // src/dsh/node_modules/@deepseek-ai/dsh-typert-protocol/lib/types/remote-info.js
@@ -4005,7 +4005,7 @@ var benchforgeClient = (() => {
     }
   };
 
-  // src/benchmark_workflows/contracts/remote/lib/typert.remote-client.js
+  // src/dsh/remote/lib/typert.remote-client.js
   var JsonValueRemoteCodec$schema$value;
   var JsonValueRemoteCodec$schema = () => JsonValueRemoteCodec$schema$value ??= import_zod.z.union([import_zod.z.literal(null), import_zod.z.string(), import_zod.z.number(), import_zod.z.literal(false), import_zod.z.literal(true), import_zod.z.array(import_zod.z.lazy(() => JsonValueRemoteCodec$schema())), import_zod.z.record(import_zod.z.string(), import_zod.z.lazy(() => JsonValueRemoteCodec$schema()))]);
   var JsonValueRemoteCodec$schema2$value;
@@ -4121,7 +4121,7 @@ var benchforgeClient = (() => {
   }, import_zod.z);
   var typert_remote_client_default = TYPERT_REMOTE;
 
-  // src/dsh/client/entry.js
+  // src/ui/workbench/entry.js
   var PRESET_ID = "benchforge";
   var WORKBENCH_TAB = "@eurecamoment/benchforge-ui/workbench";
   var WORKBENCH_KIND = "benchforge-workbench";

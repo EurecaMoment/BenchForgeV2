@@ -1,6 +1,6 @@
 import Schema from '@deepseek-ai/schemastery';
-import {createExecutionTuning} from '../../benchmark_workflows/dsh/sessions/execution_control.mjs';
-import {createSynthesisSessions} from '../../benchmark_workflows/dsh/sessions/synthesis.mjs';
+import {createExecutionTuning} from '../workbench/sessions/execution_control.mjs';
+import {createSynthesisSessions} from '../workbench/sessions/synthesis.mjs';
 
 export const name = 'benchforge-session-operations';
 export const Config = Schema.object({

@@ -1,51 +1,39 @@
 # BenchForge
 
-BenchForge develops a modular harness for spatial benchmark production and model evaluation. It supports two product lines: the framework that plans and runs evidence-backed workflows, and services that deliver evaluation or training data to RSI models. DSH is supplied by the pinned `deepseek-harness4BenchForge` submodule.
+BenchForge composes reusable capabilities into three built-in pipelines for scene production, benchmark development, and spatial learning. The command line and HTTP service expose both workflows and individual capabilities. The DSH plugin adds one BenchForge preset with an expandable workbench. DSH is supplied by the pinned `deepseek-harness4BenchForge` submodule.
 
 ```mermaid
 flowchart TB
-  subgraph framework[Harness framework]
-    UX[DSH workbench and review UI]
-    Plan[Planning, schemas and pipeline catalog]
-    Orchestrate[Persistent runs, stage gates and recovery]
-    Adapters[Provider and simulator adapters]
-    Evidence[Evidence lineage and delivery gates]
-    UX --> Plan --> Orchestrate --> Adapters
-    Adapters --> Evidence
+  UI[Workbench UI] --> Remote[DSH Remote]
+  Remote --> Entry[HTTP and CLI entry points]
+  Tools[DSH tool bindings] --> Entry
+  subgraph Pipelines[Built-in pipelines]
+    Scene[Scene production]
+    Bench[Benchmark]
+    Learning[Spatial learning]
   end
-  subgraph providers[External providers]
-    LLM[Multimodal models]
-    Sim[Isaac Sim and other simulators]
-    Vision[Vision and geometry models]
-  end
-  Adapters --> LLM
-  Adapters --> Sim
-  Adapters --> Vision
-  subgraph services[Evaluation and training services]
-    Capture[Scene and evidence capture]
-    Annotate[Evidence annotation]
-    Dataset[Question and dataset production]
-    Eval[Model evaluation]
-    Train[Training data and experiment handoff]
-  end
-  Evidence --> Capture --> Annotate --> Dataset
-  Dataset --> Eval
-  Dataset --> Train
-  Eval --> Report[RSI model results]
-  Train --> RSI[RSI model training]
+  Entry --> Pipelines
+  Entry --> Capabilities[Reusable capabilities]
+  Pipelines --> Capabilities
+  Capabilities --> Storage[Workspace and job storage]
+  Pipelines --> Storage
+  Capabilities --> Providers[Configured provider connections]
 ```
 
 ## 源码目录
 
 | 目录 | 职责 |
 | --- | --- |
-| [`src/benchmark_workflows/`](src/benchmark_workflows/) | 评测方案、流水线编排、证据采集、数据集编写与评分。 |
-| [`src/scene_production/`](src/scene_production/) | 场景验收、资产生成、生产队列、采集证据和 Isaac 执行。 |
-| [`src/spatial_learning/`](src/spatial_learning/) | 空间能力图、训练任务生成、课程调度和训练实验。 |
-| [`src/service_access/`](src/service_access/) | 配置、HTTP/OpenAI 客户端、请求上下文与工作区作业记录。 |
-| [`src/dsh/`](src/dsh/) | 单一预设、DSH Host 装配、原生工作台开关与构建。 |
+| [`src/capabilities/`](src/capabilities/) | 独立的场景、资产、采集、数据集、任务目录、评分与训练执行能力。 |
+| [`src/pipelines/`](src/pipelines/) | 三个内置流程的阶段顺序、配方、验收和实验策略。流程调用独立能力。 |
+| [`src/server/`](src/server/) | HTTP 和 CLI 入口，装配流程、能力和作业存储。 |
+| [`src/storage/`](src/storage/) | 文件、工作区作业、场景队列、阶段审查和训练记录。 |
+| [`src/service_access/`](src/service_access/) | 服务配置、HTTP/OpenAI 客户端、运行上下文及进程控制。 |
+| [`src/dsh/`](src/dsh/) | DSH 的单一预设、工具注册、Host 投影与 Typert Remote 契约。 |
+| [`src/ui/`](src/ui/) | 可展开的评测工作台和独立的训练监控页面。 |
 
-三个业务模块均按 `contracts / server / dsh / client / resources` 组织。
+能力、存储和服务访问只依赖底层模块。`pipelines/`、`server/`、`ui/` 和 `dsh/` 由上层装配。
+工作台通过 DSH Remote 读取和提交数据，训练监控通过自身的 HTTP 入口访问训练记录。
 [完整源码目录与依赖边界](src/README.md) 展示所有层级。
 
 `config/` 提供部署配置，`third_party/` 提供固定版本的外部模型和仿真源码。
@@ -58,7 +46,6 @@ flowchart TB
 
 本分支安装一个自定义 **BenchForge** 预设（`benchforge`）。
 “评测工作台”按钮展开、收起右侧工作台；切换显示保留同一会话、输入草稿和执行状态。
-安装时将原来的两个配置声明合并成一个。
 
 基础安装不需要 GPU、模型密钥或 Isaac。模型问答、图像生成和仿真采集需要另外配置对应服务。
 
@@ -371,7 +358,7 @@ FLUX 的 `num_inference_steps` 或 DA3 的 `process_res`。
 
 Isaac 默认用 `mode: "grpc"`。填 `grpc.host`、`grpc.port` 和每次 RPC 的
 `grpc.timeout_seconds`，用 `capture_timeout_seconds` 限制采集时长。
-该端点需实现 [IsaacSim 采集契约](src/scene_production/server/isaac_sim/grpc/isaac_sim.proto)，
+该端点需实现 [IsaacSim 采集契约](src/capabilities/isaac_sim/grpc/isaac_sim.proto)，
 包括资产上传、作业状态和工件回传。仅提供 NVIDIA 原生 ControlPlane RPC 的端点需要在
 Isaac 服务侧提供这套采集契约。每个生成资产通过 `<asset_id>.zip` 上传，采集服务按
 作业 ID 解包并把资产挂到 SceneProgram 的对应对象。
@@ -387,7 +374,7 @@ Isaac 进程，并通过 `worker.runs` 里的请求和回执接管本机作业�
 重启 BenchForge 服务以加载变更，重启 worker 以切换 Isaac 端点或模式。
 
 在已安装后端包的 Python 环境中运行
-`python -m scene_production.isaac.mock_server --port 50051`，可用本机
+`python -m capabilities.isaac_sim.grpc.mock_server --port 50051`，可用本机
 `127.0.0.1:50051` 验证传输。模拟结果带 `mock` 标记。
 
 已有配置请按示例更新为 `config_version: 4`，把各服务端点填到对应提供方。保留现有
@@ -430,7 +417,7 @@ npm ci --prefix src/dsh
 启动时会更新本实例预设里的旧插件源码路径。独立维护的 DSH profile 使用
 [`src/dsh/presets/hot_update.py`](src/dsh/presets/hot_update.py) 更新。
 如果外置 Isaac dispatcher 引用了旧仓库绝对路径，按
-[dispatcher 迁移说明](src/scene_production/deploy/dispatcher/DISPATCHER_OVERLAY.md) 重新应用 overlay。
+[dispatcher 迁移说明](src/capabilities/isaac_sim/deploy/dispatcher/DISPATCHER_OVERLAY.md) 重新应用 overlay。
 
 ### 10. 常见失败及处理
 

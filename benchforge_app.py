@@ -12,7 +12,7 @@ import venv
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / 'src'
-SCENE_PRODUCTION = SOURCE / 'scene_production'
+ISAAC_SIM = SOURCE / 'capabilities/isaac_sim'
 # The launcher can resolve configuration before installing the service environment.
 sys.path.insert(0, str(SOURCE))
 sys.path.insert(0, str(ROOT))
@@ -121,7 +121,7 @@ def _database_command(project, stop):
         # Compose expands its required service environment even for down. The
         # running containers and volumes do not use this interpolation value.
         environment.setdefault('POSTGRES_PASSWORD', 'unused-for-container-stop')
-    command = ['docker', 'compose', '-p', name, '-f', str(SCENE_PRODUCTION / 'deploy/compose.yml')]
+    command = ['docker', 'compose', '-p', name, '-f', str(ISAAC_SIM / 'deploy/compose.yml')]
     command += ['down'] if stop else ['up', '-d', '--wait']
     subprocess.run(command, env=environment, check=True)
 
@@ -197,7 +197,7 @@ def main():
         if environment.get('PYTHONPATH'):
             paths.append(environment['PYTHONPATH'])
         environment['PYTHONPATH'] = os.pathsep.join(paths)
-        subprocess.run([str(backend_python()), '-m', 'scene_production.server.http_api', '--config', str(SERVER)],
+        subprocess.run([str(backend_python()), '-m', 'server.http_api', '--config', str(SERVER)],
                        env=environment, check=True)
     elif args.command.startswith('dsh-'):
         command = [sys.executable, str(ROOT / 'benchforge.py'), args.command.removeprefix('dsh-')]
@@ -216,7 +216,7 @@ def main():
         profile = args.config or GENERATED / 'worker.local.json'
         if args.config is None:
             _ensure_runtime_configuration()
-        command = [str(backend_python()), '-m', 'scene_production.server.isaac_sim.processes.worker',
+        command = [str(backend_python()), '-m', 'capabilities.isaac_sim.processes.worker',
                    '--config', str(profile.resolve())]
         if args.once:
             command.append('--once')

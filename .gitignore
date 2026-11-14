@@ -6,7 +6,7 @@ __pycache__/
 venv/
 node_modules/
 /src/dsh/benchforge/
-/src/benchmark_workflows/contracts/remote/lib/
+/src/dsh/remote/lib/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

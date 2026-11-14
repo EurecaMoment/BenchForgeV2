@@ -9,13 +9,17 @@ start with the workbench closed.
 | --- | --- |
 | `presets/` | Compose the official standard preset, generate and install the profile |
 | `host/` | Shared session scope, native session operations, handoffs and Python tool runner |
-| `client/` | Browser manifest, native slots, panel toggle and feature view composition |
+| `client/` | Browser manifest and generated bundle; editable views live in `../ui/` |
+| `tools/` | Register reusable operations and built-in pipeline entry points |
+| `remote/` | Host/Client contract compiled by the official Typert generator |
+| `workbench/` | Host projections and Remote handlers for the single workbench |
 | `build.mjs` | Generate Typert Remote artifacts and bundle Host/browser entries |
 | `dist/` | Generated package entries and resources; excluded from version control |
 
-Feature-specific tools, contracts, services and views belong to
-[scene production](../scene_production/), [benchmark workflows](../benchmark_workflows/)
-and [spatial learning](../spatial_learning/). See the [complete source tree](../README.md).
+Reusable implementations belong to [capabilities](../capabilities/). The three
+built-in compositions belong to [pipelines](../pipelines/); they select steps and
+acceptance policies without owning private copies of the underlying services.
+Browser views belong to [ui](../ui/). See the [complete source tree](../README.md).
 The browser imports Remote contracts and browser components. Host handlers own authorized
 workspace access, service calls and credentials.
 
@@ -62,17 +66,17 @@ preserving user plugins. It does not rewrite saved conversation histories.
 
 - Scene tools call the configured HTTP service. FLUX, SAM3, DA3 and TRELLIS inference
   servers and weights belong to third-party deployments.
-- Benchmark tools use `benchmark_workflows.server.cli`; spatial learning tools use
-  `spatial_learning.server.cli`. Both record operations in the selected workspace.
+- Benchmark tools use `server.cli`; spatial learning tools use
+  `server.spatial_cli`. Both record operations in the selected workspace.
 - Files, shell execution, tasks, subagents, routing and conversation state use native
   DSH services. Client slots register the panel and switch; the conversation root remains native.
 - Capture associations record current scene calls. Current scene tools handle background
   waiting without retired-Agent interception.
 - Isaac gRPC, the local resident, process adoption and explicit mock transport remain
-  under `scene_production/server/isaac_sim/`.
+  under `capabilities/isaac_sim/`.
 - Scene videos are saved under the configured artifacts directory's `scene-previews/`;
   browser playback reads the saved file.
 
 The workbench displays saved plans, captures, annotations, questions and reports.
 Stage reviews and production decisions belong to the owning services. See
-[client behavior](../benchmark_workflows/client/DESIGN.md).
+[client behavior](../ui/workbench/DESIGN.md).

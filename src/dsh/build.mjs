@@ -9,7 +9,7 @@ import {WorkspaceTypertGenerator, writePackageArtifacts} from '@deepseek-ai/dsh-
 const dsh = path.dirname(fileURLToPath(import.meta.url));
 const directory = path.join(dsh, 'client');
 const repository = path.resolve(dsh, '../..');
-const contract = path.join(dsh, '../benchmark_workflows/contracts/remote');
+const contract = path.join(dsh, './remote');
 const require = createRequire(path.join(dsh, 'package.json'));
 const {build} = require('esbuild');
 
@@ -63,7 +63,7 @@ execFileSync(process.execPath, [require.resolve('typescript/bin/tsc'), '-p', pat
 const clientName = JSON.stringify(JSON.parse(await readFile(path.join(directory, 'package.json'), 'utf8')).name);
 await build({
   absWorkingDir: repository,
-  entryPoints: [path.join(directory, 'entry.js')],
+  entryPoints: [path.join(dsh, '../ui/workbench/entry.js')],
   outfile: path.join(directory, 'client.js'),
   bundle: true,
   external: ['zod'],
@@ -86,11 +86,11 @@ const source = path.resolve(dsh, '..');
 await build({
   absWorkingDir: source,
   entryPoints: {
-    workbench: 'benchmark_workflows/dsh/host.mjs',
-    'benchmark-tools': 'benchmark_workflows/dsh/tools.mjs',
-    'spatial-tools': 'spatial_learning/dsh/tools.mjs',
-    'scene-tools': 'scene_production/dsh/tools.mjs',
-    'capture-runtime': 'scene_production/dsh/capture/capture_runtime.mjs',
+    workbench: 'dsh/workbench/host.mjs',
+    'benchmark-tools': 'dsh/tools/benchmark/tools.mjs',
+    'spatial-tools': 'dsh/tools/spatial/tools.mjs',
+    'scene-tools': 'dsh/tools/scene/tools.mjs',
+    'capture-runtime': 'dsh/tools/scene/capture/capture_runtime.mjs',
     'session-operations': 'dsh/host/session_operations.mjs',
     'subagent-policy': 'dsh/presets/subagent_policy.mjs',
   },

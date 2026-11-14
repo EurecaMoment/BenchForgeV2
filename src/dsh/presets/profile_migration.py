@@ -2,8 +2,8 @@
 from copy import deepcopy
 
 if __package__:
-    from . import build_preset as base
-    from . import preset_definition as definition
+    from dsh.presets import build_preset as base
+    from dsh.presets import preset_definition as definition
 else:
     import build_preset as base
     import preset_definition as definition
