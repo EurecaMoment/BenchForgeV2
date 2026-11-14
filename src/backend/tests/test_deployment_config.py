@@ -5,22 +5,10 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from benchforge_backend.runtime_config import RuntimeConfig, load_service_config, load_worker_config
+from benchforge_backend.runtime_config import load_service_config, load_worker_config
 
 
 class DeploymentConfig(unittest.TestCase):
-    def test_only_requested_model_needs_configuration(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder).resolve()
-            path = root / 'models.json'
-            path.write_text(json.dumps({'models': {'sam3': {'python': 'venv/bin/python', 'path': 'weights'}},
-                                        'sources': {'sam3': 'source'}}))
-            config = RuntimeConfig(path)
-            self.assertEqual(config.model('sam3')['python'], str(root / 'venv/bin/python'))
-            self.assertEqual(config.data['sources']['sam3'], str(root / 'source'))
-            with self.assertRaisesRegex(ValueError, 'Configure models.flux'):
-                config.model('flux')
-
     def test_private_config_credentials_and_derived_environment(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder).resolve()
@@ -28,13 +16,12 @@ class DeploymentConfig(unittest.TestCase):
             policy = root / 'policy.json'
             policy.write_text(json.dumps({'enabled': True, 'enforce_realism': True}))
             path.write_text(json.dumps({'operator_token':'operator','worker_token':'worker',
-                                        'artifacts':'artifacts','harness':'harness','models_config':'models.json',
-                                        'scene_policy_path':'policy.json', 'model_id':'my-vision-model','gpu_candidates':'2'}))
+                                        'artifacts':'artifacts','harness':'harness',
+                                        'scene_policy_path':'policy.json', 'model_id':'my-vision-model'}))
             with patch.dict(os.environ, {}, clear=True):
                 config = load_service_config(path)
                 self.assertEqual(config['operator_token'], 'operator')
                 self.assertEqual(os.environ['BENCHFORGE_MODEL_ID'], 'my-vision-model')
-                self.assertEqual(os.environ['BENCHFORGE_GPU_CANDIDATES'], '2')
                 self.assertEqual(config['artifacts'], str(root / 'artifacts'))
 
     def test_config_directory_keeps_workspace_scene_policy_visible(self):
@@ -99,10 +86,8 @@ class DeploymentConfig(unittest.TestCase):
             server = root / 'benchforge-server.local.json'
             server.write_text(json.dumps({'port': 3941, 'worker_token': 'fixture-worker'}))
             worker = root / 'worker.local.json'
-            worker.write_text(json.dumps({'service_config': server.name, 'runs': 'runs',
-                                          'isaac_root': '${ISAAC_ROOT}', 'isaac_asset_root': 'assets'}))
-            with patch.dict(os.environ, {'ISAAC_ROOT': 'isaac', 'BENCHFORGE_SERVICE_URL': ''}, clear=True):
-                config = load_worker_config(worker)
+            worker.write_text(json.dumps({'service_config': server.name, 'runs': 'runs'}))
+            config = load_worker_config(worker)
         self.assertEqual(config['url'], 'http://127.0.0.1:3941')
         self.assertEqual(config['worker_token'], 'fixture-worker')
         self.assertEqual(config['ssh_forward'], '3941:127.0.0.1:3941')

@@ -1,10 +1,8 @@
 """Stage composition with real artifact files and mocked inference, no GPU."""
 import json
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event
-from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -22,10 +20,6 @@ class GenerationStage(unittest.TestCase):
             calls = []
 
             class Tools(GenerationTools):
-                @property
-                def config(self):
-                    raise AssertionError('Remote model requests must not load local model configuration')
-
                 def execute(self, name, request, work, stop):
                     calls.append(request)
                     output = Path(request['output_dir'])
@@ -46,10 +40,10 @@ class GenerationStage(unittest.TestCase):
             store = Store()
             store.root = root
             calibration = [[1200, 0, 512], [0, 1200, 512], [0, 0, 1]]
-            task = {'id': 'depth.scene0', 'unit': {'revision': 0, 'intent': {'tool': 'depth_anything',
+            task = {'id': 'depth.scene0', 'unit': {'revision': 0, 'intent': {'tool': 'depth',
                     'parameters': {'source_image': str(image), 'intrinsics': calibration,
-                                   'intrinsics_source': 'simulator calibration'}}}}
-            with patch.object(stage, 'GenerationTools', Tools), patch.dict(os.environ, BENCHFORGE_INFERENCE_URL='http://external-models'):
+                                   'extrinsics': [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0]]}}}}
+            with patch.object(stage, 'GenerationTools', Tools):
                 result = stage.execute_generation_stage(store, task, Event())
             self.assertEqual(calls[0]['intrinsics'], calibration)
             self.assertNotIn('model_path', calls[0])
@@ -63,11 +57,6 @@ class GenerationStage(unittest.TestCase):
             calls, registrations, updates = [], [], []
 
             class Tools(GenerationTools):
-                @property
-                def config(self):
-                    return SimpleNamespace(model=lambda name: {'path': str(root / name)},
-                                           data={'sources': {'sam3d': str(root / 'sam3d')}})
-
                 def execute(self, name, request, work, stop):
                     calls.append((name, request))
                     if name == 'diffusion':
@@ -86,7 +75,7 @@ class GenerationStage(unittest.TestCase):
                         filename = item['object_id'] + '.glb'
                         (output / filename).write_bytes(b'raw-worker-mesh')
                         assets.append({'object_id': item['object_id'], 'asset': filename,
-                                       'rotation_wxyz': [1, 0, 0, 0], 'translation': [1, 2, 3], 'scale': [2]})
+                                       'source_frame': 'y_up', 'provider_job_id': filename})
                     return {'status': 'ok', 'assets': assets}
 
                 def _publish(self, spec, work, source, frame, provenance, status, image=None, mask=None):
@@ -135,12 +124,12 @@ class GenerationStage(unittest.TestCase):
                 self.assertEqual(len(segmentation['segments']), 2)
                 self.assertEqual(sum(row['kind'] == 'mask' for row in segmentation['files']), 2)
                 masks = [segment['source_path'] for segment in segmentation['segments']]
-                meshes = run('sam3d', {'source_image': image['source_path'], 'objects': [
+                meshes = run('trellis', {'source_image': image['source_path'], 'objects': [
                     {'object_id': label, 'source_mask': mask, 'seed': 5 + index}
                     for index, (label, mask) in enumerate(zip(['cup', 'bowl'], masks))]})
                 self.assertEqual(registrations, [])
                 self.assertEqual(len(meshes['assets']), 2)
-                self.assertEqual(meshes['assets'][0]['translation'], [1, 2, 3])
+                self.assertEqual(meshes['assets'][0]['source_frame'], 'y_up')
                 self.assertEqual([item['mask'] for item in calls[-1][1]['objects']], masks)
                 self.assertFalse(any('asset_id' in row for row in meshes['assets']))
                 source = meshes['assets'][0]
@@ -149,9 +138,9 @@ class GenerationStage(unittest.TestCase):
                 imported = run('mesh_import', parameters)
                 replay = run('mesh_import', parameters)
                 self.assertEqual(len(registrations), 1)
-                self.assertEqual(registrations[0]['frame'], 'sam3d_camera')
+                self.assertEqual(registrations[0]['frame'], 'y_up')
                 self.assertEqual(imported['assets'][0]['asset_id'], replay['assets'][0]['asset_id'])
-                self.assertEqual([name for name, _ in calls], ['diffusion', 'sam3', 'sam3d'])
+                self.assertEqual([name for name, _ in calls], ['diffusion', 'sam3', 'trellis'])
                 self.assertTrue(all(value['state'] == 'SUCCEEDED' and value['unit']['phase'] == 'complete'
                                     for _, value in updates))
 

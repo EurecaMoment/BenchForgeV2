@@ -33,9 +33,6 @@ write = settings.write
 
 def build_environment(*, database=True):
     environment = settings.read_env(CONFIG / 'dsh.env', shell=True)
-    saved = settings.read_object(STATE / 'credentials.local.json', optional=True)
-    if saved.get('inference_token'):
-        environment.setdefault(settings.INFERENCE_TOKEN_ENV, saved['inference_token'])
     projected = settings.read_env(GENERATED / 'database.env') if database else {}
     environment = {**environment, **projected, **os.environ}
     if projected.get(settings.MANAGED_MARKER) == 'true':
@@ -47,13 +44,11 @@ def build_environment(*, database=True):
 
 
 def backend_python():
-    current = STATE / PYTHON_PATH
-    legacy = ROOT / settings.LEGACY_STATE / PYTHON_PATH
-    return legacy if not current.is_file() and legacy.is_file() else current
+    return STATE / PYTHON_PATH
 
 
 def _configuration():
-    return settings.read_configuration(CONFIG, GENERATED, SERVER)[0]
+    return settings.read_configuration(CONFIG)[0]
 
 
 def configured_web_port():
@@ -62,7 +57,7 @@ def configured_web_port():
                          'web.port')
 
 def configured_default_workspace():
-    value, _, _, environment = settings.read_configuration(CONFIG, GENERATED, SERVER)
+    value, _, environment = settings.read_configuration(CONFIG)
     workspace = value['web']['default_workspace']
     if workspace is None:
         return None
@@ -219,12 +214,10 @@ def main():
                 command.append('--no-open')
         subprocess.run(command, check=True)
     elif args.command == 'worker':
-        if os.name != 'nt':
-            p.error('The Isaac dispatcher runs on the Windows desktop only')
         profile = args.config or GENERATED / 'worker.local.json'
         if args.config is None:
             _ensure_runtime_configuration()
-        command = [sys.executable, str(BACKEND / 'desktop/worker.py'),
+        command = [str(backend_python()), str(BACKEND / 'desktop/worker.py'),
                    '--config', str(profile.resolve())]
         if args.once:
             command.append('--once')

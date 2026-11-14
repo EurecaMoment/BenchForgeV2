@@ -72,18 +72,11 @@ def check_request(root, route, arguments):
 
     from . import scene_acceptance
 
-    def admission_policy(execution_mode):
-        try:
-            return scene_acceptance.policy_for(root, execution_mode)
-        except TypeError:
-            # Retain small test adapters written against the earlier one-arg API.
-            return scene_acceptance.policy_for(root)
-
     route_policies = []
     for intent in intents:
         requested_mode = intent.get("execution_mode", arguments.get("execution_mode"))
         mode = resolve_execution_mode(requested_mode)
-        route_policies.append((intent, mode, admission_policy(requested_mode)))
+        route_policies.append((intent, mode, scene_acceptance.policy_for(root, requested_mode)))
     if not any(policy for _, _, policy in route_policies):
         return
     for _, _, policy in route_policies:

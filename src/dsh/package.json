@@ -52,7 +52,6 @@
     "ui/*.mjs",
     "ui/client/**/*.js",
     "dist/resources/*.json",
-    "dist/workbench/*.py",
     "ui/package.json",
     "cordis.patch.yml",
     "README.md"

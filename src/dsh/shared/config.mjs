@@ -61,10 +61,7 @@ async function environmentValue(getEnvironmentValue, name) {
     const result = getEnvironmentValue ? await getEnvironmentValue(key) : process.env[key];
     return result && typeof result === 'object' && 'value' in result ? result.value : result;
   };
-  const value = await get(name);
-  if (value !== undefined && value !== null) return value;
-  if (name.startsWith('BENCHFORGE_')) return get(name.replace(/^BENCHFORGE_/, 'SPATIALFORGE_'));
-  if (name.startsWith('SPATIALFORGE_')) return get(name.replace(/^SPATIALFORGE_/, 'BENCHFORGE_'));
+  return get(name);
 }
 
 async function expandEnvironment(value, getEnvironmentValue) {
@@ -175,7 +172,7 @@ export async function loadServiceConfig(configFile, {getEnvironmentValue, requir
   config.operator_token = token;
 
   let policyPath = config.scene_policy_path || '';
-  if (!policyPath) {
+  if (requireScenePolicy && !policyPath) {
     const candidates = [
       config.task_root && path.join(config.task_root, 'scene-library', 'policy.json'),
       path.join(path.dirname(configPath), 'scene-library', 'policy.json'),
@@ -185,7 +182,7 @@ export async function loadServiceConfig(configFile, {getEnvironmentValue, requir
       if (await isFile(candidate)) { policyPath = candidate; break; }
     }
   }
-  if (policyPath && !(await isFile(policyPath)))
+  if (requireScenePolicy && policyPath && !(await isFile(policyPath)))
     throw new Error(`scene policy file does not exist: ${policyPath}`);
   if (requireScenePolicy && executionMode === 'production' && !policyPath)
     throw new Error('execution_mode=production requires scene_policy_path pointing to an existing policy.json');

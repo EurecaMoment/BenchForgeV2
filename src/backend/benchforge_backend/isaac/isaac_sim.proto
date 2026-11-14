@@ -2,9 +2,7 @@ syntax = "proto3";
 
 package benchforge.isaac;
 
-// Isaac Sim 远程仿真服务契约。
-// 服务端运行在仿真器所在服务器（server.py），BenchForge 侧通过 client.py 调用；
-// 本机 mock 服务与远程真实实现共用这份 proto，接口一致、内容可 mock。
+// External Isaac Sim capture service.
 service IsaacSim {
   // 连通性测试：服务端打印 info 并原样回显。
   rpc Test(TestRequest) returns (TestResponse);

@@ -7,19 +7,17 @@ from unittest.mock import patch
 from PIL import Image
 from benchforge_backend.layout import prepare_layout,validate_layout
 from benchforge_backend import engine
-from types import SimpleNamespace
 from test_contracts import sample
 
 
 class LayoutGuidance(unittest.TestCase):
     def tools(self,root):
         class Tools:
-            config=SimpleNamespace(model=lambda name: {'path':'/fixture/FLUX.2-klein-9B'})
             calls=[]
             def execute(self,name,request,work,stop):
                 self.calls.append((name,request))
                 Image.new('RGB',(32,24),'tan').save(request['output'])
-                return {'status':'ok'}
+                return {'status':'ok', 'model':'flux2klein'}
             def source_path(self,value):
                 p=Path(value).resolve()
                 if not p.is_file() or not p.is_relative_to(root):raise ValueError('invalid source')
@@ -72,7 +70,7 @@ class LayoutGuidance(unittest.TestCase):
                 self.assertEqual((child/'layout_reference.png').read_bytes(),before)
                 receipt=json.loads((child/'layout_reference.json').read_text())
                 self.assertEqual(receipt['tool'],'inherited_design_reference')
-                self.assertEqual(receipt['inherited_from']['reference_receipt']['tool'],'FLUX.2-klein-9B')
+                self.assertEqual(receipt['inherited_from']['reference_receipt']['tool'],'flux2klein')
                 self.assertFalse(receipt['gt_source'])
             self.assertEqual(len(tools.calls),1);self.assertNotIn('layout',intent)
             self.assertEqual((parent/'layout_reference.png').read_bytes(),before)

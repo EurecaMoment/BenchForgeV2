@@ -8,11 +8,11 @@
     },
     {
       "area": "data",
-      "tools": "acquire, normalize, habitat, libero, carla, isaac, adapt_capture"
+      "tools": "acquire, normalize, habitat, libero, carla, adapt_capture"
     },
     {
       "area": "annotation/cleaning",
-      "tools": "sam3, yoloe, depthanything3, llm_local, clean"
+      "tools": "llm_local, clean"
     },
     {
       "area": "production pipelines",
@@ -32,47 +32,6 @@
       "objective": "user goal",
       "sources": [],
       "target_items": 100
-    },
-    "sam3": {
-      "action": "infer",
-      "payload": {
-        "image_path": "/service-visible/image.png",
-        "text_prompt": "chair",
-        "save_masks_dir": "/service-visible/masks",
-        "confidence_threshold": 0.2,
-        "box_prompts": []
-      }
-    },
-    "yoloe": {
-      "action": "infer",
-      "payload": {
-        "image_path": "/service-visible/image.png",
-        "names": [
-          "chair",
-          "table"
-        ],
-        "conf": 0.25,
-        "imgsz": 640,
-        "device": "cuda:0",
-        "iou": 0.7
-      }
-    },
-    "depthanything3": {
-      "action": "infer",
-      "payload": {
-        "image_paths": [
-          "/service-visible/image.png"
-        ],
-        "export_dir": "/service-visible/depth",
-        "export_format": "glb",
-        "process_res": 1024,
-        "process_res_method": "upper_bound_resize",
-        "require_metric_depth": false
-      }
-    },
-    "depthanything3_task": {
-      "action": "task",
-      "task_id": "backend-task-id"
     },
     "habitat": {
       "argv": [
@@ -101,10 +60,6 @@
         "--frames-per-map",
         "4"
       ]
-    },
-    "isaac": {
-      "scene_program": "/shared/task/scene.json",
-      "timeout_seconds": 3600
     },
     "evidence": {
       "input": "/task/source-records.jsonl"
@@ -140,7 +95,9 @@
       "item_id": "C01-T01"
     },
     "pipeline_plan": {
-      "template_ids": ["C01-T01"],
+      "template_ids": [
+        "C01-T01"
+      ],
       "target_items": 10
     },
     "pipeline_run": {
@@ -265,7 +222,7 @@
       ]
     }
   },
-  "execution": "Annotation HTTP tools attach to configured services. Service paths must be visible to the backend. Habitat/LIBERO invoke bundled collectors in separate configured SDK environments; their old HTTP health services do not collect data. CARLA connects to its configured simulator. Isaac Sim 运行在远程 gRPC 服务，本机通过 isaac.grpc 配置的 host:port 调用 Capture/UploadAsset/DownloadArtifacts 契约，collector 与 SDK 均在远程机上。",
+  "execution": "OpenAI chat completions provide candidate annotations. The production service submits model and Isaac capture jobs to the configured providers. Habitat, LIBERO and CARLA use their configured collector SDK environments.",
   "evidence_record": {
     "id": "image-1",
     "media": [
@@ -291,7 +248,7 @@
     "template": "task-template",
     "split": "dev"
   },
-  "limitations": "JSON pointer replay verifies derivation from supplied source files, not their external authenticity or question semantics. Core does not provide an adversarial sandbox. Model predictions cannot be promoted into GT by the build tool. Isaac Sim 运行在远程 gRPC 服务，本机不要求 SDK；端点由 isaac.grpc.host/port 配置。支持 documented primitive scene schema。No simulator or model weights are bundled.",
+  "limitations": "JSON pointer replay verifies how outputs were derived from supplied source files. Use simulator or official source evidence for ground truth. Core does not provide an adversarial sandbox.",
   "evidence_contract": {
     "provenance_path": "JSON document; use a computed JSON oracle for binary simulator inputs",
     "relative_paths": "Resolve against the input JSONL parent directory",

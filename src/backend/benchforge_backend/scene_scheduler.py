@@ -119,7 +119,6 @@ def coordinate(
                                 'size_hint_m',
                                 'subject_box',
                                 'edit_reference',
-                                'texture_baking',
                             }
                         }
                     )

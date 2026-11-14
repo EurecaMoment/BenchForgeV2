@@ -111,18 +111,6 @@ test('an already-bound old parent automatically gets one background receipt afte
   assert.equal(watches,1);
 });
 
-test('legacy retry rejection is recovered once through canonical validation and cannot hide quality failure',async()=>{
-  const events=[{type:'tool/call',data:{name:'benchforge_retry',callId:'retry-1',arguments:'{"task_id":"sf_test.scene0"}'}},
-    {type:'tool/result',data:{message:{toolCallId:'retry-1',isError:true,content:[{type:'text',text:'Unreviewed scene retries require an admitted native capture'}]}}}];
-  const agent={id:'session-parent',session:{header:{},snapshotEvents:()=>events},ctx:{get:()=>({get:()=>({description:'Legacy bounded wait'})})}};
-  let recovered=0;
-  const hook=createLegacyCaptureStep({recover:async args=>{recovered++;assert.equal(args.task_id,'sf_test.scene0');throw new Error('repair scene quality through capture/refine');},
-    watch:()=>assert.fail('Quality failure must not be queued'),createMessage:value=>value});
-  const result=await hook({agent},async()=>({kind:'enter',messages:[]}));
-  assert.equal(recovered,1);assert.match(result.messages[0].content[0].text,/恢复尚未完成/);
-  assert.match(result.messages[0].content[0].text,/repair scene quality/);
-});
-
 function retainedObservationScope(id) {
   const hooks=new Set(),agent={id},definitions=new Map();
   for(const name of ['benchforge_scene_status','benchforge_wait','benchforge_scene_evidence'])definitions.set(name,

@@ -1,6 +1,5 @@
 """Harness-facing production capabilities."""
 from . import data, evaluation, research
-from .backends import backend
 from .capture_adapter import adapt_capture
 from .spatial_learning.registry import catalog as spatial_catalog
 from .spatial_learning.generation import generate as spatial_generate
@@ -28,7 +27,6 @@ OPERATIONS={
  'curriculum':curriculum,'spatial_train':spatial_train,'training_monitor':training_monitor,
  'spatial_export':spatial_export,
  'spatial_experiment':spatial_experiment,
- 'backend':backend,
  'adapt_capture':adapt_capture,
  'acquire':data.acquire,'normalize':data.normalize,'clean':data.clean,
  'literature':research.literature,'research_review':research.review,'design':research.design,'usage':research.usage,

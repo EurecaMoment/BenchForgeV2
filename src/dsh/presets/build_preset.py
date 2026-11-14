@@ -55,13 +55,7 @@ PRESETS = {
         'description': 'Scene and data production with the visual workbench.',
     },
 }
-LEGACY_MODEL_TOOLS = [
-    'model_yoloe', 'model_sam3', 'model_moge', 'model_lama', 'model_flux_fill',
-    'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
-    'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
-]
-MODEL_TOOLS = list(provider_config.PROVIDER_TOOLS.values())
-MODEL_TOOL_NAMES = {*LEGACY_MODEL_TOOLS, *MODEL_TOOLS, 'llm_local'}
+MODEL_TOOLS = ['llm_local']
 DEFAULT_SERVICE_CONFIG = Path('config/generated/benchforge-client.local.json')
 LEGACY_SERVICE_CONFIG = Path('config/benchforge-client.local.json')
 LEGACY_SERVICE_CONFIGS = (
@@ -185,21 +179,13 @@ def model_patches(config_path):
 
 def model_tools(config_path, *, portable=False):
     if portable:
-        return [*MODEL_TOOLS, 'model_sam3d', 'llm_local']
+        return MODEL_TOOLS
     path = Path(config_path) if config_path else None
     if not path or not path.is_file():
         return []
     settings = json.loads(path.read_text(encoding='utf-8'))
-    if 'providers' not in settings:
-        return LEGACY_MODEL_TOOLS
-    inference = provider_config.inference_config(settings)
-    tools = inference['tools'] if inference.get('url') else {}
     annotation = provider_config.selected_model(settings, 'annotation')
-    return [
-        *[provider_config.PROVIDER_TOOLS[tool] for tool in tools],
-        *(['model_sam3d'] if 'sam3d' in tools else []),
-        *(['llm_local'] if annotation.get('url') and annotation.get('model') else []),
-    ]
+    return MODEL_TOOLS if annotation.get('url') and annotation.get('model') else []
 
 
 def preset_id(row):
@@ -451,7 +437,7 @@ def refresh_model_patches(preset_path, config_path, *, refresh_host=None):
                     before = deepcopy(options)
                     included = options.get('includeTools')
                     if isinstance(included, list):
-                        options['includeTools'] = [tool for tool in included if tool not in MODEL_TOOL_NAMES]
+                        options['includeTools'] = [tool for tool in included if not tool.startswith('model_') and tool not in MODEL_TOOLS]
                         options['includeTools'].extend(enabled)
                     options.setdefault('configPath', str(Path(config_path).resolve()))
                     changed = before != options or changed

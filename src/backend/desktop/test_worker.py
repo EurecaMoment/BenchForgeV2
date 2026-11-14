@@ -54,7 +54,7 @@ class WorkerTests(unittest.TestCase):
     def test_finish_refuses_to_release_active_owned_process(self):
         class Process:
             def close(self):pass
-        with tempfile.TemporaryDirectory() as temp,patch.object(worker,'owned_processes',return_value=[Process()]),patch.object(worker,'api') as api:
+        with tempfile.TemporaryDirectory() as temp,patch.object(worker,'config',{'isaac_mode':'local'}),patch.object(worker,'owned_processes',return_value=[Process()]),patch.object(worker,'api') as api:
             with self.assertRaisesRegex(RuntimeError,'processes remain'):worker.finish_job({'token':'t','task_id':'r.t','revision':0},Path(temp),'failed')
             api.assert_not_called()
 
@@ -107,7 +107,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_recovered_attempt_never_launches_another_process(self):
         with tempfile.TemporaryDirectory() as directory:
-            worker.state_root=Path(directory);worker.config={}
+            worker.state_root=Path(directory);worker.config={'isaac_mode':'local'}
             job={'token':'attempt_0123456789abcdef','task_id':'test.scene0','revision':0}
             capture=Path(directory)/job['token']/'capture'
             def settled(*args):
@@ -124,11 +124,11 @@ class WorkerTests(unittest.TestCase):
             directory=state/job['token'];native_capture(directory,job)
             receipt=worker.local_capture_receipt(job,directory)
             (directory/'finish_pending.json').write_text(json.dumps({'outcome':'failed','transport_retry':0,'error':'old device loss'}))
-            (directory/'resident.json').write_text(json.dumps({'token':job['token']}))
+            (directory/'resident.json').write_text(json.dumps({'token':job['token'],'started_at':worker.time.time()}))
             failure=json.dumps({'token':job['token'],'state':'failed','error':'old device loss'})
             (directory/'resident_result.json').write_text(failure)
             resumed={**job,'transport_retry':1,'capture_recovery_mode':'resume_upload','capture_resume_receipt':receipt}
-            with patch.object(worker,'state_root',state),patch.object(worker,'process_snapshot',return_value=[]), \
+            with patch.object(worker,'state_root',state),patch.object(worker,'config',{'isaac_mode':'local'}),patch.object(worker,'process_snapshot',return_value=[]), \
                  patch.object(worker,'recover_other_attempts'),patch.object(worker,'owned_processes',return_value=[]), \
                  patch.object(worker,'run_resident',side_effect=AssertionError('replayed failed resident')), \
                  patch.object(worker,'api',return_value={'committed':True}) as api, \

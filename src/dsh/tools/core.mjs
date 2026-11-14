@@ -66,14 +66,10 @@ export async function apply(ctx, config) {
     catalog:'Discover callable production tools and exact request examples. See exact request examples and the V2 task template catalog.',
     status:'Read persisted operation results and artifact paths. Does not retry operations.',
     plan:'Save a benchmark brief. Planning and capability choices belong to you; no fixed stage sequence.',
-    sam3:'Segment an image through the configured SAM3 service. Returns candidate masks, scores and paths for inspection; source labels remain the authority for ground truth.',
-    yoloe:'Detect requested objects through YOLOE; supports text and visual prompts. Inspect its output.',
-    depthanything3:'Request Depth Anything 3 inference or query task/health. Inferred depth needs calibration before metric claims.',
-    llm_local:'Call an explicitly configured local VLM for semantic annotation suggestions. Responses are predictions that can guide annotation or repair; source labels remain authoritative.',
+    llm_local:'Call the configured OpenAI-compatible vision model for semantic annotation suggestions. Responses are predictions that can guide annotation or repair; source labels remain authoritative.',
     habitat:'Capture real Habitat RGB, depth and agent state with the bundled collector in its configured environment.',
     libero:'Collect LIBERO observations and simulator state using demo or zero actions in its configured environment.',
     carla:'Capture CARLA views and actor metadata from a configured running server.',
-    isaac:'Collect visual observations (RGB images, depth maps, labels, poses) from a 3D scene via remote Isaac Sim gRPC service. Indoor spatial intelligence, desktop object reasoning, and any task needing real simulated sensor data MUST use this tool — do NOT generate synthetic text-only items when the user asks for visual simulation or scene-based benchmarks.',
     evidence:'Import evidence JSONL. provenance.path references one JSON source document; selectors are JSON pointers into it. All relative paths resolve against the input JSONL directory. media contains public images only; assets retains private raw depth, labels and oracle code. Derive JSON oracle outputs from binary simulation inputs in task code.',
     build:'Build model-visible items/media plus separate authority sources and private assets, deriving answers from source JSON and reporting coverage. Keep raw depth and authority labels in the evidence side of the bundle.',
     evaluate:'Score saved predictions with exact match; report missing answers. Does not call model APIs.',
@@ -96,7 +92,6 @@ export async function apply(ctx, config) {
   });
   definitions.spatial_export='Export spatial datasets as portable Parquet with embedded images and separate program authority.';
   definitions.spatial_experiment='Compare fixed A, adaptive B and graph-guided C from the same initial local checkpoint and training budget; report actual token and time costs.';
-  definitions.backend='Inspect or explicitly start an optional configured backend in its own environment. Existing services keep their lifecycle outside this operation.';
   definitions.adapt_capture='Convert native Habitat/LIBERO/CARLA capture to compiler evidence. Habitat samples continuous visible surface regions and computes calibrated camera range from raw depth; semantic labels come from the selected source records.';
   definitions.stage_review='After each completed S1-S5 stage, open a durable 300-second user instruction window with its saved artifact and a stable production key. An executable plan opens S1 automatically; a pending user-edit draft does not. Call wait with a default 60-second call budget and repeat until elapsed or continued, then resume existing work; the saved window still lasts 300 seconds. A paused or needs_input window blocks production; apply the saved user instruction before acknowledging. Do not skip waits or report them as capture queue blockage.';
   const schemas={
@@ -116,7 +111,6 @@ export async function apply(ctx, config) {
     curriculum:{state:{type:'string',required:true},feedback:{type:'string'},checkpoint:{type:'string'},window_id:{type:'string'},condition:{type:'string',enum:['A','B','C']},budget:{type:'integer'},template_ids:{type:'array',items:{type:'string'}},settings:{type:'object',additionalProperties:true}},
     spatial_train:{config:{type:'string',required:true},run:{type:'string'},action:{type:'string',enum:['run','start']}},
     training_monitor:{run:{type:'string',required:true},guidance:{type:'object',additionalProperties:true,properties:{pause:{type:'boolean'},stop_after_window:{type:'boolean'},learning_rate:{type:'number'},hint_fraction:{type:'number'},difficulty:{type:'integer'}}}},
-    backend:{name:{type:'string',required:true},action:{type:'string',enum:['status','start']}},
     adapt_capture:{input:{type:'string',required:true},simulator:{type:'string',enum:['habitat','libero','carla']},camera:{type:'object',additionalProperties:true},regions:{type:'integer'},radius:{type:'integer'}},
     catalog:{section:{type:'string',enum:['overview','templates']},query:{type:'string'},offset:{type:'integer'},limit:{type:'integer'}},
     status:{},
@@ -124,7 +118,6 @@ export async function apply(ctx, config) {
     evidence:{input:{type:'string',required:true,description:'Source records JSONL with provenance and JSON-pointer selectors.'}},
     build:{evidence:{type:'string',required:true},items:{type:'string',required:true}},
     evaluate:{authority:{type:'string',required:true},predictions:{type:'string',required:true}},
-    isaac:{scene_program:{type:'string',required:true},timeout_seconds:{type:'integer'}}
   };
   const production = {
   "acquire": [
@@ -342,72 +335,33 @@ export async function apply(ctx, config) {
   for (const [name, [description, schema]] of Object.entries(production)) {definitions[name]=description; schemas[name]=schema;}
   schemas.clean.min_contrast={type:'number',description:'Minimum grayscale standard deviation; default 1 rejects near-constant images.'};
   schemas.clean.min_bright_fraction={type:'number',description:'Optional fraction of pixels above luminance 16, e.g. 0.5 for well-lit captures.'};
-  for(const tool of ['sam3','yoloe','depthanything3','llm_local']) schemas[tool]={
-    action:{type:'string',description:'infer (default), health; DA3 also task, YOLOE visual, local VLM models.'},
-    payload:{...object,description:'Native backend inference arguments. Catalog includes exact examples.'},task_id:{type:'string'},timeout_seconds:{type:'integer'}};
+  schemas.llm_local={
+    action:{type:'string',enum:['infer','models']},
+    payload:{...object,description:'OpenAI chat completion request for candidate annotations.'},
+    timeout_seconds:{type:'integer'}
+  };
   for(const tool of ['habitat','libero','carla']) schemas[tool]={argv:{type:'array',items:{type:'string'},description:'Collector arguments; catalog has examples. Use --help for installed SDK collector options.'},timeout_seconds:{type:'integer'}};
-  const modelClients = {
-    yoloe:'YOLOE detection and segmentation', sam3:'SAM3 segmentation',
-    moge:'MoGe depth, points and camera intrinsics', lama:'LaMa masked image repair',
-    flux_fill:'FLUX image fill', osor_flux_fill:'OSOR image fill',
-    objectclear_fill:'ObjectClear object removal and background recovery', qwen_image_edit:'Qwen image editing',
-    diffusion:'FLUX.2 Klein 1024x1024 image generation and editing',
-    depth_anything:'Depth Anything 3 metric depth estimation; request must supply calibrated intrinsics or focal_length_px',
-    trellis:'TRELLIS.2 mesh and PBR generation with a supplied image and optional mask',
-    sam3d:'object reconstruction through the configured provider, using the previous tool name',
-    blender:'Blender Cycles CUDA rendering of a FIT-visible .blend scene; returns a PNG image',
-  };
-  for (const [client, purpose] of Object.entries(modelClients)) {
-    const tool = `model_${client}`;
-    definitions[tool] = `Call the independent ${purpose} API client. Before submit it checks this tool's provider availability with the actual model request; unavailable or unreachable tools fail without submitting a job. Stop dependent steps on that error. health returns the same per-tool availability report. submit returns a durable job_id; use status/result/wait/cancel for that job. Native request arguments and absolute shared paths belong in request. This client never loads weights or starts a local GPU/model process. Predictions are not GT.`;
-    schemas[tool] = {
-      action:{type:'string',enum:['submit','status','result','wait','cancel','health'],description:'submit is asynchronous and is the default; wait is bounded by timeout_seconds.'},
-      request:{type:'object',additionalProperties:true,description:client === 'diffusion'
-        ? 'FLUX request: prompt, width=1024, height=1024, steps, seed and output. output is a full PNG filename at an absolute path shared by FIT and the provider; work does not supply it. benchforge_diffusion manages this output path when used instead.'
-        : 'Native request for the configured model provider.'},
-      work:{type:'string',description:'Absolute artifact directory shared with the inference service; defaults to this operation directory.'},
-      job_id:{type:'string',description:'Existing durable job ID, required for status/result/wait/cancel.'},
-      timeout_seconds:{type:'number',description:'Maximum wait duration; the job continues if this wait expires.'},
-    };
-  }
-  const modelTools = new Set(Object.keys(modelClients).map(name => 'model_' + name));
-  const modelProviders = {
-    model_diffusion:'FastFLUX2Klein', model_sam3:'FastSAM3', model_depth_anything:'FastDA3',
-    model_trellis:'FastTrellis2', model_sam3d:'FastTrellis2',
-  };
-  let providerSettings;
-  if (config.configPath && (!config.includeTools
-      || config.includeTools.some(tool => modelTools.has(tool) || tool === 'llm_local'))) {
+  let annotation;
+  if (config.configPath && (!config.includeTools || config.includeTools.includes('llm_local'))) {
     try {
       const settings = JSON.parse(await fs.readFile(path.resolve(config.configPath), 'utf8'));
-      if (settings.providers) providerSettings = settings;
+      const llm = settings.providers?.DSpark4A100;
+      annotation = {...llm, ...llm?.roles?.annotation};
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
-  async function modelEnvironment(tool) {
-    if (!config.configPath) return environment;
-    const settings = JSON.parse(await fs.readFile(path.resolve(config.configPath), 'utf8'));
-    const llm = settings.providers?.DSpark4A100;
-    const name = tool === 'llm_local' ? (llm?.roles?.annotation ?? llm)?.token_env
-      : (settings.providers ? settings.inference : settings.model_services)?.token_env;
-    if (typeof name !== 'string' || Object.hasOwn(environment, name)) return environment;
-    const credential = snapshot.get(name)?.value;
-    return credential === undefined ? environment : {...environment, [name]: credential};
-  }
+  const annotationToken = annotation?.token_env;
+  const credential = annotationToken ? snapshot.get(annotationToken)?.value : undefined;
+  const annotationEnvironment = credential === undefined ? environment : {...environment, [annotationToken]:credential};
   for (const [tool, description] of Object.entries(definitions)) {
     if (config.includeTools && !config.includeTools.includes(tool)) continue;
-    if (providerSettings && modelTools.has(tool)
-        && (!providerSettings.inference?.url || !Object.hasOwn(providerSettings.providers, modelProviders[tool]))) continue;
-    if (providerSettings && tool === 'llm_local') {
-      const llm = providerSettings.providers.DSpark4A100;
-      if (!(llm?.roles?.annotation ?? llm)?.model) continue;
-    }
+    if (tool === 'llm_local' && !annotation?.url) continue;
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output:tool==='catalog'?output:tool==='status'?statusOutput:operationOutput,
       execute:async (args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal;
-        const scoped = modelTools.has(tool) || tool === 'llm_local' ? await modelEnvironment(tool) : environment;
+        const scoped = tool === 'llm_local' ? annotationEnvironment : environment;
         const sessionEnvironment = {...scoped, BENCHFORGE_DSH_SESSION_ID: exec.agent?.session?.id || '', BENCHFORGE_DSH_CALL_ID: exec.callId || ''};
         return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment:sessionEnvironment,active});}}));
   }

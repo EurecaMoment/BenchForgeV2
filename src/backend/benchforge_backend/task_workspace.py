@@ -28,7 +28,6 @@ def run_task_code(artifact_root,workspace_id,code,timeout_seconds=60):
     if sys.base_prefix!=sys.prefix:cmd+=['--ro-bind',sys.base_prefix,sys.base_prefix]
     package = Path(__file__).resolve().parent
     cmd+=['--dir','/harness','--ro-bind',str(package),'/harness/benchforge_backend',
-          '--ro-bind',str(package.with_name('pic2sim')),'/harness/pic2sim',
           '--ro-bind',str(root/'generated_assets'),'/assets',
           '--bind',str(workspace),'/workspace','--chdir','/workspace',
           '--setenv','HOME','/workspace','--setenv','PYTHONPATH','/harness',

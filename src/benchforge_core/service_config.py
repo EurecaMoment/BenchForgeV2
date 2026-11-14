@@ -11,13 +11,7 @@ _ENV_REFERENCE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z
 
 def environment_value(name, default=None, *, environ=None):
     environ = os.environ if environ is None else environ
-    if name in environ:
-        return environ[name]
-    if name.startswith('BENCHFORGE_'):
-        return environ.get('SPATIALFORGE_' + name.removeprefix('BENCHFORGE_'), default)
-    if name.startswith('SPATIALFORGE_'):
-        return environ.get('BENCHFORGE_' + name.removeprefix('SPATIALFORGE_'), default)
-    return default
+    return environ.get(name, default)
 
 
 def _reject_duplicate_keys(pairs):

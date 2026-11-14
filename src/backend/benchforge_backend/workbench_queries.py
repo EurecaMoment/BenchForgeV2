@@ -3,7 +3,7 @@
 from contextlib import contextmanager
 import re
 
-from sqlalchemy import inspect, text
+from sqlalchemy import text
 
 
 SESSION_ID = re.compile(r'session-[A-Za-z0-9-]+')
@@ -19,12 +19,6 @@ def read_connection(engine):
         yield connection
 
 
-def _request_keys_table(connection):
-    if inspect(connection).has_table('benchforge_request_keys'):
-        return 'benchforge_request_keys'
-    return 'spatialforge_request_keys'
-
-
 def recent_session_runs(connection, request):
     """Find recent runs for the supplied DSH session IDs."""
     if not isinstance(request, dict) or set(request) - {'session_id', 'related_session_ids'}:
@@ -37,11 +31,10 @@ def recent_session_runs(connection, request):
         raise ValueError('Invalid DSH session ID')
     prefixes = {f'prefix{i}': f'dsh:{value}:' for i, value in enumerate(dict.fromkeys(ids))}
     conditions = ' OR '.join(f'substr(k.id,1,length(:{key}))=:{key}' for key in prefixes)
-    table = _request_keys_table(connection)
     rows = connection.execute(text(
         "SELECT DISTINCT r.id,r.created_at,r.plan->>'workflow' AS workflow,"
         "CASE WHEN r.state IN ('SUCCEEDED','FAILED_FINAL','CANCELED') THEN 1 ELSE 0 END AS priority "
-        f'FROM {table} k JOIN runs r ON r.id=k.run_id '
+        'FROM benchforge_request_keys k JOIN runs r ON r.id=k.run_id '
         f'WHERE ({conditions}) ORDER BY priority,r.created_at DESC,r.id LIMIT 12'),
         prefixes).mappings()
     return {'runs': [dict(row) for row in rows]}
@@ -59,12 +52,11 @@ def completed_scene_page(connection, request):
           or not isinstance(after['task_id'], str)
           or not re.fullmatch(r'[A-Za-z0-9_.-]{1,200}', after['task_id'])):
         raise ValueError('Invalid scene page cursor')
-    table = _request_keys_table(connection)
     rows = connection.execute(text(
         "SELECT t.id,t.run_id,r.created_at,t.unit->>'revision' AS revision,"
         "t.unit->'intent'->>'name' AS name,t.unit->'intent'->>'split' AS split,"
         "t.unit->'intent'->>'scene_family' AS scene_family,t.unit->'intent'->>'description' AS description,"
-        f"(SELECT k.id FROM {table} k WHERE k.run_id=r.id ORDER BY k.id LIMIT 1) AS request_key "
+        "(SELECT k.id FROM benchforge_request_keys k WHERE k.run_id=r.id ORDER BY k.id LIMIT 1) AS request_key "
         "FROM work_items t JOIN runs r ON r.id=t.run_id "
         "WHERE r.plan->>'schema' IN ('benchforge.pipeline/v1','spatialforge.pipeline/v1') "
         "AND COALESCE(t.unit->>'workflow','scene')='scene' AND t.state='SUCCEEDED' "

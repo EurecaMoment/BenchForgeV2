@@ -17,17 +17,7 @@ _PATH_ENVIRONMENT = {
 
 def environment_value(name, default=None, *, environ=None):
     environ = os.environ if environ is None else environ
-    if name in environ:
-        return environ[name]
-    if name == 'BENCHFORGE_ROOT':
-        return environ.get('SPATIALFORGE_BENCHFORGE_ROOT', default)
-    if name == 'SPATIALFORGE_BENCHFORGE_ROOT':
-        return environ.get('BENCHFORGE_ROOT', default)
-    if name.startswith('BENCHFORGE_'):
-        return environ.get('SPATIALFORGE_' + name.removeprefix('BENCHFORGE_'), default)
-    if name.startswith('SPATIALFORGE_'):
-        return environ.get('BENCHFORGE_' + name.removeprefix('SPATIALFORGE_'), default)
-    return default
+    return environ.get(name, default)
 
 
 def _reject_duplicate_keys(pairs):
@@ -86,26 +76,6 @@ def _resolve_environment_value(config, key, env_name, config_path):
     return expand_environment(str(value)) if isinstance(value, str) else value
 
 
-class RuntimeConfig:
-    def __init__(self, path):
-        self.path = Path(path).expanduser().resolve()
-        self.data = read_json(self.path)
-        for model in self.data.get('models', {}).values():
-            for key in ('python', 'path'):
-                if key not in model:
-                    continue
-                model_path = resolve_path(model[key], self.path)
-                # Keep venv interpreter symlinks; resolving them can change sys.prefix.
-                model[key] = os.path.abspath(model_path) if key == 'python' else str(model_path)
-        for name, value in self.data.get('sources', {}).items():
-            self.data['sources'][name] = str(resolve_path(value, self.path))
-
-    def model(self, name):
-        if name not in self.data.get('models', {}):
-            raise ValueError(f'Configure models.{name} in {self.path} before using that tool')
-        return self.data['models'][name]
-
-
 def _token(config, name, required):
     env_key = name + '_token_env'
     env_name = config.get(env_key)
@@ -154,7 +124,6 @@ def load_service_config(path, *, required_tokens=('operator', 'worker')):
         if resolved is not None:
             config[key] = resolved
 
-    # Keep legacy local.json files usable while making the selected client route explicit.
     raw_url = environment_value('BENCHFORGE_SERVICE_URL') or config.get('service_url')
     if raw_url:
         config['service_url'] = expand_environment(str(raw_url))
@@ -205,7 +174,6 @@ def load_service_config(path, *, required_tokens=('operator', 'worker')):
     apply_model_environment(config)
 
     environment_values = (
-        ('gpu_candidates', 'BENCHFORGE_GPU_CANDIDATES'),
         ('model_url', 'BENCHFORGE_MODEL_URL'),
         ('model_id', 'BENCHFORGE_MODEL_ID'),
         ('model_api_key_env', 'BENCHFORGE_MODEL_API_KEY_ENV'),
@@ -253,7 +221,7 @@ def load_worker_config(path):
                                   environment_value('BENCHFORGE_WORKER_TOKEN'))
     if not config['worker_token']:
         raise ValueError('Configure worker_token in service_config or set BENCHFORGE_WORKER_TOKEN')
-    for key in ('isaac_root', 'isaac_asset_root', 'runs', 'ssh_config'):
+    for key in ('runs', 'ssh_config', 'asset_cache'):
         if config.get(key):
             config[key] = str(resolve_path(config[key], path))
     if not config.get('ssh_forward'):

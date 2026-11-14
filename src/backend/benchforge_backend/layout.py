@@ -4,7 +4,6 @@ import shutil
 import re
 from pathlib import Path
 from PIL import Image
-from .runtime_config import environment_value
 from .files import write_json
 from .generation import generation_defaults, _file_record
 from .progress import record_progress
@@ -83,14 +82,10 @@ def prepare_layout(tools,intent,directory,stop,parent_directory=None,design_dire
             prompt=spec['prompt']+'\nCreate a coherent spatial design reference, with readable room layout and furniture relationships. No text labels or invented numeric measurements. This image is a design proposal, not ground truth or a validated simulation.'
             if spec['mode']=='edit':prompt+=' Preserve relevant existing structure and implement the requested layout changes in the supplied view.'
             defaults = generation_defaults('diffusion')
-            request = {'prompt': prompt, 'output': str(image), 'width': defaults.get('width', 1024),
-                       'height': defaults.get('height', 1024), 'steps': defaults.get('steps', 4),
-                       'seed': spec.get('seed', defaults.get('seed', 42))}
-            if not environment_value('BENCHFORGE_INFERENCE_URL'):
-                request['model_path']=environment_value('BENCHFORGE_DIFFUSION_MODEL') or tools.config.model('flux')['path']
+            request = {**defaults, 'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', defaults['seed'])}
             if source:request['image']=str(source)
             generated=tools.execute('diffusion',request,work/'diffusion',stop)
-            tool=generated.get('model') or Path(request.get('model_path','external-diffusion')).name
+            tool=generated['model']
         with Image.open(image) as result:size=list(result.size)
         write_json(receipt,{'schema':'benchforge_backend.layout-reference/v1','mode':spec['mode'],'tool':tool,'image':'layout_reference.png',
                            'source':contract['source'],'size':size,'seed':spec.get('seed',42),

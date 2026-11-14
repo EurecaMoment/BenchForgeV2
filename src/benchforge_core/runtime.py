@@ -81,24 +81,15 @@ class Runtime:
             raise
 
     def execute(self, tool, args, directory):
-        from .model_services import MODEL_TOOLS
-        if tool in MODEL_TOOLS:
-            from importlib import import_module
-            client = import_module(".model_services." + tool.removeprefix("model_"), __package__)
-            config = provider_config.inference_config(self.config)
-            return client.call(action=args.get("action", "submit"), request=args.get("request"),
-                               work=args.get("work") or str(directory / "inference"),
-                               job_id=args.get("job_id"), config=config or None,
-                               timeout_seconds=args.get("timeout_seconds", 300))
         from .workbench import OPERATIONS
         if tool in OPERATIONS:
             return OPERATIONS[tool](args, directory, self.config)
         if tool == "plan":
             write(directory / "brief.json", args)
             return {"brief": str(directory / "brief.json"), "next": "Choose sources, collect or import evidence, then build. No stage locks."}
-        if tool in ("sam3", "yoloe", "depthanything3", "llm_local"):
-            return self.annotation(tool, args, directory)
-        if tool in ("habitat", "libero", "carla", "isaac"):
+        if tool == "llm_local":
+            return self.annotation(args)
+        if tool in ("habitat", "libero", "carla"):
             return self.collect(tool, args, directory)
         if tool == "evidence":
             return self.evidence(args, directory)
@@ -108,105 +99,37 @@ class Runtime:
             return self.evaluate(args, directory)
         raise ValueError(f"Unknown capability: {tool}")
 
-    def annotation(self, tool, args, directory):
-        routes = {"sam3": {"infer": ("POST", "/image/infer"), "health": ("GET", "/health")},
-                  "yoloe": {"infer": ("POST", "/text-infer"), "visual": ("POST", "/visual-infer"), "health": ("GET", "/health")},
-                  "depthanything3": {"infer": ("POST", "/inference"), "health": ("GET", "/status"), "task": ("GET", "/task/")},
-                  "llm_local": {"infer": ("POST", "/v1/chat/completions"), "models": ("GET", "/v1/models")}}
-        cfg = self.config.get('services', {}).get(tool)
-        if tool == 'llm_local' and not cfg:
-            model = provider_config.selected_model(self.config, 'annotation')
-            if not model and 'providers' not in self.config:
-                model = self.config.get('models', {}).get('qwen')
-            if model and model.get('url'):
-                base_url = provider_config.llm_base_url(model['url'])
-                cfg = {**model, 'url': base_url}
-                routes['llm_local'] = {'infer': ('POST', '/chat/completions'), 'models': ('GET', '/models')}
-                if 'providers' in self.config and model.get('token_env'):
-                    from .service_config import environment_value
-                    if not environment_value(model['token_env']):
-                        raise ValueError(f"DSpark token_env references unset variable {model['token_env']}")
-        if not cfg:
-            if 'providers' in self.config:
-                supported = {'sam3': 'model_sam3', 'depthanything3': 'model_depth_anything',
-                             'llm_local': 'providers.DSpark4A100'}
-                if tool in supported:
-                    raise ValueError(f'Configure or use {supported[tool]} in the unified provider configuration')
-                raise ValueError(f'{tool} has no provider in config/benchforge.local.json')
-            raise ValueError(f'Configure services.{tool}.url in config/benchforge.local.json and pass --config; core tools do not require this backend.')
-        action = args.get("action", "infer")
-        method, route = routes[tool][action]
-        if action == "task":
-            from urllib.parse import quote
-            route += quote(args["task_id"], safe="")
-        payload = dict(args.get("payload", {}))
-        if tool == 'llm_local' and cfg.get('model'):
-            payload.setdefault('model', cfg['model'])
-        body = json.dumps(payload).encode() if method == "POST" else None
-        headers = {"Content-Type": "application/json"}
-        token = cfg.get("token")
-        if not token and cfg.get("token_env"):
-            from .service_config import environment_value
-            token = environment_value(cfg["token_env"])
-        if token:
-            headers["Authorization"] = "Bearer " + token
-        request = urllib.request.Request(cfg["url"].rstrip("/") + route, data=body, headers=headers, method=method)
+    def annotation(self, args):
+        config = provider_config.selected_model(self.config, 'annotation')
+        if not config.get('url'):
+            raise ValueError('Configure the annotation model under providers.DSpark4A100')
+        base_url = provider_config.llm_base_url(config['url'])
+        headers = {'Content-Type': 'application/json'}
+        if token_env := config.get('token_env'):
+            token = os.environ.get(token_env)
+            if not token:
+                raise ValueError(f'Annotation model token_env references unset {token_env}')
+            headers['Authorization'] = f'Bearer {token}'
+        if args.get('action') == 'models':
+            request = urllib.request.Request(base_url + '/models', headers=headers)
+        else:
+            data = json.dumps({**args.get('payload', {}), 'model': config['model']}).encode('utf8')
+            request = urllib.request.Request(base_url + '/chat/completions', data=data, headers=headers)
         from urllib.parse import urlsplit
-        local = urlsplit(cfg['url']).hostname in ('localhost', '127.0.0.1', '::1')
+        local = urlsplit(base_url).hostname in ('localhost', '127.0.0.1', '::1')
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({})) if local else urllib.request.build_opener()
-        with opener.open(request, timeout=args.get("timeout_seconds", 300)) as response:
-            result = json.loads(response.read())
-        return {"service_result": result, "evidence_kind": "model_prediction", "gt_written": False,
-                "note": "Model masks, labels and inferred depth remain predictions; depth scale requires calibration."}
-
-    def _isaac_client(self):
-        client_path = Path(__file__).resolve().parents[1] / "backend/grpc/client.py"
-        if not client_path.is_file():
-            raise ValueError(f"Isaac gRPC client not found at {client_path}; run from the BenchForge repository checkout.")
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("_benchforge_isaac_grpc_client", client_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def _isaac_endpoint(self):
-        isaac = provider_config.isaac_config(self.config)
-        return provider_config.isaac_endpoint(isaac.get("grpc") or {}), provider_config.capture_timeout(isaac)
+        with opener.open(request, timeout=args.get('timeout_seconds', 300)) as response:
+            return {'service_result': json.load(response), 'evidence_kind': 'model_prediction', 'gt_written': False}
 
     def collect(self, tool, args, directory):
-        # isaac 统一走远程 gRPC 服务（顶层 isaac.grpc 区块）；本地 python / collectors.isaac 启动方式已删除
-        if tool == "isaac":
-            # 远程 gRPC 采集：提交 scene_program -> 轮询 -> 流式回传工件到 capture/
-            program = args.get("scene_program")
-            if not program or not Path(program).is_file():
-                raise ValueError("isaac 采集需要 scene_program 指向场景 JSON 文件。")
-            endpoint, timeout = self._isaac_endpoint()
-            client = self._isaac_client()
-            output = directory / "capture"
-            request = {"scene_program": Path(program).read_text(encoding="utf8"),
-                       "source": "benchforge runtime", "transport": "grpc"}
-            job_id = client.new_job_id()
-            result = client.run_capture(endpoint, job_id, json.dumps(request, ensure_ascii=False), output,
-                                        timeout_seconds=float(args.get('timeout_seconds', timeout)))
-            report_path = output / 'report.json'
-            value = {"collector": "isaac", "transport": "grpc", "endpoint": endpoint, "job_id": job_id,
-                     "files": sorted(p.name for p in output.iterdir() if p.is_file()),
-                     "report": json.loads(report_path.read_text(encoding='utf8')) if report_path.exists() else {}}
-            write(directory / "isaac_capture.json", value)
-            return value
-        else:
-            cfg = self.config.get('collectors', {}).get(tool)
-            if not cfg:
-                raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment; see config/benchforge.example.json.')
-            output = directory / "capture"
-            output.mkdir()
-            # 生产默认用仓库内置的 collectors/<tool>.py；测试或自定义场景可在配置里覆盖 script
-            if cfg.get("script"):
-                script = Path(cfg["script"])
-            else:
-                script = Path(__file__).with_name("collectors") / (tool + ".py")
-            command = list(cfg["command"]) + [str(script), *args.get("argv", []), "--output-dir", str(output)]
-            cfg_env = cfg.get("env", {})
+        cfg = self.config.get('collectors', {}).get(tool)
+        if not cfg:
+            raise ValueError(f'Configure collectors.{tool}.command with the installed simulator Python environment')
+        output = directory / 'capture'
+        output.mkdir()
+        script = Path(cfg['script']) if cfg.get('script') else Path(__file__).with_name('collectors') / (tool + '.py')
+        command = list(cfg['command']) + [str(script), *args.get('argv', []), '--output-dir', str(output)]
+        cfg_env = cfg.get('env', {})
         env = {**os.environ, **cfg_env}
         with (directory / "stdout.log").open("w", encoding="utf-8") as stdout, (directory / "stderr.log").open("w", encoding="utf-8") as stderr:
             options = {'start_new_session': True} if os.name != 'nt' else {

@@ -11,7 +11,6 @@ export const name = 'benchforge-capture';
 export const inject = ['workspaceRegistry'];
 export const Config = Schema.object({
   productionConfig: Schema.string().default(''),
-  productionPython: Schema.string().default('python3'),
   workspacePaths: Schema.array(Schema.string()).default([]),
   revision: Schema.string().default('live-production-v1'),
 });
@@ -111,7 +110,7 @@ export function createCaptureEvidence({api}) {
 
 // Existing Agents keep their preset revision. This root-scoped, authenticated
 // adapter gives those Agents background waiting without replacing their tools.
-export function createLegacyCaptureStep({watch, recover, read, associate, createMessage = createUserMessage}) {
+export function createLegacyCaptureStep({watch, associate, createMessage = createUserMessage}) {
   const seen = new Set(), announced = new Set();
   return async ({agent, signal}, next) => {
     const decision = await next();
@@ -134,24 +133,15 @@ export function createLegacyCaptureStep({watch, recover, read, associate, create
       if (seen.size > 512) seen.delete(seen.values().next().value);
       try {
         const args = JSON.parse(call.arguments), text = (result.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
-        let value;
-        if (result.isError) {
-          if (name === 'benchforge_retry' && /Unreviewed scene retries require an admitted native capture|Only review transport failures can reuse a frozen capture/.test(text)) {
-            value = await recover(args, signal);
-            value = await watch({run_id: args.task_id.split('.')[0]}, {agent, signal});
-          } else if (['benchforge_wait','benchforge_scene_status'].includes(name) && /KeyError/.test(text) && /['"]report['"]/.test(text)) {
-            value = await read('/observe', {run_id: args.run_id}, signal);
-          } else continue;
-        } else {
-          const response = JSON.parse(text);
-          const run_id = response.run_id || args.run_id || args.task_id?.split('.')[0];
-          if (!/^sf_[A-Za-z0-9_-]+$/.test(run_id || '')) continue;
-          value = await watch({run_id}, {agent, signal});
-          if (!value.watch?.accepted) continue;
-          const identity=agent.id+':'+run_id;
-          if(announced.has(identity))continue;
-          announced.add(identity);
-        }
+        if (result.isError) continue;
+        const response = JSON.parse(text);
+        const run_id = response.run_id || args.run_id || args.task_id?.split('.')[0];
+        if (!/^sf_[A-Za-z0-9_-]+$/.test(run_id || '')) continue;
+        const value = await watch({run_id}, {agent, signal});
+        if (!value.watch?.accepted) continue;
+        const identity=agent.id+':'+run_id;
+        if(announced.has(identity))continue;
+        announced.add(identity);
         const summary = compactCaptureObservation(value);
         messages.push(createMessage({source:{kind:'benchforge/capture-runtime'},content:[{type:'text',text:
           '采集运行时通知（不是用户指令）：'+JSON.stringify(summary)+'\n后台等待已受理时继续独立准备，或结束本轮等待终态通知，不再逐分钟模型轮询。失败仍未完成；原生质量验收与用户阶段窗口照常保留。'}]}));
@@ -175,8 +165,6 @@ export async function attachCaptureRuntime(ctx, config) {
   });
   if (!operatorToken) return; // The scoped plugin still handles its own credentials.
   const revision = '?revision=' + encodeURIComponent(config.revision ?? 'live-production-v1');
-  const {createObservationBridge} = await import('./observation_bridge.mjs' + revision);
-  const {createCaptureRetry} = await import('./capture_retry.mjs' + revision);
   const {createCaptureWatcher, deliverCaptureNotice} = await import('./capture_watch.mjs' + revision);
   const {createCaptureAssociations} = await import('./capture_associations.mjs' + revision);
   const controller = new AbortController();
@@ -188,8 +176,6 @@ export async function attachCaptureRuntime(ctx, config) {
     if (!response.ok) throw Object.assign(new Error('Native capture service rejected'),{status:response.status,response:value});
     return value;
   };
-  const read = createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.productionPython});
-  const recover = createCaptureRetry({api,serviceConfig:configPath,policyPython:config.productionPython});
   const configuredRoots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(configPath)];
   const roots = cwd => [...configuredRoots, ...(ctx.get('workspaceRegistry')?.list().map(workspace => workspace.path) ?? [])]
     .filter(root => {
@@ -197,11 +183,11 @@ export async function attachCaptureRuntime(ctx, config) {
       return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
     });
   const associations = createCaptureAssociations({ctx, roots});
-  const watch = createCaptureWatcher({artifacts:cfg.artifacts,read,signal:controller.signal,
+  const watch = createCaptureWatcher({artifacts:cfg.artifacts,read:api,signal:controller.signal,
     notify:async(agent,record)=>deliverCaptureNotice(agent,record,createUserMessage)});
-  const observations=createScopedCaptureObservations({read,watch,evidence:createCaptureEvidence({api}),artifacts:cfg.artifacts});
+  const observations=createScopedCaptureObservations({read:api,watch,evidence:createCaptureEvidence({api}),artifacts:cfg.artifacts});
   ctx.effect(()=>()=>observations.dispose(),'benchforge capture observation interceptors');
-  const hook = createLegacyCaptureStep({watch,recover,read,associate:associations.record});
+  const hook = createLegacyCaptureStep({watch,associate:associations.record});
   ctx.on('agent/pre-step', async (input,next) => {
     const cwd = input.agent.session.header?.cwd;
     if (!cwd || !roots(cwd).length) return next();

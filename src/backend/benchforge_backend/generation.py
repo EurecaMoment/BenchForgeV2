@@ -1,30 +1,21 @@
-"""Composable generation tools backed by the installed BenchForge workers.
-
-The durable unit is an asset and its receipt, not a permanently loaded GPU
-service. Existing images/meshes and newly generated images share the same catalog.
-"""
-import contextlib
+"""Production generation receipts and the shared asset catalog."""
 import json
 import math
 import os
 from pathlib import Path
 import re
 import shutil
-import signal
 import subprocess
 import sys
-import time
 import uuid
 
-from .provider_config import inference_config, request_defaults
+from .provider_config import MODEL_PROVIDERS, model_settings
 from .runtime_config import environment_value, read_json
 from .files import write_json
 from .progress import record_progress
 from .mesh_appearance import inspect_mesh_appearance
-
-
-class ResourceWait(RuntimeError):
-    pass
+from .model_clients import ModelClient, ResourceWait as ResourceWait
+from .run_context import check_cancelled
 
 
 def _file_record(path):
@@ -46,15 +37,15 @@ def _model_registry():
     return read_json(Path(reference)) if reference and Path(reference).is_file() else {}
 
 
-def _remote_config():
-    registry = _model_registry()
-    return inference_config(registry) if registry.get('generation', {}).get('mode') != 'local' else {}
-
-
 def generation_defaults(name):
-    if environment_value('BENCHFORGE_INFERENCE_URL'):
-        return request_defaults(_remote_config(), name)
-    return {}
+    defaults = model_settings(_model_registry(), name).get('request_defaults', {})
+    if name == 'diffusion':
+        size = defaults.get('size', '1024x1024')
+        dimensions = {}
+        if size != 'auto':
+            dimensions['width'], dimensions['height'] = map(int, size.split('x'))
+        return {**dimensions, 'steps': defaults.get('num_inference_steps', 4), 'seed': defaults.get('seed', 42)}
+    return defaults
 
 
 class GenerationTools:
@@ -62,22 +53,6 @@ class GenerationTools:
         self.root = Path(artifact_root).resolve()
         self.assets = self.root / 'generated_assets'
         self.assets.mkdir(parents=True, exist_ok=True)
-        self.project = Path(environment_value('BENCHFORGE_ROOT', Path(__file__).resolve().parents[3]))
-        self._config = None
-
-    @property
-    def config(self):
-        if self._config is None:
-            registry = _model_registry()
-            if 'providers' in registry and registry.get('generation', {}).get('mode') != 'local':
-                raise ValueError('Configure inference.url in config/benchforge.local.json')
-            source = str(self.project / 'src')
-            if source not in sys.path:
-                sys.path.insert(0, source)
-            from .runtime_config import RuntimeConfig
-            registry = self.project / 'config/benchforge.local.json'
-            self._config = RuntimeConfig(environment_value('BENCHFORGE_MODELS_CONFIG', registry))
-        return self._config
 
     def catalog(self, asset_ids=None):
         records = []
@@ -123,50 +98,26 @@ class GenerationTools:
             raise ValueError('source must be a file inside the artifact root, task workspace or BENCHFORGE_IMPORT_ROOTS')
         return path
 
-    @contextlib.contextmanager
-    def gpu(self, minimum_mib):
-        import fcntl
-        candidates = {p.strip() for p in environment_value('BENCHFORGE_GPU_CANDIDATES', '0').split(',')}
-        query = subprocess.check_output(['nvidia-smi', '--query-gpu=index,memory.free', '--format=csv,noheader,nounits'], text=True)
-        available = sorted([(int(line.split(',')[1]), line.split(',')[0].strip()) for line in query.splitlines() if ',' in line], reverse=True)
-        for free, index in available:
-            if index not in candidates or free < minimum_mib:
-                continue
-            lock = open('/tmp/benchforge_gpu_' + index + '.lock', 'a')
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                lock.close()
-                continue
-            try:
-                yield index
-                return
-            finally:
-                fcntl.flock(lock, fcntl.LOCK_UN)
-                lock.close()
-        raise ResourceWait(f'Waiting for a generation GPU with {minimum_mib} MiB free')
-
     @staticmethod
     def _outputs_exist(name, request, result):
         if result.get('status') != 'ok':
             return False
-        if name in {'diffusion', 'flux', 'qwen_image_edit', 'objectclear', 'lama'}:
+        if name == 'diffusion':
             paths = [Path(request['output'])]
         elif name == 'sam3':
             paths = [Path(request['output_dir']) / s['mask'] for s in result.get('segments', [])]
-        elif name == 'sam3d':
+        elif name == 'trellis':
             if len(result.get('assets', [])) != len(request.get('objects', [])):
                 return False
             paths = [Path(request['output_dir']) / s['asset'] for s in result['assets']]
-        elif name == 'depth_anything':
-            paths = [Path(result[key]) for key in ('depth', 'visualization')]
-        else:
-            return True
+        elif name == 'depth':
+            paths = [Path(result[key]) for key in ('depth', 'visualization', 'archive')]
         return all(p.is_file() and p.stat().st_size > 0 for p in paths)
 
     def execute(self, name, request, work, stop):
         work = Path(work).resolve()
         work.mkdir(parents=True, exist_ok=True)
+        check_cancelled(stop, name)
         record_progress(work,name,object_id=work.parent.name,work=str(work))
         response, contract_path = work / 'response.json', work / 'contract.json'
         # Size/mtime receipts protect edited sources without hashing assets.
@@ -183,58 +134,25 @@ class GenerationTools:
                 result = json.loads(response.read_text(encoding='utf-8'))
                 if self._outputs_exist(name, request, result):
                     return result
-        if stop.is_set():
-            raise RuntimeError('generation canceled; partial artifacts retained')
-        endpoint = environment_value('BENCHFORGE_INFERENCE_URL')
-        if endpoint:
-            from .inference_service import execute_remote
-            result = execute_remote(endpoint, name, request, work, stop, config=_remote_config())
-            if not self._outputs_exist(name, request, result):
-                raise ValueError(f'{name} returned incomplete remote output; inspect the shared artifacts')
-            return result
-        # Loading config also adds BenchForge to this process import path.
-        config = self.config
-        WORKER_MODULES = {'sam3': 'pic2sim.workers.sam3'}
-        if name == 'depth_anything':
-            python = environment_value('BENCHFORGE_DEPTH_PYTHON') or config.model('depth_anything')['python']
-            module, minimum = 'benchforge_backend.depth_worker', 0
-        elif name == 'diffusion':
-            python, module, minimum = config.model('flux')['python'], 'benchforge_backend.diffusion_worker', 28000
-        elif name == 'sam3d':
-            python, module, minimum = config.model('sam3d')['python'], 'benchforge_backend.sam3d_texture_worker', 23000
-        else:
-            python, module = config.model(name)['python'], WORKER_MODULES[name]
-            minimum = {'sam3': 7000, 'sam3d': 23000, 'flux': 34000}.get(name, 24000)
-        write_json(work / 'request.json', request)
+        provider = MODEL_PROVIDERS[name]
+        settings = model_settings(_model_registry(), name)
+        if not settings.get('url'):
+            raise ValueError(f'Configure providers.{provider}.url in config/benchforge.local.json')
+        client = ModelClient(provider, settings)
         write_json(contract_path, contract)
-        device = contextlib.nullcontext(None) if name == 'depth_anything' else self.gpu(minimum)
-        with device as gpu:
-            env = {**os.environ, 'CUDA_VISIBLE_DEVICES': gpu or '', 'PYTHONUNBUFFERED': '1', 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1'}
-            env['PYTHONPATH'] = os.pathsep.join([str(Path(__file__).resolve().parents[1]), str(self.project / 'src'), *config.data['sources'].values()])
-            command = [python, '-m', module, '--request', str(work / 'request.json'), '--response', str(response)]
-            execution = {'tool': name, 'gpu': gpu, 'command': command, 'started': time.time()}
-            write_json(work / 'execution.json', execution)
-            with (work / 'worker.log').open('a', encoding='utf-8') as log:
-                process = subprocess.Popen(command, cwd=self.project, env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-                started = time.monotonic()
-                while process.poll() is None:
-                    if stop.is_set() or time.monotonic() - started > 1800:
-                        try:
-                            os.killpg(process.pid, signal.SIGTERM)
-                            process.wait(timeout=15)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGKILL)
-                            process.wait()
-                        except ProcessLookupError:
-                            pass
-                        raise RuntimeError('generation canceled or timed out; partial artifacts retained')
-                    time.sleep(1)
-            write_json(work / 'execution.json', {**execution, 'finished': time.time(), 'exit_code': process.returncode})
-            if process.returncode:
-                raise RuntimeError(f'{name} execution failed; log={work}/worker.log')
-        result = json.loads(response.read_text(encoding='utf-8'))
+        if name == 'trellis':
+            result = client.trellis(request, work, stop)
+        elif name == 'sam3':
+            result = client.sam3(request, stop)
+        elif name == 'depth':
+            result = client.depth(request)
+        else:
+            result = client.diffusion(request)
+        result.update(status='ok', provider=provider, model=client.model)
         if not self._outputs_exist(name, request, result):
-            raise ValueError(f'{name} returned incomplete output; partial artifacts retained')
+            raise ValueError(f'{provider} returned incomplete output')
+        write_json(response, result)
+        check_cancelled(stop, name)
         return result
 
     def _convert(self, source, work, frame):
@@ -308,11 +226,9 @@ class GenerationTools:
         """Text/image reconstruction, mesh import, or registered asset reuse.
 
         label/prompt/size_hint_m/seed; optional asset_id, source_mesh,
-        source_image/source_mask, source_gaussian, source_up_axis, subject_box, edit_reference, texture_baking.
+        source_image/source_mask, source_gaussian, source_up_axis, subject_box, edit_reference.
         """
         from PIL import Image
-        if 'texture_baking' in spec and type(spec['texture_baking']) is not bool:
-            raise ValueError('texture_baking must be a boolean')
         work = Path(work).resolve()
         work.mkdir(parents=True, exist_ok=True)
         receipt, spec_path = work / 'asset_ref.json', work / 'asset_request.json'
@@ -346,15 +262,12 @@ class GenerationTools:
                 prompt += '. A realistic product photograph of one complete standalone object, three quarter view, centered, entire object visible, neutral light gray seamless background, fine material detail, no text, no other objects, no cropping.'
             defaults = generation_defaults('diffusion')
             request = {'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', defaults.get('seed', 42)),
-                       'width': defaults.get('width', 1024), 'height': defaults.get('height', 1024),
-                       'steps': defaults.get('steps', 4)}
-            if not environment_value('BENCHFORGE_INFERENCE_URL'):
-                request['model_path'] = environment_value('BENCHFORGE_DIFFUSION_MODEL') or self.config.model('flux')['path']
+                       'steps': defaults['steps'], **{key: defaults[key] for key in ('width', 'height') if key in defaults}}
             if spec.get('source_image'):
                 request['image'] = str(self.source_path(spec['source_image']))
                 sources['image'] = source_contract['source_image']
-            self.execute('diffusion', request, work / 'diffusion', stop)
-            tools.append('FLUX.2-klein-9B')
+            generated = self.execute('diffusion', request, work / 'diffusion', stop)
+            tools.append(generated['model'])
         with Image.open(image) as original:
             image_size = original.size
         if spec.get('source_mask'):
@@ -370,39 +283,30 @@ class GenerationTools:
             sources['mask'] = source_contract['source_mask']
         else:
             segment_dir = work / 'segmentation'
-            confidence = generation_defaults('sam3').get('confidence', .2)
+            confidence = generation_defaults('sam3').get('threshold', .2)
             request = {'image': str(image), 'output_dir': str(segment_dir), 'confidence': confidence}
-            if not environment_value('BENCHFORGE_INFERENCE_URL'):
-                request['checkpoint'] = str(Path(self.config.model('sam3')['path']) / 'sam3.pt')
             if spec.get('subject_box'):
                 request['instances'] = [{'id': 0, 'label': spec['label'], 'box': spec['subject_box']}]
             else:
                 request['prompts'] = [spec['label']]
-            segments = self.execute('sam3', request, work / 'sam3', stop)['segments']
+            segmented = self.execute('sam3', request, work / 'sam3', stop)
+            segments = segmented['segments']
             if not segments:
                 raise ValueError('SAM3 did not locate the subject; image retained for a new prompt or explicit mask')
             selection = max(segments, key=lambda s: s['score'] * max(0, s['box'][2] - s['box'][0]) * max(0, s['box'][3] - s['box'][1]))
             mask = segment_dir / selection['mask']
-            tools.append('SAM3')
+            tools.append(segmented['model'])
         with Image.open(mask) as selected_mask:
             if selected_mask.convert('L').getextrema()[1] < 128:
                 raise ValueError('subject mask is empty')
-        request = {'output_dir': str(work / 'mesh'), 'objects': [{'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': spec.get('seed', 42)}]}
-        provider = environment_value('BENCHFORGE_RECONSTRUCTION_PROVIDER')
-        profile = environment_value('BENCHFORGE_RECONSTRUCTION_PROFILE')
-        if provider:
-            request['provider'] = provider
-        if profile:
-            request['profile'] = profile
-        if not environment_value('BENCHFORGE_INFERENCE_URL'):
-            model_path = self.config.model('sam3d')['path']
-            request.update(source_root=self.config.data['sources']['sam3d'],
-                           config_path=str(Path(model_path) / 'checkpoints/pipeline.yaml'))
-        if 'texture_baking' in spec:
-            request['texture_baking'] = spec['texture_baking']
-        reconstructed = self.execute('sam3d', request, work / 'sam3d', stop)
+        seed = spec.get('seed', generation_defaults('trellis').get('seed', 42))
+        request = {'output_dir': str(work / 'mesh'), 'objects': [
+            {'object_id': 'subject', 'image': str(image), 'mask': str(mask), 'seed': seed}
+        ]}
+        reconstructed = self.execute('trellis', request, work / 'trellis', stop)
         selected_asset = next(a for a in reconstructed['assets'] if a['object_id'] == 'subject')
         source = work / 'mesh' / selected_asset['asset']
-        tools.append(selected_asset.get('model', 'SAM3D'))
-        provenance = {'tools': tools, 'inputs': sources, 'segmentation': selection, 'reconstruction': selected_asset, 'seed': spec.get('seed', 42), 'metric_reconstruction': False}
-        return self._publish(spec, work, source, selected_asset.get('source_frame', 'sam3d_camera'), provenance, 'generated', image, mask)
+        tools.append(selected_asset['model'])
+        provenance = {'tools': tools, 'inputs': sources, 'segmentation': selection, 'reconstruction': selected_asset,
+                      'seed': seed, 'metric_reconstruction': False}
+        return self._publish(spec, work, source, selected_asset['source_frame'], provenance, 'generated', image, mask)

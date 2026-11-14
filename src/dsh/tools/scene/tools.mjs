@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {spawn} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
@@ -18,8 +16,6 @@ const { createDeliveryReview, createCaptureReviewStep, productionReviewApplies }
 const { createDeliveryFileReview } = await import(new URL('./delivery_files.mjs' + revision, import.meta.url));
 const { createDeliveryVisuals } = await import(new URL('./delivery_visuals.mjs' + revision, import.meta.url));
 const { createPreparationHandler } = await import(new URL('./preparation.mjs' + revision, import.meta.url));
-const { createObservationBridge } = await import(new URL('../../host/capture/observation_bridge.mjs' + revision, import.meta.url));
-const { createCaptureRetry } = await import(new URL('../../host/capture/capture_retry.mjs' + revision, import.meta.url));
 const { createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation, captureRunId } = await import(new URL('../../host/capture/capture_watch.mjs' + revision, import.meta.url));
 const {requestKeyFor} = await import(new URL('./request_identity.mjs' + revision, import.meta.url));
 export const name='benchforge-scene-tools';
@@ -29,18 +25,15 @@ export const name='benchforge-scene-tools';
 export const inject=['tools','llm','attachments','benchforgeSessions'];
 export const Config=z.object({
   serviceConfig:z.string().required().description('Path to the BenchForge service JSON configuration.'),
-  scenePolicyWorkspace:z.string().default(''),
-  policyPython:z.string().default('python3'),
   preparationBatchSize:z.natural().min(1).default(3),
-  dshRoot:z.string().description('Legacy preset field, retained for compatibility; public DSH packages are resolved normally.'),
 });
 export async function apply(ctx, config) {
   const environment = launchEnvironmentOf(ctx);
   const loaded = await loadServiceConfig(config.serviceConfig, {
     getEnvironmentValue: (name) => environment.getFrom(name, ['process','project-env','user-env']),
+    requireScenePolicy: false,
   });
   const {config: cfg, serviceUrl, operatorToken: token} = loaded;
-  const scenePolicyWorkspace=config.scenePolicyWorkspace || cfg.task_root || '';
 const withExecutionMode = (value, mode) => {
   if (value.execution_mode !== undefined && value.execution_mode !== mode)
     throw new Error(`execution_mode ${value.execution_mode} conflicts with configured ${mode} mode`);
@@ -48,23 +41,6 @@ const withExecutionMode = (value, mode) => {
 };
 const output=objectOutput;
 async function api(path,args,signal){
-  if(scenePolicyWorkspace && ['/start','/capture','/refine','/extend','/retry'].includes(path)) {
-    await new Promise((resolve,reject)=>{
-      const child=spawn(config.policyPython,['-B',fileURLToPath(new URL('../../task_support/scene_policy_gate.py',import.meta.url)),
-        '--workspace',scenePolicyWorkspace,'--route',path,
-        '--execution-mode',loaded.executionMode,
-        ...(loaded.scenePolicyPath ? ['--policy',loaded.scenePolicyPath] : [])],{stdio:['pipe','pipe','pipe'],signal});
-      let output='',errors='';
-      const timer=setTimeout(()=>child.kill(),10000);
-      child.stdout.on('data',value=>output+=value);child.stderr.on('data',value=>errors+=value);
-      child.on('error',error=>{clearTimeout(timer);reject(error);});
-      child.on('close',code=>{clearTimeout(timer);try {
-        if(code!==0)throw new Error('Scene admission unavailable: '+errors.slice(-500));
-        const result=JSON.parse(output);if(!result.allowed)throw new Error(result.error);resolve();
-      }catch(error){reject(error);}});
-      child.stdin.on('error',()=>{});child.stdin.end(JSON.stringify(args));
-    });
-  }
   const contextual = {...args};
   if (path === '/start' && Array.isArray(contextual.intents)) {
     contextual.intents = contextual.intents.map(intent => withExecutionMode(intent, loaded.executionMode));
@@ -77,18 +53,16 @@ async function api(path,args,signal){
   if(!response.ok){const error=new Error(JSON.stringify(data));error.status=response.status;error.response=data;throw error;}
   return data;
 }
-const readObservation=createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.policyPython});
-const retryCapture=createCaptureRetry({api,serviceConfig:loaded.clientPath,policyPython:config.policyPython});
 const watchController=new AbortController();
 ctx.on('dispose',()=>watchController.abort());
-const watchCapture=createCaptureWatcher({artifacts:cfg.artifacts,read:readObservation,signal:watchController.signal,
+const watchCapture=createCaptureWatcher({artifacts:cfg.artifacts,read:api,signal:watchController.signal,
   notify:async(agent,record)=>{
     deliverCaptureNotice(agent,record,createUserMessage);
   }});
 async function observation(path,args,signal){
   const {cursor:ignored,...request}=args;
   request.run_id=captureRunId(request.run_id);
-  const {cursor,...value}=await readObservation(path,request,signal);
+  const {cursor,...value}=await api(path,request,signal);
   return args.detail === true ? value : compactCaptureObservation(value, {artifacts:cfg.artifacts});
 }
 async function submit(path,args,exec){
@@ -139,11 +113,13 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
     prompt:{type:'string',required:true},source_image:{type:'string',description:'Optional input image source_path for editing.'},width:{type:'integer'},height:{type:'integer'},steps:{type:'integer'},seed:{type:'integer'}});
   stage('benchforge_scene_sam3','/sam3','Segment an image with SAM3. Returns candidate masks, boxes and scores for inspection and selection. Prompts use text; instances use pixel xyxy boxes. Use the selected evidence for downstream reconstruction.',{
     source_image:{type:'string',required:true},prompts:{type:'array',items:{type:'string'}},instances:{type:'array',items:{type:'object',additionalProperties:true,properties:{id:{type:'integer'},label:{type:'string'},box:{type:'array',items:{type:'number'}},segmentation_prompt:{type:'string'}}}},confidence:{type:'number'}});
-  for (const name of ['benchforge_trellis', 'benchforge_scene_sam3d']) stage(name,'/sam3d','Generate object meshes with the configured reconstruction provider. FastTrellis2 returns a PBR mesh with source frame and model provenance, without metric scale or Gaussian splats. benchforge_scene_sam3d is a compatibility alias; register a selected mesh with mesh_import.',{
-    source_image:{type:'string',required:true},objects:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{object_id:{type:'string',required:true},source_mask:{type:'string',required:true},seed:{type:'integer'}}}},seed:{type:'integer'},texture_baking:{type:'boolean',description:'Compatibility option. TRELLIS.2 always exports PBR textures; other providers may interpret this option differently.'}});
-  stage('benchforge_depth','/depth','Estimate depth with the configured provider. Supply calibrated intrinsics or focal_length_px for metric depth. Returns a depth array, visualization and explicit units. Predictions are not simulator GT.',{
-    source_image:{type:'string',required:true},input_size:{type:'integer',description:'Optional provider input size.'},intrinsics:{type:'array',items:{type:'array',items:{type:'number'}},description:'Calibrated 3x3 camera matrix in input-image pixel coordinates.'},focal_length_px:{type:'number'},intrinsics_source:{type:'string'}});
-  stage('benchforge_mesh_import','/mesh-import','Convert and register an existing mesh for SceneProgram use without model inference or visual review. Returns asset_id and bounds. Preserve the generator-declared source_frame: TRELLIS.2 GLB uses y_up and legacy SAM3D output uses sam3d_camera. An existing paired Gaussian sidecar is imported automatically; source_gaussian can supply an explicit paired NPZ.',{
+  stage('benchforge_trellis','/trellis','Generate a Y-up PBR mesh per selected object mask with FastTrellis2. Register a selected mesh with benchforge_mesh_import. Set physical size when placing it in a scene.',{
+    source_image:{type:'string',required:true},objects:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{object_id:{type:'string',required:true},source_mask:{type:'string',required:true},seed:{type:'integer'}}}},seed:{type:'integer'}});
+  const cameraMatrix={type:'array',items:{type:'array',items:{type:'number'}}};
+  stage('benchforge_depth','/depth','Estimate single-image depth in meters with FastDA3. Returns a depth array, visualization and camera parameters. For optional pose conditioning supply both intrinsics and world-to-camera extrinsics.',{
+    source_image:{type:'string',required:true},input_size:{type:'integer',description:'Provider processing resolution, 140–1024.'},
+    intrinsics:{...cameraMatrix,description:'3x3 camera intrinsic matrix.'},extrinsics:{...cameraMatrix,description:'3x4 or 4x4 world-to-camera matrix.'}});
+  stage('benchforge_mesh_import','/mesh-import','Convert and register an existing mesh for SceneProgram use without model inference or visual review. Returns asset_id and bounds. Preserve the generator-declared source_frame: TRELLIS.2 GLB uses y_up; use sam3d_camera for preexisting camera-frame assets. An existing paired Gaussian sidecar is imported automatically; source_gaussian can supply an explicit paired NPZ.',{
     source_mesh:{type:'string',required:true},source_gaussian:{type:'string',description:'Paired activated Gaussian NPZ; coordinates match source_mesh or include local_to_source.'},label:{type:'string',required:true},source_up_axis:{type:'string',enum:['Y','Z']},source_frame:{type:'string',enum:['sam3d_camera','y_up','z_up']},size_hint_m:{type:'array',items:{type:'number'}}});
   stage('benchforge_capture','/capture','Render and simulate your complete SceneProgram on the desktop Isaac queue. Returns actual images, geometry and declared action traces. With strict scene policy enabled, physical and per-view life acceptance is mandatory even for capture-only; inspect scene_admission.json and scene_acceptance.json. A captured frame is not completion. Failed acceptance cannot export and needs a revised complete program through capture/refine. Does not automatically revise your program or export a dataset. When matching a separately generated diffusion reference, link that exact image with layout={mode:"reference",source_image:<returned source_path>} so the reference accompanies the renders at delivery review; reuse it without regenerating.',{
     scene_program_path:{type:'string',required:true},name:{type:'string'},layout:layoutInput,
@@ -166,9 +142,9 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
   }}));
   ctx.tools.register(defineTool({name:'benchforge_scene_catalog',description:"Discover tool capabilities, SceneProgram format and assets. Choose a section; query filters, item_id selects detail, next_offset continues. workspace_id copies all matches for task-code inspection. scene_schema fragments concatenate into the complete format.",parameters:{section:{type:'string',enum:['overview','contracts','scene_schema','native_assets','generated_assets','generation_tools','materials','environments']},query:{type:'string'},item_id:{type:'string'},offset:{type:'integer'},limit:{type:'integer'},workspace_id:{type:'string'}},output,execute:(args,exec)=>api('/catalog',args,exec.signal)}));
   ctx.tools.register(defineTool({name:'benchforge_run',description:"Produce a scene and dataset from natural-language requirements or scene_program_path. The pipeline prepares a diffusion reference unless one is supplied, then builds, captures, reviews and exports through desktop Isaac. Returns a durable run ID.",parameters:{request_key:requestKey,intents:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:{name:{type:'string',required:true},description:{type:'string',required:true},split:{type:'string',enum:['train','dev'],required:true},target_items:{type:'integer',description:'Number of dataset questions to export; this is not the scene entity count.'},layout:layoutInput,scene_program_path:programInput}}}},output:runOutput,execute:(args,exec)=>submit('/start',args,exec)}));
-  ctx.tools.register(defineTool({name:'benchforge_asset',description:"Generate with diffusion, SAM3 and the configured reconstruction tool, reconstruct source_image, import source_mesh, or reuse a catalog asset_id. Inputs use registered source paths. Returns a durable run ID.",parameters:{request_key:requestKey,intent:{type:'object',required:true,additionalProperties:false,properties:{name:{type:'string',required:true},description:{type:'string',required:true},label:{type:'string',description:'Semantic subject for SAM3 segmentation and asset registration; defaults to name.'},source_image:{type:'string'},source_mask:{type:'string'},source_mesh:{type:'string'},source_gaussian:{type:'string'},asset_id:{type:'string'},seed:{type:'integer'},source_up_axis:{type:'string',enum:['Y','Z']},size_hint_m:{type:'array',items:{type:'number'}},subject_box:{type:'array',items:{type:'number'},description:'Pixel xyxy box selecting the subject.'},edit_reference:{type:'boolean'},texture_baking:{type:'boolean',description:'Provider-specific compatibility option. TRELLIS.2 always exports PBR textures. Reused or imported meshes retain their existing appearance.'}}}},output:runOutput,execute:(args,exec)=>submit('/asset',args,exec)}));
+  ctx.tools.register(defineTool({name:'benchforge_asset',description:"Generate with diffusion, SAM3 and the configured reconstruction tool, reconstruct source_image, import source_mesh, or reuse a catalog asset_id. Inputs use registered source paths. Returns a durable run ID.",parameters:{request_key:requestKey,intent:{type:'object',required:true,additionalProperties:false,properties:{name:{type:'string',required:true},description:{type:'string',required:true},label:{type:'string',description:'Semantic subject for SAM3 segmentation and asset registration; defaults to name.'},source_image:{type:'string'},source_mask:{type:'string'},source_mesh:{type:'string'},source_gaussian:{type:'string'},asset_id:{type:'string'},seed:{type:'integer'},source_up_axis:{type:'string',enum:['Y','Z']},size_hint_m:{type:'array',items:{type:'number'}},subject_box:{type:'array',items:{type:'number'},description:'Pixel xyxy box selecting the subject.'},edit_reference:{type:'boolean'}}}},output:runOutput,execute:(args,exec)=>submit('/asset',args,exec)}));
   ctx.tools.register(defineTool({name:'benchforge_extend',description:"Add objects to an accepted captured scene while retaining its existing entities and train/dev family. With strict scene policy, provide a complete scene_program_path that preserves all parent objects unchanged and includes the saved scene brief.",parameters:{request_key:requestKey,parent_task_id:{type:'string',required:true},name:{type:'string',required:true},description:{type:'string',required:true},target_items:{type:'integer',description:'Number of dataset questions to export; this is not the scene entity count.'},layout:layoutInput,scene_program_path:programInput},output:runOutput,execute:(args,exec)=>submit('/extend',args,exec)}));
-  ctx.tools.register(defineTool({name:'benchforge_retry',description:"Recover a failed stage without a new scene version. Capture execution failures use a fresh attempt; completed captures can resume upload. Quality failures still require refine/capture.",parameters:{task_id:{type:'string',required:true},feedback:{type:'string',description:'Optional concrete scene repair guidance for a failed planning stage, up to 12000 characters.'},capture_mode:{type:'string',enum:['auto','resume_upload','restart_capture'],description:'For capture execution/transport failure only. auto resumes upload from a validated frozen-job native capture receipt; otherwise it starts a fresh attempt. resume_upload requires that receipt and unchanged native files at the worker.'}},output:taskOutput,execute:(args,exec)=>retryCapture(args,exec.signal)}));
+  ctx.tools.register(defineTool({name:'benchforge_retry',description:"Recover a failed stage without a new scene version. Capture execution failures use a fresh attempt; completed captures can resume upload. Quality failures still require refine/capture.",parameters:{task_id:{type:'string',required:true},feedback:{type:'string',description:'Optional concrete scene repair guidance for a failed planning stage, up to 12000 characters.'},capture_mode:{type:'string',enum:['auto','resume_upload','restart_capture'],description:'For capture execution/transport failure only. auto resumes upload from a validated frozen-job native capture receipt; otherwise it starts a fresh attempt. resume_upload requires that receipt and unchanged native files at the worker.'}},output:taskOutput,execute:(args,exec)=>api('/retry',args,exec.signal)}));
   ctx.tools.register(defineTool({name:'benchforge_scene_status',description:"Read a concise current stage, real failures, quality outcomes and evidence/receipt paths. run_id excludes .sceneN. Use detail=true when the full saved SceneProgram or task reports are needed; ordinary progress checks use the default summary. Lifecycle completion and scene quality are separate fields.",parameters:{run_id:{type:'string',required:true},detail:{type:'boolean'}},output:observationOutput,execute:(args,exec)=>observation(args.detail?'/inspect':'/observe',args,exec.signal)}));
   ctx.tools.register(defineTool({name:'benchforge_wait',description:"Wait for capture progress. Prefer background=true: returns immediately, waits without model polling and wakes this session once on terminal state or observer failure. Continue independent work or finish the turn after registration. Synchronous waits remain bounded at 1..60 seconds and return a concise observation. Read benchforge_scene_status with detail=true for full saved task reports.",parameters:{run_id:{type:'string',required:true},background:{type:'boolean',description:'Register one background observer for this session/run; no repeated wait calls are needed.'},timeout_seconds:{type:'integer',description:'Synchronous wait only, 1..60 seconds.'}},output:observationOutput,execute:async(args,exec)=>{
     const {background,...request}=args;

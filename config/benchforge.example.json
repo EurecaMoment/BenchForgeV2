@@ -1,5 +1,5 @@
 {
-  "config_version": 3,
+  "config_version": 4,
   "dsh": {
     "repository": "https://github.com/EurecaMoment/deepseek-harness4BenchForge.git",
     "path": "third_party/deepseek-harness4BenchForge",
@@ -26,30 +26,37 @@
       "token_env": "BENCHFORGE_MODEL_API_KEY"
     },
     "FastFLUX2Klein": {
-      "gateway_tool": "diffusion",
-      "request_defaults": {
-        "steps": 4
-      }
+      "url": null,
+      "model": "flux2klein",
+      "token_env": null,
+      "timeout_seconds": 180
     },
     "FastSAM3": {
-      "gateway_tool": "sam3"
+      "url": null,
+      "model": "sam3",
+      "token_env": null,
+      "timeout_seconds": 60
     },
     "FastDA3": {
-      "gateway_tool": "depth_anything"
+      "url": null,
+      "model": "da3",
+      "token_env": null,
+      "timeout_seconds": 180
     },
     "FastTrellis2": {
-      "gateway_tool": "sam3d"
+      "url": null,
+      "model": "fasttrellis2",
+      "token_env": null,
+      "timeout_seconds": 1800
     },
     "IssacSim4A100": {
+      "mode": "grpc",
       "grpc": {
         "host": null,
-        "port": 50051
+        "port": 50051,
+        "timeout_seconds": 60
       },
       "capture_timeout_seconds": 1800
     }
-  },
-  "inference": {
-    "url": null,
-    "token_env": "BENCHFORGE_INFERENCE_API_KEY"
   }
 }

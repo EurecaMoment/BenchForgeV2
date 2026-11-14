@@ -66,7 +66,6 @@ class ResidentTests(unittest.TestCase):
     def test_compatible_tasks_share_one_app(self):self.exercise_engine(True)
     def test_incompatible_boot_never_executes_in_old_app(self):self.exercise_engine(False)
 
-    @unittest.skip('run_resident (resident Isaac 常驻模式) 已废弃，所有采集走 grpc_capture；参见 worker.py 改造')
     def test_report_is_not_completion_and_restart_adopts_same_job(self):
         with tempfile.TemporaryDirectory() as temp:
             worker.state_root=Path(temp);worker.config={}
@@ -78,7 +77,6 @@ class ResidentTests(unittest.TestCase):
             with patch.object(worker,'resident_processes',return_value=[Process()]),patch.object(worker,'api',return_value={}),patch.object(worker.time,'sleep',side_effect=complete),patch.object(worker.subprocess,'Popen',side_effect=AssertionError('duplicate Isaac launch')):
                 self.assertEqual(worker.run_resident(job,directory,[])['state'],'complete')
 
-    @unittest.skip('run_resident (resident Isaac 常驻模式) 已废弃，所有采集走 grpc_capture；参见 worker.py 改造')
     def test_cancel_stops_owned_engine_before_returning(self):
         with tempfile.TemporaryDirectory() as temp:
             worker.state_root=Path(temp);worker.config={}

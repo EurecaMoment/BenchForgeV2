@@ -1,7 +1,6 @@
 """Read session-owned BenchForge jobs; never construct Store or start work."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
-import importlib.util
 import json
 import os
 import re
@@ -11,7 +10,7 @@ from urllib.error import HTTPError
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from runtime_paths import CHECKOUT_ROOT, DSH_ROOT, use_checkout_core
+from runtime_paths import use_checkout_core
 
 use_checkout_core()
 
@@ -38,87 +37,11 @@ def load_workbench_config(path):
         config['operator_token'] = environment_value(name) or ''
     elif not config.get('operator_token'):
         config['operator_token'] = environment_value('BENCHFORGE_OPERATOR_TOKEN') or ''
-    config['_workbench_config_dir'] = path.parent
     return config
 
 
-def workbench_database_url(config):
-    """Resolve credentials only for the older direct-read deployment."""
-    if config.get('database_url_env'):
-        name = os.path.expandvars(config['database_url_env'])
-        database = environment_value(name)
-        directory = config.get('_workbench_config_dir')
-        env_file = directory / 'database.env' if directory else None
-        if env_file and env_file.is_file():
-            values = dict(line.split('=', 1) for line in env_file.read_text(encoding='utf-8').splitlines()
-                          if '=' in line and not line.lstrip().startswith('#'))
-            managed = name in {'BENCHFORGE_DATABASE_URL', 'SPATIALFORGE_DATABASE_URL'} and (
-                environment_value('BENCHFORGE_DATABASE_MANAGED', environ=values) == 'true')
-            configured_url = environment_value(name, environ=values)
-            database = configured_url if managed else database or configured_url
-    else:
-        database = os.path.expandvars(config.get('database_url') or '')
-    if database:
-        return database
-    if config.get('harness'):
-        deployment = Path(config['harness']) / 'deployment.local.json'
-        if deployment.is_file():
-            return json.loads(deployment.read_text(encoding='utf-8'))['database_url']
-    raise ValueError('Configure database_url or database_url_env for the workbench service')
-
-
-def workbench_metadata(config, route, value):
-    """Use the service first. An older deployment can still read its local DB."""
-    legacy = any(config.get(key) for key in ('database_url', 'database_url_env', 'harness'))
-    if config.get('operator_token'):
-        try:
-            return service_read(config, route, value)
-        except HTTPError as error:
-            if error.code != 404:
-                raise
-            try:
-                detail = json.load(error)
-            except ValueError:
-                raise error
-            if detail != {'error': 'unknown operation'}:
-                raise error
-    if not legacy:
-        return None
-    return _legacy_workbench_metadata(config, route, value)
-
-
-def _backend_projection(module_name):
-    filename = module_name + '.py'
-    source = DSH_ROOT / 'dist/workbench' / filename
-    if CHECKOUT_ROOT is not None:
-        checkout_source = CHECKOUT_ROOT / 'src/backend/benchforge_backend' / filename
-        if checkout_source.is_file():
-            source = checkout_source
-    if not source.is_file():
-        return importlib.import_module('benchforge_backend.' + module_name)
-    spec = importlib.util.spec_from_file_location('workbench_' + module_name, source)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _legacy_workbench_metadata(config, route, value):
-    from sqlalchemy import create_engine
-
-    workbench_queries = _backend_projection('workbench_queries')
-    query = workbench_queries.WORKBENCH_QUERIES.get(route)
-    if query is None:
-        raise ValueError('Unknown workbench metadata query')
-    engine = create_engine(workbench_database_url(config), hide_parameters=True)
-    try:
-        with workbench_queries.read_connection(engine) as connection:
-            return query(connection, value)
-    finally:
-        engine.dispose()
-
-
 def session_runs(config, session, sessions=()):
-    value = workbench_metadata(config, '/workbench/session-runs', {
+    value = service_read(config, '/workbench/session-runs', {
         'session_id': session, 'related_session_ids': list(dict.fromkeys(sessions))[:8],
     })
     return value['runs'] if value else []
@@ -135,22 +58,7 @@ def service_read(config, route, value):
 
 
 def production_observation(config, run_id):
-    try:
-        return service_read(config, '/observe', {'run_id':run_id})
-    except HTTPError as error:
-        # A running older service can retain the pre-fix Python module. Recover
-        # this exact projection error from its read-only snapshot and saved files.
-        try:detail=json.loads(error.read())
-        except (ValueError,TypeError):raise error
-        if error.code!=400 or detail.get('error')!='KeyError' or detail.get('detail')!="'report'":raise error
-        snapshot=service_read(config, '/inspect', {'run_id':run_id})
-        native = _backend_projection('observation')
-        class SnapshotStore:
-            root=Path(config['artifacts'])
-            def snapshot(self,requested):return snapshot
-        value=native.observe(SnapshotStore(),run_id)
-        value.pop('cursor',None)
-        return value
+    return service_read(config, '/observe', {'run_id': run_id})
 
 
 def bounded_json(path, limit=2 * 1024 * 1024):

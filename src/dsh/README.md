@@ -52,15 +52,12 @@ session operations for preparation. The client mounts the workbench for
 workspace roots.
 The workbench uses the configured service URL and operator token to read run
 history and the shared scene catalog over the BenchForge API. The backend owns
-the database queries. Existing workbenches with local database settings can use
-the same read-only queries when configured for database-only access or when the
-backend reports an unknown route.
+the database queries and serves observations and stage retries through its API.
 
 The workbench and Python core share the assessment and task templates in
 `src/benchforge_core/pipelines/`. The npm pack step copies them into the published
 bundle so it can load templates outside the source checkout. It also includes
-the backend's read-only query, observation and capture acknowledgement modules
-for earlier backend installations.
+the capture acknowledgement module used by the external dispatcher source bundle.
 
 ## Current FIT simulation route
 
@@ -124,7 +121,7 @@ runtime adoption fails.
 Keep the deployment's settings in `config/benchforge.local.json` and run
 `python benchforge_app.py sync` to prepare the client configuration for hot
 update. The updater also uses the deployment's `.deployment/python-development`
-launcher. Configure the DSH model, inference gateway and capture endpoint in
+launcher. Configure the DSH model, HTTP providers and Isaac capture in
 `config/benchforge.local.json`.
 
 ## Install and configure
@@ -155,7 +152,7 @@ dsh --profile web --dump-config
 The portable bundle uses `python3`, `config/benchforge.local.json` and the generated
 `config/generated/benchforge-client.local.json` relative to the DSH launch directory.
 Use `benchforge_app.py init` to create the local file and `sync` after setting
-`client`, `providers` and `inference`. Pass credentials through the launch environment.
+`client` and `providers`. Pass credentials through the launch environment.
 Use the generated local overlay to install the configured DSpark model at Host
 scope. The portable bundle imports the preset and tool definitions.
 Check the operator connection with

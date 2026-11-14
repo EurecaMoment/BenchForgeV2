@@ -27,8 +27,11 @@ class ConfiguredOperations(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
 
-    def test_layout_uses_configured_weights_and_actual_model_receipt(self):
-        (self.root/'models.json').write_text(json.dumps({'models':{'flux':{'path':'weights/chosen-klein','python':'venv/bin/python'}},'sources':{}}))
+    def test_layout_uses_configured_request_defaults_and_model_receipt(self):
+        (self.root/'models.json').write_text(json.dumps({'providers': {'FastFLUX2Klein': {
+            'url': 'https://fixture.invalid/v1', 'model': 'chosen-klein',
+            'request_defaults': {'size': '512x384', 'num_inference_steps': 6},
+        }}}))
         config = self.root/'server.json'
         config.write_text(json.dumps({
             'models_config':'models.json',
@@ -47,25 +50,12 @@ class ConfiguredOperations(unittest.TestCase):
             return {'status':'ok','model':'chosen-klein'}
         with patch.object(tools, 'execute', side_effect=worker):
             prepare_layout(tools, {'layout':{'mode':'generate','prompt':'A sunny room'}}, directory, threading.Event())
-        self.assertEqual(observed[0]['model_path'], str(self.root/'weights/chosen-klein'))
+        self.assertEqual((observed[0]['width'], observed[0]['height'], observed[0]['steps']), (512, 384, 6))
         receipt = json.loads((directory/'layout_reference.json').read_text())
         self.assertEqual(receipt['tool'], 'chosen-klein')
         self.assertFalse(receipt['gt_source'])
         with Image.open(directory/'layout_reference.png') as image:
             self.assertEqual(image.size, (32,24))
-
-    def test_explicit_diffusion_override_does_not_read_missing_model_config(self):
-        os.environ['BENCHFORGE_DIFFUSION_MODEL'] = str(self.root/'chosen-weights')
-        tools = GenerationTools(self.root/'artifacts')
-        directory = self.root/'task/revision_0'
-        directory.mkdir(parents=True)
-        def worker(name, request, work, stop):
-            self.assertEqual(request['model_path'], os.environ['BENCHFORGE_DIFFUSION_MODEL'])
-            Image.new('RGB',(24,24),'tan').save(request['output'])
-            return {'status':'ok'}
-        with patch.object(tools, 'execute', side_effect=worker):
-            prepare_layout(tools, {'layout':{'mode':'generate','prompt':'A room'}}, directory, threading.Event())
-        self.assertEqual(json.loads((directory/'layout_reference.json').read_text())['tool'], 'chosen-weights')
 
     def test_catalog_does_not_require_or_invent_a_model(self):
         self.assertEqual(_overview()['model'], 'unconfigured')

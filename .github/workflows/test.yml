@@ -42,8 +42,6 @@ jobs:
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s src/backend/tests -p test_configured_operations.py -v
       - if: matrix.python == '3.12'
-        run: python -m unittest discover -s src/backend/tests -p test_inference_service.py -v
-      - if: matrix.python == '3.12'
         run: python -m unittest discover -s src/backend/tests -p test_service_errors.py -v
       - if: matrix.python == '3.12'
         run: python -m unittest discover -s src/backend/tests -p test_capture_scope.py -v

@@ -5,12 +5,11 @@ import subprocess
 from pathlib import Path
 from .runtime import Runtime, read
 from .workbench import OPERATIONS
-from .model_services import MODEL_TOOLS
 
 
 def main():
     parser = argparse.ArgumentParser(description="BenchForge production and evaluation tools")
-    parser.add_argument("tool", choices=["catalog", "status", "plan", "sam3", "yoloe", "depthanything3", "llm_local", "habitat", "libero", "carla", "isaac", "evidence", "build", "evaluate", *OPERATIONS, *MODEL_TOOLS])
+    parser.add_argument("tool", choices=["catalog", "status", "plan", "llm_local", "habitat", "libero", "carla", "evidence", "build", "evaluate", *OPERATIONS])
     parser.add_argument("--workspace", required=True)
     parser.add_argument("--config", default="config/benchforge.local.json"
                         if Path("config/benchforge.local.json").is_file() else None)

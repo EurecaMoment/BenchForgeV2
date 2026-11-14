@@ -8,7 +8,7 @@ import re
 import time
 
 from production_observer import (
-    PIPELINE_SCHEMAS, load_workbench_config, service_read, stage_artifacts, workbench_metadata,
+    PIPELINE_SCHEMAS, load_workbench_config, service_read, stage_artifacts,
 )
 from benchforge_core.pipelines.scene_policy import load_policy, check_source, classify_planned, CLASSIFIER_VERSION, scene_design_parser
 
@@ -87,7 +87,7 @@ def completed_tasks(config):
     rows = []
     value = {}
     while True:
-        page = workbench_metadata(config, '/workbench/scene-catalog', value)
+        page = service_read(config, '/workbench/scene-catalog', value)
         if page is None:
             raise ValueError('The service does not provide the shared scene catalog')
         rows.extend(page['items'])

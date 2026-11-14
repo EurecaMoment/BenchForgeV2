@@ -24,7 +24,7 @@ def uses_local_service(preset):
 
     profile = yaml.load(preset.read_text(encoding='utf-8'), Loader=yaml.BaseLoader)
     config = ROOT / 'config'
-    local = benchforge_app.settings.local_service_configs(config, config / 'generated')
+    local = benchforge_app.settings.local_service_configs(config / 'generated')
     return any(isinstance(reference, str) and (ROOT / reference).resolve() in local
                for reference in service_config_paths(profile))
 
@@ -54,7 +54,7 @@ def main():
     if args.command=='setup':
         if args.check_config:
             parser.error('--check-config requires start')
-        local = benchforge_app.settings.local_service_configs(generated.parent, generated)
+        local = benchforge_app.settings.local_service_configs(generated)
         if service_config in local:
             run([sys.executable, ROOT/'benchforge_app.py', 'sync'], cwd=ROOT)
             service_config = local[service_config]

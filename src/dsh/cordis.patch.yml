@@ -98,14 +98,12 @@
             Use BenchForge tools for production operations; the configured queue owns
             the connected desktop Isaac instance.
 
-            Use the configured benchforge_model_* clients for FLUX.2 Klein image generation
-            and editing, SAM3 masks, DA3 depth, and TRELLIS.2 mesh/PBR. Supply calibrated
-            intrinsics or focal_length_px when required for metric depth. TRELLIS.2
-            declares y_up, and supplies mesh/PBR predictions without metric scale,
-            camera pose or Gaussian splats. Each submission checks provider availability
-            and returns a durable job_id. Read status or result before using the output
-            as evidence. Model weights, GPU allocation and serving belong to the external
-            provider. Predictions do not establish simulator ground truth.
+            Use benchforge_diffusion for images, benchforge_scene_sam3 for masks,
+            benchforge_depth for DA3 depth, and benchforge_trellis for TRELLIS.2 meshes.
+            These tools return production task IDs. Read the completed task evidence
+            to obtain output paths. DA3 returns predicted depth in meters. TRELLIS.2
+            returns a Y-up PBR mesh with unmeasured scale. Use benchforge_capture
+            for simulator evidence.
 
             Diffusion, SAM3, SAM3D, depth, mesh import, geometry preview, capture,
             run and asset operations are composable capabilities. Inspect the returned
@@ -507,18 +505,12 @@
           - pipeline_repair_plan
           - pipeline_evaluate
           - stage_review
-          - model_diffusion
-          - model_sam3
-          - model_depth_anything
-          - model_trellis
-          - model_sam3d
           - llm_local
           configPath: config/benchforge.local.json
       - id: benchforge-scene-tools
         name: '@eurecamoment/benchforge-dsh/benchforge-scene-tools'
         config:
           serviceConfig: config/generated/benchforge-client.local.json
-          policyPython: python3
       - id: benchforge-subagent-policy
         name: '@eurecamoment/benchforge-dsh/subagent-policy'
         config:
@@ -725,14 +717,12 @@
             Use BenchForge tools for production operations; the configured queue owns
             the connected desktop Isaac instance.
 
-            Use the configured benchforge_model_* clients for FLUX.2 Klein image generation
-            and editing, SAM3 masks, DA3 depth, and TRELLIS.2 mesh/PBR. Supply calibrated
-            intrinsics or focal_length_px when required for metric depth. TRELLIS.2
-            declares y_up, and supplies mesh/PBR predictions without metric scale,
-            camera pose or Gaussian splats. Each submission checks provider availability
-            and returns a durable job_id. Read status or result before using the output
-            as evidence. Model weights, GPU allocation and serving belong to the external
-            provider. Predictions do not establish simulator ground truth.
+            Use benchforge_diffusion for images, benchforge_scene_sam3 for masks,
+            benchforge_depth for DA3 depth, and benchforge_trellis for TRELLIS.2 meshes.
+            These tools return production task IDs. Read the completed task evidence
+            to obtain output paths. DA3 returns predicted depth in meters. TRELLIS.2
+            returns a Y-up PBR mesh with unmeasured scale. Use benchforge_capture
+            for simulator evidence.
 
             Diffusion, SAM3, SAM3D, depth, mesh import, geometry preview, capture,
             run and asset operations are composable capabilities. Inspect the returned
@@ -1141,18 +1131,12 @@
           - pipeline_repair_plan
           - pipeline_evaluate
           - stage_review
-          - model_diffusion
-          - model_sam3
-          - model_depth_anything
-          - model_trellis
-          - model_sam3d
           - llm_local
           configPath: config/benchforge.local.json
       - id: benchforge-scene-tools
         name: '@eurecamoment/benchforge-dsh/benchforge-scene-tools'
         config:
           serviceConfig: config/generated/benchforge-client.local.json
-          policyPython: python3
       - id: benchforge-subagent-policy
         name: '@eurecamoment/benchforge-dsh/subagent-policy'
         config:
@@ -1261,7 +1245,6 @@
     name: '@eurecamoment/benchforge-dsh/capture-runtime'
     config:
       productionConfig: config/generated/benchforge-client.local.json
-      productionPython: python3
       workspacePaths: []
   - id: benchforge-workbench-ui
     name: ./ui/index.js

@@ -189,8 +189,8 @@ def main():
                     self.reply(catalog_response(store,value))
                 elif self.path=='/layout':
                     self.reply(start_design_request(store,value))
-                elif self.path in {'/diffusion','/sam3','/sam3d','/depth','/mesh-import'}:
-                    tool={'/mesh-import':'mesh_import','/depth':'depth_anything'}.get(self.path,self.path[1:])
+                elif self.path in {'/diffusion','/sam3','/trellis','/depth','/mesh-import'}:
+                    tool=self.path[1:].replace('-', '_')
                     self.reply(start_generation_request(store,tool,value))
                 elif self.path=='/start':
                     self.reply(start_scene_request(store,value,config.get('max_scenes_per_run',1000)))
@@ -204,7 +204,7 @@ def main():
                     self.reply(preview_scene_geometry(program,mesh_loader=mesh))
                 elif self.path=='/asset':
                     intent=value['intent']
-                    if not isinstance(intent,dict) or not {'name','description'}<=set(intent) or set(intent)-{'name','description','label','source_image','source_mask','source_mesh','source_gaussian','asset_id','seed','source_up_axis','size_hint_m','subject_box','edit_reference','texture_baking'}:raise ValueError('invalid asset intent')
+                    if not isinstance(intent,dict) or not {'name','description'}<=set(intent) or set(intent)-{'name','description','label','source_image','source_mask','source_mesh','source_gaussian','asset_id','seed','source_up_axis','size_hint_m','subject_box','edit_reference'}:raise ValueError('invalid asset intent')
                     if not isinstance(intent['description'],str) or not 1<=len(intent['description'])<=12000:raise ValueError('invalid asset description')
                     context=_request_context(value)
                     kwargs={'context':context} if context is not None else {}

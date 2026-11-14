@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import isaac_sim_pb2 as isaac__sim__pb2
+from . import isaac_sim_pb2 as isaac__sim__pb2
 
 GRPC_GENERATED_VERSION = '1.85.1'
 GRPC_VERSION = grpc.__version__

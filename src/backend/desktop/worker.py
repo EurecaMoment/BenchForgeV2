@@ -1,4 +1,4 @@
-"""Persistent desktop dispatcher. Only the installed Isaac executor is launched."""
+"""Dispatch BenchForge capture attempts using the selected Isaac provider."""
 import argparse
 import ctypes
 import io
@@ -17,8 +17,11 @@ import urllib.request
 import zipfile
 import zlib
 
+import grpc
+
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root))
+from benchforge_backend.isaac.client import CaptureFailed, run_capture
 from benchforge_backend.capture_recovery import local_capture_receipt,require_frozen_request
 from benchforge_backend.provider_config import capture_timeout, isaac_endpoint
 from benchforge_backend.runtime_config import load_worker_config
@@ -28,41 +31,18 @@ IS_WINDOWS=platform.system()=='Windows'
 NO_WINDOW=getattr(subprocess,'CREATE_NO_WINDOW',0) if IS_WINDOWS else 0
 
 
-def isaac_launch_command(local_script, *extra_args, for_resident=False):
-    """Build the gRPC launch spec for the remote Isaac Sim service.
-
-    Isaac Sim runs on a remote server behind the configured gRPC service.
-    Local and SSH launch modes were
-    removed; every launch is dispatched to the remote service.
-
-    Returns (launch_spec, 'grpc'). launch_spec is a dict with keys
-    'endpoint', 'method', 'args', 'for_resident' — NOT a command list.
-    """
-    return ({
-        'endpoint': isaac_endpoint(config.get('isaac_grpc') or {}),
-        'method': 'resident_start' if for_resident else 'capture',
-        'args': list(extra_args),
-        'for_resident': bool(for_resident),
-    }, 'grpc')
-
-
-def isaac_client():
-    """Load the shared gRPC client."""
-    import importlib.util
-    path=root/'grpc'/'client.py'
-    if not path.is_file():raise RuntimeError(f'Isaac gRPC client missing: {path}')
-    spec=importlib.util.spec_from_file_location('benchforge_isaac_grpc_client',path)
-    module=importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def grpc_capture(job,directory,output):
     """Run one remote capture: upload assets, submit, poll with heartbeats, download artifacts."""
-    client=isaac_client()
-    launch_spec, _ = isaac_launch_command('desktop/isaac_capture.py')
-    endpoint=launch_spec['endpoint']
-    started=time.time()
+    grpc_settings = config['isaac_grpc']
+    endpoint = isaac_endpoint(grpc_settings)
+    rpc_timeout = grpc_settings.get('timeout_seconds', 60)
+    receipt = directory / 'grpc_job.json'
+    if receipt.is_file():
+        existing = json.loads(receipt.read_text(encoding='utf8'))
+        endpoint, started = existing['endpoint'], existing['started_at']
+    else:
+        started = time.time()
+        write_json(receipt, {'job_id': job['token'], 'endpoint': endpoint, 'started_at': started})
     timeout=float(capture_timeout(config))
     stop={'reason':None}
     next_heartbeat=[0.]
@@ -78,7 +58,7 @@ def grpc_capture(job,directory,output):
             except (OSError,urllib.error.URLError):
                 canceled=False
             if canceled:stop['reason']='canceled'
-    job_id=f"{job['token']}-{int(time.time()*1000)}"
+    job_id = job['token']
     with tempfile.TemporaryDirectory(prefix='isaac_grpc_') as temporary:
         assets={}
         for asset_id,path in (job.get('asset_paths') or {}).items():
@@ -89,8 +69,9 @@ def grpc_capture(job,directory,output):
                     if item.is_file():bundle.write(item,str(item.relative_to(base)))
             assets[f'{asset_id}.zip']=archive
         try:
-            result=client.run_capture(endpoint,job_id,(directory/'request.json').read_bytes(),output,
-                                      assets=assets,timeout_seconds=timeout+120,
+            payload = {key: value for key, value in job.items() if key != 'asset_paths'}
+            result=run_capture(endpoint,job_id,json.dumps(payload, ensure_ascii=False).encode('utf8'),output,
+                                      assets=assets,timeout_seconds=timeout,rpc_timeout=rpc_timeout,
                                       on_status=on_status,should_stop=lambda:stop['reason'] is not None)
         except Exception:
             if stop['reason']:
@@ -121,19 +102,20 @@ def job_identity(job):
 
 
 def finish_job(job,directory,outcome,error=None):
-    # This small control message does not depend on any image or scene upload.
-    remaining=owned_processes(directory/'request.json')
-    if remaining:
-        for process in remaining:process.close()
-        raise RuntimeError('cannot release desktop while owned Isaac processes remain')
-    resident=state_root/'resident' if state_root is not None else None
-    if resident and (resident/'status.json').exists():
-        status=json.loads((resident/'status.json').read_text(encoding='utf8'))
-        if status.get('token')==job['token']:
-            processes=resident_processes(resident)
-            active=bool(processes)
-            for process in processes:process.close()
-            if active:raise RuntimeError('cannot release desktop during resident capture')
+    if config.get('isaac_mode') == 'local' or (directory / 'resident.json').is_file():
+        # This small control message does not depend on any image or scene upload.
+        remaining=owned_processes(directory/'request.json')
+        if remaining:
+            for process in remaining:process.close()
+            raise RuntimeError('cannot release desktop while owned Isaac processes remain')
+        resident=state_root/'resident' if state_root is not None else None
+        if resident and (resident/'status.json').exists():
+            status=json.loads((resident/'status.json').read_text(encoding='utf8'))
+            if status.get('token')==job['token']:
+                processes=resident_processes(resident)
+                active=bool(processes)
+                for process in processes:process.close()
+                if active:raise RuntimeError('cannot release desktop during resident capture')
     try:receipt=local_capture_receipt(job,directory)
     except ValueError as exc:
         receipt=None
@@ -387,23 +369,12 @@ def stop_resident(state,processes):
     if any(p.active() for p in processes):raise RuntimeError('resident Isaac is still terminating')
 
 
-def run_resident(job,directory,rows):
-    """Legacy resident Isaac launcher — 已替换为 grpc_capture 一次性作业。
-
-    旧的常驻仿真进程通过 run_grpc_job 启动，该函数在 gRPC 改造时被移除；
-    现在所有采集都走 Capture + UploadAsset + DownloadArtifacts 全链路。
-    """
-    raise NotImplementedError(
-        'run_resident (resident Isaac 常驻模式) 已废弃；'
-        '请改用 grpc_capture 或 client.run_capture。')
-
-
 def wait_owned(job,directory,processes,launched=None):
     record=directory/'process.json'
     previous=json.loads(record.read_text(encoding='utf8')) if record.is_file() else {}
     started=previous.get('started_at')
     if not started:
-        times=[p.created/10_000_000-11644473600 for p in processes if p.created]
+        times=[p.created/10_000_000-11644473600 for p in processes if IS_WINDOWS and p.created]
         started=min(times,default=time.time())
     write_json(record,{'token':job['token'],'started_at':started,'adopted':launched is None,
                        'processes':[{'pid':p.pid,'parent_pid':p.parent,'created_filetime':p.created} for p in processes]})
@@ -446,38 +417,140 @@ def recover_other_attempts(job,rows):
             wait_owned(previous,request.parent,processes)
 
 
+def run_resident(job, directory, rows):
+    """Submit a mailbox request or take ownership of that request after a worker restart."""
+    state = state_root / 'resident'
+    state.mkdir(exist_ok=True)
+    request, output = directory / 'request.json', directory / 'capture'
+    receipt = directory / 'resident.json'
+    result_path = directory / 'resident_result.json'
+    started = json.loads(receipt.read_text(encoding='utf8'))['started_at'] if receipt.is_file() else time.time()
+    if not receipt.is_file():
+        write_json(receipt, {'token': job['token'], 'started_at': started})
+    command = {'action': 'capture', 'request': str(request), 'output': str(output)}
+    local = config.get('isaac_local', {})
+    processes = resident_processes(state, rows)
+    child = None
+    try:
+        status = api('/worker/heartbeat', {**job_identity(job), 'progress': {
+            'stage': 'capture', 'started_at': started, 'executor': 'local'}})
+        next_heartbeat = time.monotonic() + 8
+        while True:
+            if result_path.is_file():
+                result = json.loads(result_path.read_text(encoding='utf8'))
+                if result['state'] != 'restart_required':
+                    return result
+                # The resident has an incompatible boot profile. Let it exit before relaunching.
+                deadline = time.monotonic() + 25
+                while (any(process.active() for process in processes) or
+                       (child is not None and child.poll() is None)):
+                    if time.monotonic() >= deadline:
+                        stop_resident(state, processes)
+                        break
+                    time.sleep(.2)
+                result_path.unlink()
+                (state / 'active.json').unlink(missing_ok=True)
+                child = None
+
+            reason = 'canceled' if status.get('cancel') else 'timeout' if time.time() - started > capture_timeout(config) else None
+            if reason:
+                stop_resident(state, processes)
+                if child is not None:
+                    child.wait(timeout=25)
+                write_json(directory / 'termination.json', {'reason': reason, 'token': job['token'], 'time': time.time()})
+                return {'state': 'failed', 'error': reason}
+
+            queued = next((state / name for name in ('command.json', 'active.json')
+                           if (state / name).is_file()), None)
+            active = any(process.active() for process in processes) or (child is not None and child.poll() is None)
+            if active and queued and queued.exists():
+                try:
+                    pending = json.loads(queued.read_text(encoding='utf8'))
+                except FileNotFoundError:
+                    # The resident moves its mailbox file as it accepts the command.
+                    continue
+                if pending.get('request') != command['request']:
+                    previous = pending.get('request')
+                    if previous and Path(previous).with_name('resident_result.json').is_file():
+                        time.sleep(.2)
+                        continue
+                    stop_resident(state, processes)
+                    if child is not None:
+                        child.wait(timeout=25)
+                    active, child = False, None
+
+            if not active and child is None:
+                for name in ('active.json', 'command.json', 'status.json'):
+                    (state / name).unlink(missing_ok=True)
+                write_json(state / 'command.json', command)
+                env = {**os.environ, 'BENCHFORGE_ISAAC_ASSET_ROOT': local['asset_root']}
+                with (directory / 'isaac.log').open('a', encoding='utf8') as log:
+                    child = subprocess.Popen(
+                        [local['python'], str(root / 'desktop/isaac_resident.py'),
+                         '--state', str(state), '--idle-seconds', str(local.get('idle_seconds', 300))],
+                        env=env, stdout=log, stderr=subprocess.STDOUT, cwd=root,
+                        creationflags=NO_WINDOW,
+                    )
+            elif active and queued is None and not result_path.is_file():
+                write_json(state / 'command.json', command)
+
+            if child is not None and child.poll() is not None and not result_path.is_file():
+                return {'state': 'failed', 'error': 'Isaac resident exited without a capture receipt'}
+            time.sleep(2)
+            if time.monotonic() >= next_heartbeat:
+                status = api('/worker/heartbeat', {**job_identity(job), 'progress': {
+                    'stage': 'capture', 'started_at': started, 'executor': 'local'}})
+                next_heartbeat = time.monotonic() + 8
+    finally:
+        for process in processes:
+            process.close()
+
+
 def run_job(job):
     if not re.fullmatch(r'attempt_[a-f0-9]{16}',job['token']):raise ValueError('invalid capture attempt token')
     directory=state_root/job['token'];directory.mkdir(exist_ok=True)
     request=directory/'request.json';output=directory/'capture';report=output/'report.json'
     if request.is_file():require_frozen_request(job,json.loads(request.read_text(encoding='utf8')))
-    rows=process_snapshot();recover_other_attempts(job,rows)
+    local = (directory / 'resident.json').is_file() or (
+        not (directory / 'grpc_job.json').is_file() and config.get('isaac_mode') == 'local')
+    rows = process_snapshot() if local else []
+    if local:
+        recover_other_attempts(job, rows)
+        processes = owned_processes(request, rows)
+        if processes:
+            wait_owned(job, directory, processes)
     pending=directory/'finish_pending.json'
     if pending.exists():
         value=json.loads(pending.read_text(encoding='utf8'))
         if value.get('transport_retry',0)==job.get('transport_retry',0):
             finish_job(job,directory,value['outcome'],value.get('error'));return
-    processes=owned_processes(request,rows)
-    if processes:
-        # Do not rewrite the request while an older local Isaac process still runs.
-        wait_owned(job,directory,processes)
-    if not report.exists():
+    resident_started = local and (directory / 'resident.json').is_file()
+    resident_receipt = directory / 'resident_result.json'
+    resuming_upload = job.get('capture_recovery_mode') == 'resume_upload'
+    local_pending = resident_started and not resuming_upload and (not resident_receipt.exists() or
+        json.loads(resident_receipt.read_text(encoding='utf8'))['state'] != 'complete')
+    if not report.exists() or local_pending:
         status=api('/worker/heartbeat',job_identity(job))
-        if status.get('cancel'):finish_job(job,directory,'canceled');return
+        if status.get('cancel') and not local_pending and not (directory / 'grpc_job.json').is_file():
+            finish_job(job,directory,'canceled');return
         if status.get('committed') or status.get('finished'):write_json(directory/'commit.json',status);return
-        job=prepare_assets(job);write_json(request,job)
-        write_json(directory/'process.json',{'token':job['token'],'started_at':time.time(),'transport':'grpc'})
+        if resident_started and request.is_file():
+            job = {**job, 'asset_paths': json.loads(request.read_text(encoding='utf8')).get('asset_paths', {})}
+        else:
+            job = prepare_assets(job)
+            write_json(request, job)
         try:
-            grpc_capture(job,directory,output)
-        except Exception as exc:
-            # 远程失败不静默回退本地：写入失败报告，交给 upload_capture 与主服务处理。
-            output.mkdir(exist_ok=True)
-            value=json.loads(report.read_text(encoding='utf8')) if report.exists() else {'token':job['token'],'errors':[]}
-            value['status']='failed';value.setdefault('errors',[]).append(str(exc))
-            write_json(report,value)
-    if not report.exists():
-        output.mkdir(exist_ok=True)
-        write_json(report,{'status':'failed','token':job['token'],'errors':['Isaac process ended without report; inspect owned run log']})
+            if local:
+                result = run_resident(job, directory, rows)
+                if result['state'] != 'complete' or not report.is_file():
+                    outcome = 'canceled' if result.get('error') == 'canceled' else 'failed'
+                    return finish_job(job, directory, outcome, result.get('error') or 'Isaac did not publish a report')
+            else:
+                grpc_capture(job, directory, output)
+        except CaptureFailed as exc:
+            termination = directory / 'termination.json'
+            reason = json.loads(termination.read_text(encoding='utf8'))['reason'] if termination.is_file() else None
+            return finish_job(job, directory, 'canceled' if reason == 'canceled' else 'failed', str(exc))
     value=json.loads(report.read_text(encoding='utf8'))
     if value.get('status')!='captured':
         return finish_job(job,directory,'failed','; '.join(value.get('errors',[])) or 'Isaac capture did not complete')
@@ -492,9 +565,8 @@ def main():
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
     config=load_worker_config(args.config)
-    isaac_endpoint(config.get('isaac_grpc') or {})
-    if config.get('isaac_asset_root'):
-        os.environ['BENCHFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
+    if config.get('isaac_mode', 'grpc') == 'grpc':
+        isaac_endpoint(config.get('isaac_grpc') or {})
     state_root=Path(config.get('runs') or root.parents[1]/'.benchforge/worker/runs')
     state_root.mkdir(parents=True,exist_ok=True)
     # 跨平台 supervisor mutex：Windows 用命名内核互斥量，Linux 用 pidfile。
@@ -536,7 +608,7 @@ def main():
                     if record.get('transport_retry',0)!=job.get('transport_retry',0):record={'count':0}
                     record.update(count=record['count']+1,error=str(exc)[:1000],transport_retry=job.get('transport_retry',0))
                     write_json(path,record)
-                    if record['count']>=3:
+                    if record['count']>=3 and not isinstance(exc, (grpc.RpcError, TimeoutError)):
                         try:finish_job(job,directory,'failed',record['error'])
                         except Exception as finish_error:
                             with (state_root/'worker.log').open('a',encoding='utf8') as log:log.write(time.strftime('%FT%T')+' finish pending: '+str(finish_error)+'\n')

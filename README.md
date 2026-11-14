@@ -232,8 +232,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 | `database` | PostgreSQL 端口、Compose 项目名和密码环境变量名。复用外部数据库时设置 `url` 或 `url_env`。 |
 | `client` | DSH 和 CLI 连接的 BenchForge 后端。默认使用本机服务，亦可填 `service_config` 或 `service_url`。 |
 | `worker` | 采集进程的身份、运行目录和连接设置。 |
-| `providers` | 六个 `third_party/` 提供方。包括 DSpark 对话模型、四个推理工具和 Isaac gRPC。 |
-| `inference` | 工具调用和场景生产共用的 BenchForge 推理网关地址与凭据环境变量名。 |
+| `providers` | 六个 `third_party/` 提供方。包括 OpenAI 对话模型、四个 HTTP 工具和 Isaac 采集。 |
 
 `init` 和 `sync` 生成 `config/generated/` 下的服务端、客户端、worker 和 Compose 配置。
 `dsh-setup` 生成 DSH 预设。配置中的相对路径以 `config/benchforge.local.json` 所在目录为基准。
@@ -358,34 +357,45 @@ docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=c
 
 | `providers` 条目 | 要配置的接口 |
 | --- | --- |
-| `DSpark4A100` | 填 OpenAI 兼容的 base URL（通常以 `/v1` 结尾）和部署返回的模型 ID。DSH Host、场景规划和标注默认共用它。 |
-| `FastFLUX2Klein` | 图像生成和编辑。网关工具 ID 默认为 `diffusion`。 |
-| `FastSAM3` | 图像分割。网关工具 ID 默认为 `sam3`。 |
-| `FastDA3` | 深度推理。网关工具 ID 默认为 `depth_anything`。 |
-| `FastTrellis2` | 网格和 PBR 纹理。网关工具 ID 默认为 `sam3d`，沿用已有网关的请求名。 |
-| `IssacSim4A100` | 填采集器可访问的 `grpc.host`、`grpc.port`。子模块公开的 HTTP 端口需要通过兼容采集端接入。 |
+| `providers` 条目 | 接口和 DSH 工具 |
+| --- | --- |
+| `DSpark4A100` | 填 OpenAI 兼容的 base URL 和部署模型 ID，供 DSH Host、场景规划和标注使用。FastQwen 也可通过这组 OpenAI 字段接入。 |
+| `FastFLUX2Klein` | `benchforge_diffusion` 调用 Images API 生成或编辑图像。 |
+| `FastSAM3` | `benchforge_scene_sam3` 调用 Chat Completions，获取文本或框提示对应的分割掩码。 |
+| `FastDA3` | `benchforge_depth` 调用 Depth Estimations，保存预测深度、相机参数和预览。 |
+| `FastTrellis2` | `benchforge_trellis` 提交 3D 任务并下载 Y-up GLB。用 `benchforge_mesh_import` 注册选中的网格。 |
+| `IssacSim4A100` | `benchforge_capture` 提交 SceneProgram 给采集 worker。 |
 
-四个图像与几何工具共用 `inference.url`。这个地址需要提供 BenchForge 的
-`/tools/<tool>/health` 和 `/jobs` 协议，由网关把工具请求转给实际部署的提供方。
-每个条目的 `request_defaults` 同时用于独立模型工具和场景生产，显式请求参数优先。
-可选的 `gateway_tool` 用于匹配已有网关的工具 ID。凭据通过 `token_env` 指定的环境变量
-传入，启动器也能读取本地 `config/dsh.env`。
+四个 HTTP 提供方各自配置以 `/v1` 结尾的 `url`、`model` 和 `timeout_seconds`。
+需要认证时，把密钥变量名填入该提供方的 `token_env`，值从启动环境或
+`config/dsh.env` 读取。可在 `request_defaults` 中设置提供方 API 参数，例如
+FLUX 的 `num_inference_steps` 或 DA3 的 `process_res`。
 
-要启用桌面采集，在 `worker` 中填写采集机需要覆盖的目录与连接参数。
-`sync` 生成 `config/generated/worker.local.json`，在采集机执行
-`python benchforge_app.py worker --config <worker-config>`。生成文件携带 worker 令牌或环境变量名。
-在 DSH 选择 `BenchForge_UI` 打开工作台，选择 `BenchForge` 使用标准对话界面。
+Isaac 默认用 `mode: "grpc"`。填 `grpc.host`、`grpc.port` 和每次 RPC 的
+`grpc.timeout_seconds`，用 `capture_timeout_seconds` 限制采集时长。
+该端点需实现 [IsaacSim 采集契约](src/backend/benchforge_backend/isaac/isaac_sim.proto)，
+包括资产上传、作业状态和工件回传。仅提供 NVIDIA 原生 ControlPlane RPC 的端点需要在
+Isaac 服务侧提供这套采集契约。每个生成资产通过 `<asset_id>.zip` 上传，采集服务按
+作业 ID 解包并把资产挂到 SceneProgram 的对应对象。
 
-编辑统一配置后，在本实例执行：
+需要在装有 Isaac 的机器上本地采集时，把 `mode` 改为 `"local"`，填
+`local.python`（Isaac 的 Python 启动器，例如 Windows 的 `python.bat`）和
+`local.asset_root`，可配置 `local.idle_seconds`。worker 在相同启动参数的采集间复用
+Isaac 进程，并通过 `worker.runs` 里的请求和回执接管本机作业。
 
-```bash
-.venv/bin/python benchforge_app.py sync
-./restart.sh
-```
+保存配置后运行 `python benchforge_app.py sync`。在采集机启动
+`python benchforge_app.py worker --config <worker-config>`，默认为
+`config/generated/worker.local.json`。生成文件携带 worker 令牌或环境变量名。
+重启 BenchForge 服务以加载变更，重启 worker 以切换 Isaac 端点或模式。
 
-从 v1 或 v2 升级时，`sync` 把模型网关、DSH 模型和 Isaac 参数迁入 v3，原配置备份在
-`.benchforge/backend/benchforge-before-v3.json`。原来显式选用本地执行的实例保留本地模型
-运行参数。DSH 启动时刷新 Host 默认模型和预设提供的工具。
+在已安装后端包的 Python 环境中运行
+`python -m benchforge_backend.isaac.mock_server --port 50051`，可用本机
+`127.0.0.1:50051` 验证传输。模拟结果带 `mock` 标记。
+
+已有配置请按示例更新为 `config_version: 4`，把各服务端点填到对应提供方。保留现有
+`web`、`server`、`database`、`client` 和 `worker` 的部署值。移除顶层
+`inference`、提供方里的 `gateway_tool` 和本地模型部署参数，包括 `server.gpu_candidates`。
+本地 Isaac 的资产目录填写在 `providers.IssacSim4A100.local.asset_root`。
 
 ### 9. 停止、重启和更新
 
@@ -418,8 +428,7 @@ npm ci --prefix src/dsh
 需要重新生成时先备份 `config/generated/benchforge.local.yml`，生成后合回自己的追加项。
 已有实例首次切换到 DSH fork，或拉取的版本更新了 DSH 子模块指针时，先执行上述备份，再运行
 `.venv/bin/python benchforge_app.py dsh-setup`，然后启动实例。
-升级旧版实例时，保留 `config/benchforge.local.json`、旧后端数据目录和 PostgreSQL 数据卷。
-`setup` 会在已有的后端 Python 环境中安装新包，`sync` 会保留已配置的数据库连接和工件路径。
+升级旧版实例前，按上一节更新 `config/benchforge.local.json` 并保留原数据库连接和工件路径。
 启动时会更新本实例预设里的旧插件源码路径。独立维护的 DSH profile 使用
 [`src/dsh/presets/hot_update.py`](src/dsh/presets/hot_update.py) 更新。
 如果外置 Isaac dispatcher 引用了旧仓库绝对路径，按
