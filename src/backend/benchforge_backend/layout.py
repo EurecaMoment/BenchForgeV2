@@ -6,7 +6,7 @@ from pathlib import Path
 from PIL import Image
 from .runtime_config import environment_value
 from .files import write_json
-from .generation import _file_record
+from .generation import generation_defaults, _file_record
 from .progress import record_progress
 
 
@@ -82,7 +82,10 @@ def prepare_layout(tools,intent,directory,stop,parent_directory=None,design_dire
         else:
             prompt=spec['prompt']+'\nCreate a coherent spatial design reference, with readable room layout and furniture relationships. No text labels or invented numeric measurements. This image is a design proposal, not ground truth or a validated simulation.'
             if spec['mode']=='edit':prompt+=' Preserve relevant existing structure and implement the requested layout changes in the supplied view.'
-            request={'prompt':prompt,'output':str(image),'width':1024,'height':1024,'steps':4,'seed':spec.get('seed',42)}
+            defaults = generation_defaults('diffusion')
+            request = {'prompt': prompt, 'output': str(image), 'width': defaults.get('width', 1024),
+                       'height': defaults.get('height', 1024), 'steps': defaults.get('steps', 4),
+                       'seed': spec.get('seed', defaults.get('seed', 42))}
             if not environment_value('BENCHFORGE_INFERENCE_URL'):
                 request['model_path']=environment_value('BENCHFORGE_DIFFUSION_MODEL') or tools.config.model('flux')['path']
             if source:request['image']=str(source)

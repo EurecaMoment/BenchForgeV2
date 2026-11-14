@@ -5,6 +5,7 @@ import json
 import hmac
 import os
 from pathlib import Path
+import re
 import socket
 import signal
 import subprocess
@@ -14,16 +15,17 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Literal, TypedDict
 from urllib.request import Request, build_opener, ProxyHandler
+from .provider_config import gateway_request
 from .runtime_config import environment_value
 
 
-def rpc(url, payload=None, method=None, token=None):
+def rpc(url, payload=None, method=None, token=None, *, timeout=30):
     headers = {'Content-Type': 'application/json'}
     if token:
         headers['Authorization'] = 'Bearer ' + token
     request = Request(url, data=None if payload is None else json.dumps(payload).encode(),
                       headers=headers, method=method)
-    with build_opener(ProxyHandler({})).open(request, timeout=30) as response:
+    with build_opener(ProxyHandler({})).open(request, timeout=timeout) as response:
         return json.load(response)
 
 
@@ -40,18 +42,31 @@ def rewrite_paths(value, replacements):
     return value
 
 
-def execute_remote(endpoint, name, request, work, stop):
+def execute_remote(endpoint, name, request, work, stop, *, config=None):
     endpoint = endpoint.rstrip('/')
-    token = environment_value(environment_value('BENCHFORGE_INFERENCE_TOKEN_ENV',
-                                                  'BENCHFORGE_INFERENCE_TOKEN'))
-    job = rpc(endpoint + '/jobs', {'tool': name, 'request': request, 'work': str(work)}, token=token)
+    config = config or {}
+    name, request = gateway_request(config, name, request, production=True)
+    token_name = config.get('token_env')
+    if not config.get('provider_registry') and not token_name:
+        token_name = environment_value('BENCHFORGE_INFERENCE_TOKEN_ENV', 'BENCHFORGE_INFERENCE_TOKEN')
+    token = environment_value(token_name) if token_name else None
+    if config.get('provider_registry') and config.get('token_env') and not token:
+        raise ValueError(f'inference.token_env references unset variable {token_name}')
+    options = {'token': token, 'timeout': config.get('http_timeout_seconds', 30)}
+    if config.get('provider_registry'):
+        availability_url = (config.get('availability_url') or endpoint).rstrip('/')
+        ready = rpc(availability_url + '/tools/' + name + '/health', {'request': request},
+                    token=token, timeout=config.get('health_timeout_seconds', 10))
+        if ready.get('tool') != name or ready.get('available') is not True:
+            raise RuntimeError(f"{name} unavailable: {ready.get('reason', 'provider not ready')}")
+    job = rpc(endpoint + '/jobs', {'tool': name, 'request': request, 'work': str(work)}, **options)
     url = endpoint + '/jobs/' + job['id']
     while job['status'] in {'queued', 'running'}:
         time.sleep(1)
         if stop.is_set():
-            rpc(url, {}, method='DELETE', token=token)
+            rpc(url, {}, method='DELETE', **options)
             raise RuntimeError('Remote inference canceled; artifacts retained on shared storage')
-        job = rpc(url, token=token)
+        job = rpc(url, **options)
     if job['status'] != 'completed':
         raise RuntimeError(job.get('error', 'Remote inference failed'))
     return job['result']
@@ -145,6 +160,15 @@ class Jobs:
         for record in terminal[:max(0, len(self.records) - self.max_history)]:
             self.records.pop(record['id'], None)
             self.stops.pop(record['id'], None)
+
+    def availability(self, tool):
+        with self.lock:
+            if self.shutting_down:
+                return {'tool': tool, 'available': False, 'reason': 'Inference service is shutting down'}
+        configured = getattr(self.executor, 'config', {}).get('tools')
+        available = configured is None or tool in configured
+        return {'tool': tool, 'available': available,
+                **({'reason': 'Tool is not configured on this gateway'} if not available else {})}
 
     def submit(self, payload: InferenceSubmission) -> InferenceJobRecord:
         if not isinstance(payload, dict):
@@ -369,7 +393,8 @@ def make_server(address, jobs, auth_token=None):
             if not self.authorized():
                 self.reply({'error': 'unauthorized'}, 401)
                 return
-            if self.path != '/jobs':
+            health = re.fullmatch(r'/tools/([A-Za-z0-9_-]+)/health', self.path)
+            if self.path != '/jobs' and not health:
                 self.reply({'error': 'Unknown endpoint'}, 404)
                 return
             try:
@@ -381,7 +406,12 @@ def make_server(address, jobs, auth_token=None):
                 if len(raw) != length:
                     raise ValueError('Incomplete request body')
                 payload = json.loads(raw)
-                self.reply(jobs.submit(payload), 202)
+                if health:
+                    if not isinstance(payload, dict) or not isinstance(payload.get('request'), dict):
+                        raise ValueError('request must be an object')
+                    self.reply(jobs.availability(health.group(1)))
+                else:
+                    self.reply(jobs.submit(payload), 202)
             except RuntimeError as exc:
                 self.reply({'error': str(exc)}, 503)
             except (KeyError, TypeError, ValueError) as exc:

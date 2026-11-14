@@ -16,7 +16,8 @@ import sys
 import time
 import uuid
 
-from .runtime_config import environment_value
+from .provider_config import inference_config, request_defaults
+from .runtime_config import environment_value, read_json
 from .files import write_json
 from .progress import record_progress
 from .mesh_appearance import inspect_mesh_appearance
@@ -40,6 +41,22 @@ def _inside(path, root):
         return False
 
 
+def _model_registry():
+    reference = environment_value('BENCHFORGE_MODELS_CONFIG')
+    return read_json(Path(reference)) if reference and Path(reference).is_file() else {}
+
+
+def _remote_config():
+    registry = _model_registry()
+    return inference_config(registry) if registry.get('generation', {}).get('mode') != 'local' else {}
+
+
+def generation_defaults(name):
+    if environment_value('BENCHFORGE_INFERENCE_URL'):
+        return request_defaults(_remote_config(), name)
+    return {}
+
+
 class GenerationTools:
     def __init__(self, artifact_root):
         self.root = Path(artifact_root).resolve()
@@ -51,6 +68,9 @@ class GenerationTools:
     @property
     def config(self):
         if self._config is None:
+            registry = _model_registry()
+            if 'providers' in registry and registry.get('generation', {}).get('mode') != 'local':
+                raise ValueError('Configure inference.url in config/benchforge.local.json')
             source = str(self.project / 'src')
             if source not in sys.path:
                 sys.path.insert(0, source)
@@ -168,7 +188,7 @@ class GenerationTools:
         endpoint = environment_value('BENCHFORGE_INFERENCE_URL')
         if endpoint:
             from .inference_service import execute_remote
-            result = execute_remote(endpoint, name, request, work, stop)
+            result = execute_remote(endpoint, name, request, work, stop, config=_remote_config())
             if not self._outputs_exist(name, request, result):
                 raise ValueError(f'{name} returned incomplete remote output; inspect the shared artifacts')
             return result
@@ -324,7 +344,10 @@ class GenerationTools:
             prompt = spec.get('prompt', spec['label'])
             if not spec.get('source_image'):
                 prompt += '. A realistic product photograph of one complete standalone object, three quarter view, centered, entire object visible, neutral light gray seamless background, fine material detail, no text, no other objects, no cropping.'
-            request = {'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', 42), 'width': 1024, 'height': 1024, 'steps': 4}
+            defaults = generation_defaults('diffusion')
+            request = {'prompt': prompt, 'output': str(image), 'seed': spec.get('seed', defaults.get('seed', 42)),
+                       'width': defaults.get('width', 1024), 'height': defaults.get('height', 1024),
+                       'steps': defaults.get('steps', 4)}
             if not environment_value('BENCHFORGE_INFERENCE_URL'):
                 request['model_path'] = environment_value('BENCHFORGE_DIFFUSION_MODEL') or self.config.model('flux')['path']
             if spec.get('source_image'):
@@ -347,7 +370,8 @@ class GenerationTools:
             sources['mask'] = source_contract['source_mask']
         else:
             segment_dir = work / 'segmentation'
-            request = {'image': str(image), 'output_dir': str(segment_dir), 'confidence': .2}
+            confidence = generation_defaults('sam3').get('confidence', .2)
+            request = {'image': str(image), 'output_dir': str(segment_dir), 'confidence': confidence}
             if not environment_value('BENCHFORGE_INFERENCE_URL'):
                 request['checkpoint'] = str(Path(self.config.model('sam3')['path']) / 'sam3.pt')
             if spec.get('subject_box'):
@@ -371,9 +395,11 @@ class GenerationTools:
         if profile:
             request['profile'] = profile
         if not environment_value('BENCHFORGE_INFERENCE_URL'):
+            model_path = self.config.model('sam3d')['path']
             request.update(source_root=self.config.data['sources']['sam3d'],
-                           config_path=str(Path(self.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
-        if spec.get('texture_baking'):request['texture_baking']=True
+                           config_path=str(Path(model_path) / 'checkpoints/pipeline.yaml'))
+        if 'texture_baking' in spec:
+            request['texture_baking'] = spec['texture_baking']
         reconstructed = self.execute('sam3d', request, work / 'sam3d', stop)
         selected_asset = next(a for a in reconstructed['assets'] if a['object_id'] == 'subject')
         source = work / 'mesh' / selected_asset['asset']

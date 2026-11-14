@@ -110,7 +110,8 @@ runtime adoption fails.
 Keep the deployment's settings in `config/benchforge.local.json` and run
 `python benchforge_app.py sync` to prepare the client configuration for hot
 update. The updater also uses the deployment's `.deployment/python-development`
-launcher. Configure available model endpoints under `model_services`.
+launcher. Configure the DSH model, inference gateway and capture endpoint in
+`config/benchforge.local.json`.
 
 ## Install and configure
 
@@ -140,7 +141,9 @@ dsh --profile web --dump-config
 The portable bundle uses `python3`, `config/benchforge.local.json` and the generated
 `config/generated/benchforge-client.local.json` relative to the DSH launch directory.
 Use `benchforge_app.py init` to create the local file and `sync` after setting
-`client` and `model_services`. Pass credentials through the launch environment.
+`client`, `providers` and `inference`. Pass credentials through the launch environment.
+Use the generated local overlay to install the configured DSpark model at Host
+scope. The portable bundle imports the preset and tool definitions.
 Check the operator connection with
 `python src/dsh/cli.py status --config config/generated/benchforge-client.local.json`.
 Add `--run-id sf_YOUR_RUN` to read a specific run.
@@ -153,7 +156,7 @@ python src/dsh/presets/build_presets.py \
   --node /path/to/current/node \
   --python /path/to/python \
   --config /private/benchforge-config.json \
-  --service-config /private/benchforge-config.json \
+  --service-config /private/generated/benchforge-client.local.json \
   --output /private/benchforge-presets.patch.yml
 python src/dsh/presets/install_preset.py \
   --profile /private/dsh/profiles/web/cordis.patch.yml \
@@ -210,7 +213,8 @@ instead of parsing a truncated tail. `graceMs` defaults to 1000 milliseconds.
 The subprocess provider scrubs ambient credential-shaped and `DSH_*` variables.
 Set `forwardEnvironment` to the specific variable names required by your private
 business configuration, or supply explicit entries in `environment`; forwarded
-values come from the launch snapshot. Do not forward the entire host environment.
+values come from the launch snapshot. Model tool invocations also forward the
+credential named by their provider configuration to that invocation.
 
 On FIT, explicit `spatial_train(action="start")` and `backend(action="start")`
 transfer to their own systemd user service before returning. Their result includes

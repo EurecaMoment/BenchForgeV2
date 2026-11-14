@@ -11,10 +11,15 @@ class BuildPy(build_py):
         # scene_policy; setuptools does not create a wheel's package tree here.
         if self.editable_mode:
             return
-        source = Path(__file__).parent / 'src/backend/benchforge_backend/scene_design.py'
-        target = Path(self.build_lib) / 'benchforge_core/pipelines/_scene_design.py'
-        target.parent.mkdir(parents=True, exist_ok=True)
-        self.copy_file(str(source), str(target))
+        backend = Path(__file__).parent / 'src/backend/benchforge_backend'
+        core = Path(self.build_lib) / 'benchforge_core'
+        for source, target in (
+            ('scene_design.py', 'pipelines/_scene_design.py'),
+            ('provider_config.py', '_provider_config.py'),
+        ):
+            destination = core / target
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            self.copy_file(str(backend / source), str(destination))
 
 
 setup(cmdclass={'build_py': BuildPy})

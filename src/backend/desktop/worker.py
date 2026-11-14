@@ -20,6 +20,7 @@ import zlib
 root=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(root))
 from benchforge_backend.capture_recovery import local_capture_receipt,require_frozen_request
+from benchforge_backend.provider_config import capture_timeout, isaac_endpoint
 from benchforge_backend.runtime_config import load_worker_config
 config={}
 state_root=None
@@ -30,20 +31,15 @@ NO_WINDOW=getattr(subprocess,'CREATE_NO_WINDOW',0) if IS_WINDOWS else 0
 def isaac_launch_command(local_script, *extra_args, for_resident=False):
     """Build the gRPC launch spec for the remote Isaac Sim service.
 
-    Isaac Sim runs on a remote server behind the gRPC service configured in
-    isaac.grpc (src/backend/grpc/). Local and SSH launch modes were
+    Isaac Sim runs on a remote server behind the configured gRPC service.
+    Local and SSH launch modes were
     removed; every launch is dispatched to the remote service.
 
     Returns (launch_spec, 'grpc'). launch_spec is a dict with keys
     'endpoint', 'method', 'args', 'for_resident' — NOT a command list.
     """
-    grpc_cfg = config.get('isaac_grpc') or {}
-    host = grpc_cfg.get('host', '')
-    port = grpc_cfg.get('port')
-    if not host or str(host).startswith('YOUR_CONFIG') or not port:
-        raise RuntimeError('isaac.grpc.host/port missing — set isaac.grpc in config/benchforge.local.json and run benchforge_app.py sync')
     return ({
-        'endpoint': f"{host}:{port}",
+        'endpoint': isaac_endpoint(config.get('isaac_grpc') or {}),
         'method': 'resident_start' if for_resident else 'capture',
         'args': list(extra_args),
         'for_resident': bool(for_resident),
@@ -67,7 +63,7 @@ def grpc_capture(job,directory,output):
     launch_spec, _ = isaac_launch_command('desktop/isaac_capture.py')
     endpoint=launch_spec['endpoint']
     started=time.time()
-    timeout=float(config.get('capture_timeout_seconds',1800))
+    timeout=float(capture_timeout(config))
     stop={'reason':None}
     next_heartbeat=[0.]
     def on_status(status):
@@ -496,8 +492,11 @@ def main():
     parser.add_argument('--once',action='store_true',help='Exit after one claimed capture')
     args=parser.parse_args()
     config=load_worker_config(args.config)
-    os.environ['BENCHFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
-    state_root=Path(config['runs']);state_root.mkdir(parents=True,exist_ok=True)
+    isaac_endpoint(config.get('isaac_grpc') or {})
+    if config.get('isaac_asset_root'):
+        os.environ['BENCHFORGE_ISAAC_ASSET_ROOT']=config['isaac_asset_root']
+    state_root=Path(config.get('runs') or root.parents[1]/'.benchforge/worker/runs')
+    state_root.mkdir(parents=True,exist_ok=True)
     # 跨平台 supervisor mutex：Windows 用命名内核互斥量，Linux 用 pidfile。
     pidfile=state_root/'worker.pid'
     if IS_WINDOWS:

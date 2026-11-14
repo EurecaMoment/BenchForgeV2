@@ -12,6 +12,8 @@ def model_request_headers():
     headers = {'Content-Type': 'application/json'}
     name = environment_value('BENCHFORGE_MODEL_API_KEY_ENV')
     token = environment_value(name) if name else None
+    if name and not token:
+        raise ValueError(f'The scene model token_env references unset variable {name}')
     if token:
         headers['Authorization'] = 'Bearer ' + token
     return headers

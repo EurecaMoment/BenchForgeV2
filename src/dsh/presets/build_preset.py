@@ -5,9 +5,15 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import url2pathname
 import yaml
+
+SOURCE = Path(__file__).resolve().parents[2]
+if (SOURCE / 'benchforge_core/__init__.py').is_file():
+    sys.path.insert(0, str(SOURCE))
+from benchforge_core.provider_config import provider_config
 
 
 class JavaScript(str):
@@ -46,11 +52,13 @@ PRESETS = {
         'description': 'Scene and data production with the visual workbench.',
     },
 }
-MODEL_TOOLS = [
+LEGACY_MODEL_TOOLS = [
     'model_yoloe', 'model_sam3', 'model_moge', 'model_lama', 'model_flux_fill',
     'model_osor_flux_fill', 'model_objectclear_fill', 'model_qwen_image_edit',
     'model_diffusion', 'model_depth_anything', 'model_sam3d', 'model_blender',
 ]
+MODEL_TOOLS = list(provider_config.PROVIDER_TOOLS.values())
+MODEL_TOOL_NAMES = {*LEGACY_MODEL_TOOLS, *MODEL_TOOLS, 'llm_local'}
 DEFAULT_SERVICE_CONFIG = Path('config/generated/benchforge-client.local.json')
 LEGACY_SERVICE_CONFIG = Path('config/benchforge-client.local.json')
 LEGACY_SERVICE_CONFIGS = (
@@ -135,23 +143,19 @@ def model_patches(config_path):
     if not path.is_file():
         return []
     registry = json.loads(path.read_text(encoding='utf-8'))
-    name = registry.get('model_roles', {}).get('dsh')
-    if not name:
-        return []
-    model = registry.get('models', {}).get(name)
-    if not isinstance(model, dict):
-        raise ValueError(f'model_roles.dsh references an unknown model: {name}')
+    model = provider_config.selected_model(registry, 'dsh')
     if not model.get('model') or str(model['model']).startswith('YOUR_'):
         return []
     if not model.get('url'):
-        raise ValueError(f'Configure models.{name}.url for the DSH model')
+        raise ValueError('Configure the DSH model URL in config/benchforge.local.json')
     descriptor = {'id': model['model'], 'name': model.get('name', model['model'])}
     for source, target in (('context_window', 'contextWindow'), ('max_tokens', 'maxTokens'),
                            ('input', 'input'), ('reasoning_efforts', 'reasoningEfforts')):
         if source in model:
             descriptor[target] = model[source]
-    provider = {'displayName': 'BenchForge models', 'api': model.get('api', 'openai-completions'),
-                'baseURL': model['url'], 'models': [descriptor]}
+    provider = {'displayName': 'DSpark4A100' if 'providers' in registry else 'BenchForge models',
+                'api': model.get('api', 'openai-completions'),
+                'baseURL': provider_config.llm_base_url(model['url']), 'models': [descriptor]}
     if model.get('token_env'):
         provider['apiKeyEnv'] = model['token_env']
     if model.get('compat'):
@@ -163,6 +167,25 @@ def model_patches(config_path):
         selection['reasoningEffort'] = model['reasoning_effort']
     return [{'id': 'llm-pi-ai', 'config': {'providers': {'benchforge-models': provider}}},
             {'id': 'agent-default-model', 'config': selection}]
+
+
+def model_tools(config_path, *, portable=False):
+    if portable:
+        return [*MODEL_TOOLS, 'model_sam3d', 'llm_local']
+    path = Path(config_path) if config_path else None
+    if not path or not path.is_file():
+        return []
+    settings = json.loads(path.read_text(encoding='utf-8'))
+    if 'providers' not in settings:
+        return LEGACY_MODEL_TOOLS
+    inference = provider_config.inference_config(settings)
+    tools = inference['tools'] if inference.get('url') else {}
+    annotation = provider_config.selected_model(settings, 'annotation')
+    return [
+        *[provider_config.PROVIDER_TOOLS[tool] for tool in tools],
+        *(['model_sam3d'] if 'sam3d' in tools else []),
+        *(['llm_local'] if annotation.get('url') and annotation.get('model') else []),
+    ]
 
 
 def preset_id(row):
@@ -392,6 +415,8 @@ def refresh_model_patches(preset_path, config_path):
     profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader) or []
     changed = refresh_preset_identity(profile, profile_dir=preset_path.resolve().parent)
     changed = refresh_service_paths(profile, config_path) or changed
+    changed = refresh_host_models(profile, patches) or changed
+    enabled = model_tools(config_path)
     inserts = [row for patch in profile for row in patch.get('insert', [])]
     if any(preset_id(row) in PRESETS for row in inserts) and not any(
             row.get('id') == PRESET_ALIASES_PLUGIN_ID for row in inserts):
@@ -401,11 +426,33 @@ def refresh_model_patches(preset_path, config_path):
         for row in patch.get('insert', []):
             if preset_id(row) in PRESETS:
                 changed = remove_retired_tool_filter(row['config']['plugins']) or changed
+                for plugin in row['config']['plugins']:
+                    if plugin.get('id') not in {'spatial-learning-tools', 'benchforge-tools'}:
+                        continue
+                    options = plugin.setdefault('config', {})
+                    before = deepcopy(options)
+                    included = options.get('includeTools')
+                    if isinstance(included, list):
+                        options['includeTools'] = [tool for tool in included if tool not in MODEL_TOOL_NAMES]
+                        options['includeTools'].extend(enabled)
+                    options.setdefault('configPath', str(Path(config_path).resolve()))
+                    changed = before != options or changed
+    if changed:
+        temporary = preset_path.with_suffix(preset_path.suffix + '.tmp')
+        temporary.write_text('# Generated settings read config/benchforge.local.json.\n'
+                             + yaml.dump(profile, Dumper=Dumper, sort_keys=False, allow_unicode=True),
+                             encoding='utf-8', newline='\n')
+        temporary.replace(preset_path)
+
+
+def refresh_host_models(profile, patches):
+    """Refresh the BenchForge model provider in the host's profile."""
+    changed = False
     if not patches:
-        retained = []
-        for row in profile:
+        for row in profile[:]:
             if (row.get('id') == 'agent-default-model'
                     and row.get('config', {}).get('provider') == 'benchforge-models'):
+                profile.remove(row)
                 changed = True
                 continue
             if row.get('id') == 'llm-pi-ai':
@@ -413,8 +460,6 @@ def refresh_model_patches(preset_path, config_path):
                 if 'benchforge-models' in providers:
                     providers.pop('benchforge-models')
                     changed = True
-            retained.append(row)
-        profile = retained
     for patch in patches:
         existing = next((row for row in profile if row.get('id') == patch['id']), None)
         if existing is None:
@@ -428,12 +473,7 @@ def refresh_model_patches(preset_path, config_path):
             else:
                 existing['config'] = patch['config']
             changed = changed or prior != existing
-    if changed:
-        temporary = preset_path.with_suffix(preset_path.suffix + '.tmp')
-        temporary.write_text('# Generated settings read config/benchforge.local.json.\n'
-                             + yaml.dump(profile, Dumper=Dumper, sort_keys=False, allow_unicode=True),
-                             encoding='utf-8', newline='\n')
-        temporary.replace(preset_path)
+    return changed
 
 
 def compose_standard(sources, *, package_imports=False):

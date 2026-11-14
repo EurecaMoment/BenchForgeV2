@@ -226,8 +226,9 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 | `server` | 本机 BenchForge API 端口、对客户端公开的服务地址、产物目录、场景策略和认证环境变量名。 |
 | `database` | PostgreSQL 端口、Compose 项目名和密码环境变量名。复用外部数据库时设置 `url` 或 `url_env`。 |
 | `client` | DSH 和 CLI 连接的 BenchForge 后端。默认使用本机服务，亦可填 `service_config` 或 `service_url`。 |
-| `worker` 与 `isaac` | worker 的身份、路径和连接方式，以及远程 Isaac gRPC 地址与采集超时。 |
-| `models`、`model_roles`、`services`、`model_services` | 模型声明、模型使用角色和推理服务接口。 |
+| `worker` | 采集进程的身份、运行目录和连接设置。 |
+| `providers` | 六个 `third_party/` 提供方。包括 DSpark 对话模型、四个推理工具和 Isaac gRPC。 |
+| `inference` | 工具调用和场景生产共用的 BenchForge 推理网关地址与凭据环境变量名。 |
 
 `init` 和 `sync` 生成 `config/generated/` 下的服务端、客户端、worker 和 Compose 配置。
 `dsh-setup` 生成 DSH 预设。配置中的相对路径以 `config/benchforge.local.json` 所在目录为基准。
@@ -344,26 +345,29 @@ docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=c
 
 ### 8. 配置自己需要的模型和仿真能力
 
-所有模型统一在 **`config/benchforge.local.json`** 声明，初始化时从
-[`config/benchforge.example.json`](config/benchforge.example.json) 创建。
-不要再新建或编辑 `config/generated/models.local.json`，也不要在服务端 JSON 或预设 YAML
-中重复维护模型地址。
+在 **`config/benchforge.local.json`** 编辑提供方设置。新实例从
+[`config/benchforge.example.json`](config/benchforge.example.json) 初始化，模板中的
+`null` 地址表示尚未配置对应服务。
 
-- **DSH 对话、自动规划、独立标注接口的模型**：在 `models` 声明地址、模型 ID 和密钥环境变量名，
-  再让 `model_roles.dsh/scene/annotation` 引用它；使用不同模型时分别声明和引用。
-- **图像、分割、深度、三维模型**：`services` 保存原生标注接口，
-  `model_services` 保存异步推理网关及各工具默认参数，
-  `models` 和 `sources` 保存可选本地执行所需的解释器、权重和源码路径。
-  `generation.mode=remote` 使用网关，`local` 使用本地已安装模型。
-  地址和路径示例不代表相应服务、权重或依赖已经可用。
-- **Isaac 真值与采集**：设置 `isaac.grpc`，在 `worker` 中填写采集机使用的目录和连接参数，
-  运行 `benchforge_app.py sync`，再在 worker 机器上执行
-  `python benchforge_app.py worker --config <worker-config>`。
-  远程 worker 使用生成的 `config/generated/worker.local.json`。文件含 worker 令牌或其变量名，仅分发给采集机。
-- **场景工作台 UI**：选择 `BenchForge_UI` 打开评测工作台，`BenchForge` 使用标准对话界面。
+| `providers` 条目 | 要配置的接口 |
+| --- | --- |
+| `DSpark4A100` | 填 OpenAI 兼容的 base URL（通常以 `/v1` 结尾）和部署返回的模型 ID。DSH Host、场景规划和标注默认共用它。 |
+| `FastFLUX2Klein` | 图像生成和编辑。网关工具 ID 默认为 `diffusion`。 |
+| `FastSAM3` | 图像分割。网关工具 ID 默认为 `sam3`。 |
+| `FastDA3` | 深度推理。网关工具 ID 默认为 `depth_anything`。 |
+| `FastTrellis2` | 网格和 PBR 纹理。网关工具 ID 默认为 `sam3d`，沿用已有网关的请求名。 |
+| `IssacSim4A100` | 填采集器可访问的 `grpc.host`、`grpc.port`。子模块公开的 HTTP 端口需要通过兼容采集端接入。 |
 
-模型凭据由启动环境注入，模型用 `token_env` 指定变量名，例如 `BENCHFORGE_MODEL_API_KEY`
-和 `BENCHFORGE_INFERENCE_API_KEY`。升级时仍可以读取已有的本地 `config/dsh.env`。
+四个图像与几何工具共用 `inference.url`。这个地址需要提供 BenchForge 的
+`/tools/<tool>/health` 和 `/jobs` 协议，由网关把工具请求转给实际部署的提供方。
+每个条目的 `request_defaults` 同时用于独立模型工具和场景生产，显式请求参数优先。
+可选的 `gateway_tool` 用于匹配已有网关的工具 ID。凭据通过 `token_env` 指定的环境变量
+传入，启动器也能读取本地 `config/dsh.env`。
+
+要启用桌面采集，在 `worker` 中填写采集机需要覆盖的目录与连接参数。
+`sync` 生成 `config/generated/worker.local.json`，在采集机执行
+`python benchforge_app.py worker --config <worker-config>`。生成文件携带 worker 令牌或环境变量名。
+在 DSH 选择 `BenchForge_UI` 打开工作台，选择 `BenchForge` 使用标准对话界面。
 
 编辑统一配置后，在本实例执行：
 
@@ -372,9 +376,9 @@ docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=c
 ./restart.sh
 ```
 
-首次升级执行 `sync` 会导入旧 `ports.env`、服务端、worker、数据库和模型配置。
-已在统一文件中填写的值优先。旧文件可以用于核对迁移后的值。
-DSH 启动时自动刷新模型配置快照，实际模型配置生效后，新会话默认使用 `model_roles.dsh`。
+从 v1 或 v2 升级时，`sync` 把模型网关、DSH 模型和 Isaac 参数迁入 v3，原配置备份在
+`.benchforge/backend/benchforge-before-v3.json`。原来显式选用本地执行的实例保留本地模型
+运行参数。DSH 启动时刷新 Host 默认模型和预设提供的工具。
 
 ### 9. 停止、重启和更新
 

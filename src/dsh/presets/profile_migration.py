@@ -121,7 +121,11 @@ def migrate_profile(profile, generated, revision=None, *, root=None, profile_dir
         replacements[base.PRESET_ALIASES_PLUGIN_ID] = base.preset_alias_entry()
     if set(replacements) != set(base.PRESETS) | {UI_ID, base.PRESET_ALIASES_PLUGIN_ID}:
         raise ValueError('Expected BenchForge, BenchForge_UI and their workbench reader')
-    return replace_entries(profile, replacements)
+    merged = replace_entries(profile, replacements)
+    model_patches = [patch for patch in generated if patch.get('id') in {'llm-pi-ai', 'agent-default-model'}]
+    if model_patches:
+        base.refresh_host_models(merged, model_patches)
+    return merged
 
 
 def update_workbench(profile, root, workspace_paths=None, revision=None, *, profile_dir=None):

@@ -11,7 +11,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from benchforge_backend.generation import GenerationTools
-from benchforge_backend.inference_service import Executor, Jobs, make_server, execute_remote, rewrite_paths
+from benchforge_backend.inference_service import Executor, Jobs, make_server, execute_remote, rewrite_paths, rpc
 
 
 class RemoteInference(unittest.TestCase):
@@ -57,6 +57,18 @@ class RemoteInference(unittest.TestCase):
         endpoint, _ = self.server(worker)
         with self.assertRaisesRegex(RuntimeError, 'inference failed'):
             execute_remote(endpoint, 'sam3', {}, self.root/'failed', threading.Event())
+
+    def test_gateway_reports_configured_tools_before_submission(self):
+        endpoint, jobs = self.server(Executor({'tools': {'sam3': {}}}, '0'), auth_token='fixture')
+        payload = {'request': {}}
+        ready = rpc(endpoint + '/tools/sam3/health', payload, token='fixture')
+        absent = rpc(endpoint + '/tools/moge/health', payload, token='fixture')
+        self.assertEqual(ready, {'tool': 'sam3', 'available': True})
+        self.assertFalse(absent['available'])
+        with self.assertRaises(HTTPError) as error:
+            rpc(endpoint + '/tools/sam3/health', payload)
+        self.assertEqual(error.exception.code, 401)
+        self.assertFalse(jobs.records)
 
     def test_cancel_reaches_running_worker(self):
         canceled = threading.Event()

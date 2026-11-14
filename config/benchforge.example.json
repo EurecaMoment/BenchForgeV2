@@ -1,196 +1,47 @@
 {
-  "config_version": 2,
+  "config_version": 3,
   "web": {
     "port": 3081
   },
   "server": {
-    "service_host": "127.0.0.1",
     "port": 3841,
-    "operator_token_env": null,
-    "worker_token_env": null,
-    "gpu_candidates": "0",
-    "artifacts": "../.benchforge/backend/artifacts",
-    "task_root": "../.benchforge/backend/artifacts/operator_workspaces",
-    "execution_mode": "production",
-    "scene_policy_path": "generated/scene-library/policy.json"
+    "execution_mode": "production"
   },
   "database": {
     "project": "benchforge",
-    "user": "benchforge",
-    "name": "benchforge",
-    "port": 55432,
-    "url": null,
-    "url_env": null,
-    "password_env": null
+    "port": 55432
   },
-  "client": {},
-  "worker": {
-    "worker_id": "desktop-isaac-main",
-    "isaac_asset_root": "D:/isaac-assets/Assets/Isaac/4.5/Isaac",
-    "runs": "D:/BenchForge-runs"
-  },
-  "services": {
-    "sam3": {
-      "url": "http://127.0.0.1:8765"
+  "providers": {
+    "DSpark4A100": {
+      "url": null,
+      "model": null,
+      "token_env": "BENCHFORGE_MODEL_API_KEY"
     },
-    "yoloe": {
-      "url": "http://127.0.0.1:8766"
-    },
-    "depthanything3": {
-      "url": "http://127.0.0.1:8008"
-    },
-    "trellis2": {
-      "url": "http://127.0.0.1:3956",
-      "model": "microsoft/TRELLIS.2-4B",
-      "timeout_seconds": 300
-    }
-  },
-  "collectors": {
-    "habitat": {
-      "command": [
-        "conda",
-        "run",
-        "--no-capture-output",
-        "-n",
-        "habitat",
-        "python"
-      ]
-    },
-    "libero": {
-      "command": [
-        "conda",
-        "run",
-        "--no-capture-output",
-        "-n",
-        "libero",
-        "python"
-      ],
-      "env": {}
-    },
-    "carla": {
-      "command": [
-        "conda",
-        "run",
-        "--no-capture-output",
-        "-n",
-        "carla",
-        "python"
-      ]
-    }
-  },
-  "models": {
-    "qwen": {
-      "url": "http://127.0.0.1:9001/v1",
-      "model": "YOUR_DEPLOYED_QWEN_VL_MODEL",
-      "token_env": "BENCHFORGE_MODEL_API_KEY",
-      "max_tokens": 4096,
-      "timeout_seconds": 180,
-      "retries": 1,
-      "context_window": 65536,
-      "input": [
-        "text",
-        "image"
-      ]
-    },
-    "flux": {
-      "python": "/opt/venvs/flux/bin/python",
-      "path": "/opt/models/FLUX.2-klein-9B"
-    },
-    "sam3": {
-      "python": "/opt/venvs/sam3/bin/python",
-      "path": "/opt/models/sam3"
-    },
-    "sam3d": {
-      "python": "/opt/venvs/sam3d/bin/python",
-      "path": "/opt/models/sam-3d-objects"
-    },
-    "depth_anything": {
-      "python": "/opt/venvs/depth/bin/python",
-      "path": "/opt/models/depth-anything/depth_anything_v2_vits.pth"
-    }
-  },
-  "cleaning": {
-    "command": [
-      "dj-process"
-    ]
-  },
-  "backends": {},
-  "model_services": {
-    "url": "http://127.0.0.1:4960",
-    "availability_url": "http://127.0.0.1:4960",
-    "health_timeout_seconds": 10,
-    "http_timeout_seconds": 30,
-    "tools": {
-      "yoloe": {
-        "request_defaults": {}
-      },
-      "sam3": {
-        "request_defaults": {}
-      },
-      "moge": {
-        "request_defaults": {}
-      },
-      "lama": {
-        "request_defaults": {}
-      },
-      "flux": {
-        "request_defaults": {}
-      },
-      "osor_flux": {
-        "request_defaults": {}
-      },
-      "objectclear": {
-        "request_defaults": {}
-      },
-      "qwen_image_edit": {
-        "request_defaults": {}
-      },
-      "diffusion": {
-        "request_defaults": {
-          "width": 1024,
-          "height": 1024,
-          "steps": 4
-        }
-      },
-      "depth_anything": {
-        "request_defaults": {}
-      },
-      "sam3d": {
-        "request_defaults": {
-          "texture_baking": false
-        }
-      },
-      "blender": {
-        "request_defaults": {
-          "width": 1024,
-          "height": 1024,
-          "samples": 16,
-          "frame": 1
-        }
+    "FastFLUX2Klein": {
+      "gateway_tool": "diffusion",
+      "request_defaults": {
+        "steps": 4
       }
     },
-    "token_env": "BENCHFORGE_INFERENCE_API_KEY"
-  },
-  "sources": {
-    "sam3": "/opt/sources/sam3",
-    "sam3d": "/opt/sources/sam-3d-objects",
-    "depth_anything": "/opt/sources/Depth-Anything-V2"
-  },
-  "model_roles": {
-    "dsh": "qwen",
-    "scene": "qwen",
-    "annotation": "qwen"
-  },
-  "generation": {
-    "mode": "remote",
-    "service": "model_services"
-  },
-  "isaac": {
-    "grpc": {
-      "host": "YOUR_ISAAC_GRPC_HOST",
-      "port": 50051,
-      "timeout_seconds": 60
+    "FastSAM3": {
+      "gateway_tool": "sam3"
     },
-    "capture_timeout_seconds": 1800
+    "FastDA3": {
+      "gateway_tool": "depth_anything"
+    },
+    "FastTrellis2": {
+      "gateway_tool": "sam3d"
+    },
+    "IssacSim4A100": {
+      "grpc": {
+        "host": null,
+        "port": 50051
+      },
+      "capture_timeout_seconds": 1800
+    }
+  },
+  "inference": {
+    "url": null,
+    "token_env": "BENCHFORGE_INFERENCE_API_KEY"
   }
 }

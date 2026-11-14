@@ -98,7 +98,10 @@ def main():
     config=json.loads(saved.read_text(encoding='utf-8'))
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
-    if preset.is_file() and not args.config_synced and uses_local_service(preset):
+    upgrading = model_config.is_file() and benchforge_app.settings.read_object(model_config).get(
+        'config_version'
+    ) != benchforge_app.settings.CONFIG_VERSION
+    if not args.config_synced and (upgrading or (preset.is_file() and uses_local_service(preset))):
         run([python, ROOT/'benchforge_app.py', 'sync'], cwd=ROOT)
     env = benchforge_app.build_environment(database=False)
     env['DSH_HOME'] = str(state/'dsh-home')

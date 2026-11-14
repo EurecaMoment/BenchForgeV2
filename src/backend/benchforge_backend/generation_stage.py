@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .runtime_config import environment_value
 from .files import write_json
-from .generation import GenerationTools, _file_record
+from .generation import GenerationTools, generation_defaults, _file_record
 from .progress import record_progress
 
 
@@ -18,6 +18,7 @@ def validate_generation_request(tools, name, parameters):
     if not isinstance(parameters, dict):
         raise ValueError('generation parameters must be an object')
     value = dict(parameters)
+    defaults = generation_defaults(name) if name != 'mesh_import' else {}
     for key in ('source_image', 'source_mesh', 'source_gaussian'):
         if value.get(key):
             value[key] = str(tools.source_path(value[key]))
@@ -25,14 +26,14 @@ def validate_generation_request(tools, name, parameters):
         if not isinstance(value.get('prompt'), str) or not value['prompt'].strip():
             raise ValueError('diffusion requires prompt')
         for key, default in (('width', 1024), ('height', 1024), ('steps', 4)):
-            value.setdefault(key, default)
+            value.setdefault(key, defaults.get(key, default))
             if type(value[key]) is not int or value[key] <= 0:
                 raise ValueError(f'{key} must be a positive integer')
-        value.setdefault('seed', 42)
+        value.setdefault('seed', defaults.get('seed', 42))
     elif name == 'depth_anything':
         if not value.get('source_image'):
             raise ValueError('depth_anything requires source_image')
-        value.setdefault('input_size', 518)
+        value.setdefault('input_size', defaults.get('input_size', 518))
         if type(value['input_size']) is not int or value['input_size'] <= 0:
             raise ValueError('input_size must be a positive integer')
     elif name in {'sam3', 'sam3d'}:
@@ -41,8 +42,10 @@ def validate_generation_request(tools, name, parameters):
         if name == 'sam3':
             if not value.get('prompts') and not value.get('instances'):
                 raise ValueError('sam3 requires prompts or instances')
-            value.setdefault('confidence', .2)
+            value.setdefault('confidence', defaults.get('confidence', .2))
         else:
+            if 'texture_baking' in defaults:
+                value.setdefault('texture_baking', defaults['texture_baking'])
             if 'texture_baking' in value and type(value['texture_baking']) is not bool:
                 raise ValueError('texture_baking must be a boolean')
             if not isinstance(value.get('objects'), list) or not value['objects']:
@@ -128,9 +131,11 @@ def execute_generation_stage(store, task, stop):
         if profile:
             request['profile'] = profile
         if not environment_value('BENCHFORGE_INFERENCE_URL'):
+            model_path = tools.config.model('sam3d')['path']
             request.update(source_root=tools.config.data['sources']['sam3d'],
-                           config_path=str(Path(tools.config.model('sam3d')['path']) / 'checkpoints/pipeline.yaml'))
-        if value.get('texture_baking'):request['texture_baking']=True
+                           config_path=str(Path(model_path) / 'checkpoints/pipeline.yaml'))
+        if 'texture_baking' in value:
+            request['texture_baking'] = value['texture_baking']
         worker = tools.execute(name, request, work / 'worker', stop)
         result['worker'] = worker
         result['assets'] = []

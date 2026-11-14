@@ -1,6 +1,6 @@
 """Isaac Sim gRPC 客户端 — BenchForge 侧调用远程仿真服务。
 
-端点读 config/benchforge.local.json 顶层 isaac.grpc（host/port），
+端点读 config/benchforge.local.json 的 Isaac 提供方（host/port），
 也可用 --endpoint host:port 覆盖。
 
 手动验证：
@@ -17,13 +17,14 @@ from pathlib import Path
 import grpc
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import isaac_sim_pb2
 import isaac_sim_pb2_grpc
 from service_name import IsaacChannel
+from benchforge_backend.provider_config import capture_timeout, isaac_config, isaac_endpoint
 
 ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIG = ROOT / 'config' / 'benchforge.local.json'
-PLACEHOLDER_PREFIX = 'YOUR_CONFIG'
 CHUNK_BYTES = 256 * 1024
 
 STATE_NAMES = {
@@ -37,23 +38,14 @@ STATE_NAMES = {
 TERMINAL_STATES = {'completed', 'failed', 'cancelled'}
 
 
-def load_endpoint(config_path=None):
-    """Return (endpoint, timeout_seconds) from isaac.grpc in benchforge.local.json."""
+def load_endpoint(config_path=None, *, capture_job=False):
+    """Read the configured endpoint and the timeout for the selected operation."""
     config_path = Path(config_path) if config_path else DEFAULT_CONFIG
     cfg = json.loads(config_path.read_text(encoding='utf8'))
-    grpc_cfg = (cfg.get('isaac') or {}).get('grpc') or {}
-    host = grpc_cfg.get('host', '')
-    if not host or str(host).startswith(PLACEHOLDER_PREFIX):
-        raise ValueError(
-            f'isaac.grpc.host 未配置（{config_path}）；'
-            '请填远程 Isaac Sim gRPC 服务器地址，并用 benchforge_app.py sync 同步。')
-    port = grpc_cfg.get('port')
-    if not port:
-        raise ValueError(f'isaac.grpc.port 未配置（{config_path}）')
-    timeout = grpc_cfg.get('timeout_seconds')
-    if not timeout:
-        raise ValueError(f'isaac.grpc.timeout_seconds 未配置（{config_path}）')
-    return f'{host}:{port}', int(timeout)
+    isaac = isaac_config(cfg)
+    grpc_settings = isaac.get('grpc') or {}
+    timeout = capture_timeout(isaac) if capture_job else grpc_settings.get('timeout_seconds', 60)
+    return isaac_endpoint(grpc_settings), float(timeout)
 
 
 def new_job_id(prefix='cap'):
@@ -196,7 +188,7 @@ def main():
     endpoint = args.endpoint
     timeout = args.timeout
     if endpoint is None:
-        endpoint, default_timeout = load_endpoint(args.config)
+        endpoint, default_timeout = load_endpoint(args.config, capture_job=bool(args.capture))
         timeout = timeout or default_timeout
 
     if not args.capture:

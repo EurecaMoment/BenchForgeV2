@@ -353,7 +353,8 @@ export async function apply(ctx, config) {
     objectclear_fill:'ObjectClear object removal and background recovery', qwen_image_edit:'Qwen image editing',
     diffusion:'FLUX.2 Klein 1024x1024 image generation and editing',
     depth_anything:'Depth Anything 3 metric depth estimation; request must supply calibrated intrinsics or focal_length_px',
-    sam3d:'SAM3D paired Mesh and Gaussian generation in one request; texture_baking=false retains vertex colors',
+    trellis:'TRELLIS.2 mesh and PBR generation with a supplied image and optional mask',
+    sam3d:'object reconstruction through the configured provider, using the previous tool name',
     blender:'Blender Cycles CUDA rendering of a FIT-visible .blend scene; returns a PNG image',
   };
   for (const [client, purpose] of Object.entries(modelClients)) {
@@ -363,19 +364,51 @@ export async function apply(ctx, config) {
       action:{type:'string',enum:['submit','status','result','wait','cancel','health'],description:'submit is asynchronous and is the default; wait is bounded by timeout_seconds.'},
       request:{type:'object',additionalProperties:true,description:client === 'diffusion'
         ? 'FLUX request: prompt, width=1024, height=1024, steps, seed and output. output is a full PNG filename at an absolute path shared by FIT and the provider; work does not supply it. benchforge_diffusion manages this output path when used instead.'
-        : 'Native request for the externally deployed model; configure operator defaults in model_services.tools.'},
+        : 'Native request for the configured model provider.'},
       work:{type:'string',description:'Absolute artifact directory shared with the inference service; defaults to this operation directory.'},
       job_id:{type:'string',description:'Existing durable job ID, required for status/result/wait/cancel.'},
       timeout_seconds:{type:'number',description:'Maximum wait duration; the job continues if this wait expires.'},
     };
   }
+  const modelTools = new Set(Object.keys(modelClients).map(name => 'model_' + name));
+  const modelProviders = {
+    model_diffusion:'FastFLUX2Klein', model_sam3:'FastSAM3', model_depth_anything:'FastDA3',
+    model_trellis:'FastTrellis2', model_sam3d:'FastTrellis2',
+  };
+  let providerSettings;
+  if (config.configPath && (!config.includeTools
+      || config.includeTools.some(tool => modelTools.has(tool) || tool === 'llm_local'))) {
+    try {
+      const settings = JSON.parse(await fs.readFile(path.resolve(config.configPath), 'utf8'));
+      if (settings.providers) providerSettings = settings;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  async function modelEnvironment(tool) {
+    if (!config.configPath) return environment;
+    const settings = JSON.parse(await fs.readFile(path.resolve(config.configPath), 'utf8'));
+    const llm = settings.providers?.DSpark4A100;
+    const name = tool === 'llm_local' ? (llm?.roles?.annotation ?? llm)?.token_env
+      : (settings.providers ? settings.inference : settings.model_services)?.token_env;
+    if (typeof name !== 'string' || Object.hasOwn(environment, name)) return environment;
+    const credential = snapshot.get(name)?.value;
+    return credential === undefined ? environment : {...environment, [name]: credential};
+  }
   for (const [tool, description] of Object.entries(definitions)) {
     if (config.includeTools && !config.includeTools.includes(tool)) continue;
+    if (providerSettings && modelTools.has(tool)
+        && (!providerSettings.inference?.url || !Object.hasOwn(providerSettings.providers, modelProviders[tool]))) continue;
+    if (providerSettings && tool === 'llm_local') {
+      const llm = providerSettings.providers.DSpark4A100;
+      if (!(llm?.roles?.annotation ?? llm)?.model) continue;
+    }
     ctx.tools.register(defineTool({name:`benchforge_${tool}`, description,
       parameters:{workspace:{type:'string',required:true,description:'Absolute task workspace. Use the same workspace for related calls.'},...schemas[tool]},
       output:tool==='catalog'?output:tool==='status'?statusOutput:operationOutput,
-      execute:(args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal;
-        const sessionEnvironment = {...environment, BENCHFORGE_DSH_SESSION_ID: exec.agent?.session?.id || '', BENCHFORGE_DSH_CALL_ID: exec.callId || ''};
+      execute:async (args,exec)=>{const {workspace,...request}=args; const signal=exec.signal ? AbortSignal.any([exec.signal,lifetime.signal]) : lifetime.signal;
+        const scoped = modelTools.has(tool) || tool === 'llm_local' ? await modelEnvironment(tool) : environment;
+        const sessionEnvironment = {...scoped, BENCHFORGE_DSH_SESSION_ID: exec.agent?.session?.id || '', BENCHFORGE_DSH_CALL_ID: exec.callId || ''};
         return invoke(ctx.subprocess,config.python || 'python3',workspace,config.configPath,tool,request,signal,{...config,environment:sessionEnvironment,active});}}));
   }
   if (!config.includeTools || config.includeTools.includes('collaboration')) ctx.tools.register(defineTool({name:'benchforge_collaboration',

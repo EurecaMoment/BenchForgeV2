@@ -33,6 +33,9 @@ write = settings.write
 
 def build_environment(*, database=True):
     environment = settings.read_env(CONFIG / 'dsh.env', shell=True)
+    saved = settings.read_object(STATE / 'credentials.local.json', optional=True)
+    if saved.get('inference_token'):
+        environment.setdefault(settings.INFERENCE_TOKEN_ENV, saved['inference_token'])
     projected = settings.read_env(GENERATED / 'database.env') if database else {}
     environment = {**environment, **projected, **os.environ}
     if projected.get(settings.MANAGED_MARKER) == 'true':

@@ -16,7 +16,7 @@ from benchforge_backend.generation import GenerationTools
 class GenerationStage(unittest.TestCase):
     def test_remote_depth_needs_no_local_model_configuration_and_preserves_calibration(self):
         with TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             image = root / 'source.png'
             Image.new('RGB', (1024, 1024), 'tan').save(image)
             calls = []
@@ -59,7 +59,7 @@ class GenerationStage(unittest.TestCase):
 
     def test_independent_outputs_compose_and_register_only_on_request(self):
         with TemporaryDirectory() as temporary:
-            root = Path(temporary)
+            root = Path(temporary).resolve()
             calls, registrations, updates = [], [], []
 
             class Tools(GenerationTools):

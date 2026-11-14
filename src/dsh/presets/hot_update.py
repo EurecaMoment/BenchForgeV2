@@ -26,6 +26,8 @@ def update_profile(profile, root, python, mode_config, service_config, revision,
     sources = development.base.load_sources() if sources is None else sources
     generated = migration.catalog.build(sources, None, str(python), mode_config, service_config)
     result = migration.migrate_profile(profile, generated, revision, root=root, profile_dir=profile_dir)
+    if not development.base.model_patches(mode_config):
+        development.base.refresh_host_models(result, [])
     if service_config.resolve() == (root / development.base.DEFAULT_SERVICE_CONFIG).resolve():
         development.base.refresh_service_paths(result, mode_config)
     # Canonical URLs participate in DSH HMR. Revision is configuration, not a query.

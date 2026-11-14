@@ -6,6 +6,7 @@ import time
 from urllib.parse import quote
 from urllib.request import Request, ProxyHandler, build_opener
 from urllib.error import URLError
+from ..provider_config import provider_config
 from ..service_config import environment_value
 
 
@@ -16,16 +17,19 @@ class ModelUnavailableError(RuntimeError):
 class ModelService:
     def __init__(self, config=None):
         self.config = load_config() if config is None else config
-        self.url = (self.config.get("url") or environment_value("BENCHFORGE_INFERENCE_URL", "")).rstrip("/")
+        self.url = (self.config.get("url") or environment_value("BENCHFORGE_INFERENCE_URL") or "").rstrip("/")
         if not self.url:
-            raise ValueError("Configure model_services.url or BENCHFORGE_INFERENCE_URL")
+            raise ValueError("Configure inference.url in config/benchforge.local.json")
         self.opener = build_opener(ProxyHandler({}))
 
     def rpc(self, route, payload=None, method=None, *, base_url=None, timeout_seconds=None):
         headers = {"Content-Type": "application/json"}
         token = self.config.get("token")
-        if not token and self.config.get("token_env"):
-            token = environment_value(self.config["token_env"])
+        name = self.config.get("token_env")
+        if name and not token:
+            token = environment_value(name)
+            if not token and self.config.get("provider_registry"):
+                raise ValueError(f"inference.token_env references unset variable {name}")
         if token:
             headers["Authorization"] = "Bearer " + token
         body = None if payload is None else json.dumps(payload).encode()
@@ -34,7 +38,7 @@ class ModelService:
             return json.load(response)
 
     def availability(self, tool, request):
-        endpoint = self.config.get("availability_url", self.url).rstrip("/")
+        endpoint = (self.config.get("availability_url") or self.url).rstrip("/")
         try:
             report = self.rpc("/tools/" + quote(tool, safe="") + "/health", {"request": request},
                               base_url=endpoint, timeout_seconds=self.config.get("health_timeout_seconds", 10))
@@ -43,8 +47,8 @@ class ModelService:
         return report
 
     def call(self, tool, *, action="submit", request=None, work=None, job_id=None, timeout_seconds=300):
-        defaults = self.config.get("tools", {}).get(tool, {}).get("request_defaults", {})
-        model_request = {**defaults, **(request or {})}
+        if action in {"health", "submit"}:
+            tool, model_request = provider_config.gateway_request(self.config, tool, request)
         if action == "health":
             return {"service": self.url, "health": self.availability(tool, model_request)}
         if action == "submit":
@@ -85,13 +89,14 @@ def load_config(path=None):
     path = path or environment_value("BENCHFORGE_MODEL_SERVICES_CONFIG")
     if path is None and Path('config/benchforge.local.json').is_file():
         path = Path('config/benchforge.local.json')
-    return json.loads(Path(path).read_text(encoding="utf-8")).get("model_services", {}) if path else {}
+    registry = json.loads(Path(path).read_text(encoding="utf-8")) if path else {}
+    return provider_config.inference_config(registry)
 
 
 def module_main(tool):
     parser = argparse.ArgumentParser(description="Call an existing model API; never starts a model or GPU process.")
     parser.add_argument("--action", choices=["submit", "status", "result", "wait", "cancel", "health"], default="submit")
-    parser.add_argument("--config", help="Private JSON file containing model_services")
+    parser.add_argument("--config", help="Private BenchForge JSON configuration file")
     parser.add_argument("--endpoint", help="Override the configured inference API URL")
     parser.add_argument("--input", help="Native model request JSON; '-' reads stdin")
     parser.add_argument("--work", help="Absolute shared artifact directory")

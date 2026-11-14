@@ -11,7 +11,8 @@ import shlex
 import tempfile
 from urllib.parse import quote, unquote, urlsplit
 
-from benchforge_backend.model_configuration import initialize_model_config
+from benchforge_backend.model_configuration import initialize_model_config, upgrade_model_config
+from benchforge_backend.provider_config import INFERENCE_TOKEN_ENV, isaac_config, validate_providers
 from benchforge_backend.runtime_config import expand_environment, read_json
 
 
@@ -21,8 +22,6 @@ CLIENT_PATHS = (*SERVER_PATHS, 'models_config', 'service_config')
 WORKER_PATHS = ('isaac_asset_root', 'runs', 'ssh_config', 'asset_cache')
 ISAAC_WORKER_KEYS = {
     'grpc': 'isaac_grpc',
-    'isaac_asset_root': 'isaac_asset_root',
-    'runs': 'runs',
     'capture_timeout_seconds': 'capture_timeout_seconds',
 }
 OLD_WORKER_KEYS = (
@@ -30,7 +29,18 @@ OLD_WORKER_KEYS = (
     'isaac_resident', 'isaac_idle_seconds',
 )
 MODEL_FIELDS = ('model_url', 'model_id', 'model_api_key_env')
-CONFIG_VERSION = 2
+CONFIG_VERSION = 3
+DEPLOYMENT_DEFAULTS = {
+    'web': {'port': 3081},
+    'server': {
+        'service_host': '127.0.0.1', 'port': 3841, 'execution_mode': 'production',
+        'artifacts': '../.benchforge/backend/artifacts', 'gpu_candidates': '0',
+        'scene_policy_path': 'generated/scene-library/policy.json',
+    },
+    'database': {'project': 'benchforge', 'port': 55432, 'user': 'benchforge', 'name': 'benchforge'},
+    'client': {},
+    'worker': {'worker_id': 'desktop-isaac-main'},
+}
 SERVER_CONFIG = 'benchforge-server.local.json'
 CLIENT_CONFIG = 'benchforge-client.local.json'
 LEGACY_SERVER_CONFIG = 'spatialforge-server.local.json'
@@ -418,16 +428,15 @@ def read_configuration(config, generated, server, *, overrides=None):
     local = read_object(path, optional=True)
     local_sections = _sections(local)
     version = local.get('config_version')
-    if version is not None and (type(version) is not int or version not in (1, CONFIG_VERSION)):
+    if version is not None and (type(version) is not int or version not in (1, 2, CONFIG_VERSION)):
         raise ValueError('Unsupported BenchForge config_version')
     environment = {**read_env(config / 'dsh.env', shell=True), **os.environ}
     if version is None:
         settings, (legacy_server, model_source, worker_isaac, credentials) = _legacy_settings(
             config, generated, server, environment
         )
-        registry = initialize_model_config(path, template, legacy_server, model_source,
-                                           lambda *_: None)
-        isaac = registry['isaac']
+        registry = initialize_model_config(path, legacy_server, model_source, environment)
+        isaac = registry.setdefault('isaac', {})
         if 'grpc' not in local.get('isaac', {}) and 'grpc' in worker_isaac:
             isaac['grpc'] = worker_isaac['grpc']
         for field in ('isaac_asset_root', 'runs'):
@@ -439,8 +448,7 @@ def read_configuration(config, generated, server, *, overrides=None):
         registry = deepcopy(local)
         credentials = _upgrade_configuration(settings, config, generated, environment) if version == 1 else {}
 
-    defaults = read_object(template)
-    legacy_artifacts = version != CONFIG_VERSION and (config.parent / LEGACY_STATE / 'artifacts').is_dir()
+    legacy_artifacts = version in (None, 1) and (config.parent / LEGACY_STATE / 'artifacts').is_dir()
     for name, values in local_sections.items():
         # Runtime paths and credential references belong to the operator once
         # that section has been saved in the canonical file.
@@ -449,8 +457,17 @@ def read_configuration(config, generated, server, *, overrides=None):
         if name == 'server' and legacy_artifacts:
             settings[name].setdefault('artifacts', f'../{LEGACY_STATE}/artifacts')
             settings[name].setdefault('task_root', f'../{LEGACY_STATE}/artifacts/operator_workspaces')
-        _inherit_defaults(settings[name], defaults[name])
+        _inherit_defaults(settings[name], DEPLOYMENT_DEFAULTS[name])
         registry[name] = settings[name]
+    if version != CONFIG_VERSION and 'providers' not in registry:
+        token = upgrade_model_config(registry, read_object(template), environment, previous_server=settings['server'])
+        if token:
+            credentials['inference_token'] = text_value(token, 'legacy inference token')
+    registry.setdefault('providers', {})
+    if any(key in registry['worker'] for key in ISAAC_WORKER_KEYS.values()):
+        raise ValueError('Configure the Isaac endpoint and capture timeout under providers.IssacSim4A100')
+    for field in MODEL_FIELDS:
+        settings['server'].pop(field, None)
     for name in ('web', 'server', 'database'):
         settings[name]['port'] = port(settings[name]['port'], f'{name}.port')
     settings['database']['project'] = compose_name(settings['database']['project'])
@@ -458,6 +475,7 @@ def read_configuration(config, generated, server, *, overrides=None):
     if mode not in ('production', 'exploration'):
         raise ValueError('server.execution_mode must be production or exploration')
     registry['config_version'] = CONFIG_VERSION
+    validate_providers(registry)
     return registry, local, credentials, environment
 
 
@@ -533,9 +551,10 @@ def _database_projection(database, environment, previous, credentials):
 
 def _worker_projection(config, server, environment, credentials, config_dir):
     profile = dict(config['worker'])
+    isaac = isaac_config(config)
     for key, projected in ISAAC_WORKER_KEYS.items():
-        if key in config['isaac']:
-            profile.setdefault(projected, config['isaac'][key])
+        if key in isaac:
+            profile.setdefault(projected, isaac[key])
     for key in OLD_WORKER_KEYS:
         profile.pop(key, None)
     _resolve_paths(profile, (*WORKER_PATHS, 'service_config'), config_dir, environment)
@@ -567,7 +586,7 @@ def sync_configuration(config, generated, server_path, state, *, overrides=None)
         )
         stored_credentials = read_object(credentials_path, optional=True)
         legacy_credentials = {}
-        if previous_value.get('config_version') != CONFIG_VERSION:
+        if previous_value.get('config_version') in (None, 1):
             _upgrade_service_references(value, config, generated, environment)
             if not credentials_path.is_file():
                 legacy_credentials = read_object(config.parent / LEGACY_STATE / credentials_path.name, optional=True)
@@ -587,6 +606,8 @@ def sync_configuration(config, generated, server_path, state, *, overrides=None)
         if server.get('scene_policy_path') is None and server['execution_mode'] == 'production':
             raise ValueError('server.scene_policy_path is required in production mode')
         _resolve_paths(server, SERVER_PATHS, config, environment)
+        if 'task_root' not in server:
+            server['task_root'] = str(Path(server['artifacts']) / 'operator_workspaces')
         server['service_url'] = _service_url(server)
         for name in API_NAMES:
             _token(server, name, credentials)
@@ -606,6 +627,9 @@ def sync_configuration(config, generated, server_path, state, *, overrides=None)
             client['operator_token'] = credentials['client_operator_token']
 
         worker = _worker_projection(value, server, environment, credentials, config)
+        backup = state / 'benchforge-before-v3.json'
+        if path.is_file() and previous_value.get('config_version') != CONFIG_VERSION and not backup.exists():
+            write(backup, previous_value)
         policy = server.get('scene_policy_path')
         default_policy = generated / 'scene-library/policy.json'
         if policy and Path(policy) == default_policy.resolve() and not default_policy.exists():
@@ -616,6 +640,27 @@ def sync_configuration(config, generated, server_path, state, *, overrides=None)
         write(generated / CLIENT_CONFIG, client)
         write(generated / 'worker.local.json', worker)
         write_text(db_file, ''.join(f'{key}={item}\n' for key, item in database_env.items()))
-        if value != previous_value or not path.exists():
-            write(path, value)
+        saved = {
+            key: item for key, item in value.items() if key not in SECTIONS
+        }
+        for name in SECTIONS:
+            previous_section = previous_value.get(name, {})
+            section = {
+                key: item for key, item in value[name].items()
+                if (previous_value.get('config_version') == CONFIG_VERSION and key in previous_section)
+                or key in (overrides or {}).get(name, {})
+                or item != DEPLOYMENT_DEFAULTS[name].get(key)
+            }
+            if section and name == 'server':
+                for key in ('operator_token_env', 'worker_token_env'):
+                    if section.get(key) is None:
+                        section.pop(key, None)
+            if section and name == 'database':
+                for key in ('url', 'url_env', 'password_env'):
+                    if section.get(key) is None:
+                        section.pop(key, None)
+            if section:
+                saved[name] = section
+        if saved != previous_value or not path.exists():
+            write(path, saved)
     return value

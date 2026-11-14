@@ -96,24 +96,14 @@
             Use BenchForge tools for production operations; the configured queue owns
             the connected desktop Isaac instance.
 
-            Use the benchforge_model_* clients for independent model API requests.
-            Resident FLUX.2 Klein, DA3 metric depth, SAM3 and paired SAM3D are exposed
-            as model_diffusion, model_depth_anything, model_sam3 and model_sam3d.
-            Current resident image inputs are 1024x1024; supply calibrated intrinsics
-            or focal_length_px for metric depth. SAM3D returns Mesh and Gaussian together;
-            omit texture_baking to keep vertex colors. Model predictions are not GT.
-            Each submission first checks the specific tool''s availability; if it
-            fails, report the reason and stop dependent steps until the external service
-            is available. They submit durable jobs; inspect status/result with the
-            returned job_id. A submission is not completed inference. Model loading,
-            GPU allocation, deployment and weights belong to that external service.
-            These models have not met a 64-concurrent, one-second latency target.
-
-            Blender Cycles is exposed as model_blender and runs as an external FIT
-            CUDA renderer on the dedicated GPU 4. Provide an absolute FIT-visible
-            blend_file (or scene_file), output dimensions and samples; the result
-            is a rendered prediction/artifact, not GT. The Blender provider does not
-            replace Isaac physics or the desktop capture queue.
+            Use the configured benchforge_model_* clients for FLUX.2 Klein image generation
+            and editing, SAM3 masks, DA3 depth, and TRELLIS.2 mesh/PBR. Supply calibrated
+            intrinsics or focal_length_px when required for metric depth. TRELLIS.2
+            declares y_up, and supplies mesh/PBR predictions without metric scale,
+            camera pose or Gaussian splats. Each submission checks provider availability
+            and returns a durable job_id. Read status or result before using the output
+            as evidence. Model weights, GPU allocation and serving belong to the external
+            provider. Predictions do not establish simulator ground truth.
 
             Diffusion, SAM3, SAM3D, depth, mesh import, geometry preview, capture,
             run and asset operations are composable capabilities. Inspect the returned
@@ -732,18 +722,12 @@
           - pipeline_repair_plan
           - pipeline_evaluate
           - stage_review
-          - model_yoloe
-          - model_sam3
-          - model_moge
-          - model_lama
-          - model_flux_fill
-          - model_osor_flux_fill
-          - model_objectclear_fill
-          - model_qwen_image_edit
           - model_diffusion
+          - model_sam3
           - model_depth_anything
+          - model_trellis
           - model_sam3d
-          - model_blender
+          - llm_local
           configPath: config/benchforge.local.json
       - id: benchforge-scene-tools
         name: '@eurecamoment/benchforge-dsh/benchforge-scene-tools'
@@ -849,24 +833,14 @@
             Use BenchForge tools for production operations; the configured queue owns
             the connected desktop Isaac instance.
 
-            Use the benchforge_model_* clients for independent model API requests.
-            Resident FLUX.2 Klein, DA3 metric depth, SAM3 and paired SAM3D are exposed
-            as model_diffusion, model_depth_anything, model_sam3 and model_sam3d.
-            Current resident image inputs are 1024x1024; supply calibrated intrinsics
-            or focal_length_px for metric depth. SAM3D returns Mesh and Gaussian together;
-            omit texture_baking to keep vertex colors. Model predictions are not GT.
-            Each submission first checks the specific tool''s availability; if it
-            fails, report the reason and stop dependent steps until the external service
-            is available. They submit durable jobs; inspect status/result with the
-            returned job_id. A submission is not completed inference. Model loading,
-            GPU allocation, deployment and weights belong to that external service.
-            These models have not met a 64-concurrent, one-second latency target.
-
-            Blender Cycles is exposed as model_blender and runs as an external FIT
-            CUDA renderer on the dedicated GPU 4. Provide an absolute FIT-visible
-            blend_file (or scene_file), output dimensions and samples; the result
-            is a rendered prediction/artifact, not GT. The Blender provider does not
-            replace Isaac physics or the desktop capture queue.
+            Use the configured benchforge_model_* clients for FLUX.2 Klein image generation
+            and editing, SAM3 masks, DA3 depth, and TRELLIS.2 mesh/PBR. Supply calibrated
+            intrinsics or focal_length_px when required for metric depth. TRELLIS.2
+            declares y_up, and supplies mesh/PBR predictions without metric scale,
+            camera pose or Gaussian splats. Each submission checks provider availability
+            and returns a durable job_id. Read status or result before using the output
+            as evidence. Model weights, GPU allocation and serving belong to the external
+            provider. Predictions do not establish simulator ground truth.
 
             Diffusion, SAM3, SAM3D, depth, mesh import, geometry preview, capture,
             run and asset operations are composable capabilities. Inspect the returned
@@ -1492,18 +1466,12 @@
           - pipeline_repair_plan
           - pipeline_evaluate
           - stage_review
-          - model_yoloe
-          - model_sam3
-          - model_moge
-          - model_lama
-          - model_flux_fill
-          - model_osor_flux_fill
-          - model_objectclear_fill
-          - model_qwen_image_edit
           - model_diffusion
+          - model_sam3
           - model_depth_anything
+          - model_trellis
           - model_sam3d
-          - model_blender
+          - llm_local
           configPath: config/benchforge.local.json
       - id: benchforge-scene-tools
         name: '@eurecamoment/benchforge-dsh/benchforge-scene-tools'
