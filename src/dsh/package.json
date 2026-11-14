@@ -25,7 +25,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build:benchforge-ui": "node ./ui/build_client.mjs",
+    "build:benchforge-ui": "node ./build.mjs",
+    "prepare": "node ./build.mjs",
     "prepack": "node ./stage_package.mjs"
   },
   "files": [
@@ -33,7 +34,10 @@
     "tools/**/*.mjs",
     "host/**/*.mjs",
     "host/**/*.js",
-    "host/workbench/remote.ts",
+    "host/workbench/remote/package.json",
+    "host/workbench/remote/src/*.ts",
+    "host/workbench/remote/lib/",
+    "host/workbench/remote/tsconfig.host.json",
     "host/workbench/*.py",
     "host/workbench/requirements-preview.txt",
     "shared/*.mjs",
@@ -71,6 +75,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-api-gateway": "0.2.2-rc.3",
     "@deepseek-ai/schemastery": "3.19.0",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.3",
     "@deepseek-ai/dsh-tool-executor-native": "0.2.2-rc.3",
@@ -82,6 +87,9 @@
     "@deepseek-ai/dsh-tool-bash-persistent": "0.2.2-rc.3",
     "@deepseek-ai/dsh-tool-pwsh-persistent": "0.2.2-rc.3",
     "@deepseek-ai/dsh-web-app": "0.2.2-rc.3",
-    "esbuild": "0.25.12"
+    "@deepseek-ai/dsh-typert-generator": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.3",
+    "esbuild": "0.25.12",
+    "typescript": "6.0.3"
   }
 }

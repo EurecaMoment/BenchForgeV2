@@ -7,7 +7,7 @@ import {createProgressComponents} from './components/progress.js';
 import {createGalleryComponents} from './components/gallery.js';
 import {createProductComponents} from './components/products.js';
 import {createWorkbenchComponent} from './components/workbench.js';
-import {workbenchRemote} from '../../shared/workbench_remote.mjs';
+import workbenchRemote from '../../host/workbench/remote/lib/typert.remote-client.js';
 
 // A client may still have a historical projection cached during a live profile update.
 const WORKBENCH_PRESETS = new Set(['benchforge-ui', 'spatialforge-standard-ptc']);
@@ -43,7 +43,7 @@ const PLAN_FIELDS = {
   description: '具体说明', physical_assumptions: '物理假设与验证范围', revision_history: '设计修订依据', changes: '修改内容', type: '关系',
 };
 
-function createClient(React, z) {
+function createClient(React) {
   const h = React.createElement;
   const primitives = createPrimitives({React, PLAN_FIELDS, PLAN_SECTIONS});
   const state = createWorkbenchState({STAGES, sceneName: primitives.sceneName});
@@ -82,7 +82,7 @@ function createClient(React, z) {
   }
 
   async function apply(ctx) {
-    await ctx.remote.$mount(workbenchRemote(z));
+    await ctx.remote.$mount(workbenchRemote);
     ctx.effect(() => ctx.locale.register(NS, dictionaries));
     const t = ctx.locale.bind(NS);
     ctx.inject(['remote.benchforgeWorkbench'], (workbenchCtx) => {
@@ -123,17 +123,14 @@ function createClient(React, z) {
   return {ProductionEnvironment, Workbench, dictionaries, apply, createWorkbenchRequest, ...helpers, ...components};
 }
 
-window.__ModuleLoader__.load({
-  id: '@eurecamoment/benchforge-ui',
-  factory(require) {
-    const React = require('react');
-    const client = createClient(React, require('zod').z);
-    const {Workbench, dictionaries, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects} = client;
-    return {
-      inject: ['slots', 'locale', 'remote', 'uiSession', 'sessions', 'uiConversation'],
-      apply: client.apply,
-      Workbench, dictionaries, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects,
-      ...client,
-    };
-  },
-});
+export default function createPlugin(require) {
+  const React = require('react');
+  const client = createClient(React);
+  const {Workbench, dictionaries, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects} = client;
+  return {
+    inject: ['slots', 'locale', 'remote', 'uiSession', 'sessions', 'uiConversation'],
+    apply: client.apply,
+    Workbench, dictionaries, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects,
+    ...client,
+  };
+}

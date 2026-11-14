@@ -33,6 +33,12 @@ Existing session files stay in their workspace.
 
 ## Evaluation workbench UI
 
+`npm ci --prefix src/dsh` builds the workbench after installing dependencies.
+After editing workbench sources, rerun `npm run build:benchforge-ui --prefix src/dsh`.
+The build uses the DSH Typert generator with the Host project's TypeScript
+declarations, then compiles the Host and bundles the generated Remote
+contribution into the Web Client. The Host package exports `./typert` and `./remote`.
+
 `ui/client/` renders runs, artifacts, datasets and quality reports. Its JSON
 requests use the DSH Gateway's `benchforgeWorkbench` unary Remote methods. The Host
 owns data access, pagination and Fetch routes for downloadable artifacts.

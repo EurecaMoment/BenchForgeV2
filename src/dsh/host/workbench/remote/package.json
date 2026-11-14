@@ -1,0 +1,20 @@
+{
+  "name": "@eurecamoment/benchforge-workbench",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/types/index.js" },
+    "./types": { "types": "./lib/types/types.d.ts", "default": "./lib/types/types.js" },
+    "./typert": { "types": "./lib/typert.host.d.ts", "default": "./lib/typert.host.js" },
+    "./remote": { "types": "./lib/typert.remote-client.d.ts", "default": "./lib/typert.remote-client.js" }
+  },
+  "files": [
+    "src",
+    "lib/types",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts",
+    "lib/typert.remote-client.d.ts.map"
+  ]
+}

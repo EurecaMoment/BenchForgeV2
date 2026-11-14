@@ -203,7 +203,7 @@ npm ci --prefix src/dsh
 ```
 
 `.venv/` 是核心与 DSH 辅助程序环境，`.benchforge/backend/venv/` 是后端环境。
-`npm ci --prefix src/dsh` 安装插件依赖，不能用 Python 安装替代。
+`npm ci --prefix src/dsh` 安装插件依赖，生成工作台的 Typert 声明，编译 Host 服务并打包 Web Client。
 这一步完成后还没有启动服务，也没有配置模型或仿真器。
 
 ### 3. 初始化本实例配置

@@ -11,6 +11,7 @@ src/backend/grpc/_mock_jobs/
 venv/
 node_modules/
 /src/dsh/benchforge/
+/src/dsh/host/workbench/remote/lib/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

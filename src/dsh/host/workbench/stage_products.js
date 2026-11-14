@@ -2,26 +2,24 @@ import fs from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {createInterface} from 'node:readline';
 import {DatabaseSync} from 'node:sqlite';
-import {createRequire} from 'node:module';
 import path from 'node:path';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
-import {z as wireSchema} from 'zod';
 import {sessionFamilyReader} from '../sessions/parallel_sessions.js';
 import {createPreparationProducts} from './preparation_products.js';
 import {ApiError, assertSessionDirectory, exists, inside, matchesSession, readJson, resolveToken, scopeOf,
   scopeParams, token, workspaceRoots} from './scope.js';
 import {createDatasetReader, createPublicArtifactProjector, PUBLIC_FIELDS, QUALITY_FIELDS} from './public_artifacts.js';
 import {createWorkbenchReadRoutes} from './routes.js';
-import {registerWorkbenchRemote} from './remote.js';
+import {WorkbenchRemote} from './remote/lib/types/index.js';
+import {TYPERT} from './remote/lib/typert.host.js';
 import {readAssessmentTemplate, readTaskTemplates} from '../../shared/resources.mjs';
-import {workbenchRemote} from '../../shared/workbench_remote.mjs';
 
 export const name = 'benchforge-ui';
-export const inject = ['connection', 'pluginPackages', 'typert', 'workspaceRegistry', 'benchforgeCapture', 'benchforgeSessions'];
+export const inject = ['connection', 'typert', 'workspaceRegistry', 'benchforgeCapture', 'benchforgeSessions'];
 export const Config = z.object({
   workspacePaths: z.array(z.string()).default([]),
   maxRuns: z.natural().min(1).max(200).default(60),
@@ -729,29 +727,14 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
   return fetchWorkbench(createWorkbenchDispatcher(config, registered, family, synthesisFactory, execution, associations));
 }
 
-export async function apply(ctx, config) {
+export function apply(ctx, config) {
   const {execution, preparation} = ctx.benchforgeSessions;
   const {associations} = ctx.benchforgeCapture;
   const dispatch = createWorkbenchDispatcher(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),
     preparation, execution, associations);
-  // Bind to the running Host's Cordis instance, including source checkouts of DSH.
-  const protocol = '@deepseek-ai/dsh-typert-protocol';
-  const installation = ctx.pluginPackages.resolution.entries.find((entry) =>
-    entry.scope === 'installation' && entry.name === protocol);
-  const resolveHostPackage = createRequire(installation.declarer);
-  const typert = await import(pathToFileURL(resolveHostPackage.resolve(protocol)));
-  registerWorkbenchRemote(ctx, typert, dispatch);
-  const remote = workbenchRemote(wireSchema);
-  ctx.effect(() => ctx.typert.register({
-    package: remote.package, face: 'host', schemas: [], invocations: remote.descriptors,
-    model: {services: [{
-      key: 'benchforgeWorkbench', exportName: 'WorkbenchRemote', types: [],
-      members: [
-        {kind: 'method', name: 'read', signature: 'read(query: Record<string, string>, signal: AbortSignal): Promise<JSONType>'},
-        {kind: 'method', name: 'write', signature: 'write(query: Record<string, string>, body: JSONType, signal: AbortSignal): Promise<JSONType>'},
-      ],
-    }], events: [], objects: []},
-  }), 'benchforge-workbench: Remote API');
+  ctx.provide('benchforgeWorkbench', new WorkbenchRemote(dispatch));
+  // Local file overlays do not have a bare package row for the Typert loader.
+  ctx.effect(() => ctx.typert.register(TYPERT), 'benchforge-workbench: Remote API');
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
     fetch: fetchWorkbench(dispatch)});
   ctx.effect(() => dispose, 'benchforge-ui: authenticated artifacts and scene selection API');
