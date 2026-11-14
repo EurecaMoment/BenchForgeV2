@@ -191,7 +191,7 @@ test('real prefixed tool names and absent optional tools survive strict global-n
   assert.ok(!('toolFilter' in f.calls[1].request), 'an absent optional capability must not materialize an invalid empty restriction');
 });
 
-test('preset migration compiles canonical denies only for configured production tools', () => {
+test('preset migration removes retired delegation options and retains the production tool scope', () => {
   const program = String.raw`
 import ast, json, sys
 from pathlib import Path
@@ -209,16 +209,17 @@ worker = {'name': '@deepseek-ai/dsh-tool-subagent', 'config': {'provider': 'spaw
     'toolFilter': {'deny': ['pipeline_run', 'pipeline_evaluate', 'benchforge_capture']}}}
 plugins = [worker, {'id': 'spatial-learning-tools', 'config': {'includeTools': ['pipeline_run', 'stage_review']}}]
 namespace['configure_synthesis_delegation'](plugins)
-initial = list(worker['config']['toolFilter']['deny'])
+initial = sorted(namespace['configured_synthesis_tools'](plugins))
+configured = json.dumps(worker, sort_keys=True)
 namespace['configure_synthesis_delegation'](plugins)
-assert initial == worker['config']['toolFilter']['deny']
+assert configured == json.dumps(worker, sort_keys=True)
 options = worker['config']['agentOptions']
 plugins.append({'id': 'benchforge-scene-tools', 'config': {}})
-namespace['configure_synthesis_delegation'](plugins)
-with_spatial = worker['config']['toolFilter']['deny']
+with_spatial = sorted(namespace['configured_synthesis_tools'](plugins))
 empty = [{'name': '@deepseek-ai/dsh-tool-subagent', 'config': {'provider': 'fork', 'toolFilter': {'deny': ['pipeline_run']}}}]
 namespace['configure_synthesis_delegation'](empty)
-print(json.dumps({'initial': initial, 'options': options, 'withSpatial': with_spatial, 'emptyFilter': 'toolFilter' in empty[0]['config']}))
+print(json.dumps({'initial': initial, 'options': options, 'withSpatial': with_spatial,
+    'spawnFilter': 'toolFilter' in worker['config'], 'forkFilter': 'toolFilter' in empty[0]['config']}))
 `;
   const python = process.env.BENCHFORGE_PYTHON || (process.platform === 'win32' ? 'python' : 'python3');
   const result = JSON.parse(execFileSync(python, ['-B', '-c', program,
@@ -227,7 +228,8 @@ print(json.dumps({'initial': initial, 'options': options, 'withSpatial': with_sp
   assert.deepEqual(result.options, {provider: 'saved-route', model: 'saved-model'});
   assert.ok(result.withSpatial.includes('benchforge_capture'));
   assert.ok(!result.withSpatial.includes('benchforge_pipeline_evaluate'));
-  assert.equal(result.emptyFilter, false);
+  assert.equal(result.spawnFilter, false);
+  assert.equal(result.forkFilter, false);
 });
 
 test('preparation selects only supported effort on the route the native child actually inherits', async t => {
