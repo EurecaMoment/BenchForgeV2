@@ -56,13 +56,13 @@ def main():
         if not service_config.is_file():
             parser.error(f'BenchForge configuration not found: {service_config}. '
                          'Run python benchforge_app.py init, or pass --benchforge-config with the actual file path.')
-    lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
     saved=state/'runtime.json'
     environment=ROOT/'.venv'
     python=environment/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
     if args.command=='setup':
+        lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
         node=shutil.which('node')
         if not node:
             parser.error('Install Node.js 22.19+ or 24+ first: https://nodejs.org/')
@@ -70,16 +70,23 @@ def main():
         major,minor=map(int,version.split('.')[:2])
         if not ((major==22 and minor>=19) or major>=24):
             parser.error(f'Node {version} is unsupported; DSH requires {lock["node"]}')
-        dsh=(args.dsh_root or ROOT/'third_party/deepseek-harness').resolve()
+        dsh=(args.dsh_root or ROOT/lock['path']).resolve()
+        cli = dsh/'apps/cli/lib/bin.js'
+        runtime = {'dsh_root': str(dsh), 'node': node}
         if not args.dsh_root:
-            if not dsh.exists():
-                run(['git','clone','--depth','1','--branch',lock['ref'],lock['repository'],dsh])
-            pnpm=shutil.which('pnpm')
-            command=[pnpm] if pnpm else [shutil.which('npx') or 'npx','--yes',lock['package_manager']]
-            if not (dsh/'apps/cli/lib/bin.js').exists():
+            run(['git', 'submodule', 'update', '--init', '--recursive', '--depth', '1', '--', lock['path']], cwd=ROOT)
+            revision = subprocess.check_output(['git', '-C', str(dsh), 'rev-parse', 'HEAD'], text=True).strip()
+            runtime['dsh_revision'] = revision
+            try:
+                previous = json.loads(saved.read_text(encoding='utf-8'))
+            except (FileNotFoundError, ValueError):
+                previous = {}
+            if not cli.is_file() or previous != runtime:
+                pnpm=shutil.which('pnpm')
+                command=[pnpm] if pnpm else [shutil.which('npx') or 'npx','--yes',lock['package_manager']]
                 run([*command,'install','--frozen-lockfile'],cwd=dsh)
                 run([*command,'run','build'],cwd=dsh)
-        if not (dsh/'apps/cli/lib/bin.js').is_file():
+        if not cli.is_file():
             parser.error('DSH checkout is not built; run pnpm install and pnpm run build in it')
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(environment)
@@ -90,7 +97,7 @@ def main():
         run([python,ROOT/'src/dsh/presets/build_presets.py',
              '--dsh-root',dsh,'--node',node,'--python',python,'--config',model_config,
              '--service-config',service_config,'--output',preset])
-        saved.write_text(json.dumps({'dsh_root':str(dsh),'node':node},indent=2),encoding='utf-8')
+        saved.write_text(json.dumps(runtime,indent=2),encoding='utf-8')
         print('Ready. Run: python benchforge.py start')
         return
     if not saved.is_file():

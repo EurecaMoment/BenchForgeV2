@@ -26,3 +26,7 @@
 	path = third_party/FastQwen
 	url = https://github.com/EurecaMoment/FastQwen.git
 	shallow = true
+[submodule "third_party/deepseek-harness4BenchForge"]
+	path = third_party/deepseek-harness4BenchForge
+	url = https://github.com/EurecaMoment/deepseek-harness4BenchForge.git
+	shallow = true

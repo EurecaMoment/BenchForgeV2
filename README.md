@@ -1,6 +1,6 @@
 # BenchForge
 
-BenchForge develops a modular harness for spatial benchmark production and model evaluation. It supports two product lines: the framework that plans and runs evidence-backed workflows, and services that deliver evaluation or training data to RSI models. The official DSH source remains an external dependency.
+BenchForge develops a modular harness for spatial benchmark production and model evaluation. It supports two product lines: the framework that plans and runs evidence-backed workflows, and services that deliver evaluation or training data to RSI models. DSH is supplied by the pinned `deepseek-harness4BenchForge` submodule.
 
 ```mermaid
 flowchart TB
@@ -73,7 +73,7 @@ The task/template catalog and the separate spatial-learning capability graph ser
 ## Third-party provider libraries
 
 [`third_party/`](third_party/README.md) includes pinned Git submodules for
-FastTrellis2, DSpark4A100, IssacSim4A100, FastSAM3, FastFLUX2Klein, FastDA3, and FastQwen.
+the DSH runtime, FastTrellis2, DSpark4A100, IssacSim4A100, FastSAM3, FastFLUX2Klein, FastDA3, and FastQwen.
 After pulling this repository, download their sources with:
 
 ```bash
@@ -241,7 +241,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 .venv/bin/python benchforge_app.py dsh-setup
 ```
 
-此命令从公开仓库下载锁定版本的 DSH，在 `third_party/deepseek-harness/` 构建，
+此命令初始化 `third_party/deepseek-harness4BenchForge/` 子模块，构建 BenchForge 提交锁定的 DSH 版本，
 然后按本机配置生成含两个预设和工作台插件的
 `config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
@@ -267,7 +267,7 @@ GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.version GIT_CONFIG_VALUE_0=HTTP/1.1 \
   .venv/bin/python benchforge_app.py dsh-setup
 ```
 
-该命令仍从锁定的公开仓库版本安装，不需要手工复制 DSH 文件或改全局配置。
+该命令仍使用 BenchForge 锁定的子模块提交。
 
 ### 5. 启动本实例
 
@@ -409,6 +409,8 @@ npm ci --prefix src/dsh
 
 除非确实需要重新生成预设，否则不要再次运行 `dsh-setup` 覆盖自己的模型配置。
 需要重新生成时先备份 `config/generated/benchforge.local.yml`，生成后合回自己的追加项。
+已有实例首次切换到 DSH fork，或拉取的版本更新了 DSH 子模块指针时，先执行上述备份，再运行
+`.venv/bin/python benchforge_app.py dsh-setup`，然后启动实例。
 升级旧版实例时，保留 `config/benchforge.local.json`、旧后端数据目录和 PostgreSQL 数据卷。
 `setup` 会在已有的后端 Python 环境中安装新包，`sync` 会保留已配置的数据库连接和工件路径。
 启动时会更新本实例预设里的旧插件源码路径。独立维护的 DSH profile 使用

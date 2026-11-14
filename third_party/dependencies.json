@@ -1,7 +1,6 @@
 {
   "dsh": {
-    "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
-    "ref": "dsh-v0.1.7-rc.1",
+    "path": "third_party/deepseek-harness4BenchForge",
     "license": "MIT",
     "node": "^22.19.0 || >=24.0.0",
     "package_manager": "pnpm@11.7.0"

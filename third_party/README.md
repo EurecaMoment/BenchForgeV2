@@ -1,6 +1,6 @@
 # 第三方依赖
 
-以下七个仓库以 **Git 子模块** 引入，保留各自的源码、许可证和版本历史。
+以下八个仓库以 **Git 子模块** 引入，保留各自的源码、许可证和版本历史。
 BenchForge 的提交固定每个子模块的具体版本；仓库地址在根目录
 [`.gitmodules`](../.gitmodules) 中维护，用途在
 [`dependencies.json`](dependencies.json) 中登记。
@@ -14,6 +14,7 @@ BenchForge 的提交固定每个子模块的具体版本；仓库地址在根目
 | `FastFLUX2Klein/` | [EurecaMoment/FastFLUX2Klein](https://github.com/EurecaMoment/FastFLUX2Klein) | FLUX.2 Klein 图像生成与编辑 |
 | `FastDA3/` | [EurecaMoment/FastDA3](https://github.com/EurecaMoment/FastDA3) | Depth Anything 3 米制深度、相机位姿和长视频几何推理 |
 | `FastQwen/` | [EurecaMoment/FastQwen](https://github.com/EurecaMoment/FastQwen) | Qwen 模型推理与部署源码 |
+| `deepseek-harness4BenchForge/` | [EurecaMoment/deepseek-harness4BenchForge](https://github.com/EurecaMoment/deepseek-harness4BenchForge) | DSH Agent 和 Web 运行时 |
 
 `dependencies.json` 的 `provider_submodules` 对应 BenchForge 配置中的提供方。
 FastQwen 作为独立部署源码登记在 `optional_submodules`。
@@ -53,5 +54,6 @@ git submodule update --init --recursive --depth 1 -- third_party/FastSAM3
 升级某一个库时，在该子模块内检出需要的提交，再从主仓库提交该目录的版本指针。
 普通 `git submodule update --init --recursive` 恢复主仓库记录的版本，不会自动追踪上游最新版本。
 
-`deepseek-harness/` 是主项目安装脚本生成的 DSH 运行目录，继续被 Git 忽略，
-不属于以上七个子模块。DSH 版本保存在 `dependencies.json` 中。
+`benchforge_app.py dsh-setup` 会初始化并构建 DSH 子模块。首次接入的提交对应官方
+`dsh-v0.1.7-rc.1`。后续在 fork 提交 DSH 改动，再更新 BenchForge 的子模块指针。
+已安装但仍引用旧 `deepseek-harness/` 路径的实例，重新运行 `dsh-setup` 切换到 fork。
