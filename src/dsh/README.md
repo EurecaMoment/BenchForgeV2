@@ -33,9 +33,10 @@ Existing session files stay in their workspace.
 
 ## Evaluation workbench UI
 
-`ui/client/` renders runs, artifacts, datasets and quality reports. Its API
-module talks to the routes under `host/workbench/`, which own data access and
-pagination. Install or refresh the workbench in a running DSH with
+`ui/client/` renders runs, artifacts, datasets and quality reports. Its JSON
+requests use the DSH Gateway's `benchforgeWorkbench` unary Remote methods. The Host
+owns data access, pagination and Fetch routes for downloadable artifacts.
+Install or refresh the workbench in a running DSH with
 `python src/dsh/presets/install_workbench.py`.
 The Host mounts capture observation and session operations as Cordis services.
 The Gateway routes consume those services, and the scene tools use the same

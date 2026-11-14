@@ -1500,23 +1500,19 @@
   }
 
   // src/dsh/ui/client/api.js
-  async function requestWorkbench(params, { body, signal } = {}) {
-    const response = await fetch("api/benchforge/workbench?" + new URLSearchParams(params), {
-      cache: "no-store",
-      credentials: "same-origin",
-      signal,
-      ...body === void 0 ? {} : {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+  function createWorkbenchRequest(remote) {
+    return async (params, { body, signal } = {}) => {
+      const query = Object.fromEntries(new URLSearchParams(params));
+      const result = body === void 0 ? await remote.benchforgeWorkbench.read(query, signal) : await remote.benchforgeWorkbench.write(query, body, signal);
+      if (!result.ok) {
+        signal?.throwIfAborted();
+        throw new Error(result.error.message);
       }
-    });
-    const value = await response.json();
-    if (!response.ok) throw new Error(value.error || "HTTP " + response.status);
-    return value;
+      return result.value;
+    };
   }
   function createApiHooks({ React }) {
-    function useRecord(params, revision, interval = 0, active = true) {
+    function useRecord(requestWorkbench, params, revision, interval = 0, active = true) {
       const key = params ? new URLSearchParams(params).toString() : "";
       const [record, setRecord] = React.useState({ key: "", value: null, error: null, loading: false });
       React.useEffect(() => {
@@ -1558,7 +1554,7 @@
           controller?.abort();
           document.removeEventListener("visibilitychange", resume);
         };
-      }, [key, revision, interval, active]);
+      }, [requestWorkbench, key, revision, interval, active]);
       return record.key === key ? record : { value: null, error: null, loading: Boolean(key) };
     }
     function usePanelVisible(ref) {
@@ -3001,7 +2997,7 @@
       productionRequest,
       displayRef,
       filteredPage,
-      useRecord,
+      useRecord: useWorkbenchRecord,
       usePanelVisible,
       lifecycle,
       backgroundProductionState,
@@ -3060,8 +3056,10 @@
       permissionError = "",
       requestPermission,
       requestingPermission = false,
-      stopExecution
+      stopExecution,
+      requestWorkbench
     }) {
+      const useRecord = (params, revision2, interval, active) => useWorkbenchRecord(requestWorkbench, params, revision2, interval, active);
       const panelRef = React.useRef(null);
       const visible = usePanelVisible(panelRef);
       const [route, setRoute] = React.useState(() => initialState(sessionId));
@@ -3160,9 +3158,10 @@
       } : null, receiptsRevision, 3e4, visible);
       const reviewRecord = useRecord(workspacePath ? { view: "stage_review", workspace_path: workspacePath, session_id: sessionId } : null, revision, 3e3, visible);
       const reviewAction = async (action, instruction = "") => {
+        const reviewId = reviewRecord.value?.review_id;
         const value = await requestWorkbench(
           { view: "stage_review", workspace_path: workspacePath, session_id: sessionId },
-          { body: { action, review_id: reviewRecord.value?.review_id, instruction } }
+          { body: { action, ...reviewId ? { review_id: reviewId } : {}, instruction } }
         );
         if (value.error) throw new Error(value.error);
         setRevision((old) => old + 1);
@@ -3836,6 +3835,46 @@
     return { Workbench };
   }
 
+  // src/dsh/shared/workbench_remote.mjs
+  var namespace = "benchforgeWorkbench";
+  var owner = "@eurecamoment/benchforge-ui";
+  var READ_VIEWS = [
+    "runtime",
+    "summary",
+    "progress",
+    "run",
+    "stage_artifacts",
+    "catalog",
+    "dataset",
+    "scene_library",
+    "scene_selection",
+    "stage_review",
+    "plan_template",
+    "execution_status",
+    "synthesis_status"
+  ];
+  var WRITE_VIEWS = ["stage_review", "scene_selection", "plan_edit", "execution_control", "synthesis_start"];
+  function workbenchRemote(z) {
+    const codec = (name, create) => ({ mode: "strict", typeSymbol: owner + "#" + name, create });
+    const parameter = (name, schema) => ({ name, wire: name, source: "json", codec: schema });
+    const query = (views) => () => z.object({ view: z.enum(views) }).catchall(z.string());
+    const json = codec("Json", () => z.json());
+    const descriptor = (method, parameters) => ({
+      id: owner + "#" + namespace + "/" + method,
+      service: namespace,
+      namespace,
+      method,
+      parameters,
+      invocation: { kind: "direct" },
+      cancellation: { parameter: "signal" },
+      result: json
+    });
+    return { package: owner, descriptors: [
+      descriptor("read", [parameter("query", codec("ReadQuery", query(READ_VIEWS)))]),
+      descriptor("write", [parameter("query", codec("WriteQuery", query(WRITE_VIEWS))), parameter("body", json)])
+    ] };
+  }
+
   // src/dsh/ui/client/entry.js
   var WORKBENCH_PRESETS = /* @__PURE__ */ new Set(["benchforge-ui", "spatialforge-standard-ptc"]);
   var NS = "benchforgeWorkbench";
@@ -3950,7 +3989,7 @@
     changes: "\u4FEE\u6539\u5185\u5BB9",
     type: "\u5173\u7CFB"
   };
-  function createClient(React) {
+  function createClient(React, z) {
     const h = React.createElement;
     const primitives = createPrimitives({ React, PLAN_FIELDS, PLAN_SECTIONS });
     const state = createWorkbenchState({ STAGES, sceneName: primitives.sceneName });
@@ -3995,63 +4034,75 @@
         }
       });
     }
-    function apply(ctx) {
+    async function apply(ctx) {
+      await ctx.remote.$mount(workbenchRemote(z));
       ctx.effect(() => ctx.locale.register(NS, dictionaries));
       const t = ctx.locale.bind(NS);
-      ctx.slots.inject("main.conversation", () => {
-        let remove = () => {
-        }, mounted = false, face, offFace = () => {
-        }, confirmedBenchForgeSession;
-        const current = ctx.uiSession.adapter.current;
-        const reconcile = () => {
-          const key = current.getSnapshot().key;
-          const preset = face?.getSnapshot();
-          if (preset === void 0 && mounted && key === confirmedBenchForgeSession) return;
-          const enabled = WORKBENCH_PRESETS.has(preset);
-          if (enabled) confirmedBenchForgeSession = key;
-          if (enabled === mounted) return;
-          mounted = enabled;
-          if (enabled) remove = ctx.slots.register(
-            { name: "main.conversation", priority: -20, locale: NS },
-            (props) => h(ProductionEnvironment, { ...props, key: props.sessionId, t, sessions: ctx.sessions, uiConversation: ctx.uiConversation })
-          );
-          else {
-            remove();
-            remove = () => {
-            };
-          }
-        };
-        const bind = () => {
-          const nextFace = current.getSnapshot().keyedHooks.projection?.("agentPreset");
-          if (nextFace === face) {
-            reconcile();
-            return;
-          }
-          offFace();
-          face = nextFace;
-          offFace = face?.subscribe(reconcile) || (() => {
-          });
-          reconcile();
-        };
-        const offCurrent = current.subscribe(bind);
-        bind();
-        return () => {
-          offCurrent();
-          offFace();
-          remove();
-        };
+      ctx.inject(["remote.benchforgeWorkbench"], (workbenchCtx) => {
+        const requestWorkbench = createWorkbenchRequest(workbenchCtx.remote);
+        workbenchCtx.slots.inject("main.conversation", () => mountConversation(workbenchCtx, t, requestWorkbench));
       });
     }
-    return { ProductionEnvironment, Workbench, dictionaries, apply, ...helpers, ...components };
+    function mountConversation(ctx, t, requestWorkbench) {
+      let remove = () => {
+      }, mounted = false, face, offFace = () => {
+      }, confirmedBenchForgeSession;
+      const current = ctx.uiSession.adapter.current;
+      const reconcile = () => {
+        const key = current.getSnapshot().key;
+        const preset = face?.getSnapshot();
+        if (preset === void 0 && mounted && key === confirmedBenchForgeSession) return;
+        const enabled = WORKBENCH_PRESETS.has(preset);
+        if (enabled) confirmedBenchForgeSession = key;
+        if (enabled === mounted) return;
+        mounted = enabled;
+        if (enabled) remove = ctx.slots.register(
+          { name: "main.conversation", priority: -20, locale: NS },
+          (props) => h(ProductionEnvironment, {
+            ...props,
+            key: props.sessionId,
+            t,
+            requestWorkbench,
+            sessions: ctx.sessions,
+            uiConversation: ctx.uiConversation
+          })
+        );
+        else {
+          remove();
+          remove = () => {
+          };
+        }
+      };
+      const bind = () => {
+        const nextFace = current.getSnapshot().keyedHooks.projection?.("agentPreset");
+        if (nextFace === face) {
+          reconcile();
+          return;
+        }
+        offFace();
+        face = nextFace;
+        offFace = face?.subscribe(reconcile) || (() => {
+        });
+        reconcile();
+      };
+      const offCurrent = current.subscribe(bind);
+      bind();
+      return () => {
+        offCurrent();
+        offFace();
+        remove();
+      };
+    }
+    return { ProductionEnvironment, Workbench, dictionaries, apply, createWorkbenchRequest, ...helpers, ...components };
   }
   window.__ModuleLoader__.load({
     id: "@eurecamoment/benchforge-ui",
     factory(require2) {
       const React = require2("react");
-      const client = createClient(React);
+      const client = createClient(React, require2("zod").z);
       const { Workbench, dictionaries: dictionaries2, sceneCollectionProgress, stageState, StageProgress, executionStage, sceneStage, sceneProjects } = client;
       return {
-        inject: ["slots", "locale", "uiSession", "sessions", "uiConversation"],
+        inject: ["slots", "locale", "remote", "uiSession", "sessions", "uiConversation"],
         apply: client.apply,
         Workbench,
         dictionaries: dictionaries2,

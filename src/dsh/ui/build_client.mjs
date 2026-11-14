@@ -10,6 +10,16 @@ const {build} = require('esbuild');
 
 await build({
   absWorkingDir: repository,
+  entryPoints: [path.join(dsh, 'host/workbench/remote.ts')],
+  outfile: path.join(dsh, 'host/workbench/remote.js'),
+  platform: 'node',
+  format: 'esm',
+  target: ['es2022'],
+  banner: {js: '/* @auto-generated from host/workbench/remote.ts. */'},
+});
+
+await build({
+  absWorkingDir: repository,
   entryPoints: [path.join(directory, 'client/entry.js')],
   outfile: path.join(directory, 'client.js'),
   bundle: true,

@@ -2,22 +2,26 @@ import fs from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {createInterface} from 'node:readline';
 import {DatabaseSync} from 'node:sqlite';
+import {createRequire} from 'node:module';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
+import {z as wireSchema} from 'zod';
 import {sessionFamilyReader} from '../sessions/parallel_sessions.js';
 import {createPreparationProducts} from './preparation_products.js';
 import {ApiError, assertSessionDirectory, exists, inside, matchesSession, readJson, resolveToken, scopeOf,
   scopeParams, token, workspaceRoots} from './scope.js';
 import {createDatasetReader, createPublicArtifactProjector, PUBLIC_FIELDS, QUALITY_FIELDS} from './public_artifacts.js';
 import {createWorkbenchReadRoutes} from './routes.js';
+import {registerWorkbenchRemote} from './remote.js';
 import {readAssessmentTemplate, readTaskTemplates} from '../../shared/resources.mjs';
+import {workbenchRemote} from '../../shared/workbench_remote.mjs';
 
 export const name = 'benchforge-ui';
-export const inject = ['connection', 'workspaceRegistry', 'benchforgeCapture', 'benchforgeSessions'];
+export const inject = ['connection', 'pluginPackages', 'typert', 'workspaceRegistry', 'benchforgeCapture', 'benchforgeSessions'];
 export const Config = z.object({
   workspacePaths: z.array(z.string()).default([]),
   maxRuns: z.natural().min(1).max(200).default(60),
@@ -581,7 +585,7 @@ function pipelineSceneIds(state) {
   return [...ids];
 }
 
-export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution, associations) {
+function createWorkbenchDispatcher(config, registered, family, synthesisFactory, execution, associations) {
   const limits = {maxRuns: 60, maxArtifacts: 300, productionPython:process.env.PYTHON || (process.platform==='win32' ? 'python' : 'python3'), ...config};
   limits._previewJobs = new Map(); limits._previewQueue = Promise.resolve(); limits._previewMedia = new Map();
   limits._libraryCache = new Map(); limits._libraryQueue = new Map();
@@ -590,136 +594,166 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
     await assertSessionDirectory(root, path.dirname(file), {session_id: parentId, session_ids: [], history: false});
     return file;
   }});
+  return async (url, request) => {
+    const view = url.searchParams.get('view') || 'summary';
+    if (view === 'runtime') return {ui_revision: limits.uiRevision || '',
+      preset_id: 'benchforge-ui', preset_name: 'BenchForge_UI'};
+    const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
+    const parentScope = scopeOf(url);
+    const related = !view.startsWith('execution_') && !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
+      ? await family(parentScope.session_id, request.signal) : [];
+    const sessions = related.map((row) => row.id);
+    const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
+    if (view === 'progress' || view === 'stage_artifacts' || view === 'stage_media')
+      scoped._captureIds = await associatedCaptures(roots, scope, associations);
+    let value;
+    if (view === 'execution_status' || view === 'execution_control') {
+      if(roots.length !== 1 || !scope.session_id || scope.history || !execution)
+        throw new ApiError('Execution adjustment requires the current workspace and production parent',400);
+      if(request.headers.get('sec-fetch-site') === 'cross-site')throw new ApiError('Cross-site execution control is not allowed',403);
+      if(view === 'execution_status') {
+        if(request.method !== 'GET')throw new ApiError('Execution status requires GET',405);
+        value=await execution.observe(roots[0].path,scope.session_id);
+      } else {
+        if(request.method !== 'POST')throw new ApiError('Execution adjustment requires POST',405);
+        const body=await request.text();
+        if(body.length>2048)throw new ApiError('Execution adjustment is too large',413);
+        let tuning;
+        try {tuning=JSON.parse(body);}catch {throw new ApiError('Invalid execution adjustment JSON');}
+        if(!tuning || typeof tuning!=='object' || Array.isArray(tuning) || Object.keys(tuning).some(key=>!['reasoning_effort','compact_history'].includes(key)) ||
+          tuning.compact_history!==undefined && typeof tuning.compact_history!=='boolean')throw new ApiError('Invalid execution adjustment');
+        value=await execution.arm(roots[0].path,scope.session_id,tuning,request.signal);
+      }
+    }
+    else if (view === 'synthesis_start' || view === 'synthesis_status') {
+      if (roots.length !== 1 || !scope.session_id || scope.history)
+        throw new ApiError('Preparation requires the current workspace and parent conversation',400);
+      if (request.headers.get('sec-fetch-site') === 'cross-site')
+        throw new ApiError('Cross-site preparation is not allowed',403);
+      if (!synthesisFactory) throw new ApiError('Native preparation service is unavailable',503);
+      const controller=synthesisFactory(roots[0].path);
+      if (view === 'synthesis_status') {
+        if (request.method !== 'GET') throw new ApiError('Preparation status requires GET',405);
+        value=await controller.read({parentId:scope.session_id,batchKey:url.searchParams.get('batch_key')});
+      } else {
+        if (request.method !== 'POST') throw new ApiError('Preparation startup requires POST',405);
+        const body=await request.text();
+        if (body.length > 512000) throw new ApiError('Preparation request is too large',413);
+        let preparation;
+        try {preparation=JSON.parse(body);} catch {throw new ApiError('Invalid preparation JSON');}
+        if (!preparation || typeof preparation.plan_path !== 'string')
+          throw new ApiError('Preparation needs the saved parent plan');
+        const file=await inside(roots[0],preparation.plan_path);
+        await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
+        value=await controller.start({parentId:scope.session_id,batchKey:preparation.batch_key,
+          planPath:file,tasks:preparation.tasks},request.signal);
+      }
+      limits._preparation.remember(roots[0],scope.session_id,value);
+    }
+    else if (view === 'plan_edit') {
+      if (request.method !== 'POST') throw new ApiError('Plan editing requires POST',405);
+      if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
+      if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site plan editing is not allowed',403);
+      const body = await request.text();
+      if (body.length > 512000) throw new ApiError('Plan edit is too large',413);
+      let edit;
+      try {edit=JSON.parse(body);} catch {throw new ApiError('Invalid plan edit JSON');}
+      if (typeof edit?.plan_path !== 'string' ||
+          !(typeof edit.markdown === 'string' && edit.markdown.trim() || edit.assessment && typeof edit.assessment === 'object'))
+        throw new ApiError('A saved plan and complete edited Markdown document are required');
+      const file=await inside(roots[0],edit.plan_path);
+      await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
+      const helper=fileURLToPath(new URL('./plan_edit_cli.py',import.meta.url));
+      const process=execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--plan',file],
+        {signal:request.signal,timeout:20000,maxBuffer:256000});
+      process.child.stdin.on('error',()=>{});
+      process.child.stdin.end(JSON.stringify({assessment:edit.assessment,markdown:edit.markdown,
+        base_markdown:edit.base_markdown,split:edit.split}));
+      value=JSON.parse((await process).stdout);
+      if (value.error) throw new ApiError(value.error,value.status_code || 400);
+    }
+    else if (view === 'stage_review') {
+      if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
+      if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site stage review is not allowed',403);
+      const body = request.method === 'POST' ? await request.text() : '{}';
+      if (body.length > 16000) throw new ApiError('Stage instruction is too large',413);
+      const helper = fileURLToPath(new URL('./stage_review_cli.py',import.meta.url));
+      const result = await execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--request',body],
+        {signal:request.signal,timeout:12000,maxBuffer:128000});
+      value = JSON.parse(result.stdout);
+    }
+    else if (request.method === 'POST') {
+      if (view !== 'scene_selection') throw new ApiError('This workbench operation is read-only', 405);
+      // DSH authorizes the connection before dispatch and constructs a virtual Request.
+      // Its virtual origin is not the browser's origin; reject an explicit cross-site fetch instead.
+      if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site scene selection is not allowed', 403);
+      const body = await request.text();
+      if (body.length > 128000) throw new ApiError('Scene selection is too large', 413);
+      let selection;
+      try {selection = JSON.parse(body);} catch {throw new ApiError('Invalid scene selection JSON');}
+      if (!selection || typeof selection !== 'object' || Array.isArray(selection)) throw new ApiError('Invalid scene selection');
+      value = await sceneLibrary(limits, roots, url, request.signal, selection);
+    }
+    else if (view === 'scene_library' || view === 'scene_selection') value = await sceneLibrary(limits, roots, url, request.signal);
+    else if (view === 'catalog') value = await templateCatalog(url, taskTemplates);
+    else if (view === 'plan_template') value = await readAssessmentTemplate();
+    else if (view === 'run_product' && url.searchParams.get('product') === 'preparation') {
+      if (roots.length !== 1 || !scope.session_id || scope.history)
+        throw new ApiError('Preparation previews require the current workspace and parent conversation',400);
+      return await limits._preparation.open(roots[0], scope.session_id, related, {
+        batchKey: url.searchParams.get('batch_key'), childId: url.searchParams.get('child_id'), file: url.searchParams.get('file'),
+      }, request.signal);
+    }
+    else if (['summary', 'progress', 'run', 'run_product', 'stage_artifacts', 'stage_media', 'dataset', 'media'].includes(view)) {
+      const response = await dispatchWorkbenchRead({view, request, url, roots, limits, scoped, scope, sessions});
+      if (response instanceof Response) return response;
+      value = response;
+    } else throw new ApiError('Unsupported workbench view');
+    return value;
+  };
+}
+
+function fetchWorkbench(dispatch) {
   return async (request) => {
     try {
-      const url = new URL(request.url), view = url.searchParams.get('view') || 'summary';
-      if (view === 'runtime') return Response.json({ui_revision: limits.uiRevision || '',
-        preset_id: 'benchforge-ui', preset_name: 'BenchForge_UI'},
-        {headers: {'cache-control': 'no-store'}});
-      const roots = await workspaceRoots(limits, registered(), url.searchParams.get('workspace_path') || '');
-      const parentScope = scopeOf(url);
-      const related = !view.startsWith('execution_') && !parentScope.history && /^session-[a-zA-Z0-9-]+$/.test(parentScope.session_id)
-        ? await family(parentScope.session_id, request.signal) : [];
-      const sessions = related.map((row) => row.id);
-      const scope = scopeOf(url, sessions), scoped = {...limits, _sessionIds: sessions, _family: related};
-      if (view === 'progress' || view === 'stage_artifacts' || view === 'stage_media')
-        scoped._captureIds = await associatedCaptures(roots, scope, associations);
-      let value;
-      if (view === 'execution_status' || view === 'execution_control') {
-        if(roots.length !== 1 || !scope.session_id || scope.history || !execution)
-          throw new ApiError('Execution adjustment requires the current workspace and production parent',400);
-        if(request.headers.get('sec-fetch-site') === 'cross-site')throw new ApiError('Cross-site execution control is not allowed',403);
-        if(view === 'execution_status') {
-          if(request.method !== 'GET')throw new ApiError('Execution status requires GET',405);
-          value=await execution.observe(roots[0].path,scope.session_id);
-        } else {
-          if(request.method !== 'POST')throw new ApiError('Execution adjustment requires POST',405);
-          const body=await request.text();
-          if(body.length>2048)throw new ApiError('Execution adjustment is too large',413);
-          let tuning;
-          try {tuning=JSON.parse(body);}catch {throw new ApiError('Invalid execution adjustment JSON');}
-          if(!tuning || typeof tuning!=='object' || Array.isArray(tuning) || Object.keys(tuning).some(key=>!['reasoning_effort','compact_history'].includes(key)) ||
-            tuning.compact_history!==undefined && typeof tuning.compact_history!=='boolean')throw new ApiError('Invalid execution adjustment');
-          value=await execution.arm(roots[0].path,scope.session_id,tuning,request.signal);
-        }
-      }
-      else if (view === 'synthesis_start' || view === 'synthesis_status') {
-        if (roots.length !== 1 || !scope.session_id || scope.history)
-          throw new ApiError('Preparation requires the current workspace and parent conversation',400);
-        if (request.headers.get('sec-fetch-site') === 'cross-site')
-          throw new ApiError('Cross-site preparation is not allowed',403);
-        if (!synthesisFactory) throw new ApiError('Native preparation service is unavailable',503);
-        const controller=synthesisFactory(roots[0].path);
-        if (view === 'synthesis_status') {
-          if (request.method !== 'GET') throw new ApiError('Preparation status requires GET',405);
-          value=await controller.read({parentId:scope.session_id,batchKey:url.searchParams.get('batch_key')});
-        } else {
-          if (request.method !== 'POST') throw new ApiError('Preparation startup requires POST',405);
-          const body=await request.text();
-          if (body.length > 512000) throw new ApiError('Preparation request is too large',413);
-          let preparation;
-          try {preparation=JSON.parse(body);} catch {throw new ApiError('Invalid preparation JSON');}
-          if (!preparation || typeof preparation.plan_path !== 'string')
-            throw new ApiError('Preparation needs the saved parent plan');
-          const file=await inside(roots[0],preparation.plan_path);
-          await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
-          value=await controller.start({parentId:scope.session_id,batchKey:preparation.batch_key,
-            planPath:file,tasks:preparation.tasks},request.signal);
-        }
-        limits._preparation.remember(roots[0],scope.session_id,value);
-      }
-      else if (view === 'plan_edit') {
-        if (request.method !== 'POST') throw new ApiError('Plan editing requires POST',405);
-        if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
-        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site plan editing is not allowed',403);
-        const body = await request.text();
-        if (body.length > 512000) throw new ApiError('Plan edit is too large',413);
-        let edit;
-        try {edit=JSON.parse(body);} catch {throw new ApiError('Invalid plan edit JSON');}
-        if (typeof edit?.plan_path !== 'string' ||
-            !(typeof edit.markdown === 'string' && edit.markdown.trim() || edit.assessment && typeof edit.assessment === 'object'))
-          throw new ApiError('A saved plan and complete edited Markdown document are required');
-        const file=await inside(roots[0],edit.plan_path);
-        await assertSessionDirectory(roots[0],path.dirname(file),parentScope);
-        const helper=fileURLToPath(new URL('./plan_edit_cli.py',import.meta.url));
-        const process=execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--plan',file],
-          {signal:request.signal,timeout:20000,maxBuffer:256000});
-        process.child.stdin.on('error',()=>{});
-        process.child.stdin.end(JSON.stringify({assessment:edit.assessment,markdown:edit.markdown,
-          base_markdown:edit.base_markdown,split:edit.split}));
-        value=JSON.parse((await process).stdout);
-        if (value.error) throw new ApiError(value.error,value.status_code || 400);
-      }
-      else if (view === 'stage_review') {
-        if (roots.length !== 1 || !scope.session_id) throw new ApiError('A current workspace and conversation are required',400);
-        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site stage review is not allowed',403);
-        const body = request.method === 'POST' ? await request.text() : '{}';
-        if (body.length > 16000) throw new ApiError('Stage instruction is too large',413);
-        const helper = fileURLToPath(new URL('./stage_review_cli.py',import.meta.url));
-        const result = await execute(limits.productionPython,['-B',helper,'--workspace',roots[0].path,'--session',scope.session_id,'--request',body],
-          {signal:request.signal,timeout:12000,maxBuffer:128000});
-        value = JSON.parse(result.stdout);
-      }
-      else if (request.method === 'POST') {
-        if (view !== 'scene_selection') throw new ApiError('This workbench operation is read-only', 405);
-        // DSH authorizes the connection before dispatch and constructs a virtual Request.
-        // Its virtual origin is not the browser's origin; reject an explicit cross-site fetch instead.
-        if (request.headers.get('sec-fetch-site') === 'cross-site') throw new ApiError('Cross-site scene selection is not allowed', 403);
-        const body = await request.text();
-        if (body.length > 128000) throw new ApiError('Scene selection is too large', 413);
-        let selection;
-        try {selection = JSON.parse(body);} catch {throw new ApiError('Invalid scene selection JSON');}
-        if (!selection || typeof selection !== 'object' || Array.isArray(selection)) throw new ApiError('Invalid scene selection');
-        value = await sceneLibrary(limits, roots, url, request.signal, selection);
-      }
-      else if (view === 'scene_library' || view === 'scene_selection') value = await sceneLibrary(limits, roots, url, request.signal);
-      else if (view === 'catalog') value = await templateCatalog(url, taskTemplates);
-      else if (view === 'plan_template') value = await readAssessmentTemplate();
-      else if (view === 'run_product' && url.searchParams.get('product') === 'preparation') {
-        if (roots.length !== 1 || !scope.session_id || scope.history)
-          throw new ApiError('Preparation previews require the current workspace and parent conversation',400);
-        return await limits._preparation.open(roots[0], scope.session_id, related, {
-          batchKey: url.searchParams.get('batch_key'), childId: url.searchParams.get('child_id'), file: url.searchParams.get('file'),
-        }, request.signal);
-      }
-      else if (['summary', 'progress', 'run', 'run_product', 'stage_artifacts', 'stage_media', 'dataset', 'media'].includes(view)) {
-        const response = await dispatchWorkbenchRead({view, request, url, roots, limits, scoped, scope, sessions});
-        if (response instanceof Response) return response;
-        value = response;
-      } else throw new ApiError('Unsupported workbench view');
-      return Response.json(value, {headers: {'cache-control': 'no-store'}});
+      const value = await dispatch(new URL(request.url), request);
+      return value instanceof Response ? value : Response.json(value, {headers: {'cache-control': 'no-store'}});
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       return Response.json({error: error.message}, {status: error.status || (error.code === 'ENOENT' ? 404 : 500), headers: {'cache-control': 'no-store'}});
     }
   };
 }
-export function apply(ctx, config) {
+
+export function createWorkbenchHandler(config, registered = () => [], family = async () => [], synthesisFactory, execution, associations) {
+  return fetchWorkbench(createWorkbenchDispatcher(config, registered, family, synthesisFactory, execution, associations));
+}
+
+export async function apply(ctx, config) {
   const {execution, preparation} = ctx.benchforgeSessions;
   const {associations} = ctx.benchforgeCapture;
+  const dispatch = createWorkbenchDispatcher(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),
+    preparation, execution, associations);
+  // Bind to the running Host's Cordis instance, including source checkouts of DSH.
+  const protocol = '@deepseek-ai/dsh-typert-protocol';
+  const installation = ctx.pluginPackages.resolution.entries.find((entry) =>
+    entry.scope === 'installation' && entry.name === protocol);
+  const resolveHostPackage = createRequire(installation.declarer);
+  const typert = await import(pathToFileURL(resolveHostPackage.resolve(protocol)));
+  registerWorkbenchRemote(ctx, typert, dispatch);
+  const remote = workbenchRemote(wireSchema);
+  ctx.effect(() => ctx.typert.register({
+    package: remote.package, face: 'host', schemas: [], invocations: remote.descriptors,
+    model: {services: [{
+      key: 'benchforgeWorkbench', exportName: 'WorkbenchRemote', types: [],
+      members: [
+        {kind: 'method', name: 'read', signature: 'read(query: Record<string, string>, signal: AbortSignal): Promise<JSONType>'},
+        {kind: 'method', name: 'write', signature: 'write(query: Record<string, string>, body: JSONType, signal: AbortSignal): Promise<JSONType>'},
+      ],
+    }], events: [], objects: []},
+  }), 'benchforge-workbench: Remote API');
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),
-      preparation, execution, associations)});
+    fetch: fetchWorkbench(dispatch)});
   ctx.effect(() => dispose, 'benchforge-ui: authenticated artifacts and scene selection API');
 }
 

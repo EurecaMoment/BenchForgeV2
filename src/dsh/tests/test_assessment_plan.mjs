@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {createWorkbenchHandler} from '../ui/index.js';
 
 const bundle = await fs.readFile(new URL('../ui/client.js', import.meta.url), 'utf8');
-const clientExport = /return \{\s+ProductionEnvironment, Workbench, dictionaries, apply, \.\.\.helpers, \.\.\.components\s+\};/;
+const clientExport = /return \{\s+ProductionEnvironment, Workbench, dictionaries, apply, createWorkbenchRequest, \.\.\.helpers, \.\.\.components\s+\};/;
 assert.match(bundle, clientExport, 'the built client exposes its UI factory result');
 const source = bundle.replace(clientExport,
   'return {PlanProduct: components.PlanProduct, planMarkdown: helpers.planMarkdown, planEditInstruction: helpers.planEditInstruction, ProductionEnvironment, Workbench, dictionaries, apply, ...helpers, ...components};');
@@ -222,7 +222,7 @@ test('question page keeps a thumbnail grid when opening and closing details, inc
   let registration,layout='table';
   let script=await fs.readFile(new URL('../ui/client.js',import.meta.url),'utf8');
   const start=script.indexOf('    function useRecord('),end=script.indexOf('    function usePanelVisible(',start);
-  script=script.slice(0,start)+'    function useRecord(params) {return {value:params ? window.records[params.view] || null : null,loading:false};}\n'+script.slice(end);
+  script=script.slice(0,start)+'    function useRecord(_request, params) {return {value:params ? window.records[params.view] || null : null,loading:false};}\n'+script.slice(end);
   script=script.replace(/return \{\s+inject:/,'return {Workbench}; return {inject:');
   const records={summary:{runs:[],datasets:[{id:'dataset-existing',report:{accepted:1}}],
     plan:{selections:[{template_ids:['C24-T01'],count:1,reason:'Direction'}],template_contracts:[{id:'C24-T01',title:'固定方向判断'}]}},

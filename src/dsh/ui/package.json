@@ -11,6 +11,7 @@
     "client": {
       "platform": "web",
       "immediately": true,
+      "external": ["zod"],
       "inject": [
         "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-layout",

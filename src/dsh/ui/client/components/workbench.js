@@ -1,10 +1,8 @@
-import {requestWorkbench} from '../api.js';
-
 export function createWorkbenchComponent({React, helpers, components}) {
   const h = React.createElement;
   const {status, button, card, empty, json, sceneName, questionText, planValue, planMarkdown,
   planMarkdownView, planEditInstruction, table, select, initialState, initialDemand, sceneConstraint,
-  productionRequest, displayRef, filteredPage, useRecord, usePanelVisible, lifecycle, backgroundProductionState,
+  productionRequest, displayRef, filteredPage, useRecord: useWorkbenchRecord, usePanelVisible, lifecycle, backgroundProductionState,
   productionProductsRevision, sceneStage, pipelineForStage, sceneForStage, progressSceneForStage,
   registeredCollectionProgress, currentGeneration, sceneCollectionProgress, annotationProducts,
   stageState, recordedStageState,
@@ -14,7 +12,9 @@ export function createWorkbenchComponent({React, helpers, components}) {
     SceneLibrary, PreviewDialog, ArtifactGallery, StageReviewPanel, DraftReview, DemandForm,
     SendDialog, PlanProduct, ReportProduct, Quality, ExecutionFeedback} = components;
   function Workbench({t, sessionId, useSessions, useSession, useInput, inputActions, renderFactorySlot, canSubmit = false,
-    permissionError = '', requestPermission, requestingPermission = false, stopExecution}) {
+    permissionError = '', requestPermission, requestingPermission = false, stopExecution, requestWorkbench}) {
+    const useRecord = (params, revision, interval, active) =>
+      useWorkbenchRecord(requestWorkbench, params, revision, interval, active);
     const panelRef = React.useRef(null);
     const visible = usePanelVisible(panelRef);
     const [route, setRoute] = React.useState(() => initialState(sessionId));
@@ -98,8 +98,9 @@ export function createWorkbenchComponent({React, helpers, components}) {
       origin:'selected',page_size:24} : null,receiptsRevision,30000,visible);
     const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
     const reviewAction = async (action,instruction='') => {
+      const reviewId = reviewRecord.value?.review_id;
       const value = await requestWorkbench({view: 'stage_review', workspace_path: workspacePath, session_id: sessionId},
-        {body: {action, review_id: reviewRecord.value?.review_id, instruction}});
+        {body: {action, ...(reviewId ? {review_id: reviewId} : {}), instruction}});
       if (value.error) throw new Error(value.error);
       setRevision(old => old+1);
       return value;

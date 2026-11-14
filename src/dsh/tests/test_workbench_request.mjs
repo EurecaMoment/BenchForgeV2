@@ -25,16 +25,23 @@ test('workbench submits full production once and requires visible consent for pr
       task_id: 'sf_selected.scene0', run_id: 'sf_selected', revision: 3, name: 'Selected historical room',
       source_directory: '/captured/sf_selected.scene0/revision_3', program_path: '/captured/sf_selected.scene0/revision_3/program.json'}]};
   let selectionReads = 0, selectionReadFailed = false;
-  const globals = {localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date,
-    fetch: async (url) => {if (url.includes('view=plan_template')) return {ok: true, json: async () => JSON.parse(await fs.readFile(new URL('../../benchforge_core/pipelines/assessment_template.json', import.meta.url), 'utf8'))}; assert.match(url, /view=scene_selection/); selectionReads++;
-      return {ok: !selectionReadFailed, json: async () => selectionReadFailed ? {error: 'fixture unavailable'} : sceneSelection};}};
+  const globals = {localStorage: {getItem: () => null, setItem() {}}, URLSearchParams, Date};
   const {api} = loadClient(source, React, globals);
-  const {Workbench} = api;
+  const {Workbench, createWorkbenchRequest} = api;
   assert.equal(typeof Workbench, 'function', 'test seam must expose the actual component');
   const native = {draft: '保留的原草稿', attachmentIds: ['existing-attachment'], phase: 'plain', queue: []};
   let insertions = 0;
   const submissions = [];
   const props = {t: (key) => key, sessionId: 'request-fixture', canSubmit: true,
+    requestWorkbench: createWorkbenchRequest({benchforgeWorkbench: {async read({view}) {
+      if (view === 'plan_template') {
+        const value = await fs.readFile(new URL('../../benchforge_core/pipelines/assessment_template.json', import.meta.url), 'utf8');
+        return {ok: true, value: JSON.parse(value)};
+      }
+      assert.equal(view, 'scene_selection');
+      selectionReads++;
+      return selectionReadFailed ? {ok: false, error: {message: 'fixture unavailable'}} : {ok: true, value: sceneSelection};
+    }}}),
     useSessions: (read) => read({byId: {'request-fixture': {cwd: '/fixture'}}}),
     useSession: (read) => read({running: false, openState: 'open', pendingSubmissions: []}),
     useConversation: (read) => read({views: new Map([['chat', {legacy: {nodes: [], runningCalls: []}}]])}),

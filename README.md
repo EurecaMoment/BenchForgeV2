@@ -238,6 +238,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 `init` 和 `sync` 生成 `config/generated/` 下的服务端、客户端、worker 和 Compose 配置。
 `dsh-setup` 生成 DSH 预设。配置中的相对路径以 `config/benchforge.local.json` 所在目录为基准。
 例如将 `web.default_workspace` 设为 `../workspaces/benchforge`，重启后 Web 在没有已选工作区时使用该目录。
+已有部署更新 DSH 子模块版本后，先运行 `python benchforge_app.py dsh-setup` 构建锁定的 DSH，再启动 Web。
 模型密钥通过各字段指定的环境变量传入。首次初始化会为本实例生成缺省的数据库密码和服务令牌，
 保存在被 Git 忽略的部署状态里。
 

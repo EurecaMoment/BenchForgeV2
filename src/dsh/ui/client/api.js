@@ -1,19 +1,19 @@
-export async function requestWorkbench(params, {body, signal} = {}) {
-  const response = await fetch('api/benchforge/workbench?' + new URLSearchParams(params), {
-    cache: 'no-store', credentials: 'same-origin', signal,
-    ...(body === undefined ? {} : {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(body),
-    }),
-  });
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || 'HTTP ' + response.status);
-  return value;
+export function createWorkbenchRequest(remote) {
+  return async (params, {body, signal} = {}) => {
+    const query = Object.fromEntries(new URLSearchParams(params));
+    const result = body === undefined
+      ? await remote.benchforgeWorkbench.read(query, signal)
+      : await remote.benchforgeWorkbench.write(query, body, signal);
+    if (!result.ok) {
+      signal?.throwIfAborted();
+      throw new Error(result.error.message);
+    }
+    return result.value;
+  };
 }
 
 export function createApiHooks({React}) {
-  function useRecord(params, revision, interval = 0, active = true) {
+  function useRecord(requestWorkbench, params, revision, interval = 0, active = true) {
     const key = params ? new URLSearchParams(params).toString() : '';
     const [record, setRecord] = React.useState({key: '', value: null, error: null, loading: false});
     React.useEffect(() => {
@@ -51,7 +51,7 @@ export function createApiHooks({React}) {
       load();
       if (interval) document.addEventListener('visibilitychange', resume);
       return () => {stopped = true; clearTimeout(timer); controller?.abort(); document.removeEventListener('visibilitychange', resume);};
-    }, [key, revision, interval, active]);
+    }, [requestWorkbench, key, revision, interval, active]);
     return record.key === key ? record : {value: null, error: null, loading: Boolean(key)};
   }
 

@@ -142,10 +142,10 @@ test('progress updates keep an existing product request and its refresh timer in
     document: {visibilityState: 'visible', addEventListener() {}, removeEventListener() {}},
     setTimeout: (callback, delay) => {const id = ++serial; timers.set(id, {callback, delay}); return id;},
     clearTimeout: (id) => timers.delete(id),
-    fetch: async () => {reads++; return {ok: true, json: async () => ({runs: [{id: 'saved-plan'}]})};},
   });
   const value = {pipelines: [{id: 'parent', state: 'running', updated_at: 'first', steps: [{id: 'capture', state: 'running'}]}]};
-  const render = () => useRecord({view: 'summary', session_id: 'session-parent'}, productionProductsRevision(value), 30000, true);
+  const read = async () => {reads++; return {runs: [{id: 'saved-plan'}]};};
+  const render = () => useRecord(read, {view: 'summary', session_id: 'session-parent'}, productionProductsRevision(value), 30000, true);
   render();
   for (let i = 0; i < 4; i++) await Promise.resolve();
   assert.equal(reads, 1);

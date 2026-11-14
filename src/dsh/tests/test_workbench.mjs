@@ -544,7 +544,9 @@ test('BenchForge_UI preserves legacy BenchForge sessions and leaves both headles
   const preset = observable('standard'), slots = new Map(), seats = [], effects = [];
   const current = observable({key: 'fresh-sf', keyedHooks: {projection: () => preset}});
   let removed = 0;
-  plugin.apply({
+  const context = {
+    remote: {$mount: async () => {}},
+    inject: (_services, mount) => mount(context),
     locale: {register: (_ns, dictionaries) => {
       assert.deepEqual(Object.keys(dictionaries.zh), Object.keys(dictionaries.en)); return () => {};
     }, bind: () => (key) => key},
@@ -555,7 +557,8 @@ test('BenchForge_UI preserves legacy BenchForge sessions and leaves both headles
       assert.equal(options.children?.['conversation.view'], undefined, 'the native conversation.view is already declared by DSH and must not be registered twice');
       slots.set(options.name, component); return () => {removed++; slots.delete(options.name);};
     }},
-  });
+  };
+  await plugin.apply(context);
   assert.deepEqual(seats, ['main.conversation']);
   assert.equal(slots.size, 0, 'ordinary environments retain their original conversation');
   for (const headless of ['benchforge', 'benchforge']) {
