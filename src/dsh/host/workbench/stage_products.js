@@ -8,16 +8,16 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {Readable} from 'node:stream';
 import z from '@deepseek-ai/schemastery';
-import {sessionFamilyReader} from './parallel_sessions.js';
+import {sessionFamilyReader} from '../sessions/parallel_sessions.js';
 import {createPreparationProducts} from './preparation_products.js';
 import {ApiError, assertSessionDirectory, exists, inside, matchesSession, readJson, resolveToken, scopeOf,
-  scopeParams, token, workspaceRoots} from './workbench/scope.js';
-import {createDatasetReader, createPublicArtifactProjector, PUBLIC_FIELDS, QUALITY_FIELDS} from './workbench/public_artifacts.js';
-import {createWorkbenchReadRoutes} from './workbench/routes.js';
-import {readAssessmentTemplate, readTaskTemplates} from '../shared/resources.mjs';
+  scopeParams, token, workspaceRoots} from './scope.js';
+import {createDatasetReader, createPublicArtifactProjector, PUBLIC_FIELDS, QUALITY_FIELDS} from './public_artifacts.js';
+import {createWorkbenchReadRoutes} from './routes.js';
+import {readAssessmentTemplate, readTaskTemplates} from '../../shared/resources.mjs';
 
 export const name = 'benchforge-ui';
-export const inject = ['connection', 'workspaceRegistry'];
+export const inject = ['connection', 'workspaceRegistry', 'benchforgeCapture', 'benchforgeSessions'];
 export const Config = z.object({
   workspacePaths: z.array(z.string()).default([]),
   maxRuns: z.natural().min(1).max(200).default(60),
@@ -714,26 +714,12 @@ export function createWorkbenchHandler(config, registered = () => [], family = a
     }
   };
 }
-export async function apply(ctx, config) {
-  const tuningModule=new URL('../plugin/execution_tuning.mjs',import.meta.url);
-  tuningModule.searchParams.set('revision',config.uiRevision);
-  const {createExecutionTuning}=await import(tuningModule);
-  const execution=createExecutionTuning({ctx});
-  ctx.effect(()=>()=>execution.dispose(),'benchforge execution adjustments');
-  const captureRuntime=new URL('../plugin/capture_runtime.mjs',import.meta.url);
-  captureRuntime.searchParams.set('revision',config.uiRevision);
-  const {attachCaptureRuntime}=await import(captureRuntime);
-  const associations = await attachCaptureRuntime(ctx,config);
-  const helper=new URL('./synthesis_sessions.js',import.meta.url);
-  helper.searchParams.set('revision',config.uiRevision);
-  const {createSynthesisSessions}=await import(helper);
-  const preparation=new Map();
-  const synthesisFactory=workspacePath => {
-    if (!preparation.has(workspacePath)) preparation.set(workspacePath,createSynthesisSessions({ctx,workspacePath}));
-    return preparation.get(workspacePath);
-  };
+export function apply(ctx, config) {
+  const {execution, preparation} = ctx.benchforgeSessions;
+  const {associations} = ctx.benchforgeCapture;
   const dispose = ctx.connection.fetch.register({path: '/api/benchforge/workbench', methods: ['GET', 'POST'], requestBody: 'buffered',
-    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),synthesisFactory,execution,associations)});
+    fetch: createWorkbenchHandler(config, () => ctx.workspaceRegistry.list(), sessionFamilyReader(ctx),
+      preparation, execution, associations)});
   ctx.effect(() => dispose, 'benchforge-ui: authenticated artifacts and scene selection API');
 }
 

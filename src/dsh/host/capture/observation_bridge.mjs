@@ -1,7 +1,7 @@
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 
-const observationSources = ['../../backend/benchforge_backend/observation.py', '../dist/workbench/observation.py']
+const observationSources = ['../../../backend/benchforge_backend/observation.py', '../../dist/workbench/observation.py']
   .map(source => fileURLToPath(new URL(source, import.meta.url)));
 // Reuse the saved native projection without constructing Store, querying a
 // database or sending operator credentials to a child process.

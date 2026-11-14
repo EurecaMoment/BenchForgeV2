@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createDeliveryReview, createCaptureReviewStep, pendingCapture} from '../plugin/delivery_review.mjs';
+import {createDeliveryReview, createCaptureReviewStep, pendingCapture} from '../tools/scene/delivery_review.mjs';
 
 const turn={type:'turn/start',data:{turn:1}};
 const step={type:'step/start',data:{turn:1,step:1}};

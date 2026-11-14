@@ -2,9 +2,24 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createUserMessage} from '@deepseek-ai/dsh-llm';
 import {launchEnvironmentOf} from '@deepseek-ai/dsh-launch-environment';
-import {loadServiceConfig} from '../shared/config.mjs';
-import {canonicalSceneToolName, captureObservationNames, sceneToolNames} from './scene_tool_names.mjs';
+import Schema from '@deepseek-ai/schemastery';
+import {loadServiceConfig} from '../../shared/config.mjs';
+import {canonicalSceneToolName, captureObservationNames, sceneToolNames} from '../../shared/scene_tool_names.mjs';
 const {compactCaptureObservation,captureRunId}=await import(new URL('./capture_watch.mjs'+new URL(import.meta.url).search,import.meta.url));
+
+export const name = 'benchforge-capture';
+export const inject = ['workspaceRegistry'];
+export const Config = Schema.object({
+  productionConfig: Schema.string().default(''),
+  productionPython: Schema.string().default('python3'),
+  workspacePaths: Schema.array(Schema.string()).default([]),
+  revision: Schema.string().default('live-production-v1'),
+});
+
+export async function apply(ctx, config) {
+  const associations = await attachCaptureRuntime(ctx, config);
+  ctx.provide('benchforgeCapture', {associations});
+}
 
 // Retained tools can have old implementations and lost registration disposers.
 // Public around-dispatch hooks replace only these observation bodies. Their
@@ -159,7 +174,7 @@ export async function attachCaptureRuntime(ctx, config) {
     requireScenePolicy: false,
   });
   if (!operatorToken) return; // The scoped plugin still handles its own credentials.
-  const revision = '?revision=' + encodeURIComponent(config.uiRevision);
+  const revision = '?revision=' + encodeURIComponent(config.revision ?? 'live-production-v1');
   const {createObservationBridge} = await import('./observation_bridge.mjs' + revision);
   const {createCaptureRetry} = await import('./capture_retry.mjs' + revision);
   const {createCaptureWatcher, deliverCaptureNotice} = await import('./capture_watch.mjs' + revision);
@@ -175,7 +190,12 @@ export async function attachCaptureRuntime(ctx, config) {
   };
   const read = createObservationBridge({api,artifacts:cfg.artifacts,policyPython:config.productionPython});
   const recover = createCaptureRetry({api,serviceConfig:configPath,policyPython:config.productionPython});
-  const roots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(configPath)];
+  const configuredRoots = config.workspacePaths?.length ? config.workspacePaths : [path.dirname(configPath)];
+  const roots = cwd => [...configuredRoots, ...(ctx.get('workspaceRegistry')?.list().map(workspace => workspace.path) ?? [])]
+    .filter(root => {
+      const relative = path.relative(root, cwd);
+      return relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
+    });
   const associations = createCaptureAssociations({ctx, roots});
   const watch = createCaptureWatcher({artifacts:cfg.artifacts,read,signal:controller.signal,
     notify:async(agent,record)=>deliverCaptureNotice(agent,record,createUserMessage)});
@@ -184,7 +204,7 @@ export async function attachCaptureRuntime(ctx, config) {
   const hook = createLegacyCaptureStep({watch,recover,read,associate:associations.record});
   ctx.on('agent/pre-step', async (input,next) => {
     const cwd = input.agent.session.header?.cwd;
-    if (!cwd || !roots.some(root => {const relative=path.relative(root,cwd);return relative==='' || relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative);})) return next();
+    if (!cwd || !roots(cwd).length) return next();
     if(input.agent.session.header?.origin!=='subagent')observations.install(input.agent);
     return hook(input,next);
   });

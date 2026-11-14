@@ -1095,7 +1095,7 @@
       return h("div", { className: "bfw-plan-markdown-view", "data-plan-markdown-view": true }, blocks);
     }
     function planEditInstruction(path) {
-      return "\u7528\u6237\u5DF2\u7F16\u8F91\u8BA1\u5212 Markdown\uFF0C\u5DF2\u4FDD\u5B58\u7684\u65B0\u7248\u672C\uFF1A" + path + '\n\u5FC5\u987B\u8BFB\u53D6\u8BE5 Markdown \u6B63\u6587\u4E0E edit_revision.base_plan \u6307\u5411\u7684\u539F\u8BA1\u5212\uFF0C\u9010\u9879\u843D\u5B9E\u6539\u52A8\u3002edit_revision.markdown_normalization=false \u65F6\uFF0C\u7ED3\u6784\u6570\u636E\u5DF2\u7ECF\u968F\u663E\u5F0F YAML \u4FEE\u6539\u4FDD\u5B58\uFF1A\u4FDD\u7559\u8BE5\u7248\u672C\u7684 assessment\u3001selections\u3001inputs \u548C\u5B8C\u6574 user_markdown\uFF0C\u4E0D\u8981\u6C42\u91CD\u65B0\u751F\u6210 markdown_resolution\u3002\u53EA\u6709 markdown_normalization=true \u65F6\uFF0C\u624D\u5C06\u6B63\u6587\u6539\u52A8\u540C\u6B65\u5230\u7ED3\u6784\u6570\u636E\u5E76\u63D0\u4F9B markdown_resolution\uFF0C\u683C\u5F0F\u4E3A {path, before, after, instruction}\uFF1Bpath \u4E3A assessment \u76F8\u5BF9\u70B9\u8DEF\u5F84\uFF0Cbefore/after \u4E3A\u51C6\u786E\u65E7\u65B0\u503C\uFF0Cinstruction \u9010\u5B57\u5F15\u7528\u6B63\u6587\u4E2D\u65B0\u6539\u7684\u539F\u53E5\u6216\u5DF2\u5220\u9664\u7684\u65E7\u53E5\u3002split \u4E0E\u573A\u666F\u9009\u62E9\u4FDD\u6301\u9501\u5B9A\u3002\n\u628A\u53EF\u6267\u884C\u5E94\u7528\u8BF7\u6C42\u4FDD\u5B58\u4E3A JSON \u6587\u4EF6\uFF0Capplies_edit="' + path + '"\uFF0C\u4F7F\u7528 pipeline_plan(request_path=\u6587\u4EF6\u8DEF\u5F84)\u3002\u65E7\u4F1A\u8BDD\u5DE5\u5177\u5B9A\u4E49\u82E5\u6CA1\u6709 request_path\uFF0C\u7528\u5F53\u524D\u751F\u4EA7 Python \u6267\u884C SDK src/dsh/ui/plan_request_cli.py --workspace \u5F53\u524D\u5DE5\u4F5C\u533A --session \u5F53\u524D\u4F1A\u8BDD --request \u6587\u4EF6\u8DEF\u5F84\uFF1B\u8BE5\u5165\u53E3\u4FDD\u7559\u76F8\u540C\u6821\u9A8C\u4E0E\u4F1A\u8BDD\u6765\u6E90\uFF0C\u91CD\u590D\u5E94\u7528\u4E0D\u91CD\u5F00\u9636\u6BB5\u7A97\u53E3\u3002\u4E0D\u8981\u91CD\u65B0\u8F93\u51FA\u6574\u4EFD\u5927\u6587\u6863\u3002\u5236\u4F5C\u89C4\u5219\u7684\u5B9E\u8D28\u4FEE\u6539\u5FC5\u987B\u843D\u5B9E\u5230\u4EFB\u52A1\u4EE3\u7801\u3001\u6267\u884C\u6B65\u9AA4\u6216\u8BC1\u636E\u8F93\u5165\uFF1B\u5E94\u7528\u540E\u4F7F\u7528\u65B0\u7684 run\uFF0C\u5E76\u590D\u7528\u4ECD\u7B26\u5408\u5408\u540C\u7684\u4EA7\u7269\u548C\u5DF2\u63D0\u4EA4\u91C7\u96C6\u3002';
+      return "\u7528\u6237\u5DF2\u7F16\u8F91\u8BA1\u5212 Markdown\uFF0C\u5DF2\u4FDD\u5B58\u7684\u65B0\u7248\u672C\uFF1A" + path + '\n\u5FC5\u987B\u8BFB\u53D6\u8BE5 Markdown \u6B63\u6587\u4E0E edit_revision.base_plan \u6307\u5411\u7684\u539F\u8BA1\u5212\uFF0C\u9010\u9879\u843D\u5B9E\u6539\u52A8\u3002edit_revision.markdown_normalization=false \u65F6\uFF0C\u7ED3\u6784\u6570\u636E\u5DF2\u7ECF\u968F\u663E\u5F0F YAML \u4FEE\u6539\u4FDD\u5B58\uFF1A\u4FDD\u7559\u8BE5\u7248\u672C\u7684 assessment\u3001selections\u3001inputs \u548C\u5B8C\u6574 user_markdown\uFF0C\u4E0D\u8981\u6C42\u91CD\u65B0\u751F\u6210 markdown_resolution\u3002\u53EA\u6709 markdown_normalization=true \u65F6\uFF0C\u624D\u5C06\u6B63\u6587\u6539\u52A8\u540C\u6B65\u5230\u7ED3\u6784\u6570\u636E\u5E76\u63D0\u4F9B markdown_resolution\uFF0C\u683C\u5F0F\u4E3A {path, before, after, instruction}\uFF1Bpath \u4E3A assessment \u76F8\u5BF9\u70B9\u8DEF\u5F84\uFF0Cbefore/after \u4E3A\u51C6\u786E\u65E7\u65B0\u503C\uFF0Cinstruction \u9010\u5B57\u5F15\u7528\u6B63\u6587\u4E2D\u65B0\u6539\u7684\u539F\u53E5\u6216\u5DF2\u5220\u9664\u7684\u65E7\u53E5\u3002split \u4E0E\u573A\u666F\u9009\u62E9\u4FDD\u6301\u9501\u5B9A\u3002\n\u628A\u53EF\u6267\u884C\u5E94\u7528\u8BF7\u6C42\u4FDD\u5B58\u4E3A JSON \u6587\u4EF6\uFF0Capplies_edit="' + path + '"\uFF0C\u4F7F\u7528 pipeline_plan(request_path=\u6587\u4EF6\u8DEF\u5F84)\u3002\u65E7\u4F1A\u8BDD\u6309\u9884\u8BBE\u4E2D\u7684\u8BA1\u5212\u5E94\u7528\u65B9\u5F0F\u63D0\u4EA4\uFF0C\u91CD\u590D\u5E94\u7528\u4E0D\u91CD\u5F00\u9636\u6BB5\u7A97\u53E3\u3002\u4E0D\u8981\u91CD\u65B0\u8F93\u51FA\u6574\u4EFD\u5927\u6587\u6863\u3002\u5236\u4F5C\u89C4\u5219\u7684\u5B9E\u8D28\u4FEE\u6539\u5FC5\u987B\u843D\u5B9E\u5230\u4EFB\u52A1\u4EE3\u7801\u3001\u6267\u884C\u6B65\u9AA4\u6216\u8BC1\u636E\u8F93\u5165\uFF1B\u5E94\u7528\u540E\u4F7F\u7528\u65B0\u7684 run\uFF0C\u5E76\u590D\u7528\u4ECD\u7B26\u5408\u5408\u540C\u7684\u4EA7\u7269\u548C\u5DF2\u63D0\u4EA4\u91C7\u96C6\u3002';
     }
     function table(headers, rows) {
       return h("div", { className: "bfw-scroll" }, h(
@@ -1500,6 +1500,21 @@
   }
 
   // src/dsh/ui/client/api.js
+  async function requestWorkbench(params, { body, signal } = {}) {
+    const response = await fetch("api/benchforge/workbench?" + new URLSearchParams(params), {
+      cache: "no-store",
+      credentials: "same-origin",
+      signal,
+      ...body === void 0 ? {} : {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }
+    });
+    const value = await response.json();
+    if (!response.ok) throw new Error(value.error || "HTTP " + response.status);
+    return value;
+  }
   function createApiHooks({ React }) {
     function useRecord(params, revision, interval = 0, active = true) {
       const key = params ? new URLSearchParams(params).toString() : "";
@@ -1514,9 +1529,7 @@
           const deadline = setTimeout(() => controller.abort(), 16e3);
           setRecord((old) => old.key === key ? { ...old, loading: !old.value, refreshing: true } : { key, value: null, error: null, loading: true, refreshing: true });
           try {
-            const response = await fetch("api/benchforge/workbench?" + key, { cache: "no-store", signal: controller.signal });
-            const value = await response.json();
-            if (!response.ok) throw new Error(value.error || "HTTP " + response.status);
+            const value = await requestWorkbench(key, { signal: controller.signal });
             if (!stopped) setRecord((old) => {
               if (value.scenes && old.key === key && old.value?.scenes) {
                 const prior = old.value.scenes.runs || [];
@@ -3147,12 +3160,11 @@
       } : null, receiptsRevision, 3e4, visible);
       const reviewRecord = useRecord(workspacePath ? { view: "stage_review", workspace_path: workspacePath, session_id: sessionId } : null, revision, 3e3, visible);
       const reviewAction = async (action, instruction = "") => {
-        const response = await fetch(
-          "api/benchforge/workbench?" + new URLSearchParams({ view: "stage_review", workspace_path: workspacePath, session_id: sessionId }),
-          { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, review_id: reviewRecord.value?.review_id, instruction }) }
+        const value = await requestWorkbench(
+          { view: "stage_review", workspace_path: workspacePath, session_id: sessionId },
+          { body: { action, review_id: reviewRecord.value?.review_id, instruction } }
         );
-        const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || "Stage review update failed");
+        if (value.error) throw new Error(value.error);
         setRevision((old) => old + 1);
         return value;
       };
@@ -3167,18 +3179,11 @@
         setSceneError("");
         setSceneChoice({ ...currentSceneSelection, selected, allow_new_scenes });
         try {
-          const response = await fetch("api/benchforge/workbench?" + new URLSearchParams({
-            view: "scene_selection",
-            workspace_path: workspacePath,
-            session_id: sessionId
-          }), {
-            method: "POST",
-            credentials: "same-origin",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ version: currentSceneSelection.version, selected, allow_new_scenes })
-          });
-          const value = await response.json();
-          if (!response.ok || value.error) throw new Error(value.error || t("sceneSaveFailed"));
+          const value = await requestWorkbench(
+            { view: "scene_selection", workspace_path: workspacePath, session_id: sessionId },
+            { body: { version: currentSceneSelection.version, selected, allow_new_scenes } }
+          );
+          if (value.error) throw new Error(value.error);
           setSceneChoice(value);
         } catch (error) {
           setSceneChoice(currentSceneSelection);
@@ -3329,13 +3334,8 @@
             if (conversationRunning) await stopExecution();
             payload = { ...payload, text: "\u9636\u6BB5\u7B49\u5F85\u4E2D\u7684\u7528\u6237\u6307\u4EE4\u5DF2\u4FDD\u5B58\u3002\u5148\u8BFB\u53D6 stage_review(action=status)\uFF0C\u5E94\u7528\u4EE5\u4E0B\u8981\u6C42\u540E\u518D\u5904\u7406\u540E\u7EED\u9636\u6BB5\uFF1B\u4E0D\u8981\u7ED5\u8FC7\u7B49\u5F85\u5173\u53E3\u3002\n" + payload.text };
           }
-          const response = await fetch("api/benchforge/workbench?" + new URLSearchParams({
-            view: "scene_selection",
-            workspace_path: workspacePath,
-            session_id: sessionId
-          }), { credentials: "same-origin" });
-          const value = await response.json();
-          if (!response.ok || value.error) throw new Error(value.error || t("sceneSelectionReadFailed"));
+          const value = await requestWorkbench({ view: "scene_selection", workspace_path: workspacePath, session_id: sessionId });
+          if (value.error) throw new Error(value.error);
           if (currentSceneSelection && value.version !== currentSceneSelection.version) {
             setSceneChoice(value);
             setError(t("sceneChanged"));
@@ -3346,13 +3346,8 @@
             return false;
           }
           readError = "templateReadFailed";
-          const templateResponse = await fetch("api/benchforge/workbench?" + new URLSearchParams({
-            view: "plan_template",
-            workspace_path: workspacePath,
-            session_id: sessionId
-          }), { credentials: "same-origin" });
-          const template = await templateResponse.json();
-          if (!templateResponse.ok || template.schema !== "benchforge.assessment-template/v1" || !template.assessment) {
+          const template = await requestWorkbench({ view: "plan_template", workspace_path: workspacePath, session_id: sessionId });
+          if (template.schema !== "benchforge.assessment-template/v1" || !template.assessment) {
             setError(t("templateReadFailed"));
             return false;
           }
@@ -3366,12 +3361,11 @@
         }
       };
       const savePlan = async (edit) => {
-        const response = await fetch(
-          "api/benchforge/workbench?" + new URLSearchParams({ view: "plan_edit", workspace_path: workspacePath, session_id: sessionId }),
-          { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify(edit) }
+        const value = await requestWorkbench(
+          { view: "plan_edit", workspace_path: workspacePath, session_id: sessionId },
+          { body: edit }
         );
-        const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || "\u8BA1\u5212\u4FDD\u5B58\u5931\u8D25");
+        if (value.error) throw new Error(value.error);
         if (value.state !== "unchanged") {
           update({ run: "", production: "" });
           setRevision((value2) => value2 + 1);

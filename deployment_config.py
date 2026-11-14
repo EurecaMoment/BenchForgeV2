@@ -31,7 +31,7 @@ OLD_WORKER_KEYS = (
 MODEL_FIELDS = ('model_url', 'model_id', 'model_api_key_env')
 CONFIG_VERSION = 3
 DEPLOYMENT_DEFAULTS = {
-    'web': {'port': 3081},
+    'web': {'port': 3081, 'default_workspace': None},
     'server': {
         'service_host': '127.0.0.1', 'port': 3841, 'execution_mode': 'production',
         'artifacts': '../.benchforge/backend/artifacts', 'gpu_candidates': '0',
@@ -470,6 +470,9 @@ def read_configuration(config, generated, server, *, overrides=None):
         settings['server'].pop(field, None)
     for name in ('web', 'server', 'database'):
         settings[name]['port'] = port(settings[name]['port'], f'{name}.port')
+    default_workspace = settings['web']['default_workspace']
+    if default_workspace is not None:
+        text_value(default_workspace, 'web.default_workspace')
     settings['database']['project'] = compose_name(settings['database']['project'])
     mode = settings['server']['execution_mode']
     if mode not in ('production', 'exploration'):

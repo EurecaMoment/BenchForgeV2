@@ -61,6 +61,13 @@ def configured_web_port():
     return settings.port(value if value is not None else _configuration()['web']['port'],
                          'web.port')
 
+def configured_default_workspace():
+    value, _, _, environment = settings.read_configuration(CONFIG, GENERATED, SERVER)
+    workspace = value['web']['default_workspace']
+    if workspace is None:
+        return None
+    return (CONFIG / Path(settings.expand_environment(workspace, environment)).expanduser()).resolve()
+
 
 def database_is_managed():
     return settings.database_is_managed(_configuration()['database'])

@@ -1,3 +1,5 @@
+import {requestWorkbench} from '../api.js';
+
 export function createWorkbenchComponent({React, helpers, components}) {
   const h = React.createElement;
   const {status, button, card, empty, json, sceneName, questionText, planValue, planMarkdown,
@@ -96,10 +98,9 @@ export function createWorkbenchComponent({React, helpers, components}) {
       origin:'selected',page_size:24} : null,receiptsRevision,30000,visible);
     const reviewRecord = useRecord(workspacePath ? {view:'stage_review',workspace_path:workspacePath,session_id:sessionId} : null,revision,3000,visible);
     const reviewAction = async (action,instruction='') => {
-      const response = await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'stage_review',workspace_path:workspacePath,session_id:sessionId}),
-        {method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,review_id:reviewRecord.value?.review_id,instruction})});
-      const value = await response.json();
-      if (!response.ok || value.error) throw new Error(value.error || 'Stage review update failed');
+      const value = await requestWorkbench({view: 'stage_review', workspace_path: workspacePath, session_id: sessionId},
+        {body: {action, review_id: reviewRecord.value?.review_id, instruction}});
+      if (value.error) throw new Error(value.error);
       setRevision(old => old+1);
       return value;
     };
@@ -113,11 +114,9 @@ export function createWorkbenchComponent({React, helpers, components}) {
       sceneSaveLock.current = true; setSceneSaving(true); setSceneError('');
       setSceneChoice({...currentSceneSelection, selected, allow_new_scenes});
       try {
-        const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
-          workspace_path: workspacePath, session_id: sessionId}), {method: 'POST', credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json'}, body: JSON.stringify({version: currentSceneSelection.version, selected, allow_new_scenes})});
-        const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || t('sceneSaveFailed'));
+        const value = await requestWorkbench({view: 'scene_selection', workspace_path: workspacePath, session_id: sessionId},
+          {body: {version: currentSceneSelection.version, selected, allow_new_scenes}});
+        if (value.error) throw new Error(value.error);
         setSceneChoice(value);
       } catch (error) {setSceneChoice(currentSceneSelection); setSceneError(t('sceneSaveFailed') + ' ' + error.message);}
       finally {sceneSaveLock.current = false; setSceneSaving(false);}
@@ -212,19 +211,15 @@ export function createWorkbenchComponent({React, helpers, components}) {
           if (conversationRunning) await stopExecution();
           payload={...payload,text:'阶段等待中的用户指令已保存。先读取 stage_review(action=status)，应用以下要求后再处理后续阶段；不要绕过等待关口。\n'+payload.text};
         }
-        const response = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'scene_selection',
-          workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
-        const value = await response.json();
-        if (!response.ok || value.error) throw new Error(value.error || t('sceneSelectionReadFailed'));
+        const value = await requestWorkbench({view: 'scene_selection', workspace_path: workspacePath, session_id: sessionId});
+        if (value.error) throw new Error(value.error);
         if (currentSceneSelection && value.version !== currentSceneSelection.version) {
           setSceneChoice(value); setError(t('sceneChanged')); return false;
         }
         if (!value.sources?.length && !value.allow_new_scenes) {setError(t('chooseSceneRequired')); return false;}
         readError = 'templateReadFailed';
-        const templateResponse = await fetch('api/benchforge/workbench?' + new URLSearchParams({view: 'plan_template',
-          workspace_path: workspacePath, session_id: sessionId}), {credentials: 'same-origin'});
-        const template = await templateResponse.json();
-        if (!templateResponse.ok || template.schema !== 'benchforge.assessment-template/v1' || !template.assessment) {
+        const template = await requestWorkbench({view: 'plan_template', workspace_path: workspacePath, session_id: sessionId});
+        if (template.schema !== 'benchforge.assessment-template/v1' || !template.assessment) {
           setError(t('templateReadFailed')); return false;
         }
         return submitRequest({...payload, text: payload.text + sceneConstraint(value) +
@@ -237,9 +232,9 @@ export function createWorkbenchComponent({React, helpers, components}) {
       finally {selectionSubmitLock.current = false; setSending(false);}
     };
     const savePlan=async(edit)=>{
-      const response=await fetch('api/benchforge/workbench?'+new URLSearchParams({view:'plan_edit',workspace_path:workspacePath,session_id:sessionId}),
-        {method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(edit)});
-      const value=await response.json();if(!response.ok || value.error) throw new Error(value.error || '计划保存失败');
+      const value = await requestWorkbench({view: 'plan_edit', workspace_path: workspacePath, session_id: sessionId},
+        {body: edit});
+      if (value.error) throw new Error(value.error);
       if(value.state!=='unchanged'){update({run:'',production:''});setRevision((value)=>value+1);}
       return value;
     };

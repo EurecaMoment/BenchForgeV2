@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createPublicArtifactProjector} from '../workbench/public_artifacts.js';
+import {createPublicArtifactProjector} from '../../host/workbench/public_artifacts.js';
 
 const pick = (value, fields) => Object.fromEntries(fields.filter((field) => field in value).map((field) => [field, value[field]]));
 const project = createPublicArtifactProjector({pick, taskTemplates: {tasks: [{templates: [{id: 'T1', title: 'Visibility'}]}]}});

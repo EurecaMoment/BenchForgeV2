@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {sessionFamilyReader} from '../ui/parallel_sessions.js';
+import {sessionFamilyReader} from '../host/sessions/parallel_sessions.js';
 
 test('parent catalog and immutable headers scope children without scanning session history', async () => {
   const calls = [], residents = new Map([['session-good', {header: {parentSession: 'session-parent'}}],

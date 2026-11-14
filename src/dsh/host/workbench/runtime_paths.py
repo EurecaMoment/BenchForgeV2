@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-DSH_ROOT = Path(__file__).resolve().parents[1]
+DSH_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = DSH_ROOT.parent
 CHECKOUT_ROOT = (
     SOURCE_ROOT.parent

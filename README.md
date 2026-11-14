@@ -41,7 +41,10 @@ flowchart TB
 | --- | --- |
 | [`src/benchforge_core/`](src/benchforge_core/) | Python 核心，负责评测计划、流水线恢复、证据、出题、评分和训练数据。 |
 | [`src/backend/`](src/backend/) | 场景生产后端、任务队列、模型适配、Isaac gRPC、桌面采集和部署工具。 |
-| [`src/dsh/`](src/dsh/) | DSH 预设、工具插件、Web 工作台和运维命令。 |
+| [`src/dsh/presets/`](src/dsh/presets/) | 装配 Agent 预设和 Host 插件，生成部署配置。 |
+| [`src/dsh/tools/`](src/dsh/tools/) | Agent 工具、执行器和预设作用域策略。 |
+| [`src/dsh/host/`](src/dsh/host/) | 采集观察、会话操作和工作台 Gateway 接口。 |
+| [`src/dsh/ui/`](src/dsh/ui/) | Web Client 和浏览器构建入口。 |
 
 `config/` 提供部署配置，`third_party/` 提供固定版本的外部模型和仿真源码。
 
@@ -224,6 +227,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 | --- | --- |
 | `dsh` | 从配置模板同步的 DSH fork、子模块路径、版本和构建要求。实际提交由 Git 子模块指针锁定。 |
 | `web.port` | DSH Web 端口。可用 `BENCHFORGE_WEB_PORT` 临时覆盖。 |
+| `web.default_workspace` | DSH 的默认工作区目录。支持绝对路径和相对配置文件目录的路径。启动时创建或复用目录并登记工作区。值为 `null` 时沿用 DSH 的默认行为。 |
 | `server` | 本机 BenchForge API 端口、对客户端公开的服务地址、产物目录、场景策略和认证环境变量名。 |
 | `database` | PostgreSQL 端口、Compose 项目名和密码环境变量名。复用外部数据库时设置 `url` 或 `url_env`。 |
 | `client` | DSH 和 CLI 连接的 BenchForge 后端。默认使用本机服务，亦可填 `service_config` 或 `service_url`。 |
@@ -233,6 +237,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 `init` 和 `sync` 生成 `config/generated/` 下的服务端、客户端、worker 和 Compose 配置。
 `dsh-setup` 生成 DSH 预设。配置中的相对路径以 `config/benchforge.local.json` 所在目录为基准。
+例如将 `web.default_workspace` 设为 `../workspaces/benchforge`，重启后 Web 在没有已选工作区时使用该目录。
 模型密钥通过各字段指定的环境变量传入。首次初始化会为本实例生成缺省的数据库密码和服务令牌，
 保存在被 Git 忽略的部署状态里。
 

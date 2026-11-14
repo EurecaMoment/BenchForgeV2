@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {requestKeyFor} from '../plugin/request_identity.mjs';
+import {requestKeyFor} from '../tools/scene/request_identity.mjs';
 
 const exec = (session, callId) => ({agent: {session: {id: session}}, callId});
 

@@ -106,7 +106,7 @@ export function createPrimitives({React, PLAN_FIELDS, PLAN_SECTIONS}) {
   function planEditInstruction(path) {
     return '用户已编辑计划 Markdown，已保存的新版本：'+path+
       '\n必须读取该 Markdown 正文与 edit_revision.base_plan 指向的原计划，逐项落实改动。edit_revision.markdown_normalization=false 时，结构数据已经随显式 YAML 修改保存：保留该版本的 assessment、selections、inputs 和完整 user_markdown，不要求重新生成 markdown_resolution。只有 markdown_normalization=true 时，才将正文改动同步到结构数据并提供 markdown_resolution，格式为 {path, before, after, instruction}；path 为 assessment 相对点路径，before/after 为准确旧新值，instruction 逐字引用正文中新改的原句或已删除的旧句。split 与场景选择保持锁定。'+
-      '\n把可执行应用请求保存为 JSON 文件，applies_edit="'+path+'"，使用 pipeline_plan(request_path=文件路径)。旧会话工具定义若没有 request_path，用当前生产 Python 执行 SDK src/dsh/ui/plan_request_cli.py --workspace 当前工作区 --session 当前会话 --request 文件路径；该入口保留相同校验与会话来源，重复应用不重开阶段窗口。不要重新输出整份大文档。制作规则的实质修改必须落实到任务代码、执行步骤或证据输入；应用后使用新的 run，并复用仍符合合同的产物和已提交采集。';
+      '\n把可执行应用请求保存为 JSON 文件，applies_edit="'+path+'"，使用 pipeline_plan(request_path=文件路径)。旧会话按预设中的计划应用方式提交，重复应用不重开阶段窗口。不要重新输出整份大文档。制作规则的实质修改必须落实到任务代码、执行步骤或证据输入；应用后使用新的 run，并复用仍符合合同的产物和已提交采集。';
   }
   function table(headers, rows) {
     return h('div', {className: 'bfw-scroll'}, h('table', {className: 'bfw-table'},

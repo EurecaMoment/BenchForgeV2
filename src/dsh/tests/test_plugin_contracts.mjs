@@ -6,8 +6,8 @@ import path from 'node:path';
 import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import { validateJsonSchemaValue } from '@deepseek-ai/dsh-tools';
-import { apply, Config } from '../plugin/tools.mjs';
-import {createObservationBridge, projectObservationSnapshot} from '../plugin/observation_bridge.mjs';
+import { apply, Config } from '../tools/scene/tools.mjs';
+import {createObservationBridge, projectObservationSnapshot} from '../host/capture/observation_bridge.mjs';
 
 async function fixture(t,{saveImage=async()=>({id:'fixture-image'}),scenePolicy=false,tokenConfig={},launchEnvironment}={}){
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'sf-plugin-contract-'));
@@ -99,7 +99,7 @@ test('legacy observation packaged bridge uses the service module when repository
   const moduleFolder=path.join(f.root,'service-env','benchforge_backend');
   await fs.mkdir(packageFolder,{recursive:true});await fs.mkdir(moduleFolder,{recursive:true});
   const bridgeFile=path.join(packageFolder,'observation_bridge.mjs');
-  await fs.copyFile(new URL('../plugin/observation_bridge.mjs',import.meta.url),bridgeFile);
+  await fs.copyFile(new URL('../host/capture/observation_bridge.mjs',import.meta.url),bridgeFile);
   await fs.writeFile(path.join(moduleFolder,'__init__.py'),'');
   await fs.copyFile(new URL('../../backend/benchforge_backend/observation.py',import.meta.url),path.join(moduleFolder,'observation.py'));
   const packaged=await import(pathToFileURL(bridgeFile).href);

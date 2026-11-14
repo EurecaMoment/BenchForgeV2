@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {apply} from '../tools.mjs';
+import {apply} from '../../tools/core.mjs';
 import {validateJsonSchemaValue} from '@deepseek-ai/dsh-tools';
 import fs from 'node:fs/promises';
 import os from 'node:os';

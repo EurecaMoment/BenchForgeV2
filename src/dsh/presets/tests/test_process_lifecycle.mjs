@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {test} from 'node:test';
 import {Context} from '@deepseek-ai/cordis';
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local';
-import {invoke,apply,Config} from '../tools.mjs';
+import {invoke,apply,Config} from '../../tools/core.mjs';
 
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function fixture(t) {

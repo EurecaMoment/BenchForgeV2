@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {createWorkbenchHandler} from '../ui/stage_products.js';
+import {createWorkbenchHandler} from '../host/workbench/stage_products.js';
 
 test('native preparation is bound to the saved current-parent plan',async () => {
   const root=await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()),'benchforge-synthesis-scope-'));

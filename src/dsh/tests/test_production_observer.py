@@ -9,7 +9,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 
-SPEC = importlib.util.spec_from_file_location('production_observer', Path(__file__).parents[1] / 'ui/production_observer.py')
+SPEC = importlib.util.spec_from_file_location('production_observer', Path(__file__).parents[1] / 'host/workbench/production_observer.py')
 observer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(observer)
 import scene_preview_video as preview

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {attachCaptureRuntime,createScopedCaptureObservations,createCaptureEvidence} from '../plugin/capture_runtime.mjs';
+import {attachCaptureRuntime,createScopedCaptureObservations,createCaptureEvidence} from '../host/capture/capture_runtime.mjs';
 
 function fixture() {
   const hooks=new Set();

@@ -15,10 +15,9 @@ def build(sources, dsh_root, python, config_path, service_config, *, package_imp
                              with_ui=False, package_imports=package_imports)
     workbench = spatial.build(sources, dsh_root, python, service_config, config_path=config_path,
                               with_ui=True, package_imports=package_imports)
-    entries = [row for result in (headless, workbench)
-               for patch in result for row in patch.get('insert', [])
-               if row.get('id') != base.PRESET_ALIASES_PLUGIN_ID]
-    return [{'insert': [*entries, base.preset_alias_entry(package_imports=package_imports)]},
+    rows = (row for result in (headless, workbench) for patch in result for row in patch.get('insert', []))
+    entries = {row['id']: row for row in rows}
+    return [{'insert': list(entries.values())},
             *([] if package_imports else base.model_patches(config_path))]
 
 

@@ -193,7 +193,7 @@ def main():
         return
     from benchforge_core.service_http import post_service_json
     from benchforge_core.stage_review import review
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'ui'))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'host/workbench'))
     from scene_library import sync_catalog
 
     url = config.get('service_url') or 'http://127.0.0.1:' + str(config.get('port', 3841))

@@ -69,7 +69,7 @@ benchforge_prepare 内部用原生 spawn 创建零父对话历史的独立准备
 父智能体独占 benchforge_prepare、pipeline_plan、pipeline_run、pipeline_repair_plan、stage_review 和实际采集/修订/导出提交。子智能体不改父计划、用户场景选择、共享 runner 状态或已接受的场景；也不通过 shell、HTTP 或任务代码绕过这些执行边界。完成时在自己的目录保存 manifest.json，给出 status、产物路径、实际检查、缺失输入和未解决问题，并在最终回复中引用它。交付路径和成功检查必须可读、可复核，生成一份文件并不等于场景或数据已验收。
 subagent 的后台返回只说明子会话已接收任务。子任务结束通知由父会话接收；父智能体可继续其他独立工作，不反复用 list_agents 轮询完成，也不把 inactive 当作成功。需要修改或补充时，用 send_message 给该直接子会话发送具体指令。父智能体读取每份实际产物后统一合并、校验并提交采集；题目不能直接拼接各分片的 item_00000000：由父流程统一分配题目身份，核对媒体引用、每模板配额、split、seed和公共题面合同。题目并行计划应表达为多个 S4 生成步骤和一个最终 S5 打包步骤，不按每份分片串接一套 S4+S5；子智能体只交付 S4 脚本、证据或题目分片，父级完成整批 S4 验收及唯一用户窗口之后统一打包。每个生产阶段整批产物就绪并通过相应验收后，展示它们并开一次用户窗口。"""
 
-PERSONA += "\nIf a retained older session tool schema lacks request_path, call the configured production Python with SDK src/dsh/ui/plan_request_cli.py --workspace <workspace> --session <current native session> --request <saved request JSON>. This preserves plan validation and session provenance. Do not retranscribe the document or reopen a stage window for a repeated applied request. Read edit_revision.base_plan; markdown_normalization=false retains the saved explicit structured edit without redundant markdown_resolution."
+PERSONA += "\nIf a retained older session tool schema lacks request_path, call the configured production Python with SDK src/dsh/host/workbench/plan_request_cli.py --workspace <workspace> --session <current native session> --request <saved request JSON>. This preserves plan validation and session provenance. Do not retranscribe the document or reopen a stage window for a repeated applied request. Read edit_revision.base_plan; markdown_normalization=false retains the saved explicit structured edit without redundant markdown_resolution."
 
 SYNTHESIS_WORKER_PERSONA = """You are a BenchForge synthesis worker for one self-contained preparation assignment. Read only the supplied plan, contracts, asset catalog and relevant saved evidence. Write only to the parent's assigned synthesis output directory; preserve shared plans, user scene selections, runner state, accepted artifacts and other workers' files. Deliver saved SceneProgram/design drafts, task-generator edits, preparation scripts or checks for the parent to integrate.
 At the start of file work, batch-copy the supplied source scripts/programs into your directory and save manifest.json with status preparing, working artifact paths and known missing inputs. Use the given source paths rather than rediscovering directories or validating the whole production chain before copying. On recovery, preserve saved edits and continue existing working copies. If a supplied source is missing, record its exact path and deliver the already determined scope; if no source was supplied, save the known design/script scaffold and preparing manifest first.
@@ -157,12 +157,35 @@ def workbench_entry(python, service_config, *, package_imports=False):
     """One host reader serves new and already-bound sessions; the client gates UI."""
     return {
         'id': WORKBENCH_PLUGIN_ID,
-        'name': '@eurecamoment/benchforge-dsh/benchforge-ui' if package_imports
-                else (DSH / 'ui/stage_products.js').as_uri(),
+        'name': './ui/index.js' if package_imports
+                else (DSH / 'ui/index.js').as_uri(),
         'config': {
             'productionConfig': base.config_reference(service_config, package_imports),
             'productionPython': str(python),
         },
+    }
+
+def capture_entry(workbench, *, package_imports=False, revision=None):
+    options = workbench['config']
+    return {
+        'id': base.CAPTURE_PLUGIN_ID,
+        'name': '@eurecamoment/benchforge-dsh/capture-runtime' if package_imports
+                else (DSH / 'host/capture/capture_runtime.mjs').as_uri(),
+        'config': {
+            'productionConfig': options.get('productionConfig', ''),
+            'productionPython': options.get('productionPython', 'python3'),
+            'workspacePaths': options.get('workspacePaths', []),
+            **({'revision': revision} if revision is not None else {}),
+        },
+    }
+
+
+def session_operations_entry(*, package_imports=False, revision=None):
+    return {
+        'id': base.SESSION_OPERATIONS_PLUGIN_ID,
+        'name': '@eurecamoment/benchforge-dsh/session-operations' if package_imports
+                else (DSH / 'host/sessions/index.mjs').as_uri(),
+        'config': {'revision': revision} if revision is not None else {},
     }
 
 
@@ -181,22 +204,23 @@ def build(sources, dsh_root, python, service_config, *, config_path=None,
         learning_config['configPath'] = base.config_reference(config_path, package_imports)
     plugins.append({'id': 'spatial-learning-tools',
                     'name': '@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports
-                            else (DSH / 'presets/tools.mjs').as_uri(),
+                            else (DSH / 'tools/core.mjs').as_uri(),
                     'config': learning_config})
     plugins.append({'id': 'benchforge-scene-tools',
                     'name': '@eurecamoment/benchforge-dsh/benchforge-scene-tools' if package_imports
-                            else (DSH / 'plugin/tools.mjs').as_uri(),
+                            else (DSH / 'tools/scene/tools.mjs').as_uri(),
                     'config': {'serviceConfig': base.config_reference(service_config, package_imports),
                                'policyPython': str(python)}})
     plugins.append({
         'id': 'benchforge-subagent-policy',
         'name': '@eurecamoment/benchforge-dsh/subagent-policy' if package_imports
-                else (DSH / 'presets/subagent_policy.mjs').as_uri(),
+                else (DSH / 'tools/subagent_policy.mjs').as_uri(),
         'config': {'persona': SYNTHESIS_WORKER_PERSONA, 'parentTools': sorted(configured_synthesis_tools(plugins))},
     })
-    entries = [preset]
+    entries = [session_operations_entry(package_imports=package_imports), preset]
     if with_ui:
-        entries.append(workbench_entry(python, service_config, package_imports=package_imports))
+        workbench = workbench_entry(python, service_config, package_imports=package_imports)
+        entries.extend([capture_entry(workbench, package_imports=package_imports), workbench])
     entries.append(base.preset_alias_entry(package_imports=package_imports))
     configure_synthesis_delegation(plugins)
     models = [] if package_imports else base.model_patches(config_path or service_config)

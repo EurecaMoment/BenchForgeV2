@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {apply} from '../tools.mjs';
+import {apply} from '../../tools/core.mjs';
 import {validateJsonSchemaValue} from '@deepseek-ai/dsh-tools';
 
 test('learning tools declare supported nested object schemas and expose exclusions',async()=>{

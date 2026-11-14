@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createDeliveryVisuals } from '../plugin/delivery_visuals.mjs';
+import { createDeliveryVisuals } from '../tools/scene/delivery_visuals.mjs';
 
 test('visual feedback resolves both images from the latest task and revision, without guessing paths', async () => {
   const requests = [];

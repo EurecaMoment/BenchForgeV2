@@ -8,8 +8,8 @@ const queues = new Map();
 const nativeIdleProbes = new WeakMap();
 const NATIVE_ACTIVITY_PROBE_MS = 50;
 const SCHEMA = 'benchforge.synthesis-sessions/v1';
-const FACING_REFERENCE = fileURLToPath(new URL('../task_support/native_asset_facing.json', import.meta.url));
-const FACING_HELPER = fileURLToPath(new URL('../task_support/native_asset_facing.py', import.meta.url));
+const FACING_REFERENCE = fileURLToPath(new URL('../../task_support/native_asset_facing.json', import.meta.url));
+const FACING_HELPER = fileURLToPath(new URL('../../task_support/native_asset_facing.py', import.meta.url));
 const PERSONA = `You are a BenchForge preparation worker for one self-contained artifact assignment. Read the supplied frozen plan, contracts and relevant saved evidence. Write only inside the assigned output directory. Start file operations by changing to that directory and using explicit paths; preserve parent plans, scene selections, runner state, accepted artifacts and other workers' files.
 At the start of file work, batch-copy the supplied source scripts or programs into your directory and save manifest.json with status preparing, the working artifact paths and known missing inputs. Use the supplied source paths instead of rediscovering the workspace or checking the whole production chain first. On recovery, preserve saved edits and continue the existing working copies. If a source is actually missing, record its exact path and continue the already determined scope; when no source was supplied, save the known design or script scaffold and preparing manifest first.
 Apply the smallest concrete patch. Locate and batch-read only the functions or sections needed for it, then save known changes as you work. For scene design, persist the title, descriptive summary and program draft before investigating unresolved structure. If an exact input or required structure remains unknown, state the specific question or missing field in the manifest and hand off the completed scope; do not delay all saved preparation while trying to validate the entire production pipeline.

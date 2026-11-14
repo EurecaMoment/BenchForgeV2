@@ -38,7 +38,7 @@ const { default:Subagents } = await load('dsh-subagent');
 const Spawn = await load('dsh-subagent-spawn-in-process');
 const Delegate = await load('dsh-tool-subagent');
 const Control = await load('dsh-tool-subagent-control');
-const benchforge = await import(values.plugin ? pathToFileURL(path.resolve(values.plugin)) : new URL('../plugin/tools.mjs', import.meta.url));
+const benchforge = await import(values.plugin ? pathToFileURL(path.resolve(values.plugin)) : new URL('../tools/scene/tools.mjs', import.meta.url));
 
 // Continuation loads sessions through the real JSONL persistence. Corpus search
 // is not part of this test and must never fall through to a production service.

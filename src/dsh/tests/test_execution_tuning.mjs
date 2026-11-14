@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {createExecutionTuning} from '../plugin/execution_tuning.mjs';
+import {createExecutionTuning} from '../host/sessions/execution_tuning.mjs';
 
 async function fixture(t) {
   const root=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'execution-tuning-')));

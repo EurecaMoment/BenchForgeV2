@@ -1,11 +1,17 @@
 # BenchForge DSH integration
 
-`presets/` builds the DSH presets and registers Python core tools. `plugin/`
-provides scene and capture tools, and `ui/` implements the web workbench. `shared/`
-contains logic used by multiple DSH entry points. `maintenance/` contains scene
-and question-set repair commands. `task_support/` contains Python helpers and
-resources used by the tools and preparation sessions. The bundle uses the
-[Python core](../benchforge_core/) and [BenchForge HTTP service](../backend/).
+| Directory | Responsibility |
+| --- | --- |
+| `presets/` | Compose DSH presets and Host plugins, generate the deployment overlay and install profile updates. |
+| `tools/` | Register Agent tools, shell and execution plugins, and preset-scoped policies. |
+| `host/` | Own capture observation, session operations and the authenticated workbench Gateway routes. |
+| `ui/` | Declare the Web Client package and render the workbench from Gateway responses. |
+| `shared/` | Configuration, tool names, templates and collaboration used across DSH entry points. |
+| `task_support/` | Python helpers and reference data used by tools and preparation sessions. |
+| `maintenance/` | Operator commands for scene library and question-set repairs. |
+
+The bundle uses the [Python core](../benchforge_core/) and the
+[BenchForge HTTP service](../backend/). The Web Client calls the DSH Gateway.
 
 The bundle exposes two custom presets. Official `standard`, `ptc`,
 `minimal` and `cordis` presets remain unchanged.
@@ -20,19 +26,20 @@ names while preserving their session history, workspace and saved artifacts.
 Active sessions retain their bound tool version until DSH releases it.
 
 The two presets share `presets/preset_definition.py`. The UI variant
-adds workbench guidance and the host reader. `presets/build_preset.py` composes the common
+adds workbench guidance and registers the Web package. `presets/build_preset.py` composes the common
 DSH plugins, `presets/build_presets.py` generates the catalog, and
 `presets/profile_migration.py` retires the old preset declaration during profile merges.
 Existing session files stay in their workspace.
 
 ## Evaluation workbench UI
 
-`ui/` provides the BenchForge_UI session workbench with persisted runs and
-artifacts, version-isolated dataset browsing, server-side pagination and
-generation quality reports. Install or refresh it in a running DSH with
+`ui/client/` renders runs, artifacts, datasets and quality reports. Its API
+module talks to the routes under `host/workbench/`, which own data access and
+pagination. Install or refresh the workbench in a running DSH with
 `python src/dsh/presets/install_workbench.py`.
-The reader is registered once at the host level so already-bound conversations
-can still browse their history. The client mounts the workbench for
+The Host mounts capture observation and session operations as Cordis services.
+The Gateway routes consume those services, and the scene tools use the same
+session operations for preparation. The client mounts the workbench for
 `benchforge-ui` and previously saved workbench sessions. `install_workbench.py` and
 `hot_update.py` use the same migration logic and preserve configured historical
 workspace roots.
@@ -245,11 +252,11 @@ Use a system `ffmpeg`, or install the optional encoder in the isolated UI runtim
 
 ```bash
 python3 -m pip install --target .deployment/preview-runtime --no-deps \
-  -r src/dsh/ui/requirements-preview.txt
+  -r src/dsh/host/workbench/requirements-preview.txt
 ```
 
 An existing scene can be exported ahead of browsing with
-`ui/scene_preview_video.py --config <operator-config> --session <session-id>
+`host/workbench/scene_preview_video.py --config <operator-config> --session <session-id>
 --scene <scene-run-id>` using the configured production Python. Export and media
 access retain the existing session and revision checks. While a new movie is
 unavailable, a scene's recorded views remain directly browsable.

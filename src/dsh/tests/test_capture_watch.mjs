@@ -3,8 +3,8 @@ import {test} from 'node:test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation} from '../plugin/capture_watch.mjs';
-import {createLegacyCaptureStep,createScopedCaptureObservations} from '../plugin/capture_runtime.mjs';
+import {createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation} from '../host/capture/capture_watch.mjs';
+import {createLegacyCaptureStep,createScopedCaptureObservations} from '../host/capture/capture_runtime.mjs';
 
 const observation=(state='RUNNING')=>({run_id:'sf_test',state,terminal:state==='FAILED_FINAL',tasks:[{
   id:'sf_test.scene0',state,phase:'capture',revision:0,

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {createSynthesisSessions} from '../ui/synthesis_sessions.js';
+import {createSynthesisSessions} from '../host/sessions/synthesis_sessions.js';
 
 function pendingActivity() {
   let resolve, subscriptions = 0;

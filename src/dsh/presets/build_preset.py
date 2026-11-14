@@ -10,7 +10,8 @@ from urllib.parse import urlsplit, urlunsplit
 from urllib.request import url2pathname
 import yaml
 
-SOURCE = Path(__file__).resolve().parents[2]
+DSH_ROOT = Path(__file__).resolve().parents[1]
+SOURCE = DSH_ROOT.parent
 if (SOURCE / 'benchforge_core/__init__.py').is_file():
     sys.path.insert(0, str(SOURCE))
 from benchforge_core.provider_config import provider_config
@@ -41,6 +42,8 @@ SCENE_PLUGIN_ID = 'benchforge-scene-tools'
 LEGACY_SCENE_PLUGIN_ID = 'spatialforge-tools'
 LEGACY_WORKBENCH_PLUGIN_ID = 'spatialforge-evaluation-ui'
 WORKBENCH_PLUGIN_ID = 'benchforge-workbench-ui'
+CAPTURE_PLUGIN_ID = 'benchforge-capture'
+SESSION_OPERATIONS_PLUGIN_ID = 'benchforge-session-operations'
 SCENE_TOOL_NAMES = {'catalog', 'status', 'sam3', 'sam3d', 'evidence', 'collaboration'}
 PRESETS = {
     BENCHFORGE_ID: {
@@ -68,12 +71,23 @@ SERVER_SERVICE_CONFIGS = (
     Path('config/generated/benchforge-server.local.json'),
     Path('config/generated/spatialforge-server.local.json'), Path('config/spatialforge-server.local.json'),
 )
+PLUGIN_MOVES = {
+    Path('presets/tools.mjs'): 'tools/core.mjs',
+    Path('presets/persistent-shell.mjs'): 'tools/persistent-shell.mjs',
+    Path('presets/tool_executor.mjs'): 'tools/tool_executor.mjs',
+    Path('presets/subagent_policy.mjs'): 'tools/subagent_policy.mjs',
+    Path('presets/preset_aliases.mjs'): 'host/preset_aliases.mjs',
+    Path('plugin/tools.mjs'): 'tools/scene/tools.mjs',
+    Path('ui/stage_products.js'): 'ui/index.js',
+    Path('ui/production.js'): 'ui/index.js',
+}
 SOURCE_RELOCATIONS = {
-    **{Path('integrations/dsh') / name: 'presets/' + name for name in (
-        'tools.mjs', 'persistent-shell.mjs', 'preset_aliases.mjs',
-    )},
-    **{Path('integrations') / package / name: name for package in ('benchforge', 'spatialforge')
-       for name in ('plugin/tools.mjs', 'ui/index.js', 'ui/production.js', 'ui/stage_products.js')},
+    **{Path('src/dsh') / old: new for old, new in PLUGIN_MOVES.items()},
+    **{Path('integrations/dsh') / old.name: new for old, new in PLUGIN_MOVES.items()
+       if old.parent.name == 'presets'},
+    **{Path('integrations') / package / old: new for package in ('benchforge', 'spatialforge')
+       for old, new in {**PLUGIN_MOVES, Path('ui/index.js'): 'ui/index.js'}.items()
+       if old.parent.name in ('plugin', 'ui')},
 }
 
 
@@ -84,8 +98,8 @@ def set_identity(row, preset_id):
 
 
 def preset_alias_entry(*, package_imports=False):
-    name = '@eurecamoment/benchforge-dsh/preset-aliases' if package_imports else Path(
-        __file__).resolve().with_name('preset_aliases.mjs').as_uri()
+    name = '@eurecamoment/benchforge-dsh/preset-aliases' if package_imports else (
+        DSH_ROOT / 'host/preset_aliases.mjs').as_uri()
     return {'id': PRESET_ALIASES_PLUGIN_ID, 'name': name, 'config': {'aliases': PRESET_ALIASES.copy()}}
 
 
@@ -248,6 +262,8 @@ def _refresh_preset_plugins(plugins):
                         for section in ('ui/DESIGN.md', 'ui/plan_request_cli.py', 'task_support'):
                             old = f'integrations/{package}/{section}'
                             prompt = re.sub(r'(?<![\w/\\])' + re.escape(old), 'src/dsh/' + section, prompt)
+                    prompt = prompt.replace('src/dsh/ui/plan_request_cli.py',
+                                            'src/dsh/host/workbench/plan_request_cli.py')
                     config[key] = re.sub(r'(?<![\w/\\])benchforge/task_support/README\.md',
                                          'task_support/README.md', prompt)
             tool_filter = config.get('toolFilter')
@@ -263,7 +279,7 @@ def refresh_source_plugins(profile, root, profile_dir=None):
     root = Path(root).resolve()
 
     def relocated(name):
-        if not isinstance(name, str) or 'integrations/' not in name.replace('\\', '/').lower():
+        if not isinstance(name, str):
             return None
         url = urlsplit(name) if name.startswith('file:') else None
         if (url and url.netloc not in ('', 'localhost')) or (not url and '://' in name):
@@ -394,7 +410,7 @@ def refresh_service_paths(profile, config_path):
     changed = False
     for patch in profile:
         for row in patch.get('insert', []):
-            if row.get('id') in {WORKBENCH_PLUGIN_ID, LEGACY_WORKBENCH_PLUGIN_ID}:
+            if row.get('id') in {WORKBENCH_PLUGIN_ID, LEGACY_WORKBENCH_PLUGIN_ID, CAPTURE_PLUGIN_ID}:
                 changed = refresh(row, 'productionConfig', legacy | servers) or changed
             if preset_id(row) not in PRESETS:
                 continue
@@ -406,7 +422,7 @@ def refresh_service_paths(profile, config_path):
     return changed
 
 
-def refresh_model_patches(preset_path, config_path):
+def refresh_model_patches(preset_path, config_path, *, refresh_host=None):
     """Refresh generated deployment settings and retire old preset entries."""
     preset_path = Path(preset_path)
     if not preset_path.is_file():
@@ -414,6 +430,8 @@ def refresh_model_patches(preset_path, config_path):
     patches = model_patches(config_path)
     profile = yaml.load(preset_path.read_text(encoding='utf-8'), Loader=Loader) or []
     changed = refresh_preset_identity(profile, profile_dir=preset_path.resolve().parent)
+    if refresh_host is not None:
+        changed = refresh_host(profile) or changed
     changed = refresh_service_paths(profile, config_path) or changed
     changed = refresh_host_models(profile, patches) or changed
     enabled = model_tools(config_path)
@@ -481,15 +499,15 @@ def compose_standard(sources, *, package_imports=False):
         return next(row for patch in sources[name] for row in patch.get('insert',[]) if row['id']=='preset-'+name)
     result=deepcopy(preset('standard'))
     plugins=result['config']['plugins']
-    executor = '@eurecamoment/benchforge-dsh/tool-executor' if package_imports else Path(
-        __file__).resolve().with_name('tool_executor.mjs').as_uri()
+    executor = '@eurecamoment/benchforge-dsh/tool-executor' if package_imports else (
+        DSH_ROOT / 'tools/tool_executor.mjs').as_uri()
     plugins.append({'id': 'benchforge-tool-executor', 'name': executor})
     persistent=deepcopy(next(p for p in preset('minimal')['config']['plugins'] if p['id']=='persistent-shell'))
     for row in persistent['config']:
         if row['id'] in ('persistent-bash','persistent-pwsh'):
             shell='bash' if row['id']=='persistent-bash' else 'pwsh'
-            row['name'] = '@eurecamoment/benchforge-dsh/persistent-shell' if package_imports else Path(
-                __file__).resolve().with_name('persistent-shell.mjs').as_uri()
+            row['name'] = '@eurecamoment/benchforge-dsh/persistent-shell' if package_imports else (
+                DSH_ROOT / 'tools/persistent-shell.mjs').as_uri()
             row['config']={**row.get('config',{}),'shell':shell}
     plugins.append(persistent)
     plugins.append(deepcopy(next(p for p in preset('cordis')['config']['plugins'] if p['id']=='tool-cordis')))

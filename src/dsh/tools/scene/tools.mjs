@@ -6,8 +6,8 @@ import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { createUserMessage } from '@deepseek-ai/dsh-llm';
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment';
-import {loadServiceConfig} from '../shared/config.mjs';
-import {executeHandoff, handoffParameters} from '../shared/collaboration.mjs';
+import {loadServiceConfig} from '../../shared/config.mjs';
+import {executeHandoff, handoffParameters} from '../../shared/collaboration.mjs';
 // An operator-issued revision refreshes this plugin and its local helpers while
 // the official Harness keeps already-bound agent revisions alive.
 const revision = new URL(import.meta.url).search;
@@ -18,21 +18,20 @@ const { createDeliveryReview, createCaptureReviewStep, productionReviewApplies }
 const { createDeliveryFileReview } = await import(new URL('./delivery_files.mjs' + revision, import.meta.url));
 const { createDeliveryVisuals } = await import(new URL('./delivery_visuals.mjs' + revision, import.meta.url));
 const { createPreparationHandler } = await import(new URL('./preparation.mjs' + revision, import.meta.url));
-const { createObservationBridge } = await import(new URL('./observation_bridge.mjs' + revision, import.meta.url));
-const { createCaptureRetry } = await import(new URL('./capture_retry.mjs' + revision, import.meta.url));
-const { createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation, captureRunId } = await import(new URL('./capture_watch.mjs' + revision, import.meta.url));
+const { createObservationBridge } = await import(new URL('../../host/capture/observation_bridge.mjs' + revision, import.meta.url));
+const { createCaptureRetry } = await import(new URL('../../host/capture/capture_retry.mjs' + revision, import.meta.url));
+const { createCaptureWatcher, deliverCaptureNotice, compactCaptureObservation, captureRunId } = await import(new URL('../../host/capture/capture_watch.mjs' + revision, import.meta.url));
 const {requestKeyFor} = await import(new URL('./request_identity.mjs' + revision, import.meta.url));
 export const name='benchforge-scene-tools';
 // Delivery visual feedback resolves the active model route and stores image
 // attachments while the turn-stopping hook is running. Declare both services
 // so the hook remains valid after a normal final response/present boundary.
-export const inject=['tools','llm','attachments'];
+export const inject=['tools','llm','attachments','benchforgeSessions'];
 export const Config=z.object({
   serviceConfig:z.string().required().description('Path to the BenchForge service JSON configuration.'),
   scenePolicyWorkspace:z.string().default(''),
   policyPython:z.string().default('python3'),
   preparationBatchSize:z.natural().min(1).default(3),
-  preparationRevision:z.string().default(''),
   dshRoot:z.string().description('Legacy preset field, retained for compatibility; public DSH packages are resolved normally.'),
 });
 export async function apply(ctx, config) {
@@ -51,7 +50,7 @@ const output=objectOutput;
 async function api(path,args,signal){
   if(scenePolicyWorkspace && ['/start','/capture','/refine','/extend','/retry'].includes(path)) {
     await new Promise((resolve,reject)=>{
-      const child=spawn(config.policyPython,['-B',fileURLToPath(new URL('../task_support/scene_policy_gate.py',import.meta.url)),
+      const child=spawn(config.policyPython,['-B',fileURLToPath(new URL('../../task_support/scene_policy_gate.py',import.meta.url)),
         '--workspace',scenePolicyWorkspace,'--route',path,
         '--execution-mode',loaded.executionMode,
         ...(loaded.scenePolicyPath ? ['--policy',loaded.scenePolicyPath] : [])],{stdio:['pipe','pipe','pipe'],signal});
@@ -129,8 +128,8 @@ const programInput={type:'string',description:'Complete SceneProgram JSON in the
       prompt:{type:'string',required:true,description:'Self-contained goal, frozen inputs, requirements and deliverables.'},
       outputDirectory:{type:'string',required:true,description:'Existing dedicated write directory inside the workspace; workers must not overlap.'},
     }}},
-  },output,execute:createPreparationHandler({ctx,batchSize:config.preparationBatchSize || 3,
-    revision:config.preparationRevision ? '?revision=' + encodeURIComponent(config.preparationRevision) : revision})}));
+  },output,execute:createPreparationHandler(workspace =>
+    ctx.benchforgeSessions.preparation(workspace, config.preparationBatchSize))}));
   ctx.tools.register(defineTool({name:'benchforge_scene_collaboration',
     description:'Share lightweight handoffs in the task workspace. Publish observations, artifacts, decisions, blockers and next actions; relate or reply to earlier handoffs; list or read records when agents join, resume or reconcile parallel work. The protocol does not prescribe a fixed orchestration graph.',
     parameters:{workspace:{type:'string',required:true,description:'Absolute shared task workspace.'},...handoffParameters},

@@ -3,8 +3,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {test} from 'node:test';
-import {apply} from '../plugin/tools.mjs';
-import {apply as applyCoreTools} from '../presets/tools.mjs';
+import {apply} from '../tools/scene/tools.mjs';
+import {apply as applyCoreTools} from '../tools/core.mjs';
 
 test('BenchForge plugin exposes shared handoffs without service calls', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-collab-'));

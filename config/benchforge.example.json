@@ -8,7 +8,8 @@
     "package_manager": "pnpm@11.28.5"
   },
   "web": {
-    "port": 3081
+    "port": 3081,
+    "default_workspace": null
   },
   "server": {
     "port": 3841,

@@ -29,6 +29,11 @@ def uses_local_service(preset):
                for reference in service_config_paths(profile))
 
 
+def pinned_dsh_revision(lock):
+    entry = subprocess.check_output(['git', 'ls-tree', 'HEAD', '--', lock['path']], cwd=ROOT, text=True)
+    return entry.split()[2]
+
+
 def main():
     if sys.version_info < (3, 10):
         raise SystemExit('Python 3.10+ is required. Run this launcher with your installed Python 3.10+ interpreter.')
@@ -118,8 +123,9 @@ def main():
     if not saved.is_file():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
-    if config.get('dsh_version') != lock['version']:
-        parser.error(f'Run python benchforge_app.py dsh-setup to build DSH {lock["version"]} and refresh the presets')
+    if (config.get('dsh_version') != lock['version'] or
+            'dsh_revision' in config and config['dsh_revision'] != pinned_dsh_revision(lock)):
+        parser.error(f'Run python benchforge_app.py dsh-setup to build the pinned DSH {lock["version"]} and refresh the presets')
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
     upgrading = model_config.is_file() and benchforge_app.settings.read_object(model_config).get(
@@ -135,11 +141,13 @@ def main():
     env['PYTHONPATH'] = os.pathsep.join(paths)
     try:
         port = args.port if args.port is not None else benchforge_app.configured_web_port()
+        workspace = benchforge_app.configured_default_workspace()
     except ValueError as error:
         parser.error(str(error))
     from dsh.presets.build_preset import refresh_model_patches
+    from dsh.presets.profile_migration import insert_host_dependencies
     if not args.config_synced or args.check_config:
-        refresh_model_patches(preset, model_config)
+        refresh_model_patches(preset, model_config, refresh_host=insert_host_dependencies)
     try:
         run([python,ROOT/'src/dsh/check_config.py','--preset',preset],cwd=ROOT,env=env)
     except subprocess.CalledProcessError as error:
@@ -147,8 +155,15 @@ def main():
     if args.check_config:
         return
     # An overlay and isolated home keep official presets and other installations untouched.
-    command=[config['node'],str(Path(config['dsh_root'])/'apps/cli/lib/bin.js'),
-             '--profile','web','--patch',str(preset),'--host','127.0.0.1','--port',str(port)]
+    command = [config['node'], str(Path(config['dsh_root']) / 'apps/cli/lib/bin.js'),
+               '--profile', 'web', '--patch', str(preset)]
+    if workspace is not None:
+        workspace_patch = generated / 'workspace.local.yml'
+        benchforge_app.settings.write(workspace_patch, [
+            {'id': 'workspace-controller', 'config': {'defaultWorkspace': str(workspace)}},
+        ])
+        command.extend(['--patch', str(workspace_patch)])
+    command.extend(['--host', '127.0.0.1', '--port', str(port)])
     if args.no_open:
         command.append('--no-open')
     run(command,cwd=ROOT,env=env)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createDeliveryReview, pendingCapture, sourceKind } from '../plugin/delivery_review.mjs';
+import { createDeliveryReview, pendingCapture, sourceKind } from '../tools/scene/delivery_review.mjs';
 
 const captureEvents = (id = 'c1', run = 'sf_example') => [
   { type: 'turn/start', data: { turn: 1 } },

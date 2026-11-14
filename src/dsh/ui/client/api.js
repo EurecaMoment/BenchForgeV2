@@ -1,3 +1,17 @@
+export async function requestWorkbench(params, {body, signal} = {}) {
+  const response = await fetch('api/benchforge/workbench?' + new URLSearchParams(params), {
+    cache: 'no-store', credentials: 'same-origin', signal,
+    ...(body === undefined ? {} : {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body),
+    }),
+  });
+  const value = await response.json();
+  if (!response.ok) throw new Error(value.error || 'HTTP ' + response.status);
+  return value;
+}
+
 export function createApiHooks({React}) {
   function useRecord(params, revision, interval = 0, active = true) {
     const key = params ? new URLSearchParams(params).toString() : '';
@@ -13,9 +27,7 @@ export function createApiHooks({React}) {
         setRecord((old) => old.key === key ? {...old, loading: !old.value, refreshing: true} :
           {key, value: null, error: null, loading: true, refreshing: true});
         try {
-          const response = await fetch('api/benchforge/workbench?' + key, {cache: 'no-store', signal: controller.signal});
-          const value = await response.json();
-          if (!response.ok) throw new Error(value.error || 'HTTP ' + response.status);
+          const value = await requestWorkbench(key, {signal: controller.signal});
           if (!stopped) setRecord((old) => {
             if (value.scenes && old.key === key && old.value?.scenes) {
               const prior = old.value.scenes.runs || [];

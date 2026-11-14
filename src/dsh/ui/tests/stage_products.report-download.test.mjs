@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {createWorkbenchHandler} from '../stage_products.js';
+import {createWorkbenchHandler} from '../../host/workbench/stage_products.js';
 
 test('Markdown download serves the saved public report only to its conversation', async () => {
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'benchforge-report-download-'));

@@ -1,5 +1,5 @@
 import Schema from '@deepseek-ai/schemastery';
-import {canonicalSceneToolName} from '../plugin/scene_tool_names.mjs';
+import {canonicalSceneToolName} from '../shared/scene_tool_names.mjs';
 
 export const name = 'benchforge-subagent-policy';
 export const inject = ['systemPrompt', 'tools'];

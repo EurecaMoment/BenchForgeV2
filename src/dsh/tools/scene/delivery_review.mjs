@@ -1,4 +1,4 @@
-import {canonicalSceneToolName, captureObservationNames, sceneToolNames} from './scene_tool_names.mjs';
+import {canonicalSceneToolName, captureObservationNames, sceneToolNames} from '../../shared/scene_tool_names.mjs';
 
 // A capture receipt closes a rendering job, not the user's scene request.
 // Review a new capture, or the latest one explicitly resumed in a later turn.

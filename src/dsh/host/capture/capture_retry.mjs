@@ -14,7 +14,7 @@ export function createCaptureRetry({api, serviceConfig, policyPython}) {
     }
     signal?.throwIfAborted();
     return new Promise((resolve, reject) => {
-      const child = spawn(policyPython, ['-B', fileURLToPath(new URL('../task_support/capture_retry.py', import.meta.url)),
+      const child = spawn(policyPython, ['-B', fileURLToPath(new URL('../../task_support/capture_retry.py', import.meta.url)),
         '--config', serviceConfig], {stdio: ['pipe','pipe','pipe'], signal, windowsHide: true});
       let output = '', errors = '', timedOut = false;
       const timer = setTimeout(() => {timedOut = true;child.kill();}, 20000);

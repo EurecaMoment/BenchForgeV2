@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {createPreparationHandler} from '../plugin/preparation.mjs';
+import {createPreparationHandler} from '../tools/scene/preparation.mjs';
 
 test('preparation binds native parent and saved plan before any delegation', async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sf-preparation-tool-'));
@@ -13,15 +13,15 @@ test('preparation binds native parent and saved plan before any delegation', asy
   const plan = path.join(operation, 'plan.json');
   await fs.writeFile(plan, '{}');
   await fs.writeFile(path.join(operation, 'request.json'), JSON.stringify({context: {session_id: 'parent'}}));
-  const calls = [], ctx = {};
-  const handler = createPreparationHandler({ctx, createController: config => ({start: async (request, signal) => {
-    calls.push({config, request, signal}); return {state: 'accepted', acceptedCount: 1};
-  }})});
+  const calls = [];
+  const handler = createPreparationHandler(workspace => ({start: async (request, signal) => {
+    calls.push({workspace, request, signal}); return {state: 'accepted', acceptedCount: 1};
+  }}));
   const signal = new AbortController().signal;
   const exec = {signal, agent: {id: 'parent', session: {header: {id: 'parent', cwd: workspace}}}};
   const args = {workspace, plan_path: plan, batch_key: 'repair', tasks: [{key: 'annotations'}]};
   assert.equal((await handler(args, exec)).acceptedCount, 1);
-  assert.deepEqual(calls[0], {config: {ctx, workspacePath: await fs.realpath(workspace), batchSize: 3},
+  assert.deepEqual(calls[0], {workspace: await fs.realpath(workspace),
     request: {parentId: 'parent', planPath: await fs.realpath(plan), batchKey: 'repair', tasks: args.tasks}, signal});
   const other = {...exec, agent: {id: 'other', session: {header: {id: 'other', cwd: workspace}}}};
   await assert.rejects(handler(args, other), /not associated/);

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { inspectDeliveryFiles, createDeliveryFileReview, fileReviewKind } from '../plugin/delivery_files.mjs';
+import { inspectDeliveryFiles, createDeliveryFileReview, fileReviewKind } from '../tools/scene/delivery_files.mjs';
 
 const signal = new AbortController().signal;
 test('renamed delivered images are reported and metadata repair clears findings without editing source', async () => {

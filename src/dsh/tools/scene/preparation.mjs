@@ -35,11 +35,10 @@ export async function savedPreparationPlan(workspace, planPath, agent, signal) {
   throw new Error('The saved plan is not associated with the current parent conversation');
 }
 
-export function createPreparationHandler({ctx, batchSize = 3, revision = '', createController}) {
+export function createPreparationHandler(preparation) {
   return async (args, exec) => {
     const scope = await savedPreparationPlan(args.workspace, args.plan_path, exec.agent, exec.signal);
-    const factory = createController || (await import(new URL('../ui/synthesis_sessions.js' + revision, import.meta.url))).createSynthesisSessions;
-    return factory({ctx, workspacePath: scope.workspacePath, batchSize}).start({
+    return preparation(scope.workspacePath).start({
       parentId: scope.parentId, planPath: scope.planPath, batchKey: args.batch_key, tasks: args.tasks,
     }, exec.signal);
   };

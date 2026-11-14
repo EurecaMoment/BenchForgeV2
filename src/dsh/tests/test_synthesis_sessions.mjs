@@ -6,8 +6,8 @@ import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
-import {apply as applySubagentPolicy} from '../presets/subagent_policy.mjs';
-import {createSynthesisSessions} from '../ui/synthesis_sessions.js';
+import {apply as applySubagentPolicy} from '../tools/subagent_policy.mjs';
+import {createSynthesisSessions} from '../host/sessions/synthesis_sessions.js';
 
 async function fixture(t, batchSize = 3) {
   const temporaryRoot = await fs.realpath(os.tmpdir());
