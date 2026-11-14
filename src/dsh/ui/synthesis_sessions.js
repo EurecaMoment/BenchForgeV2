@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {sceneToolNames} from '../plugin/scene_tool_names.mjs';
+import {readChildCatalog} from './parallel_sessions.js';
 
 const queues = new Map();
 const nativeIdleProbes = new WeakMap();
@@ -10,10 +10,6 @@ const NATIVE_ACTIVITY_PROBE_MS = 50;
 const SCHEMA = 'benchforge.synthesis-sessions/v1';
 const FACING_REFERENCE = fileURLToPath(new URL('../task_support/native_asset_facing.json', import.meta.url));
 const FACING_HELPER = fileURLToPath(new URL('../task_support/native_asset_facing.py', import.meta.url));
-const PARENT_TOOLS = ['pipeline_plan', 'pipeline_run', 'pipeline_repair_plan', 'pipeline_evaluate',
-  'stage_review', 'spatial_export', ...['benchforge_run', 'benchforge_capture', 'benchforge_refine',
-    'benchforge_extend', 'benchforge_retry', 'benchforge_cancel', 'benchforge_task_code',
-    'benchforge_prepare'].flatMap(sceneToolNames)];
 const PERSONA = `You are a BenchForge preparation worker for one self-contained artifact assignment. Read the supplied frozen plan, contracts and relevant saved evidence. Write only inside the assigned output directory. Start file operations by changing to that directory and using explicit paths; preserve parent plans, scene selections, runner state, accepted artifacts and other workers' files.
 At the start of file work, batch-copy the supplied source scripts or programs into your directory and save manifest.json with status preparing, the working artifact paths and known missing inputs. Use the supplied source paths instead of rediscovering the workspace or checking the whole production chain first. On recovery, preserve saved edits and continue the existing working copies. If a source is actually missing, record its exact path and continue the already determined scope; when no source was supplied, save the known design or script scaffold and preparing manifest first.
 Apply the smallest concrete patch. Locate and batch-read only the functions or sections needed for it, then save known changes as you work. For scene design, persist the title, descriptive summary and program draft before investigating unresolved structure. If an exact input or required structure remains unknown, state the specific question or missing field in the manifest and hand off the completed scope; do not delay all saved preparation while trying to validate the entire production pipeline.
@@ -194,16 +190,6 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
     }
   }
 
-  function parentToolDeny(parent) {
-    const tools = parent.ctx?.get('tools') || get('tools');
-    if (typeof tools?.get !== 'function') throw new SynthesisError('The parent public ToolRegistry is unavailable', 503);
-    // ToolRuntime.get(name, scope) is the public, presentation-independent lookup.
-    // BenchForge registers prefixed names; recognize an installed legacy alias
-    // only when that exact definition is visible to this parent.
-    return PARENT_TOOLS.flatMap(name => /^(?:benchforge|spatialforge)_/.test(name) ? [name] : ['benchforge_' + name, name])
-      .filter(name => tools.get(name, parent)?.name === name);
-  }
-
   async function preparationReasoning(parent, signal) {
     const llm = parent.ctx?.get('llm') || get('llm');
     if (typeof llm?.resolveModelInfo !== 'function') throw new SynthesisError('The parent model capability registry is unavailable', 503);
@@ -238,7 +224,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
     const cwd = await directory(nonempty(parentHeader?.cwd, 'parent cwd'), 'parent cwd');
     if (!inside(root, cwd)) throw new SynthesisError('The parent Agent belongs to another workspace', 403);
     const service = get('subagents');
-    if (!service?.startContinuable || !service?.listChildren) throw new SynthesisError('Native subagent service is unavailable', 503);
+    if (!service?.startActivation) throw new SynthesisError('Native subagent service is unavailable', 503);
     return {root, parent, service, dir: await recordDirectory(root)};
   }
   const fileOf = (dir, batchKey) => path.join(dir, 'batch-' + Buffer.from(nonempty(batchKey, 'batchKey'), 'utf8').toString('base64url') + '.json');
@@ -258,11 +244,11 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
       return {absent: ['SESSION_QUERY_SESSION_NOT_FOUND', 'session/not-found'].includes(error.code)};
     }
   }
-  async function reconcile(record, service, signal) {
+  async function reconcile(record, signal) {
     const uncertain = record.tasks.filter(task => ['starting', 'failed'].includes(task.state));
     if (!uncertain.length) return false;
     let changed = false;
-    const catalog = await service.listChildren(record.parentId, signal);
+    const catalog = await readChildCatalog(get('sessionQuery'), record.parentId, signal);
     for (const task of uncertain) {
       const entry = catalog.find(child => child.id === task.childId);
       const observed = await header(task.childId, signal);
@@ -339,7 +325,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
             createdAt: Date.now(), tasks: tasks.map(task => ({...task, childId: randomUUID(), state: 'pending'}))};
           await write(recordPath, record);
         }
-        await reconcile(record, service, signal);
+        await reconcile(record, signal);
         await write(recordPath, record);
         const active = await occupied(dir);
         const slots = Math.max(0, batchSize - active);
@@ -350,7 +336,6 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
             ? active >= batchSize ? `${active} preparation tasks occupy this workspace's batch budget (${batchSize})`
               : 'A reserved child exists but initial inbox acceptance is not yet confirmed' : undefined);
         }
-        const toolDeny = parentToolDeny(parent);
         const reasoningSelection = await preparationReasoning(parent, signal);
         record.reasoningSelection = reasoningSelection;
         for (const task of ready) {
@@ -362,13 +347,13 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
         await Promise.all(ready.map(async task => {
           try {
             signal?.throwIfAborted();
-            const result = await service.startContinuable({provider: 'spawn', childId: task.childId, label: task.label,
-              request: {parent, prompt: [{type: 'text', text:
+            const result = await service.startActivation({provider: 'spawn', childId: task.childId, label: task.label,
+              parent, delivery: 'parent', prompt: [{type: 'text', text:
+                PERSONA + '\n\n' +
                 (planPath ? `Saved frozen plan: ${planPath}\nRead this saved plan for the assigned preparation.\n\n` : '') +
                 `Assigned output directory: ${task.outputDirectory}\nChange to this directory before file operations. All writes must stay there.\n\n${task.prompt}`}],
-                ...(reasoningSelection.selectedEffort ? {agentOptions: {reasoningEffort: reasoningSelection.selectedEffort}} : {}),
-                maxDepth: 1, persona: PERSONA,
-                ...(toolDeny.length ? {toolFilter: {deny: toolDeny}} : {})}, signal: signal || new AbortController().signal});
+              ...(reasoningSelection.selectedEffort ? {agentOptions: {reasoningEffort: reasoningSelection.selectedEffort}} : {}),
+              maxDepth: 1, signal: signal || new AbortController().signal});
             if (result.childId !== task.childId || typeof result.messageId !== 'string' || !result.messageId) {
               throw new Error('Native startup returned an incomplete identity receipt');
             }
@@ -381,7 +366,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
           }
           await save();
         }));
-        await reconcile(record, service, signal?.aborted ? undefined : signal);
+        await reconcile(record, signal?.aborted ? undefined : signal);
         await save();
         return receipt(record, recordPath, record.tasks.some(task => task.state === 'pending')
           ? 'Remaining preparation work is waiting for the workspace batch budget' : undefined);
@@ -389,7 +374,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
     });
   }
   async function read({parentId, batchKey}, signal) {
-    const {dir, service} = await scope(parentId, false, signal);
+    const {dir} = await scope(parentId, false, signal);
     const recordPath = fileOf(dir, batchKey);
     const value = await serialized(dir, async () => {
       const record = await json(recordPath);
@@ -398,7 +383,7 @@ export function createSynthesisSessions({ctx, workspacePath, batchSize = 3}) {
       const release = await lock(path.join(dir, '.startup.lock'));
       if (!release) return receipt(record, recordPath, 'Workspace preparation registration is in progress');
       try {
-        if (await reconcile(record, service, signal)) await write(recordPath, record);
+        if (await reconcile(record, signal)) await write(recordPath, record);
         return receipt(record, recordPath);
       } finally { await release(); }
     });

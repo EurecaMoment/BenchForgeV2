@@ -1,14 +1,25 @@
 // DSH owns the parent catalog and immutable session headers. Browser-supplied
 // session arrays never participate in this scope.
+export async function readChildCatalog(query, parentId, signal) {
+  const observation = await query.observeSession(parentId, {signal});
+  try {
+    const catalog = observation.projections?.values.subagentCatalog;
+    if (!Array.isArray(catalog)) throw new Error('The parent subagent catalog is unavailable');
+    return catalog;
+  } finally {
+    observation[Symbol.dispose]();
+  }
+}
+
 export function sessionFamilyReader(ctx) {
   const verified = new Map();
   return async (parentId, signal) => {
-    const service = ctx.get('subagents');
-    if (!service) return [];
+    const query = ctx.get('sessionQuery');
+    if (!query) return [];
     let entries;
-    try { entries = await service.listChildren(parentId, signal); }
+    try { entries = await readChildCatalog(query, parentId, signal); }
     catch (error) { if (signal?.aborted) throw error; return []; }
-    const sessions = ctx.get('sessions'), query = ctx.get('sessionQuery');
+    const sessions = ctx.get('sessions');
     // Rank the existing catalog and resident handles; never open historical
     // sessions merely to decide which eight observations to request.
     const candidates = entries.map((entry, index) => {

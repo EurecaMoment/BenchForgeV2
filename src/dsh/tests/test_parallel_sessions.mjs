@@ -5,12 +5,13 @@ import {sessionFamilyReader} from '../ui/parallel_sessions.js';
 test('parent catalog and immutable headers scope children without scanning session history', async () => {
   const calls = [], residents = new Map([['session-good', {header: {parentSession: 'session-parent'}}],
     ['session-forged', {header: {parentSession: 'session-other'}}]]);
+  const entries = [
+    {id: 'session-good', label: '标注提取器修复'}, {id: 'session-cold', label: '题目生成器修复'},
+    {id: 'session-forged', label: 'unrelated'}, {id: 'session-corrupt'}];
   const services = {
-    subagents: {listChildren: async () => [
-      {id: 'session-good', label: '标注提取器修复'}, {id: 'session-cold', label: '题目生成器修复'},
-      {id: 'session-forged', label: 'unrelated'}, {id: 'session-corrupt'}]},
     sessions: {get: (id) => residents.get(id)},
     sessionQuery: {observeSession: async (id, options) => {
+      if (id === 'session-parent') return {projections: {values: {subagentCatalog: entries}}, [Symbol.dispose]() {}};
       calls.push({id, options});
       if (id === 'session-corrupt') throw Error('unreadable');
       return {header: {parentSession: id === 'session-forged' ? 'session-other' : 'session-parent'},
@@ -27,7 +28,8 @@ test('parent catalog and immutable headers scope children without scanning sessi
   await family('session-parent');
   assert.equal(calls.filter((row) => row.id === 'session-cold').length, 1);
   residents.set('session-good', {header: {parentSession: 'session-other'}});
-  services.sessionQuery.observeSession = async () => ({
+  const observe = services.sessionQuery.observeSession;
+  services.sessionQuery.observeSession = async id => id === 'session-parent' ? observe(id) : ({
     header: {parentSession: 'session-other'}, projections: {values: {subagentTiming: {active: false}}},
     [Symbol.dispose]() {},
   });
@@ -44,8 +46,9 @@ test('more than eight children retain active residents and newest work without o
   const calls = [], residents = new Map(['session-child-10', 'session-child-11'].map((id) =>
     [id, {header: {parentSession: 'session-parent'}}]));
   const services = {
-    subagents: {listChildren: async () => entries}, sessions: {get: (id) => residents.get(id)},
+    sessions: {get: (id) => residents.get(id)},
     sessionQuery: {observeSession: async (id, options) => {
+      if (id === 'session-parent') return {projections: {values: {subagentCatalog: entries}}, [Symbol.dispose]() {}};
       calls.push({id, options});
       return {header: {parentSession: 'session-parent'},
         projections: {values: {subagentTiming: {active: id === 'session-child-11'}}}, [Symbol.dispose]() {}};

@@ -6,6 +6,7 @@ import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
+import {apply as applySubagentPolicy} from '../presets/subagent_policy.mjs';
 import {createSynthesisSessions} from '../ui/synthesis_sessions.js';
 
 async function fixture(t, batchSize = 3) {
@@ -25,17 +26,11 @@ async function fixture(t, batchSize = 3) {
   const agents = new Map([[parent.id, parent]]), sessions = new Map([[parent.id, {header: parent.session.header}]]);
   const catalog = [], calls = [], observations = [], capabilityRequests = [], modelRequests = [];
   let reasoningInfo = {efforts: [{id: 'medium', name: 'Medium'}], defaultEffort: 'max'};
-  const registered = new Set([
-    'benchforge_pipeline_plan', 'benchforge_pipeline_run', 'benchforge_pipeline_repair_plan',
-    'benchforge_pipeline_evaluate', 'benchforge_stage_review', 'benchforge_spatial_export',
-    'benchforge_run', 'benchforge_capture', 'benchforge_refine', 'benchforge_extend',
-    'benchforge_retry', 'benchforge_cancel', 'benchforge_task_code',
-  ]);
   const accept = spec => {
-    const content = spec.request.prompt;
+    const content = spec.prompt;
     assert.ok(Array.isArray(content) && content.some(block => block.type === 'text' && block.text.trim()),
       'the native initial user message must contain effective ContentBlock text');
-    const selectedEffort = spec.request.agentOptions?.reasoningEffort;
+    const selectedEffort = spec.agentOptions?.reasoningEffort;
     if (selectedEffort === undefined || reasoningInfo?.efforts?.some(effort => effort.id === selectedEffort)) {
       modelRequests.push({role: 'user', content, ...(selectedEffort ? {reasoningEffort: selectedEffort} : {})});
     }
@@ -47,22 +42,19 @@ async function fixture(t, batchSize = 3) {
   let implementation = accept;
   const services = {
     agents, sessions,
-    tools: {get: (name, scope) => { assert.equal(scope, parent); return registered.has(name) ? {name} : undefined; }},
     llm: {resolveModelInfo: async (provider, model, signal) => {
       capabilityRequests.push({provider, model, signal});
       return {provider, id: model, name: model, reasoning: reasoningInfo};
     }},
     subagents: {
-      listChildren: async id => { assert.equal(id, parent.id); return catalog; },
-      startContinuable: async spec => {
+      startActivation: async spec => {
         calls.push(spec);
-        const unknown = (spec.request.toolFilter?.deny || []).filter(name => !registered.has(name));
-        if (unknown.length) throw new Error('tools.restrict() names unknown global tools ' + unknown.join(', '));
         return implementation(spec);
       },
     },
     sessionQuery: {observeSession: async (id, options) => {
       observations.push({id, options});
+      if (id === parent.id) return {header: parent.session.header, projections: {values: {subagentCatalog: catalog}}, [Symbol.dispose]() {}};
       const value = sessions.get(id);
       if (!value) throw Object.assign(new Error('not found'), {code: 'SESSION_QUERY_SESSION_NOT_FOUND'});
       return {...value, [Symbol.dispose]() {}};
@@ -77,7 +69,7 @@ async function fixture(t, batchSize = 3) {
     return {key, label: key + ' preparation', prompt: 'Prepare ' + key + ' from the frozen plan.', outputDirectory};
   };
   const request = (tasks, batchKey = 'repair') => ({parentId: parent.id, batchKey, tasks});
-  return {temporary, workspace, parent, agents, sessions, catalog, calls, observations, registered, services, ctx,
+  return {temporary, workspace, parent, agents, sessions, catalog, calls, observations, services, ctx,
     capabilityRequests, modelRequests, factory, task, request, accept,
     setImplementation: value => { implementation = value; },
     setEfforts: ids => { reasoningInfo = {efforts: ids.map(id => ({id, name: id})), defaultEffort: 'max'}; },
@@ -105,15 +97,14 @@ test('parallel admission is idempotent and catalog acceptance survives lost rece
   assert.ok(first.tasks.every(row => !('prompt' in row)));
   for (const spec of f.calls) {
     assert.equal(spec.provider, 'spawn');
-    assert.equal(spec.request.parent, f.parent);
+    assert.equal(spec.parent, f.parent);
+    assert.equal(spec.delivery, 'parent');
     assert.equal(spec.signal, signal);
-    assert.deepEqual(spec.request.agentOptions, {reasoningEffort: 'medium'});
-    assert.equal(spec.request.maxDepth, 1);
-    assert.ok(spec.request.toolFilter.deny.includes('benchforge_pipeline_run'));
-    assert.ok(!spec.request.toolFilter.deny.includes('pipeline_run'));
-    assert.ok(spec.request.toolFilter.deny.includes('benchforge_capture'));
-    assert.ok(!('model' in spec.request.agentOptions) && !('maxTokens' in spec.request.agentOptions));
-    assert.match(spec.request.prompt[0].text, /Assigned output directory:/);
+    assert.deepEqual(spec.agentOptions, {reasoningEffort: 'medium'});
+    assert.equal(spec.maxDepth, 1);
+    assert.ok(!('toolFilter' in spec) && !('persona' in spec));
+    assert.ok(!('model' in spec.agentOptions) && !('maxTokens' in spec.agentOptions));
+    assert.match(spec.prompt[0].text, /Assigned output directory:/);
   }
   const saved = JSON.parse(await fs.readFile(first.recordPath, 'utf8'));
   for (const row of saved.tasks) { row.state = 'starting'; delete row.messageId; }
@@ -164,31 +155,20 @@ test('typed rejection retries its reserved identity while uncertain startup wait
   assert.equal(recovered.tasks[0].recovered, true);
 });
 
-test('real prefixed tool names and absent optional tools survive strict global-name admission', async t => {
-  const f = await fixture(t);
-  const source = await fs.readFile(new URL('../presets/tools.mjs', import.meta.url), 'utf8');
-  assert.ok(source.includes('name:`benchforge_${tool}`'), 'the tested core names must match the actual plugin registration contract');
-  const spatial = await fs.readFile(new URL('../plugin/tools.mjs', import.meta.url), 'utf8');
-  for (const name of f.registered) if (name.startsWith('benchforge_')) {
-    const coreName = name.startsWith('benchforge_pipeline_') || ['benchforge_stage_review', 'benchforge_spatial_export'].includes(name);
-    assert.ok(coreName ? source.includes(name.slice('benchforge_'.length)) :
-      spatial.includes("name:'" + name + "'") || spatial.includes("stage('" + name + "'"),
-      name + ' must exist in the actual BenchForge registration contract');
-  }
-  f.registered.delete('benchforge_pipeline_evaluate');
-  f.registered.delete('benchforge_extend');
-  f.registered.add('pipeline_plan');
-  const result = await f.factory.start(f.request([await f.task('prefixed')]));
-  assert.equal(result.acceptedCount, 1);
-  const deny = f.calls[0].request.toolFilter.deny;
-  assert.ok(deny.includes('benchforge_pipeline_plan') && deny.includes('pipeline_plan'));
-  assert.ok(deny.includes('benchforge_pipeline_run'));
-  assert.ok(!deny.includes('benchforge_pipeline_evaluate') && !deny.includes('benchforge_extend'));
-  assert.ok(deny.every(name => f.registered.has(name)));
-  f.registered.clear();
-  const empty = await f.factory.start(f.request([await f.task('without-optional')], 'without-optional'));
-  assert.equal(empty.acceptedCount, 1);
-  assert.ok(!('toolFilter' in f.calls[1].request), 'an absent optional capability must not materialize an invalid empty restriction');
+test('scoped subagent policy keeps production calls with the parent', () => {
+  const parent = {session: {header: {}}};
+  const child = {session: {header: {origin: 'subagent'}}};
+  let guard, section;
+  applySubagentPolicy({tools: {guard: value => {guard = value;}},
+    systemPrompt: {section: value => {section = value;}}},
+  {persona: 'Prepare only', parentTools: ['benchforge_pipeline_run', 'benchforge_capture']});
+  assert.match(guard({agent: child, name: 'benchforge_pipeline_run'}), /parent agent/);
+  assert.match(guard({agent: child, name: 'pipeline_run'}), /parent agent/);
+  assert.match(guard({agent: child, name: 'spatialforge_capture'}), /parent agent/);
+  assert.equal(guard({agent: child, name: 'benchforge_pipeline_evaluate'}), undefined);
+  assert.equal(guard({agent: parent, name: 'benchforge_capture'}), undefined);
+  assert.equal(section.text({scope: parent}), '');
+  assert.equal(section.text({scope: child}), 'Prepare only');
 });
 
 test('preset migration removes retired delegation options and retains the production tool scope', () => {
@@ -244,14 +224,14 @@ test('preparation selects only supported effort on the route the native child ac
   assert.deepEqual(result.reasoningSelection.supportedEfforts, ['high', 'max']);
   assert.match(result.reasoningSelection.reason, /does not support low.*supported high/);
   assert.equal(result.tasks[0].reasoningSelection.selectedEffort, 'high');
-  assert.deepEqual(f.calls[0].request.agentOptions, {reasoningEffort: 'high'});
+  assert.deepEqual(f.calls[0].agentOptions, {reasoningEffort: 'high'});
   assert.equal(f.modelRequests.length, 1, 'support-aware preparation must avoid accepted-but-no-model-request failure');
   assert.match(f.modelRequests[0].content[0].text, /Prepare compatible from the frozen plan/);
   assert.equal(f.parent.options.reasoningEffort, 'max');
   f.setEfforts(['off', 'low', 'medium', 'high', 'max']);
   const supportedLow = await f.factory.start(f.request([await f.task('supported-low')], 'supported-low'));
   assert.equal(supportedLow.reasoningSelection.selectedEffort, 'low');
-  assert.deepEqual(f.calls.at(-1).request.agentOptions, {reasoningEffort: 'low'});
+  assert.deepEqual(f.calls.at(-1).agentOptions, {reasoningEffort: 'low'});
   assert.equal(f.parent.options.reasoningEffort, 'max');
   f.setEfforts(['none', 'max']);
   const lighter = await f.factory.start(f.request([await f.task('lighter')], 'lighter'));
@@ -264,12 +244,12 @@ test('preparation selects only supported effort on the route the native child ac
   f.setEfforts(['vendor-auto']);
   const opaque = await f.factory.start(f.request([await f.task('opaque')], 'opaque'));
   assert.equal(opaque.reasoningSelection.selectedEffort, 'vendor-auto');
-  assert.deepEqual(f.calls.at(-1).request.agentOptions, {reasoningEffort: 'vendor-auto'});
+  assert.deepEqual(f.calls.at(-1).agentOptions, {reasoningEffort: 'vendor-auto'});
   f.setReasoningInfo(undefined);
   const withoutControl = await f.factory.start(f.request([await f.task('no-reasoning-control')], 'no-reasoning-control'));
   assert.equal(withoutControl.reasoningSelection.selectionMode, 'not_applicable');
   assert.ok(!('selectedEffort' in withoutControl.reasoningSelection));
-  assert.ok(!('agentOptions' in f.calls.at(-1).request), 'a model without exposed reasoning control must not receive a fabricated override');
+  assert.ok(!('agentOptions' in f.calls.at(-1)), 'a model without exposed reasoning control must not receive a fabricated override');
   assert.match(withoutControl.reasoningSelection.reason, /no reasoningEffort override/);
   assert.equal(f.modelRequests.length, 6);
 });

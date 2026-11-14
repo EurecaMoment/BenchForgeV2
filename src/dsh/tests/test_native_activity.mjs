@@ -27,8 +27,8 @@ async function fixture(t) {
   const child = {id: childId, status: 'idle'};
   const agents = new Map([[parentId, parent], [childId, child]]);
   const services = {agents, sessions: new Map([[parentId, {header: parent.session.header}]]),
-    subagents: {startContinuable() { assert.fail('read must not start native work'); },
-      listChildren() { assert.fail('accepted startup needs no new catalog query'); }}};
+    subagents: {startActivation() { assert.fail('read must not start native work'); }},
+    sessionQuery: {observeSession() { assert.fail('accepted startup needs no new catalog query'); }}};
   const ctx = {get: name => services[name]};
   const directory = path.join(workspace, '.benchforge', 'synthesis-sessions');
   await fs.mkdir(directory, {recursive: true});
