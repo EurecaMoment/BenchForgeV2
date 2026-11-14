@@ -10,7 +10,7 @@ spec.loader.exec_module(catalog)
 base, spatial = catalog.base, catalog.spatial
 UI_ID = spatial.WORKBENCH_PLUGIN_ID
 LEGACY_UI_ID = spatial.LEGACY_WORKBENCH_PLUGIN_ID
-BUSINESS_PLUGINS = {'benchforge-tools', 'spatial-learning-tools', 'benchforge-scene-tools'}
+BUSINESS_PLUGINS = {'benchforge-tools', 'spatial-learning-tools', 'benchforge-scene-tools', 'tool-presentation'}
 
 
 def inserted_rows(profile):

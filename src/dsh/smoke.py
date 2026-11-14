@@ -8,7 +8,7 @@ def main():
     root = Path(__file__).resolve().parent
     node = shutil.which('node')
     if not node:
-        raise SystemExit('Install Node.js 22.19+ or 24+ to test the DSH review code')
+        raise SystemExit('Install Node.js 24.9+ to test the DSH review code')
     subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', str(root/'tests'), '-v'], check=True)
     node_tests = [*sorted((root/'tests').glob('test_*.mjs')),
                   *sorted((root/'ui'/'tests').glob('*.test.mjs'))]

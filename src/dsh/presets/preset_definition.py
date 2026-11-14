@@ -118,10 +118,7 @@ def configured_synthesis_tools(plugins):
 
 
 def configure_synthesis_delegation(plugins):
-    """Keep production authority with the parent without denying absent tools."""
-    available = configured_synthesis_tools(plugins)
-    aliases = {name[len('benchforge_'):]: name for name in PARENT_OWNED_SYNTHESIS_TOOLS if name.startswith('benchforge_')}
-
+    """Keep existing delegation depth and use a scoped plugin for child policy."""
     def walk(rows):
         for row in rows:
             config = row.get('config')
@@ -131,22 +128,15 @@ def configure_synthesis_delegation(plugins):
                 continue
             if config.get('provider') not in ('spawn', 'fork'):
                 continue
-            tool_filter = config.get('toolFilter') or {}
-            previous = [aliases.get(name, name) for name in tool_filter.get('deny', [])]
-            deny = [name for name in previous if name not in PARENT_OWNED_SYNTHESIS_TOOLS or name in available]
-            deny.extend(name for name in PARENT_OWNED_SYNTHESIS_TOOLS if name in available)
-            agent_options = dict(config.get('agentOptions') or {})
-            agent_options.pop('maxTokens', None)
-            agent_options.pop('reasoningEffort', None)
-            config.update(backgroundMode='continuable', maxDepth=1, persona=SYNTHESIS_WORKER_PERSONA,
-                          agentOptions=agent_options)
-            resolved_filter = {key: value for key, value in tool_filter.items() if key != 'deny'}
-            if deny:
-                resolved_filter['deny'] = list(dict.fromkeys(deny))
-            if resolved_filter:
-                config['toolFilter'] = resolved_filter
-            else:
-                config.pop('toolFilter', None)
+            for field in ('persona', 'toolFilter', 'backgroundMode'):
+                config.pop(field, None)
+            agent_options = config.get('agentOptions')
+            if isinstance(agent_options, dict):
+                agent_options.pop('maxTokens', None)
+                agent_options.pop('reasoningEffort', None)
+                if not agent_options:
+                    config.pop('agentOptions')
+            config['maxDepth'] = 1
 
     walk(plugins)
 
@@ -168,7 +158,7 @@ def workbench_entry(python, service_config, *, package_imports=False):
     return {
         'id': WORKBENCH_PLUGIN_ID,
         'name': '@eurecamoment/benchforge-dsh/benchforge-ui' if package_imports
-                else str(DSH / 'ui/stage_products.js'),
+                else (DSH / 'ui/stage_products.js').as_uri(),
         'config': {
             'productionConfig': base.config_reference(service_config, package_imports),
             'productionPython': str(python),
@@ -191,12 +181,19 @@ def build(sources, dsh_root, python, service_config, *, config_path=None,
         learning_config['configPath'] = base.config_reference(config_path, package_imports)
     plugins.append({'id': 'spatial-learning-tools',
                     'name': '@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports
-                            else str(DSH / 'presets/tools.mjs'),
+                            else (DSH / 'presets/tools.mjs').as_uri(),
                     'config': learning_config})
     plugins.append({'id': 'benchforge-scene-tools',
-                    'name': '@eurecamoment/benchforge-dsh/benchforge-scene-tools' if package_imports else str(DSH / 'plugin/tools.mjs'),
+                    'name': '@eurecamoment/benchforge-dsh/benchforge-scene-tools' if package_imports
+                            else (DSH / 'plugin/tools.mjs').as_uri(),
                     'config': {'serviceConfig': base.config_reference(service_config, package_imports),
                                'policyPython': str(python)}})
+    plugins.append({
+        'id': 'benchforge-subagent-policy',
+        'name': '@eurecamoment/benchforge-dsh/subagent-policy' if package_imports
+                else (DSH / 'presets/subagent_policy.mjs').as_uri(),
+        'config': {'persona': SYNTHESIS_WORKER_PERSONA, 'parentTools': sorted(configured_synthesis_tools(plugins))},
+    })
     entries = [preset]
     if with_ui:
         entries.append(workbench_entry(python, service_config, package_imports=package_imports))

@@ -1,5 +1,12 @@
 {
   "config_version": 3,
+  "dsh": {
+    "repository": "https://github.com/EurecaMoment/deepseek-harness4BenchForge.git",
+    "path": "third_party/deepseek-harness4BenchForge",
+    "version": "0.2.2-rc.3",
+    "node": ">=24.9.0",
+    "package_manager": "pnpm@11.28.5"
+  },
   "web": {
     "port": 3081
   },

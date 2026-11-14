@@ -56,25 +56,32 @@ def main():
         if not service_config.is_file():
             parser.error(f'BenchForge configuration not found: {service_config}. '
                          'Run python benchforge_app.py init, or pass --benchforge-config with the actual file path.')
+    example_config = ROOT / 'config/benchforge.example.json'
+    lock = benchforge_app.settings.read_object(example_config)['dsh']
     state=ROOT/'.benchforge'
     state.mkdir(exist_ok=True)
     saved=state/'runtime.json'
     environment=ROOT/'.venv'
     python=environment/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
     if args.command=='setup':
-        lock=json.loads((ROOT/'third_party/dependencies.json').read_text(encoding='utf-8'))['dsh']
         node=shutil.which('node')
         if not node:
-            parser.error('Install Node.js 22.19+ or 24+ first: https://nodejs.org/')
+            parser.error(f'Install Node.js {lock["node"]} first: https://nodejs.org/')
         version=subprocess.check_output([node,'--version'],text=True).strip().lstrip('v')
-        major,minor=map(int,version.split('.')[:2])
-        if not ((major==22 and minor>=19) or major>=24):
+        installed_node = tuple(map(int, version.split('-', 1)[0].split('.')))
+        minimum_node = tuple(map(int, lock['node'].removeprefix('>=').split('.')))
+        if installed_node < minimum_node:
             parser.error(f'Node {version} is unsupported; DSH requires {lock["node"]}')
         dsh=(args.dsh_root or ROOT/lock['path']).resolve()
         cli = dsh/'apps/cli/lib/bin.js'
-        runtime = {'dsh_root': str(dsh), 'node': node}
         if not args.dsh_root:
-            run(['git', 'submodule', 'update', '--init', '--recursive', '--depth', '1', '--', lock['path']], cwd=ROOT)
+            run(['git', '-c', 'core.longpaths=true', 'submodule', 'update', '--init', '--recursive',
+                 '--depth', '1', '--', lock['path']], cwd=ROOT)
+        manifest = benchforge_app.settings.read_object(dsh / 'package.json', optional=True)
+        if manifest.get('version') != lock['version']:
+            parser.error(f'DSH at {dsh} must be version {lock["version"]}; found {manifest.get("version", "no package.json")}')
+        runtime = {'dsh_root': str(dsh), 'node': node, 'dsh_version': lock['version']}
+        if not args.dsh_root:
             revision = subprocess.check_output(['git', '-C', str(dsh), 'rev-parse', 'HEAD'], text=True).strip()
             runtime['dsh_revision'] = revision
             try:
@@ -82,17 +89,25 @@ def main():
             except (FileNotFoundError, ValueError):
                 previous = {}
             if not cli.is_file() or previous != runtime:
-                pnpm=shutil.which('pnpm')
-                command=[pnpm] if pnpm else [shutil.which('npx') or 'npx','--yes',lock['package_manager']]
+                pnpm = shutil.which('pnpm')
+                package_manager = lock['package_manager']
+                if pnpm and subprocess.check_output([pnpm, '--version'], cwd=dsh, text=True).strip() == package_manager.removeprefix('pnpm@'):
+                    command = [pnpm]
+                elif npx := shutil.which('npx'):
+                    command = [npx, '--yes', package_manager]
+                elif pnpm:
+                    command = [pnpm, 'dlx', package_manager]
+                else:
+                    parser.error(f'Install {package_manager} or npm to build DSH')
                 run([*command,'install','--frozen-lockfile'],cwd=dsh)
-                run([*command,'run','build'],cwd=dsh)
+                run([*command,'run','build:artifacts'],cwd=dsh)
         if not cli.is_file():
             parser.error('DSH checkout is not built; run pnpm install and pnpm run build in it')
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(environment)
         run([python,'-m','pip','install',str(ROOT)+'[dsh,production,research]'],cwd=ROOT)
         if not model_config.exists():
-            shutil.copyfile(ROOT/'config/benchforge.example.json',model_config)
+            shutil.copyfile(example_config,model_config)
         preset.parent.mkdir(parents=True,exist_ok=True)
         run([python,ROOT/'src/dsh/presets/build_presets.py',
              '--dsh-root',dsh,'--node',node,'--python',python,'--config',model_config,
@@ -103,6 +118,8 @@ def main():
     if not saved.is_file():
         parser.error('Run python benchforge.py setup first')
     config=json.loads(saved.read_text(encoding='utf-8'))
+    if config.get('dsh_version') != lock['version']:
+        parser.error(f'Run python benchforge_app.py dsh-setup to build DSH {lock["version"]} and refresh the presets')
     if not python.is_file():
         parser.error('The BenchForge Python environment is missing; run python benchforge.py setup first')
     upgrading = model_config.is_file() and benchforge_app.settings.read_object(model_config).get(

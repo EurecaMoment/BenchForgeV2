@@ -84,8 +84,8 @@ def set_identity(row, preset_id):
 
 
 def preset_alias_entry(*, package_imports=False):
-    name = '@eurecamoment/benchforge-dsh/preset-aliases' if package_imports else str(
-        Path(__file__).with_name('preset_aliases.mjs').resolve())
+    name = '@eurecamoment/benchforge-dsh/preset-aliases' if package_imports else Path(
+        __file__).resolve().with_name('preset_aliases.mjs').as_uri()
     return {'id': PRESET_ALIASES_PLUGIN_ID, 'name': name, 'config': {'aliases': PRESET_ALIASES.copy()}}
 
 
@@ -481,14 +481,15 @@ def compose_standard(sources, *, package_imports=False):
         return next(row for patch in sources[name] for row in patch.get('insert',[]) if row['id']=='preset-'+name)
     result=deepcopy(preset('standard'))
     plugins=result['config']['plugins']
-    presentation=deepcopy(next(p for p in preset('ptc')['config']['plugins'] if p['id']=='tool-presentation'))
-    presentation['config']['mode']='both'
-    plugins.append(presentation)
+    executor = '@eurecamoment/benchforge-dsh/tool-executor' if package_imports else Path(
+        __file__).resolve().with_name('tool_executor.mjs').as_uri()
+    plugins.append({'id': 'benchforge-tool-executor', 'name': executor})
     persistent=deepcopy(next(p for p in preset('minimal')['config']['plugins'] if p['id']=='persistent-shell'))
     for row in persistent['config']:
         if row['id'] in ('persistent-bash','persistent-pwsh'):
             shell='bash' if row['id']=='persistent-bash' else 'pwsh'
-            row['name']='@eurecamoment/benchforge-dsh/persistent-shell' if package_imports else str(Path(__file__).with_name('persistent-shell.mjs').resolve())
+            row['name'] = '@eurecamoment/benchforge-dsh/persistent-shell' if package_imports else Path(
+                __file__).resolve().with_name('persistent-shell.mjs').as_uri()
             row['config']={**row.get('config',{}),'shell':shell}
     plugins.append(persistent)
     plugins.append(deepcopy(next(p for p in preset('cordis')['config']['plugins'] if p['id']=='tool-cordis')))

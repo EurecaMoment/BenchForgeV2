@@ -423,7 +423,7 @@ def _upgrade_service_references(settings, config, generated, environment):
 
 
 def read_configuration(config, generated, server, *, overrides=None):
-    template = config / 'benchforge.example.json'
+    template = read_object(config / 'benchforge.example.json')
     path = config / 'benchforge.local.json'
     local = read_object(path, optional=True)
     local_sections = _sections(local)
@@ -460,7 +460,7 @@ def read_configuration(config, generated, server, *, overrides=None):
         _inherit_defaults(settings[name], DEPLOYMENT_DEFAULTS[name])
         registry[name] = settings[name]
     if version != CONFIG_VERSION and 'providers' not in registry:
-        token = upgrade_model_config(registry, read_object(template), environment, previous_server=settings['server'])
+        token = upgrade_model_config(registry, template, environment, previous_server=settings['server'])
         if token:
             credentials['inference_token'] = text_value(token, 'legacy inference token')
     registry.setdefault('providers', {})
@@ -475,6 +475,7 @@ def read_configuration(config, generated, server, *, overrides=None):
     if mode not in ('production', 'exploration'):
         raise ValueError('server.execution_mode must be production or exploration')
     registry['config_version'] = CONFIG_VERSION
+    registry['dsh'] = template['dsh']
     validate_providers(registry)
     return registry, local, credentials, environment
 

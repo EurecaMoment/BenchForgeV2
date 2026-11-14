@@ -115,7 +115,7 @@ launcher. Configure the DSH model, inference gateway and capture endpoint in
 
 ## Install and configure
 
-Use DSH `0.1.7-rc.1` with Node `^22.19.0 || >=24`. The manifest pins the API version
+Use the DSH `0.2.2-rc.3` fork pinned by BenchForge with Node `>=24.9.0`. The manifest pins the API version
 verified for these adapters; upgrade the pins together after testing against the
 target Harness. A linked checkout shares the running Harness packages through
 the public peer dependencies. Standalone tests use the matching dev dependencies.
@@ -197,8 +197,8 @@ session isolation, cancellation and disposal. Legacy `dshRoot` is accepted but
 no longer participates in runtime imports.
 
 The checked-in bundle presets are composed from the public preset exports in
-DSH `0.1.7-rc.1`. It copies the standard interaction capabilities, adds PTC in
-`both` mode, the owner-scoped persistent shells and Cordis tools, then adds the
+DSH `0.2.2-rc.3`. It copies the standard interaction capabilities and mounts a
+tool executor for both direct calls and `run_code`. It adds persistent shells and Cordis tools, then adds the
 selected business plugins. Static configuration fields are validated by their plugin
 schemas. The bundle ships no weights, credentials, backend executable or model
 service configuration.

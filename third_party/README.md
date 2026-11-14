@@ -54,6 +54,6 @@ git submodule update --init --recursive --depth 1 -- third_party/FastSAM3
 升级某一个库时，在该子模块内检出需要的提交，再从主仓库提交该目录的版本指针。
 普通 `git submodule update --init --recursive` 恢复主仓库记录的版本，不会自动追踪上游最新版本。
 
-`benchforge_app.py dsh-setup` 会初始化并构建 DSH 子模块。首次接入的提交对应官方
-`dsh-v0.1.7-rc.1`。后续在 fork 提交 DSH 改动，再更新 BenchForge 的子模块指针。
-已安装但仍引用旧 `deepseek-harness/` 路径的实例，重新运行 `dsh-setup` 切换到 fork。
+`benchforge_app.py dsh-setup` 会初始化并构建 DSH 子模块。当前版本为 `0.2.2-rc.3`，
+来源和构建要求见 [`config/benchforge.example.json`](../config/benchforge.example.json) 的 `dsh`。
+升级 fork 时同时更新子模块指针与配置版本，并重新运行 `dsh-setup`。

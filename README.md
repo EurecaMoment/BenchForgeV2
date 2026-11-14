@@ -108,7 +108,7 @@ CI checks installation and integration on Windows and Linux with Python 3.10 and
 | --- | --- | --- |
 | Git | **2.26 或更新**，DSH 安装脚本有此要求 | `git --version` |
 | Python | 完整部署用 3.11、3.12 或 3.13，并包含 venv/ensurepip | `python3.11 --version` |
-| Node.js / npm | Node 22.19+ 或 24+；建议 24 LTS | `node --version`、`npm --version` |
+| Node.js / npm | Node 24.9 或更新 | `node --version`、`npm --version` |
 | Docker Engine / Compose | 当前用户可使用 Docker；Compose v2 支持 `--wait` | `docker info`、`docker compose version` |
 | 系统工具 | `bash`、`ss`、`curl`、`setsid`、C/C++ 编译工具 | `command -v bash ss curl setsid cc make` |
 | bubblewrap | 执行隔离任务代码时使用；基础页面验收不调用它 | `command -v bwrap` |
@@ -222,6 +222,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 
 | 配置键 | 用途 |
 | --- | --- |
+| `dsh` | 从配置模板同步的 DSH fork、子模块路径、版本和构建要求。实际提交由 Git 子模块指针锁定。 |
 | `web.port` | DSH Web 端口。可用 `BENCHFORGE_WEB_PORT` 临时覆盖。 |
 | `server` | 本机 BenchForge API 端口、对客户端公开的服务地址、产物目录、场景策略和认证环境变量名。 |
 | `database` | PostgreSQL 端口、Compose 项目名和密码环境变量名。复用外部数据库时设置 `url` 或 `url_env`。 |
@@ -241,7 +242,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 .venv/bin/python benchforge_app.py dsh-setup
 ```
 
-此命令初始化 `third_party/deepseek-harness4BenchForge/` 子模块，构建 BenchForge 提交锁定的 DSH 版本，
+此命令初始化 `third_party/deepseek-harness4BenchForge/` 子模块，构建配置中注明的 DSH `0.2.2-rc.3`，
 然后按本机配置生成含两个预设和工作台插件的
 `config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
@@ -255,7 +256,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
 
 `benchforge.py setup` 默认使用本实例的 `config/generated/benchforge-client.local.json`。
-首次从旧版升级时重新执行 `dsh-setup` 以更新预设。已有手工模型配置时先备份本地 YAML。
+从旧版升级时先重新执行第 2 节的 `npm ci --prefix src/dsh`，再运行 `dsh-setup` 以更新预设。已有手工模型配置时先备份本地 YAML。
 DSH 本身默认通过锁定的 pnpm 版本安装；不需要复制另一部署的 DSH。
 
 如果此步骤在下载 DSH 时出现 `unexpected eof`、`SSL_read` 或 `schannel` 连接错误，

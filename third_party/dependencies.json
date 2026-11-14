@@ -1,10 +1,4 @@
 {
-  "dsh": {
-    "path": "third_party/deepseek-harness4BenchForge",
-    "license": "MIT",
-    "node": "^22.19.0 || >=24.0.0",
-    "package_manager": "pnpm@11.7.0"
-  },
   "provider_submodules": {
     "FastTrellis2": {
       "path": "third_party/FastTrellis2",
