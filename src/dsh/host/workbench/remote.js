@@ -62,10 +62,7 @@ function registerWorkbenchRemote(ctx, typert, dispatch) {
     }
     async call(method, query, body, signal) {
       if (this.ctx.invocation?.peer.principal.kind !== "owner") {
-        throw new RemoteError("remote-access/denied", "Workbench access requires the host owner", {
-          action: "benchforgeWorkbench/" + method,
-          reason: "no-allow"
-        });
+        throw new RemoteError("gateway/bad-request", "Workbench access requires the host owner", {});
       }
       const url = new URL("http://benchforge.invalid");
       url.search = new URLSearchParams(query).toString();
