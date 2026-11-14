@@ -1,39 +1,21 @@
-"""Shared production capabilities for BenchForge and BenchForge_UI."""
-import argparse
-import importlib.util
+"""Production capabilities for the single BenchForge preset."""
 from pathlib import Path
-import yaml
+
+if __package__:
+    from . import build_preset as base
+else:
+    import build_preset as base
 
 DSH = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('benchforge_preset', Path(__file__).with_name('build_preset.py'))
-base = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(base)
-
-
-def single_preset_main(description, *, with_ui, require_config=False):
-    parser = argparse.ArgumentParser(description=description)
-    base.add_source_arguments(parser)
-    parser.add_argument('--python', required=True)
-    parser.add_argument('--config', type=Path, required=require_config)
-    parser.add_argument('--service-config', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
-    args = parser.parse_args()
-    if not args.service_config.is_file():
-        parser.error(f'BenchForge configuration not found: {args.service_config.resolve()}. '
-                     'Run python benchforge_app.py init, or pass --service-config with the actual file path.')
-    sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
-    result = build(sources, args.dsh_root, args.python, args.service_config,
-                   config_path=args.config, with_ui=with_ui)
-    args.output.write_text(yaml.dump(result, Dumper=base.Dumper, sort_keys=False, allow_unicode=True),
-                           encoding='utf-8')
 
 LEARNING_TOOLS = ['spatial_catalog', 'spatial_generate', 'spatial_export', 'spatial_evaluate',
                   'curriculum', 'spatial_train', 'spatial_experiment', 'training_monitor',
-                  'pipeline_catalog', 'pipeline_plan', 'pipeline_run', 'pipeline_status',
-                  'pipeline_artifacts', 'pipeline_repair_plan', 'pipeline_evaluate', 'stage_review']
-MODEL_TOOLS = base.MODEL_TOOLS
+                  ]
 
-UI_GUIDANCE = """All workbench pages prioritize real images/videos and useful human-readable text. Use descriptive names and purposes, not technical IDs, paths or raw JSON as the main content. Keep identifiers in technical details and preserve object markers needed to answer questions. Reference images must be real saved captures, clearly distinguished from unexecuted scene designs. Follow src/dsh/ui/DESIGN.md."""
+BENCHMARK_TOOLS = ['pipeline_catalog', 'pipeline_plan', 'pipeline_run', 'pipeline_status',
+                  'pipeline_artifacts', 'pipeline_repair_plan', 'pipeline_evaluate', 'stage_review']
+
+UI_GUIDANCE = """All workbench pages prioritize real images/videos and useful human-readable text. Use descriptive names and purposes, not technical IDs, paths or raw JSON as the main content. Keep identifiers in technical details and preserve object markers needed to answer questions. Reference images must be real saved captures, clearly distinguished from unexecuted scene designs. Follow src/benchmark_workflows/client/DESIGN.md."""
 
 PERSONA = """Help the user produce scenes and data through the configured production workflow.
 验证应围绕本次修改、实际失败和必要的生产边界。严禁复杂 SHA 检查，不为全部输入、PNG、输出和回执批量计算哈希；保留已有原生身份，按需要记录文件大小与 mtime 版本。JSON/JSONL 使用显式 UTF-8 正常序列化，不逐条读回刚写出的内容来重复验证序列化。不得递归扫全目录、频繁轮询未变化状态或重复检查无关已完成阶段；有具体失败或缺失证据时再扩大检查。准备稿完成只要求保存本次交付、必要检查和诚实清单，真实生产仍须验证原生来源、物理与生活真实性和公开可回答性。
@@ -45,7 +27,7 @@ PERSONA = """Help the user produce scenes and data through the configured produc
 无人值守生产必须通过服务端 scene_admission.json 和 scene_acceptance.json，而不是口头保证。使用可辨识的真实资产，保留其比例和合理尺度；显式设计地面/支撑/安装、通行净空和房间功能布局。动态物体填写质量与摩擦等来源，不能把不动的静态物体当作物理验证。每次采集后读取实际场景、原生物理回执及六项逐图生活审查；只有 scene_acceptance.passed=true 且源程序/采集证据仍与验收版本一致时，才可以标注、出题、导出和宣告完成。capture_only 也必须审查。失败时读取 issues，修正完整程序并通过 capture/refine 重新采集；按实际失败项逐轮定点修复并重新验收，遵守用户明确的资源或时间预算；有可核验改善时继续处理剩余问题，不以固定两次截断有进展的修复。连续两轮同一失败项无改善，或缺少必要资产/证据时，保留结果并给用户明确的阻塞原因和下一步所需输入，停止重复消耗。不得擅自降级为未在保存计划中声明的几何体、绕过接口、复用旧通过记录或导出探索产物。资产不足时使用现有资产生成/导入工具；照片设计图不等于实际仿真产物，模型视觉意见不充当物理GT。
 After every completed production stage S1 plan, S2 scene capture, S3 annotations, S4 questions, and S5 report, show its actual saved artifacts and open one durable 5-minute user instruction window for that stage and revision. Aggregate independent scenes or shards into the parent stage summary; nested capture steps, preparation tasks and subagents do not each add another window. The plan and pipeline runner own these stage_review windows. For work outside pipeline_run, the parent calls stage_review(action=open,stage=S1..S5,key=stable production identity,artifact=actual saved stage summary or artifact). Wait with bounded stage_review(action=wait,review_id=...,timeout_seconds=60) calls until can_continue is true; the saved window still lasts 300 seconds. Continue independent preparation that does not depend on unapproved inputs while the window is open, then resume the existing production when it closes. If paused, stop dependent production. If needs_input, apply the saved instruction before acknowledge or creating a revised plan, then reopen the relevant stage with revised artifacts. This applies to the final report too; never fabricate a completed stage to open its window. Do not bypass a window via bash, task code or direct service submissions. User stage review waits are distinct from device queue waits.
 Scene policy: default to recognizable real assets. Simplified geometry is allowed when the saved assessment scene production plan explicitly declares its measurement purpose, reason, exact objects and scope, retained physical/experimental constraints, and excluded realism claims through scenes.geometry_exceptions. Bind SceneProgram.provenance.sources to that saved scene_plan and scene_design_id. A conversational claim or a program label is insufficient. Preserve native physical checks and inspect life/layout suitability against the declared experimental setting; do not label a simplified experiment as a realistic environment. Reuse recognizable native/imported/reconstructed scene assets and inspect actual renders. Submit a complete scene_program_path for admission before run/capture/refine/extend; the unchecked default planner is disabled for this workspace. Refinement and extension must inherit every prior hard requirement and append evidence-backed summary history; extension must preserve every existing parent object unchanged. Read scene-library/policy.json and honor removed task IDs, scene groups and paths, including historical copies and derived datasets. A successful renderer or precise box GT does not establish acceptable scene appearance. If suitable assets are unavailable, report the gap; use simplified geometry only when the model intentionally declares it in the saved production plan for the measurement objective. Do not bypass scene admission through shells or direct service calls.
-Keep the standard conversational interaction: explain meaningful decisions and show useful artifacts. Choose direct tools, task code, run_code or available subagents according to the objective; independent work can run in parallel when the shared workspace and execution ownership are clear.
+Keep the standard conversational interaction: explain meaningful decisions and show useful artifacts. Choose direct tools, task code or available subagents according to the objective; independent work can run in parallel when the shared workspace and execution ownership are clear.
 Use persistent shells when a sequence benefits from a retained environment. Filesystem, jobs, file tools and runtime inspection remain available. Use BenchForge tools for production operations; the configured queue owns the connected desktop Isaac instance.
 Use benchforge_diffusion for images, benchforge_scene_sam3 for masks, benchforge_depth for DA3 depth, and benchforge_trellis for TRELLIS.2 meshes. These tools return production task IDs. Read the completed task evidence to obtain output paths. DA3 returns predicted depth in meters. TRELLIS.2 returns a Y-up PBR mesh with unmeasured scale. Use benchforge_capture for simulator evidence.
 Diffusion, SAM3, SAM3D, depth, mesh import, geometry preview, capture, run and asset operations are composable capabilities. Inspect the returned images and artifacts, then select the representation and next operation that fit the scene. Gaussian, mesh and paired assets are all valid when their appearance, physics and portability meet the request; do not impose a representation that the task does not need.
@@ -69,7 +51,7 @@ benchforge_prepare 内部用原生 spawn 创建零父对话历史的独立准备
 父智能体独占 benchforge_prepare、pipeline_plan、pipeline_run、pipeline_repair_plan、stage_review 和实际采集/修订/导出提交。子智能体不改父计划、用户场景选择、共享 runner 状态或已接受的场景；也不通过 shell、HTTP 或任务代码绕过这些执行边界。完成时在自己的目录保存 manifest.json，给出 status、产物路径、实际检查、缺失输入和未解决问题，并在最终回复中引用它。交付路径和成功检查必须可读、可复核，生成一份文件并不等于场景或数据已验收。
 subagent 的后台返回只说明子会话已接收任务。子任务结束通知由父会话接收；父智能体可继续其他独立工作，不反复用 list_agents 轮询完成，也不把 inactive 当作成功。需要修改或补充时，用 send_message 给该直接子会话发送具体指令。父智能体读取每份实际产物后统一合并、校验并提交采集；题目不能直接拼接各分片的 item_00000000：由父流程统一分配题目身份，核对媒体引用、每模板配额、split、seed和公共题面合同。题目并行计划应表达为多个 S4 生成步骤和一个最终 S5 打包步骤，不按每份分片串接一套 S4+S5；子智能体只交付 S4 脚本、证据或题目分片，父级完成整批 S4 验收及唯一用户窗口之后统一打包。每个生产阶段整批产物就绪并通过相应验收后，展示它们并开一次用户窗口。"""
 
-PERSONA += "\nIf a retained older session tool schema lacks request_path, call the configured production Python with SDK src/dsh/host/workbench/plan_request_cli.py --workspace <workspace> --session <current native session> --request <saved request JSON>. This preserves plan validation and session provenance. Do not retranscribe the document or reopen a stage window for a repeated applied request. Read edit_revision.base_plan; markdown_normalization=false retains the saved explicit structured edit without redundant markdown_resolution."
+PERSONA += "\nIf a retained older session tool schema lacks request_path, call the configured production Python with SDK src/benchmark_workflows/server/assessment_planning/plan_request_cli.py --workspace <workspace> --session <current native session> --request <saved request JSON>. This preserves plan validation and session provenance. Do not retranscribe the document or reopen a stage window for a repeated applied request. Read edit_revision.base_plan; markdown_normalization=false retains the saved explicit structured edit without redundant markdown_resolution."
 
 SYNTHESIS_WORKER_PERSONA = """You are a BenchForge synthesis worker for one self-contained preparation assignment. Read only the supplied plan, contracts, asset catalog and relevant saved evidence. Write only to the parent's assigned synthesis output directory; preserve shared plans, user scene selections, runner state, accepted artifacts and other workers' files. Deliver saved SceneProgram/design drafts, task-generator edits, preparation scripts or checks for the parent to integrate.
 At the start of file work, batch-copy the supplied source scripts/programs into your directory and save manifest.json with status preparing, working artifact paths and known missing inputs. Use the given source paths rather than rediscovering directories or validating the whole production chain before copying. On recovery, preserve saved edits and continue existing working copies. If a supplied source is missing, record its exact path and deliver the already determined scope; if no source was supplied, save the known design/script scaffold and preparing manifest first.
@@ -94,9 +76,6 @@ PARENT_OWNED_SYNTHESIS_TOOLS = [
     'benchforge_run', 'benchforge_capture', 'benchforge_refine', 'benchforge_extend',
     'benchforge_retry', 'benchforge_cancel', 'benchforge_task_code', 'benchforge_prepare',
 ]
-# Preparation effort is resolved from the parent's exact model by the trusted
-# factory. A raw native delegate retains its existing parent route/defaults.
-DEFAULT_SYNTHESIS_REASONING_EFFORT = None
 
 
 def configured_synthesis_tools(plugins):
@@ -142,23 +121,21 @@ def configure_synthesis_delegation(plugins):
 
 
 WORKBENCH_PLUGIN_ID = base.WORKBENCH_PLUGIN_ID
-LEGACY_WORKBENCH_PLUGIN_ID = base.LEGACY_WORKBENCH_PLUGIN_ID
 
 
-def persona(with_ui):
-    display_name = base.PRESETS[base.WORKBENCH_PRESET_ID if with_ui else base.BENCHFORGE_ID]['name']
-    identity = (f'You are the {display_name} assistant. Use only {display_name} as your product name in introductions and user-facing explanations. '
-                'Legacy tool identifiers and storage paths are compatibility details, not additional product names.\n')
+def persona():
+    display_name = base.PRESETS[base.BENCHFORGE_ID]['name']
+    identity = (f'You are the {display_name} assistant.\n')
     prefix = identity + PERSONA + '\n' + PARALLEL_SYNTHESIS
-    return prefix + '\n' + UI_GUIDANCE if with_ui else prefix
+    return prefix + '\n' + UI_GUIDANCE
 
 
 def workbench_entry(python, service_config, *, package_imports=False):
     """One host reader serves new and already-bound sessions; the client gates UI."""
     return {
         'id': WORKBENCH_PLUGIN_ID,
-        'name': './ui/index.js' if package_imports
-                else (DSH / 'ui/index.js').as_uri(),
+        'name': './client/index.js' if package_imports
+                else (DSH / 'client/index.js').as_uri(),
         'config': {
             'productionConfig': base.config_reference(service_config, package_imports),
             'productionPython': str(python),
@@ -170,7 +147,7 @@ def capture_entry(workbench, *, package_imports=False, revision=None):
     return {
         'id': base.CAPTURE_PLUGIN_ID,
         'name': '@eurecamoment/benchforge-dsh/capture-runtime' if package_imports
-                else (DSH / 'host/capture/capture_runtime.mjs').as_uri(),
+                else (DSH / 'dist/capture-runtime.mjs').as_uri(),
         'config': {
             'productionConfig': options.get('productionConfig', ''),
             'workspacePaths': options.get('workspacePaths', []),
@@ -183,43 +160,45 @@ def session_operations_entry(*, package_imports=False, revision=None):
     return {
         'id': base.SESSION_OPERATIONS_PLUGIN_ID,
         'name': '@eurecamoment/benchforge-dsh/session-operations' if package_imports
-                else (DSH / 'host/sessions/index.mjs').as_uri(),
+                else (DSH / 'dist/session-operations.mjs').as_uri(),
         'config': {'revision': revision} if revision is not None else {},
     }
 
 
-def build(sources, dsh_root, python, service_config, *, config_path=None,
-          with_ui=True, package_imports=False):
-    preset = base.compose_standard(sources, package_imports=package_imports)
-    base.set_identity(preset, base.WORKBENCH_PRESET_ID if with_ui else base.BENCHFORGE_ID)
+def build(standard, python, service_config, *, config_path=None,
+          package_imports=False):
+    preset = base.compose_standard(standard)
+    base.set_identity(preset, base.BENCHFORGE_ID)
     config = preset['config']
     plugins = config['plugins']
     persona_plugin = next(row for row in plugins if row['id'] == 'persona')
-    persona_plugin['config'].update(prefix=persona(with_ui),
+    persona_plugin['config'].update(prefix=persona(),
                                     suffix='Your working directory is {{cwd}}. You are using {{model}}.')
     model_tools = base.model_tools(config_path, portable=package_imports)
-    learning_config = {'python': str(python), 'includeTools': [*LEARNING_TOOLS, *model_tools]}
-    if config_path is not None:
-        learning_config['configPath'] = base.config_reference(config_path, package_imports)
-    plugins.append({'id': 'spatial-learning-tools',
-                    'name': '@eurecamoment/benchforge-dsh/benchforge-tools' if package_imports
-                            else (DSH / 'tools/core.mjs').as_uri(),
-                    'config': learning_config})
+    for plugin_id, entry, tools in (
+        ('benchforge-tools', 'benchmark-tools', [*BENCHMARK_TOOLS, *model_tools]),
+        ('spatial-learning-tools', 'spatial-tools', LEARNING_TOOLS),
+    ):
+        options = {'python': str(python), 'includeTools': tools}
+        if config_path is not None:
+            options['configPath'] = base.config_reference(config_path, package_imports)
+        export = 'benchforge-tools' if entry == 'benchmark-tools' else entry
+        plugins.append({'id': plugin_id,
+                        'name': f'@eurecamoment/benchforge-dsh/{export}' if package_imports
+                                else (DSH / f'dist/{entry}.mjs').as_uri(),
+                        'config': options})
     plugins.append({'id': 'benchforge-scene-tools',
                     'name': '@eurecamoment/benchforge-dsh/benchforge-scene-tools' if package_imports
-                            else (DSH / 'tools/scene/tools.mjs').as_uri(),
+                            else (DSH / 'dist/scene-tools.mjs').as_uri(),
                     'config': {'serviceConfig': base.config_reference(service_config, package_imports)}})
     plugins.append({
         'id': 'benchforge-subagent-policy',
         'name': '@eurecamoment/benchforge-dsh/subagent-policy' if package_imports
-                else (DSH / 'tools/subagent_policy.mjs').as_uri(),
+                else (DSH / 'dist/subagent-policy.mjs').as_uri(),
         'config': {'persona': SYNTHESIS_WORKER_PERSONA, 'parentTools': sorted(configured_synthesis_tools(plugins))},
     })
-    entries = [session_operations_entry(package_imports=package_imports), preset]
-    if with_ui:
-        workbench = workbench_entry(python, service_config, package_imports=package_imports)
-        entries.extend([capture_entry(workbench, package_imports=package_imports), workbench])
-    entries.append(base.preset_alias_entry(package_imports=package_imports))
+    workbench = workbench_entry(python, service_config, package_imports=package_imports)
+    entries = [session_operations_entry(package_imports=package_imports), preset,
+               capture_entry(workbench, package_imports=package_imports), workbench]
     configure_synthesis_delegation(plugins)
-    models = [] if package_imports else base.model_patches(config_path or service_config)
-    return [{'insert': entries}, *models]
+    return entries

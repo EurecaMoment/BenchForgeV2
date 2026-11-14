@@ -1,7 +1,6 @@
-"""Hot-update the two BenchForge presets and preserve existing workbench sessions."""
+"""Hot-update the BenchForge preset and its workbench."""
 import argparse
 import http.cookiejar
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -10,28 +9,23 @@ import subprocess
 import sys
 import time
 import uuid
-from urllib.request import Request, ProxyHandler, HTTPCookieProcessor, build_opener
+from urllib.request import Request
+from urllib.request import ProxyHandler
+from urllib.request import HTTPCookieProcessor
+from urllib.request import build_opener
+
+from build_presets import base
+from build_presets import build
+from build_presets import yaml
+from profile_migration import migrate_profile
 
 ROOT = Path(__file__).resolve().parents[3]
-spec = importlib.util.spec_from_file_location("benchforge_profile_migration", Path(__file__).with_name('profile_migration.py'))
-migration = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(migration)
-development = migration.spatial
-yaml = development.yaml
-Loader, Dumper = development.base.Loader, development.base.Dumper
-PRESET_ID = development.base.WORKBENCH_PRESET_ID
+Loader, Dumper = base.Loader, base.Dumper
 
 
-def update_profile(profile, root, python, mode_config, service_config, revision, *, sources=None, profile_dir=None):
-    sources = development.base.load_sources() if sources is None else sources
-    generated = migration.catalog.build(sources, None, str(python), mode_config, service_config)
-    result = migration.migrate_profile(profile, generated, revision, root=root, profile_dir=profile_dir)
-    if not development.base.model_patches(mode_config):
-        development.base.refresh_host_models(result, [])
-    if service_config.resolve() == (root / development.base.DEFAULT_SERVICE_CONFIG).resolve():
-        development.base.refresh_service_paths(result, mode_config)
-    # Canonical URLs participate in DSH HMR. Revision is configuration, not a query.
-    return migration.update_workbench(result, root, revision=revision, profile_dir=profile_dir)
+def update_profile(profile, python, mode_config, service_config, revision, *, sources):
+    generated = build(sources, str(python), mode_config, service_config)
+    return migrate_profile(profile, generated, revision)
 
 
 def service_state(service):
@@ -40,12 +34,7 @@ def service_state(service):
 
 
 def monitored_services(dsh_service):
-    states = {name: service_state(name) for name in [dsh_service, "benchforge.service"]}
-    if states["benchforge.service"]["ActiveState"] != "active":
-        legacy = service_state("spatialforge.service")
-        if legacy["ActiveState"] == "active":
-            states["spatialforge.service"] = legacy
-    return states
+    return {name: service_state(name) for name in (dsh_service, "benchforge.service")}
 
 
 class DshRpc:
@@ -82,11 +71,11 @@ def atomic_write(path, content):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    development.base.add_source_arguments(parser)
+    base.add_source_arguments(parser)
     parser.add_argument("--profile", type=Path, default=Path.home() / ".local/share/dsh-qwen/home/profiles/web/cordis.patch.yml")
     parser.add_argument("--python", type=Path, default=ROOT / ".deployment/python-development")
     parser.add_argument("--mode-config", type=Path, default=ROOT / "config/benchforge.local.json")
-    parser.add_argument("--service-config", type=Path, default=development.base.default_service_config(ROOT))
+    parser.add_argument("--service-config", type=Path, default=base.default_service_config(ROOT))
     parser.add_argument("--dsh-service", default="dsh-qwen.service")
     parser.add_argument("--dsh-url", default="http://127.0.0.1:3080")
     parser.add_argument("--pull", action="store_true", help="First fast-forward the checkout's current branch")
@@ -109,9 +98,8 @@ def main():
     revision = str(time.time_ns())
     previous = args.profile.read_bytes()
     profile = yaml.load(previous.decode("utf-8"), Loader=Loader)
-    sources = development.base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
-    updated = update_profile(profile, ROOT, args.python, args.mode_config, args.service_config, revision,
-                             sources=sources, profile_dir=args.profile.resolve().parent)
+    sources = base.load_sources(args.dsh_root, args.node, args.dsh_resolve_from)
+    updated = update_profile(profile, args.python, args.mode_config, args.service_config, revision, sources=sources)
     deployment = ROOT / ".deployment"
     deployment.mkdir(exist_ok=True)
     backup = deployment / "benchforge-before-hot-update.yml"
@@ -124,9 +112,9 @@ def main():
             presets = {row['id']: row for row in roster['presets']}
             ready = all(preset_id in presets and not presets[preset_id].get('broken')
                         and presets[preset_id].get('name') == metadata['name']
-                        for preset_id, metadata in development.base.PRESETS.items())
+                        for preset_id, metadata in base.PRESETS.items())
             if ready and all(revision in json.dumps(rpc.call('agentPresets/read', {'agentPreset': preset_id}))
-                             for preset_id in development.base.PRESETS):
+                             for preset_id in base.PRESETS):
                 try:
                     with rpc.opener.open(args.dsh_url.rstrip('/') + '/api/benchforge/workbench?view=runtime',
                                          timeout=10) as response:
@@ -136,18 +124,16 @@ def main():
                 except (OSError, ValueError):
                     pass  # The old reader may still be retiring; never count it as adoption.
             if time.monotonic() >= deadline:
-                raise TimeoutError("DSH did not adopt the two BenchForge presets within 40 seconds")
+                raise TimeoutError("DSH did not adopt the BenchForge preset within 40 seconds")
             time.sleep(2)
         services_after = {name: service_state(name) for name in services_before}
         if services_after != services_before:
             raise RuntimeError("A monitored service changed during the hot update")
-        receipt = {"repository": str(ROOT), "preset": PRESET_ID, "revision": revision,
-                   "presets": {key: value['name'] for key, value in development.base.PRESETS.items()},
+        receipt = {"repository": str(ROOT), "preset": base.BENCHFORGE_ID, "revision": revision,
+                   "presets": {key: value['name'] for key, value in base.PRESETS.items()},
                    "workbench_revision": runtime['ui_revision'],
-                   "model_tools": development.MODEL_TOOLS, "services_before": services_before,
+                   "services_before": services_before,
                    "services_after": services_after, "restarted": False,
-                   "existing_sessions": "historical presets resolve to BenchForge or BenchForge_UI; workspace bindings and active tool revisions remain bound",
-                   "synthesis_worker_reasoning_effort": development.DEFAULT_SYNTHESIS_REASONING_EFFORT,
                    "profile_backup": str(backup), "heavy_model_start": False}
         (deployment / "benchforge-hot-update.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
         print(json.dumps(receipt, ensure_ascii=False))

@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><title>BenchForge Training</title>
+<link rel="stylesheet" href="/styles.css">
+<h1>空间能力课程训练</h1><p id="state">等待训练事件</p><svg id="curve" viewBox="0 0 1000 230"></svg><p id="summary"></p>
+<p><button onclick="guide({pause:true})">暂停更新</button> <button onclick="guide({pause:false})">继续更新</button> <button onclick="guide({stop_after_window:true})">本窗口后保存并停止</button></p>
+<h2>能力与课程</h2><table><thead><tr><th>能力 / 条件</th><th>开发成功率</th><th>场景数</th><th>指导</th></tr></thead><tbody id="skills"></tbody></table>
+<h2>最近事件</h2><pre id="events"></pre><small>程序真值评分。开发反馈用于选课，封存测试不进入调度。</small>
+<script src="/monitor.js"></script>

@@ -12,14 +12,13 @@ import venv
 
 ROOT = Path(__file__).resolve().parent
 SOURCE = ROOT / 'src'
-BACKEND = SOURCE / 'backend'
-# This repository launcher also runs outside the private backend environment.
-sys.path.insert(0, str(BACKEND))
+SCENE_PRODUCTION = SOURCE / 'scene_production'
+# The launcher can resolve configuration before installing the service environment.
 sys.path.insert(0, str(SOURCE))
 sys.path.insert(0, str(ROOT))
 import deployment_config as settings
-from benchforge_backend.runtime_config import load_service_config
-from benchforge_core.service_http import post_service_json
+from service_access.runtime_config import load_service_config
+from service_access.scene_service import post_service_json
 
 CONFIG = ROOT / 'config'
 STATE = ROOT / '.benchforge/backend'
@@ -122,7 +121,7 @@ def _database_command(project, stop):
         # Compose expands its required service environment even for down. The
         # running containers and volumes do not use this interpolation value.
         environment.setdefault('POSTGRES_PASSWORD', 'unused-for-container-stop')
-    command = ['docker', 'compose', '-p', name, '-f', str(BACKEND / 'deploy/compose.yml')]
+    command = ['docker', 'compose', '-p', name, '-f', str(SCENE_PRODUCTION / 'deploy/compose.yml')]
     command += ['down'] if stop else ['up', '-d', '--wait']
     subprocess.run(command, env=environment, check=True)
 
@@ -185,7 +184,7 @@ def main():
         python = backend_python()
         if not python.exists():
             venv.EnvBuilder(with_pip=True).create(STATE / 'venv')
-        subprocess.run([str(python), '-m', 'pip', 'install', '-e', str(BACKEND)], check=True)
+        subprocess.run([str(python), '-m', 'pip', 'install', '-e', str(ROOT) + '[production]'], check=True)
     elif args.command == 'init':
         _init_configs(args.port, args.db_port, args.project, web_port=args.web_port)
         print(f"Configuration: {CONFIG / 'benchforge.local.json'}")
@@ -194,11 +193,11 @@ def main():
     elif args.command == 'serve':
         _ensure_runtime_configuration()
         environment = build_environment()
-        paths = [str(BACKEND)]
+        paths = [str(SOURCE)]
         if environment.get('PYTHONPATH'):
             paths.append(environment['PYTHONPATH'])
         environment['PYTHONPATH'] = os.pathsep.join(paths)
-        subprocess.run([str(backend_python()), '-m', 'benchforge_backend.service', '--config', str(SERVER)],
+        subprocess.run([str(backend_python()), '-m', 'scene_production.server.http_api', '--config', str(SERVER)],
                        env=environment, check=True)
     elif args.command.startswith('dsh-'):
         command = [sys.executable, str(ROOT / 'benchforge.py'), args.command.removeprefix('dsh-')]
@@ -217,7 +216,7 @@ def main():
         profile = args.config or GENERATED / 'worker.local.json'
         if args.config is None:
             _ensure_runtime_configuration()
-        command = [str(backend_python()), str(BACKEND / 'desktop/worker.py'),
+        command = [str(backend_python()), '-m', 'scene_production.server.isaac_sim.processes.worker',
                    '--config', str(profile.resolve())]
         if args.once:
             command.append('--once')

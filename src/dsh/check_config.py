@@ -7,7 +7,7 @@ import sys
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from benchforge_core.service_config import resolve_service_config_file
+from service_access.scene_service import resolve_service_config_file
 
 
 def service_config_paths(value):

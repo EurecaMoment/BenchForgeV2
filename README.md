@@ -39,29 +39,27 @@ flowchart TB
 
 | 目录 | 职责 |
 | --- | --- |
-| [`src/benchforge_core/`](src/benchforge_core/) | Python 核心，负责评测计划、流水线恢复、证据、出题、评分和训练数据。 |
-| [`src/backend/`](src/backend/) | 场景生产后端、任务队列、模型适配、Isaac gRPC、桌面采集和部署工具。 |
-| [`src/dsh/presets/`](src/dsh/presets/) | 装配 Agent 预设和 Host 插件，生成部署配置。 |
-| [`src/dsh/tools/`](src/dsh/tools/) | Agent 工具、执行器和预设作用域策略。 |
-| [`src/dsh/host/`](src/dsh/host/) | 采集观察、会话操作和工作台 Gateway 接口。 |
-| [`src/dsh/ui/`](src/dsh/ui/) | Web Client 和浏览器构建入口。 |
+| [`src/benchmark_workflows/`](src/benchmark_workflows/) | 评测方案、流水线编排、证据采集、数据集编写与评分。 |
+| [`src/scene_production/`](src/scene_production/) | 场景验收、资产生成、生产队列、采集证据和 Isaac 执行。 |
+| [`src/spatial_learning/`](src/spatial_learning/) | 空间能力图、训练任务生成、课程调度和训练实验。 |
+| [`src/service_access/`](src/service_access/) | 配置、HTTP/OpenAI 客户端、请求上下文与工作区作业记录。 |
+| [`src/dsh/`](src/dsh/) | 单一预设、DSH Host 装配、原生工作台开关与构建。 |
+
+三个业务模块均按 `contracts / server / dsh / client / resources` 组织。
+[完整源码目录与依赖边界](src/README.md) 展示所有层级。
 
 `config/` 提供部署配置，`third_party/` 提供固定版本的外部模型和仿真源码。
 
-## 独立部署与两个 Agent 预设
+## 独立部署与统一 Agent 预设
 
 下方提供 Linux 服务机的完整安装步骤，可在另一台机器或另一目录部署，
 不需要已有 FIT 服务、旧 DSH 配置或其他分支的文件。按顺序执行
 [独立部署指令](#独立部署指令linux)，先启动 Web、BenchForge 和独立数据库。
 
-本分支安装两个自定义 Agent 预设：
+本分支安装一个自定义 **BenchForge** 预设（`benchforge`）。
+“评测工作台”按钮展开、收起右侧工作台；切换显示保留同一会话、输入草稿和执行状态。
+安装时将原来的两个配置声明合并成一个。
 
-| 显示名称 | 用途 |
-| --- | --- |
-| **BenchForge** | 场景和数据生产，使用标准对话界面 |
-| **BenchForge_UI** | 同一生产能力，附带评测生产工作台 |
-
-UI 版沿用旧会话的内部 ID，已有会话继续关联自己的工作台和历史产物。
 基础安装不需要 GPU、模型密钥或 Isaac。模型问答、图像生成和仿真采集需要另外配置对应服务。
 
 ## Current capabilities
@@ -97,7 +95,7 @@ The root `.gitignore` excludes local configuration and generated output.
 
 ## Verification
 
-CI checks installation and integration on Windows and Linux with Python 3.10 and 3.12, and runs additional backend checks on Python 3.12.
+CI builds the DSH bundle and checks installation and CLI startup on Windows and Linux. The scene production service uses Python 3.12 in CI.
 
 ## 独立部署指令（Linux）
 
@@ -248,7 +246,7 @@ ss -ltnp | grep -E ':(3092|3858|55548)\b' || true
 ```
 
 此命令初始化 `third_party/deepseek-harness4BenchForge/` 子模块，构建配置中注明的 DSH `0.2.2-rc.3`，
-然后按本机配置生成含两个预设和工作台插件的
+然后按本机配置生成含统一预设和工作台插件的
 `config/generated/benchforge.local.yml` 与
 `.benchforge/runtime.json`。首次源码构建可能需要数分钟，最后应看到
 `Ready. Run: python benchforge.py start`，且命令退出码为 0。
@@ -317,8 +315,8 @@ http://127.0.0.1:13092/?token=第5节输出的实际令牌
 
 本地 `13092` 被占用时只改隧道左侧端口，并同步改浏览器 URL。
 直接打开不带 token 的根地址可能返回 `dsh web authentication required`。
-进入页面后，新建会话应能选择 **`BenchForge` 和 `BenchForge_UI`**。
-选择 `BenchForge_UI` 查看工作台；尚未配置模型时先不要发起生产任务。
+进入页面后，新建会话选择 **`BenchForge`**。
+点击“评测工作台”展开面板；尚未配置模型时先完成模型服务配置。
 
 ### 7. 验收基础安装
 
@@ -342,8 +340,8 @@ docker ps --filter "label=com.docker.compose.project=$project" --filter 'label=c
 若端口被占用，编辑 `config/benchforge.local.json` 的 `web.port`、`server.port` 或
 `database.port`，然后重新启动该实例。Web 端口也可临时用 `BENCHFORGE_WEB_PORT=3090 ./start.sh` 覆盖。
 
-再确认网页能够登录、两个预设均可选，且 `BenchForge_UI` 能显示工作台、没有加载错误。
-页面验收必须新建并选择 **`BenchForge_UI`** 会话、绑定本实例的独立工作区，确认
+再确认网页能够登录、只有一个 BenchForge 预设，且工作台开关可展开、收起，没有加载错误。
+页面验收使用 **`BenchForge`** 会话、绑定本实例的独立工作区并展开工作台，确认
 “评测计划、场景预览、标注预览、评测配置与题目表、最终报告”五个阶段可以打开。
 只看到 DSH 默认 Standard 对话页面，不能算工作台安装成功。新实例应显示空的生产状态，
 不应读取其他实例的历史任务；原有样板对话在各自实例中继续保留原工作区和产物关联。
@@ -373,7 +371,7 @@ FLUX 的 `num_inference_steps` 或 DA3 的 `process_res`。
 
 Isaac 默认用 `mode: "grpc"`。填 `grpc.host`、`grpc.port` 和每次 RPC 的
 `grpc.timeout_seconds`，用 `capture_timeout_seconds` 限制采集时长。
-该端点需实现 [IsaacSim 采集契约](src/backend/benchforge_backend/isaac/isaac_sim.proto)，
+该端点需实现 [IsaacSim 采集契约](src/scene_production/server/isaac_sim/grpc/isaac_sim.proto)，
 包括资产上传、作业状态和工件回传。仅提供 NVIDIA 原生 ControlPlane RPC 的端点需要在
 Isaac 服务侧提供这套采集契约。每个生成资产通过 `<asset_id>.zip` 上传，采集服务按
 作业 ID 解包并把资产挂到 SceneProgram 的对应对象。
@@ -389,7 +387,7 @@ Isaac 进程，并通过 `worker.runs` 里的请求和回执接管本机作业�
 重启 BenchForge 服务以加载变更，重启 worker 以切换 Isaac 端点或模式。
 
 在已安装后端包的 Python 环境中运行
-`python -m benchforge_backend.isaac.mock_server --port 50051`，可用本机
+`python -m scene_production.isaac.mock_server --port 50051`，可用本机
 `127.0.0.1:50051` 验证传输。模拟结果带 `mock` 标记。
 
 已有配置请按示例更新为 `config_version: 4`，把各服务端点填到对应提供方。保留现有
@@ -432,7 +430,7 @@ npm ci --prefix src/dsh
 启动时会更新本实例预设里的旧插件源码路径。独立维护的 DSH profile 使用
 [`src/dsh/presets/hot_update.py`](src/dsh/presets/hot_update.py) 更新。
 如果外置 Isaac dispatcher 引用了旧仓库绝对路径，按
-[dispatcher 迁移说明](src/backend/deploy/dispatcher/DISPATCHER_OVERLAY.md) 重新应用 overlay。
+[dispatcher 迁移说明](src/scene_production/deploy/dispatcher/DISPATCHER_OVERLAY.md) 重新应用 overlay。
 
 ### 10. 常见失败及处理
 
@@ -483,8 +481,9 @@ JSON 的路径。客户端从该文件读取地址、operator token 和生产策
 
 ## 开发检查
 
-以下是开发者修改代码后的检查，不是部署者必须跑完的安装步骤：
+开发时可重新构建 DSH 插件并检查 Python 的 CLI 入口。
 
 ```bash
-.venv/bin/python src/dsh/smoke.py
+npm ci --prefix src/dsh
+.venv/bin/benchforge --help
 ```

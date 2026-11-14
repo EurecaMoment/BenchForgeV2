@@ -1,10 +1,12 @@
-"""Install the two BenchForge presets into a profile."""
+"""Install the BenchForge preset and workbench into a profile."""
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timezone
 from pathlib import Path
 import shutil
 import yaml
-from profile_migration import migrate_profile, base
+from profile_migration import migrate_profile
+from profile_migration import base
 
 Loader, Dumper = base.Loader, base.Dumper
 
@@ -12,7 +14,7 @@ Loader, Dumper = base.Loader, base.Dumper
 def install(profile, preset):
     current = yaml.load(profile.read_text(encoding='utf-8'), Loader=Loader) or []
     generated = yaml.load(preset.read_text(encoding='utf-8'), Loader=Loader)
-    current = migrate_profile(current, generated, profile_dir=profile.resolve().parent)
+    current = migrate_profile(current, generated)
     timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     backup = profile.with_name(profile.name + '.before-benchforge-' + timestamp)
     shutil.copy2(profile, backup)
@@ -29,7 +31,7 @@ def main():
     parser.add_argument('--profile', required=True, type=Path)
     parser.add_argument('--preset', required=True, type=Path)
     args = parser.parse_args()
-    print('Installed custom BenchForge presets; backup:', install(args.profile, args.preset))
+    print('Installed BenchForge preset and workbench; backup:', install(args.profile, args.preset))
 
 
 if __name__ == '__main__':

@@ -1,13 +1,11 @@
 import {copyFile, mkdir} from 'node:fs/promises';
 
-const sourceRoot = new URL('../', import.meta.url);
-const packageRoot = new URL('./', import.meta.url);
-const pipelines = 'benchforge_core/pipelines';
-const backend = 'backend/benchforge_backend';
+const sourceRoot = new URL('..', import.meta.url);
+const packageRoot = new URL('.', import.meta.url);
+const pipelines = 'benchmark_workflows/resources';
 const files = [
   [`${pipelines}/assessment_template.json`, 'dist/resources/assessment_template.json'],
   [`${pipelines}/task_templates.json`, 'dist/resources/task_templates.json'],
-  [`${backend}/dispatcher_control.py`, 'benchforge/capture_finish.py'],
 ];
 
 for (const [source, destination] of files) {

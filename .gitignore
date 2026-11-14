@@ -1,17 +1,12 @@
 # Dependencies and compiler/tool caches
 __pycache__/
 *.py[cod]
-# 本地测试 gRPC 服务的 pid / 日志
-src/backend/grpc/.test_server.pid
-src/backend/grpc/.test_server.log
-# mock 服务的作业/工件目录
-src/backend/grpc/_mock_jobs/
 *.egg-info/
 .venv/
 venv/
 node_modules/
 /src/dsh/benchforge/
-/src/dsh/host/workbench/remote/lib/
+/src/benchmark_workflows/contracts/remote/lib/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

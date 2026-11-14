@@ -11,8 +11,8 @@ import shlex
 import tempfile
 from urllib.parse import quote, urlsplit
 
-from benchforge_backend.provider_config import isaac_config, validate_providers
-from benchforge_backend.runtime_config import expand_environment, read_json
+from service_access.configuration import isaac_config, validate_providers
+from service_access.runtime_config import expand_environment, read_json
 
 
 SECTIONS = ('web', 'server', 'database', 'client', 'worker')

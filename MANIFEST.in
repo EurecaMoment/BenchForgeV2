@@ -1,2 +1,0 @@
-include src/backend/benchforge_backend/scene_design.py
-include src/backend/benchforge_backend/provider_config.py

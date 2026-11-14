@@ -8,7 +8,7 @@ version = "0.2.0"
 description = "Composable benchmark production tools for agent harnesses"
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.14"
 dependencies = []
 
 [project.urls]
@@ -17,28 +17,30 @@ Issues = "https://github.com/EurecaMoment/BenchForgeV2/issues"
 
 [project.optional-dependencies]
 dsh = ["PyYAML>=6"]
-production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10", "SQLAlchemy>=2.0", "psycopg[binary]>=3.2"]
+production = ["PyYAML>=6", "numpy>=1.24", "Pillow>=10", "SQLAlchemy>=2.0", "psycopg[binary]>=3.2", "trimesh>=4", "pycocotools>=2.0.10", "grpcio>=1.85.1", "protobuf>=7.35.1", "imageio-ffmpeg>=0.5"]
 research = ["pypdf>=5"]
 datasets = ["pyarrow>=15"]
 training = ["torch>=2.4", "transformers>=4.49", "tokenizers>=0.21", "peft>=0.14", "Pillow>=10", "numpy>=1.24"]
 
 [project.scripts]
-benchforge = "benchforge_core.cli:main"
+benchforge = "benchmark_workflows.server.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["benchforge_core*"]
+include = ["benchmark_workflows*", "scene_production*", "spatial_learning*", "service_access*"]
+namespaces = false
 
 [tool.setuptools.package-data]
-benchforge_core = ["capabilities.json", "collectors/*.py"]
-"benchforge_core.spatial_learning" = ["graph.json", "templates.json"]
-"benchforge_core.pipelines" = ["task_templates.json", "assessment_template.json", "definitions/*.json"]
+benchmark_workflows = ["resources/*.json", "resources/pipelines/*.json"]
+spatial_learning = ["resources/*.json", "client/*.html", "client/*.js", "client/*.css"]
+scene_production = ["resources/*.json", "resources/material_previews/*.jpg"]
+"scene_production.server.isaac_sim.grpc" = ["isaac_sim.proto"]
 
 [tool.setuptools.exclude-package-data]
 "*" = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 extend-exclude = ["work/**"]
 
