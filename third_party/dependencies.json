@@ -31,5 +31,11 @@
       "path": "third_party/FastDA3",
       "usage": "Depth Anything 3 inference for metric depth, camera pose, and long-video geometry"
     }
+  },
+  "optional_submodules": {
+    "FastQwen": {
+      "path": "third_party/FastQwen",
+      "usage": "Qwen model inference and serving"
+    }
   }
 }

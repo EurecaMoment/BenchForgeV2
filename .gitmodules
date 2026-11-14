@@ -22,3 +22,7 @@
 	path = third_party/FastDA3
 	url = https://github.com/EurecaMoment/FastDA3.git
 	shallow = true
+[submodule "third_party/FastQwen"]
+	path = third_party/FastQwen
+	url = https://github.com/EurecaMoment/FastQwen.git
+	shallow = true

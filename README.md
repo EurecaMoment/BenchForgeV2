@@ -73,7 +73,7 @@ The task/template catalog and the separate spatial-learning capability graph ser
 ## Third-party provider libraries
 
 [`third_party/`](third_party/README.md) includes pinned Git submodules for
-FastTrellis2, DSpark4A100, IssacSim4A100, FastSAM3, FastFLUX2Klein, and FastDA3.
+FastTrellis2, DSpark4A100, IssacSim4A100, FastSAM3, FastFLUX2Klein, FastDA3, and FastQwen.
 After pulling this repository, download their sources with:
 
 ```bash
